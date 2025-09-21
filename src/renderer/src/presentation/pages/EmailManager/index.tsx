@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import CustomBreadcrumb, { BreadcrumbItem } from '../../../components/common/CustomBreadcrumb'
 import CustomButton from '../../../components/common/CustomButton'
-import EmailDetailsDrawer from './components/EmailDetailsDrawer'
+import EmailDrawer from './components/EmailDrawer'
 import EmailTable from './components/EmailTable'
 import { Input } from '../../../components/ui/input'
 import { Plus, Search, Mail } from 'lucide-react'
@@ -113,11 +113,7 @@ const EmailManagerPage = () => {
         </div>
 
         {/* Email Details Drawer */}
-        <EmailDetailsDrawer
-          isOpen={isDrawerOpen}
-          onClose={handleCloseDrawer}
-          email={selectedEmail}
-        />
+        <EmailDrawer isOpen={isDrawerOpen} onClose={handleCloseDrawer} email={selectedEmail} />
       </div>
     </div>
   )

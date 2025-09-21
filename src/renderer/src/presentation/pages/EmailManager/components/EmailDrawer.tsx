@@ -1,4 +1,3 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDetailsDrawer.tsx
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CustomDrawer from '../../../../components/common/CustomDrawer'
@@ -6,11 +5,10 @@ import CustomBreadcrumb, { BreadcrumbItem } from '../../../../components/common/
 import CustomButton from '../../../../components/common/CustomButton'
 import EmailSection from './EmailSection'
 import EmailTwoFactorAuthSection from './EmailTwoFactorAuthSection'
-import ServicesList from './SecretsList'
 import { ArrowLeft, X } from 'lucide-react'
 import { Email, ServiceAccount, fakeData } from '../data/mockEmailData'
 
-interface EmailDetailsDrawerProps {
+interface EmailDrawerProps {
   isOpen: boolean
   onClose: () => void
   email?: Email | null
@@ -18,7 +16,7 @@ interface EmailDetailsDrawerProps {
 
 type ViewType = 'email' | 'services' | '2fa' | 'service_detail'
 
-const EmailDetailsDrawer: React.FC<EmailDetailsDrawerProps> = ({ isOpen, onClose, email }) => {
+const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => {
   const [currentView, setCurrentView] = useState<ViewType>('email')
   const [selectedService, setSelectedService] = useState<ServiceAccount | null>(null)
 
@@ -119,11 +117,6 @@ const EmailDetailsDrawer: React.FC<EmailDetailsDrawerProps> = ({ isOpen, onClose
     return null
   }
 
-  const handleServiceClick = (service: ServiceAccount) => {
-    setSelectedService(service)
-    setCurrentView('service_detail')
-  }
-
   return (
     <CustomDrawer
       isOpen={isOpen}
@@ -194,28 +187,6 @@ const EmailDetailsDrawer: React.FC<EmailDetailsDrawerProps> = ({ isOpen, onClose
 
                 {/* Two-Factor Authentication Section */}
                 <EmailTwoFactorAuthSection email={email} email2FAMethods={email2FAMethods} />
-
-                {/* Services List Section - NEW: Added below 2FA */}
-                <ServicesList
-                  services={emailServiceAccounts}
-                  onServiceClick={handleServiceClick}
-                  showHeader={true}
-                  compact={false}
-                />
-              </motion.div>
-            )}
-
-            {/* Services List View */}
-            {currentView === 'services' && !selectedService && (
-              <motion.div
-                key="services-list-view"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="p-4 pb-8"
-              >
-                <ServicesList services={emailServiceAccounts} onServiceClick={handleServiceClick} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -225,4 +196,4 @@ const EmailDetailsDrawer: React.FC<EmailDetailsDrawerProps> = ({ isOpen, onClose
   )
 }
 
-export default EmailDetailsDrawer
+export default EmailDrawer
