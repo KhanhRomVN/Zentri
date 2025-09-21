@@ -1,4 +1,3 @@
-// src/renderer/src/presentation/pages/EmailManager/components/ServiceCard.tsx
 import React, { useState } from 'react'
 import { Badge } from '../../../../components/ui/badge'
 import { Button } from '../../../../components/ui/button'
@@ -20,7 +19,7 @@ import {
 import { cn } from '../../../../shared/lib/utils'
 import { ServiceAccount } from '../data/mockEmailData'
 
-interface ServiceCardProps {
+interface AccountServiceCardProps {
   service: ServiceAccount
   onClick?: () => void
   onServiceClick?: (service: ServiceAccount) => void
@@ -30,7 +29,7 @@ interface ServiceCardProps {
   nestedServices?: ServiceAccount[]
 }
 
-const ServiceCard: React.FC<ServiceCardProps> = ({
+const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
   service,
   onClick,
   onServiceClick,
@@ -447,7 +446,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
               </div>
               <div className="space-y-2">
                 {nestedServices.map((nestedService) => (
-                  <ServiceCard
+                  <AccountServiceCard
                     key={nestedService.id}
                     service={nestedService}
                     onClick={() => handleNestedServiceClick(nestedService)}
@@ -488,4 +487,4 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   )
 }
 
-export default ServiceCard
+export default AccountServiceCard

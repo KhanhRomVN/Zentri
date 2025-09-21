@@ -4,7 +4,8 @@ import CustomDrawer from '../../../../components/common/CustomDrawer'
 import CustomBreadcrumb, { BreadcrumbItem } from '../../../../components/common/CustomBreadcrumb'
 import CustomButton from '../../../../components/common/CustomButton'
 import EmailSection from './EmailSection'
-import EmailTwoFactorAuthSection from './EmailTwoFactorAuthSection'
+import Email2FASection from './Email2FASection'
+import AccountServicesList from './AccountServicesList'
 import { ArrowLeft, X } from 'lucide-react'
 import { Email, ServiceAccount, fakeData } from '../data/mockEmailData'
 
@@ -186,7 +187,30 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => 
                 />
 
                 {/* Two-Factor Authentication Section */}
-                <EmailTwoFactorAuthSection email={email} email2FAMethods={email2FAMethods} />
+                <Email2FASection email={email} email2FAMethods={email2FAMethods} />
+
+                {/* Service Accounts Section */}
+                <AccountServicesList
+                  services={emailServiceAccounts}
+                  emailAddress={email.email_address}
+                  onServiceAdd={(service) => {
+                    console.log('Adding new service account:', service)
+                    // Implementation for adding service account
+                  }}
+                  onServiceEdit={(service) => {
+                    console.log('Editing service account:', service)
+                    // Implementation for editing service account
+                  }}
+                  onServiceDelete={(serviceId) => {
+                    console.log('Deleting service account:', serviceId)
+                    // Implementation for deleting service account
+                  }}
+                  onServiceClick={(service) => {
+                    console.log('Service clicked:', service)
+                    // Implementation for service details view
+                  }}
+                  compact={false}
+                />
               </motion.div>
             )}
           </AnimatePresence>

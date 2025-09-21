@@ -1,4 +1,4 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailTwoFactorAuthSection.tsx
+// src/renderer/src/presentation/pages/EmailManager/components/Email2FASection.tsx
 import React, { useState } from 'react'
 import { Badge } from '../../../../components/ui/badge'
 import { Button } from '../../../../components/ui/button'
@@ -22,17 +22,13 @@ import {
 import { cn } from '../../../../shared/lib/utils'
 import { Email, Email2FA } from '../data/mockEmailData'
 
-interface EmailTwoFactorAuthSectionProps {
+interface Email2FASectionProps {
   email: Email
   email2FAMethods: Email2FA[]
   className?: string
 }
 
-const EmailTwoFactorAuthSection: React.FC<EmailTwoFactorAuthSectionProps> = ({
-  email,
-  email2FAMethods,
-  className
-}) => {
+const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethods, className }) => {
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
   const [is2FAExpanded, setIs2FAExpanded] = useState(false)
 
@@ -343,4 +339,4 @@ const EmailTwoFactorAuthSection: React.FC<EmailTwoFactorAuthSectionProps> = ({
   )
 }
 
-export default EmailTwoFactorAuthSection
+export default Email2FASection
