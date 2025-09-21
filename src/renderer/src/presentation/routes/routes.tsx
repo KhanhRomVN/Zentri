@@ -1,6 +1,7 @@
 import { RouteObject } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
-import HomePage from '../pages/Home'
+import EmailManagerPage from '../pages/EmailManager'
+import SettingPage from '../pages/Setting'
 import NotFoundPage from '../pages/Other/NotFoundPage'
 
 export const routes: RouteObject[] = [
@@ -10,7 +11,11 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <HomePage />
+        element: <EmailManagerPage />
+      },
+      {
+        path: 'setting',
+        element: <SettingPage />
       }
     ]
   },
