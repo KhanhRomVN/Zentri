@@ -1,7 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/ServiceAccountSecretCard.tsx
 import React, { useState } from 'react'
-import { Badge } from '../../../../components/ui/badge'
-import { Button } from '../../../../components/ui/button'
+import { Badge } from '../../../../../../components/ui/badge'
+import { Button } from '../../../../../../components/ui/button'
 import {
   Eye,
   EyeOff,
@@ -21,8 +21,8 @@ import {
   Hash,
   AlertTriangle
 } from 'lucide-react'
-import { cn } from '../../../../shared/lib/utils'
-import { ServiceAccountSecret } from '../types'
+import { cn } from '../../../../../../shared/lib/utils'
+import { ServiceAccountSecret } from '../../../types'
 
 interface ServiceAccountSecretCardProps {
   secret: ServiceAccountSecret

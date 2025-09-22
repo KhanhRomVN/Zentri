@@ -1,9 +1,9 @@
 // src/renderer/src/presentation/pages/EmailManager/components/ServiceAccount2FASection.tsx
 import React, { useState } from 'react'
-import { Badge } from '../../../../components/ui/badge'
-import { Button } from '../../../../components/ui/button'
-import { Label } from '../../../../components/ui/label'
-import CustomInput from '../../../../components/common/CustomInput'
+import { Badge } from '../../../../../../components/ui/badge'
+import { Button } from '../../../../../../components/ui/button'
+import { Label } from '../../../../../../components/ui/label'
+import CustomInput from '../../../../../../components/common/CustomInput'
 import {
   Eye,
   EyeOff,
@@ -22,8 +22,8 @@ import {
   Edit,
   Trash2
 } from 'lucide-react'
-import { cn } from '../../../../shared/lib/utils'
-import { ServiceAccount, ServiceAccount2FA } from '../types'
+import { cn } from '../../../../../../shared/lib/utils'
+import { ServiceAccount, ServiceAccount2FA } from '../../../types'
 
 interface ServiceAccount2FASectionProps {
   serviceAccount: ServiceAccount

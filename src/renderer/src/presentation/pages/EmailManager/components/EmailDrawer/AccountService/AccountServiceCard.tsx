@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Badge } from '../../../../components/ui/badge'
-import { Button } from '../../../../components/ui/button'
+import { Badge } from '../../../../../../components/ui/badge'
+import { Button } from '../../../../../../components/ui/button'
 import {
   ExternalLink,
   User,
@@ -16,8 +16,8 @@ import {
   Key,
   Link
 } from 'lucide-react'
-import { cn } from '../../../../shared/lib/utils'
-import { ServiceAccount } from '../types'
+import { cn } from '../../../../../../shared/lib/utils'
+import { ServiceAccount } from '../../../types'
 
 interface AccountServiceCardProps {
   service: ServiceAccount

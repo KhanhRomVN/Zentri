@@ -1,18 +1,24 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer.tsx
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import CustomDrawer from '../../../../components/common/CustomDrawer'
-import CustomBreadcrumb, { BreadcrumbItem } from '../../../../components/common/CustomBreadcrumb'
-import CustomButton from '../../../../components/common/CustomButton'
-import EmailSection from './EmailSection'
-import Email2FASection from './Email2FASection'
-import AccountServicesList from './AccountServicesList'
-import ServiceAccountSection from './ServiceAccountSection'
-import ServiceAccount2FASection from './ServiceAccount2FASection'
-import ServiceAccountSecretList from './ServiceAccountSecretList'
+import CustomDrawer from '../../../../../components/common/CustomDrawer'
+import CustomBreadcrumb, { BreadcrumbItem } from '../../../../../components/common/CustomBreadcrumb'
+import CustomButton from '../../../../../components/common/CustomButton'
+import EmailSection from './Email/EmailSection'
+import Email2FASection from './Email/Email2FASection'
+import AccountServicesList from './AccountService/AccountServicesList'
+import ServiceAccountSection from './AccountService/ServiceAccountSection'
+import ServiceAccount2FASection from './AccountService/ServiceAccount2FASection'
+import ServiceAccountSecretList from './AccountService/ServiceAccountSecretList'
 import { ArrowLeft, X } from 'lucide-react'
-import { Email, ServiceAccount, Email2FA, ServiceAccount2FA, ServiceAccountSecret } from '../types'
-import { databaseService } from '../services/DatabaseService'
+import {
+  Email,
+  ServiceAccount,
+  Email2FA,
+  ServiceAccount2FA,
+  ServiceAccountSecret
+} from '../../types'
+import { databaseService } from '../../services/DatabaseService'
 
 interface EmailDrawerProps {
   isOpen: boolean

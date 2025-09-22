@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Button } from '../../../../components/ui/button'
-import { Input } from '../../../../components/ui/input'
+import { Button } from '../../../../../../components/ui/button'
+import { Input } from '../../../../../../components/ui/input'
 import {
   Plus,
   Search,
@@ -12,8 +12,8 @@ import {
   AlertTriangle,
   Activity
 } from 'lucide-react'
-import { cn } from '../../../../shared/lib/utils'
-import { ServiceAccount } from '../types'
+import { cn } from '../../../../../../shared/lib/utils'
+import { ServiceAccount } from '../../../types'
 import AccountServiceCard from './AccountServiceCard'
 
 interface AccountServicesListProps {

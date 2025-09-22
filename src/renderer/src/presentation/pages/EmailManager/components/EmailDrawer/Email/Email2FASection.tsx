@@ -1,9 +1,9 @@
 // src/renderer/src/presentation/pages/EmailManager/components/Email2FASection.tsx
 import React, { useState } from 'react'
-import { Badge } from '../../../../components/ui/badge'
-import { Button } from '../../../../components/ui/button'
-import { Label } from '../../../../components/ui/label'
-import CustomInput from '../../../../components/common/CustomInput'
+import { Badge } from '../../../../../../components/ui/badge'
+import { Button } from '../../../../../../components/ui/button'
+import { Label } from '../../../../../../components/ui/label'
+import CustomInput from '../../../../../../components/common/CustomInput'
 import {
   Eye,
   EyeOff,
@@ -19,8 +19,8 @@ import {
   Smartphone,
   Mail
 } from 'lucide-react'
-import { cn } from '../../../../shared/lib/utils'
-import { Email, Email2FA } from '../types'
+import { cn } from '../../../../../../shared/lib/utils'
+import { Email, Email2FA } from '../../../types'
 
 interface Email2FASectionProps {
   email: Email
