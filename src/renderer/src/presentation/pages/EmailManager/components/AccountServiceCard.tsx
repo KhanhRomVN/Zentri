@@ -17,12 +17,11 @@ import {
   Link
 } from 'lucide-react'
 import { cn } from '../../../../shared/lib/utils'
-import { ServiceAccount } from '../data/mockEmailData'
+import { ServiceAccount } from '../types'
 
 interface AccountServiceCardProps {
   service: ServiceAccount
-  onClick?: () => void
-  onServiceClick?: (service: ServiceAccount) => void
+  onServiceClick?: (service: ServiceAccount) => void // For navigating to service detail - now optional
   className?: string
   defaultExpanded?: boolean
   showNestedServices?: boolean
@@ -31,8 +30,7 @@ interface AccountServiceCardProps {
 
 const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
   service,
-  onClick,
-  onServiceClick,
+  onServiceClick, // Keep this for potential "View Details" button
   className,
   defaultExpanded = false,
   showNestedServices = false,
@@ -68,12 +66,12 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
     return null
   }
 
+  // Handle card click - MAIN CHANGE: Now only expands/collapses
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't expand if clicking on buttons
     if ((e.target as HTMLElement).closest('button')) return
 
     setIsExpanded(!isExpanded)
-    if (onClick) onClick()
   }
 
   const handleExternalLink = (e: React.MouseEvent) => {
@@ -91,6 +89,14 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
     console.log('Delete service:', service.id)
+  }
+
+  // NEW: Handle service detail navigation - separate button
+  const handleViewDetails = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onServiceClick) {
+      onServiceClick(service)
+    }
   }
 
   const copyToClipboard = (text: string, e: React.MouseEvent) => {
@@ -129,12 +135,10 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
   return (
     <div
       className={cn(
-        'group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-300 overflow-hidden',
-        isExpanded
-          ? 'hover:shadow-lg'
-          : 'cursor-pointer hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-600 hover:-translate-y-1',
+        'group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-300 overflow-hidden cursor-pointer hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-600 hover:-translate-y-1',
         className
       )}
+      onClick={handleCardClick} // MAIN CHANGE: Always handles expand/collapse
     >
       {/* Status Indicator - Moved to Left Border */}
       <div
@@ -149,10 +153,7 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
       />
 
       {/* Collapsed View */}
-      <div
-        className={cn('p-4 transition-all duration-300', !isExpanded && 'cursor-pointer')}
-        onClick={handleCardClick}
-      >
+      <div className="p-4 transition-all duration-300">
         <div className="flex items-center justify-between">
           {/* Left Section - Icon + Info */}
           <div className="flex items-center gap-3 flex-1 min-w-0 pl-2">
@@ -405,17 +406,20 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
             </div>
           )}
 
-          {/* Action Buttons - Show when expanded */}
+          {/* Action Buttons - UPDATED: Separate View Details from Edit/Delete */}
           <div className="flex items-center justify-end gap-2 pt-2 ml-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onServiceClick && onServiceClick(service)}
-              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-700 dark:hover:bg-indigo-900/20"
-            >
-              <Shield className="h-4 w-4 mr-1" />
-              View Details
-            </Button>
+            {/* NEW: View Details Button - Only show if onServiceClick is provided */}
+            {onServiceClick && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleViewDetails}
+                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-700 dark:hover:bg-indigo-900/20"
+              >
+                <Shield className="h-4 w-4 mr-1" />
+                View Details
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -449,8 +453,7 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
                   <AccountServiceCard
                     key={nestedService.id}
                     service={nestedService}
-                    onClick={() => handleNestedServiceClick(nestedService)}
-                    onServiceClick={onServiceClick}
+                    onServiceClick={handleNestedServiceClick}
                     className="ml-4 border-l-2 border-blue-200 dark:border-blue-700"
                     defaultExpanded={false}
                   />

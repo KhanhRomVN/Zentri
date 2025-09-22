@@ -5,7 +5,7 @@ import CustomTable from '../../../../components/common/CustomTable'
 import CustomButton from '../../../../components/common/CustomButton'
 import { Badge } from '../../../../components/ui/badge'
 import { Calendar, Tag, Plus, User, MapPin, Phone } from 'lucide-react'
-import { Email } from '../data/mockEmailData'
+import { Email } from '../types'
 
 // Import email provider icons
 import gmailIcon from '../../../../assets/icon/gmail_icon.png'

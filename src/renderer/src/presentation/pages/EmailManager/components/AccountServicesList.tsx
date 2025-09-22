@@ -13,7 +13,7 @@ import {
   Activity
 } from 'lucide-react'
 import { cn } from '../../../../shared/lib/utils'
-import { ServiceAccount } from '../data/mockEmailData'
+import { ServiceAccount } from '../types'
 import AccountServiceCard from './AccountServiceCard'
 
 interface AccountServicesListProps {
@@ -22,25 +22,23 @@ interface AccountServicesListProps {
   onServiceAdd?: (service: Omit<ServiceAccount, 'id' | 'email_id'>) => void
   onServiceEdit?: (service: ServiceAccount) => void
   onServiceDelete?: (serviceId: string) => void
-  onServiceClick?: (service: ServiceAccount) => void
+  onServiceClick?: (service: ServiceAccount) => void // Still available for "View Details" button
   className?: string
   compact?: boolean
+  showViewDetailsButton?: boolean // NEW: Control whether to show "View Details" button
 }
 
 const AccountServicesList: React.FC<AccountServicesListProps> = ({
   services,
   emailAddress,
-  onServiceAdd,
-  onServiceEdit,
-  onServiceDelete,
   onServiceClick,
   className,
-  compact = false
+  compact = false,
+  showViewDetailsButton = false // NEW: Default to false, so cards just expand by default
 }) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<string>('')
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   // Filter services based on search and filters
   const filteredServices = services.filter((service) => {
@@ -95,14 +93,7 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
     return statusLabels[status] || status
   }
 
-  const handleServiceClick = (service: ServiceAccount) => {
-    if (onServiceClick) {
-      onServiceClick(service)
-    }
-  }
-
   const handleAddService = () => {
-    setIsAddModalOpen(true)
     // Implementation for add service modal
     console.log('Open add service modal')
   }
@@ -191,8 +182,8 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
             <AccountServiceCard
               key={service.id}
               service={service}
-              onClick={() => handleServiceClick(service)}
-              onServiceClick={onServiceClick}
+              // CHANGE: Only pass onServiceClick if showViewDetailsButton is true
+              onServiceClick={showViewDetailsButton ? onServiceClick : undefined}
               defaultExpanded={false}
             />
           ))}

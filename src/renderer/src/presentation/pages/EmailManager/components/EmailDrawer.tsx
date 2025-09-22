@@ -1,3 +1,4 @@
+// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer.tsx
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CustomDrawer from '../../../../components/common/CustomDrawer'
@@ -6,8 +7,12 @@ import CustomButton from '../../../../components/common/CustomButton'
 import EmailSection from './EmailSection'
 import Email2FASection from './Email2FASection'
 import AccountServicesList from './AccountServicesList'
+import ServiceAccountSection from './ServiceAccountSection'
+import ServiceAccount2FASection from './ServiceAccount2FASection'
+import ServiceAccountSecretList from './ServiceAccountSecretList'
 import { ArrowLeft, X } from 'lucide-react'
-import { Email, ServiceAccount, fakeData } from '../data/mockEmailData'
+import { Email, ServiceAccount, Email2FA, ServiceAccount2FA, ServiceAccountSecret } from '../types'
+import { databaseService } from '../services/DatabaseService'
 
 interface EmailDrawerProps {
   isOpen: boolean
@@ -20,20 +25,64 @@ type ViewType = 'email' | 'services' | '2fa' | 'service_detail'
 const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => {
   const [currentView, setCurrentView] = useState<ViewType>('email')
   const [selectedService, setSelectedService] = useState<ServiceAccount | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  // Data states
+  const [emailServiceAccounts, setEmailServiceAccounts] = useState<ServiceAccount[]>([])
+  const [email2FAMethods, setEmail2FAMethods] = useState<Email2FA[]>([])
+  const [selectedServiceSecrets, setSelectedServiceSecrets] = useState<ServiceAccountSecret[]>([])
+  const [selectedService2FA, setSelectedService2FA] = useState<ServiceAccount2FA[]>([])
 
   // Reset view when drawer opens/closes
   useEffect(() => {
     if (isOpen) {
       setCurrentView('email')
       setSelectedService(null)
+      loadEmailData()
     }
-  }, [isOpen])
+  }, [isOpen, email?.id])
 
-  if (!email) return null
+  // Load related data for this email
+  const loadEmailData = async () => {
+    if (!email?.id) return
 
-  // Get related data for this email
-  const emailServiceAccounts = fakeData.serviceAccounts.filter((sa) => sa.email_id === email.id)
-  const email2FAMethods = fakeData.email2FA.filter((e2fa) => e2fa.email_id === email.id)
+    try {
+      setLoading(true)
+
+      // Load service accounts and 2FA methods in parallel
+      const [serviceAccounts, email2FA] = await Promise.all([
+        databaseService.getServiceAccountsByEmailId(email.id),
+        databaseService.getEmail2FAByEmailId(email.id)
+      ])
+
+      setEmailServiceAccounts(serviceAccounts)
+      setEmail2FAMethods(email2FA)
+    } catch (error) {
+      console.error('Error loading email data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load service-specific data when viewing service details
+  const loadServiceData = async (service: ServiceAccount) => {
+    try {
+      setLoading(true)
+
+      // Load service secrets and 2FA in parallel
+      const [secrets, service2FA] = await Promise.all([
+        databaseService.getServiceAccountSecretsByServiceId(service.id),
+        databaseService.getServiceAccount2FAByServiceId(service.id)
+      ])
+
+      setSelectedServiceSecrets(secrets)
+      setSelectedService2FA(service2FA)
+    } catch (error) {
+      console.error('Error loading service data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Utility function to get email provider icon
   const getEmailProviderIcon = (provider: string): string => {
@@ -48,6 +97,8 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => 
 
   // Create breadcrumb items based on current view
   const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    if (!email) return []
+
     const emailProviderIcon = getEmailProviderIcon(email.email_provider)
 
     const baseItems: BreadcrumbItem[] = [
@@ -103,7 +154,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => 
             onClick={() => {
               if (selectedService && currentView === 'service_detail') {
                 setSelectedService(null)
-                setCurrentView('services')
+                setCurrentView('email')
               } else {
                 setCurrentView('email')
               }
@@ -117,6 +168,15 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => 
     }
     return null
   }
+
+  // Handle service click to navigate to service detail view
+  const handleServiceClick = async (service: ServiceAccount) => {
+    setSelectedService(service)
+    setCurrentView('service_detail')
+    await loadServiceData(service)
+  }
+
+  if (!email) return null
 
   return (
     <CustomDrawer
@@ -179,6 +239,12 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => 
                 transition={{ duration: 0.3 }}
                 className="p-4 space-y-6 pb-8"
               >
+                {loading && (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                )}
+
                 {/* Email Information Section */}
                 <EmailSection
                   email={email}
@@ -205,9 +271,53 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => 
                     console.log('Deleting service account:', serviceId)
                     // Implementation for deleting service account
                   }}
-                  onServiceClick={(service) => {
-                    console.log('Service clicked:', service)
-                    // Implementation for service details view
+                  onServiceClick={handleServiceClick}
+                  compact={false}
+                  showViewDetailsButton={true}
+                />
+              </motion.div>
+            )}
+
+            {/* Service Detail View */}
+            {currentView === 'service_detail' && selectedService && (
+              <motion.div
+                key="service-detail-view"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="p-4 space-y-6 pb-8"
+              >
+                {loading && (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                )}
+
+                {/* Service Account Section */}
+                <ServiceAccountSection serviceAccount={selectedService} />
+
+                {/* Service Account 2FA Section */}
+                <ServiceAccount2FASection
+                  serviceAccount={selectedService}
+                  serviceAccount2FAMethods={selectedService2FA}
+                />
+
+                {/* Service Account Secrets List */}
+                <ServiceAccountSecretList
+                  serviceAccount={selectedService}
+                  secrets={selectedServiceSecrets}
+                  onSecretAdd={(secret) => {
+                    console.log('Adding new secret for service:', selectedService.id, secret)
+                    // Implementation for adding secret
+                  }}
+                  onSecretEdit={(secret) => {
+                    console.log('Editing secret:', secret)
+                    // Implementation for editing secret
+                  }}
+                  onSecretDelete={(secretId) => {
+                    console.log('Deleting secret:', secretId)
+                    // Implementation for deleting secret
                   }}
                   compact={false}
                 />

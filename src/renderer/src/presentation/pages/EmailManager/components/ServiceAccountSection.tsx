@@ -1,4 +1,4 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailSection.tsx
+// src/renderer/src/presentation/pages/EmailManager/components/ServiceAccountSection.tsx
 import React, { useState } from 'react'
 import { Button } from '../../../../components/ui/button'
 import CustomInput from '../../../../components/common/CustomInput'
@@ -8,25 +8,24 @@ import {
   Copy,
   Calendar,
   Clock,
-  Phone,
+  Globe,
   Key,
   Check,
-  Mail,
-  Activity,
-  X,
-  Plus,
-  Tag,
   User,
-  MapPin
+  Link,
+  Tag,
+  Plus,
+  X,
+  Activity,
+  Shield,
+  ExternalLink
 } from 'lucide-react'
 import { cn } from '../../../../shared/lib/utils'
-import { Email, ServiceAccount } from '../types'
+import { ServiceAccount } from '../types'
 
-interface EmailSectionProps {
-  email: Email
+interface ServiceAccountSectionProps {
+  serviceAccount: ServiceAccount
   className?: string
-  onServiceClick?: (service: ServiceAccount) => void
-  serviceAccounts?: ServiceAccount[]
 }
 
 // Curated beautiful hex colors for tags
@@ -72,20 +71,26 @@ const getTextColor = (hexColor: string): string => {
   return luminance > 0.5 ? '#374151' : '#FFFFFF' // Dark gray or white
 }
 
-const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
+const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
+  serviceAccount,
+  className
+}) => {
   const [showPassword, setShowPassword] = useState(false)
   const [hoveredTag, setHoveredTag] = useState<string | null>(null)
   const [showAddTag, setShowAddTag] = useState(false)
   const [newTagValue, setNewTagValue] = useState('')
 
-  // Editable fields
-  const [phoneNumbers, setPhoneNumbers] = useState(email.phone_numbers || '')
-  const [recoveryEmail, setRecoveryEmail] = useState(email.recovery_email || '')
-  const [password, setPassword] = useState(email.pasword || '')
-  const [editedTags, setEditedTags] = useState<string[]>(email.tags || [])
-  const [name, setName] = useState(email.name || '')
-  const [age, setAge] = useState(email.age?.toString() || '')
-  const [address, setAddress] = useState(email.address || '')
+  // Editable fields - mock tags for demonstration
+  const [editedTags, setEditedTags] = useState<string[]>([
+    serviceAccount.service_type.replace(/_/g, ' '),
+    serviceAccount.status || 'active'
+  ])
+  const [serviceName, setServiceName] = useState(serviceAccount.service_name || '')
+  const [serviceUrl, setServiceUrl] = useState(serviceAccount.service_url || '')
+  const [username, setUsername] = useState(serviceAccount.username || '')
+  const [displayName, setDisplayName] = useState(serviceAccount.name || '')
+  const [password, setPassword] = useState(serviceAccount.password || '')
+  const [note, setNote] = useState(serviceAccount.note || '')
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -96,34 +101,20 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
-
-  const getDaysSinceLastLogin = () => {
-    if (!email.metadata?.last_login) return null
-    const lastLogin = new Date(email.metadata.last_login)
-    const now = new Date()
-    const diffTime = Math.abs(now.getTime() - lastLogin.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
-  }
-
   // Check if values have changed
-  const hasPhoneChanged = phoneNumbers !== (email.phone_numbers || '')
-  const hasRecoveryEmailChanged = recoveryEmail !== (email.recovery_email || '')
-  const hasPasswordChanged = password !== (email.pasword || '')
+  const hasServiceNameChanged = serviceName !== (serviceAccount.service_name || '')
+  const hasServiceUrlChanged = serviceUrl !== (serviceAccount.service_url || '')
+  const hasUsernameChanged = username !== (serviceAccount.username || '')
+  const hasDisplayNameChanged = displayName !== (serviceAccount.name || '')
+  const hasPasswordChanged = password !== (serviceAccount.password || '')
+  const hasNoteChanged = note !== (serviceAccount.note || '')
   const hasTagsChanged =
-    JSON.stringify(editedTags.sort()) !== JSON.stringify((email.tags || []).sort())
-  const hasNameChanged = name !== (email.name || '')
-  const hasAgeChanged = age !== (email.age?.toString() || '')
-  const hasAddressChanged = address !== (email.address || '')
+    JSON.stringify(editedTags.sort()) !==
+    JSON.stringify(
+      [serviceAccount.service_type.replace(/_/g, ' '), serviceAccount.status || 'active'].sort()
+    )
 
-  const handleSaveField = (field: string, value: string | string[] | number) => {
+  const handleSaveField = (field: string, value: string | string[]) => {
     console.log(`Saving ${field}:`, value)
     // Handle save logic here
   }
@@ -153,37 +144,63 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
     }
   }
 
+  const getServiceTypeLabel = (type: string) => {
+    const typeLabels: Record<string, string> = {
+      social_media: 'Social Media',
+      communication: 'Communication',
+      developer: 'Developer',
+      cloud_storage: 'Cloud Storage',
+      ai_saas: 'AI & SaaS',
+      productivity_tool: 'Productivity',
+      payment_finance: 'Payment & Finance',
+      ecommerce: 'E-commerce',
+      entertainment: 'Entertainment',
+      education: 'Education',
+      hosting_domain: 'Hosting & Domain',
+      security_vpn: 'Security & VPN',
+      government: 'Government',
+      health: 'Health',
+      gaming: 'Gaming',
+      travel_transport: 'Travel & Transport',
+      news_media: 'News & Media',
+      forum_community: 'Forum & Community',
+      iot_smart_device: 'IoT & Smart Device',
+      other: 'Other'
+    }
+    return typeLabels[type] || type.replace(/_/g, ' ')
+  }
+
   return (
     <div className={cn('space-y-6', className)}>
       {/* Main Content - Vertical Layout */}
       <div className="space-y-6">
-        {/* Personal Information Section */}
+        {/* Service Information Section */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
-                <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-                Personal Information
+                Service Information
               </h4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Name */}
+              {/* Service Name */}
               <CustomInput
-                label="Full Name"
-                value={name}
-                onChange={setName}
-                placeholder="Enter full name..."
+                label="Service Name"
+                value={serviceName}
+                onChange={setServiceName}
+                placeholder="Enter service name..."
                 variant="filled"
-                leftIcon={<User className="h-4 w-4" />}
+                leftIcon={<Globe className="h-4 w-4" />}
                 rightIcon={
-                  hasNameChanged ? (
+                  hasServiceNameChanged ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleSaveField('name', name)}
+                      onClick={() => handleSaveField('service_name', serviceName)}
                       className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
                     >
                       <Check className="h-3 w-3" />
@@ -192,54 +209,51 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
                 }
               />
 
-              {/* Age */}
+              {/* Service Type (Read Only) */}
               <CustomInput
-                label="Age"
-                type="number"
-                value={age}
-                onChange={setAge}
-                placeholder="Enter age..."
+                label="Service Type"
+                value={getServiceTypeLabel(serviceAccount.service_type)}
+                readOnly
                 variant="filled"
-                rightIcon={
-                  hasAgeChanged ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSaveField('age', parseInt(age) || 0)}
-                      className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                    >
-                      <Check className="h-3 w-3" />
-                    </Button>
-                  ) : undefined
-                }
+                leftIcon={<Tag className="h-4 w-4" />}
               />
 
-              {/* Address */}
+              {/* Service URL */}
               <div className="md:col-span-2">
                 <CustomInput
-                  label="Address"
-                  value={address}
-                  onChange={setAddress}
-                  placeholder="Enter address..."
+                  label="Service URL"
+                  value={serviceUrl}
+                  onChange={setServiceUrl}
+                  placeholder="https://example.com"
                   variant="filled"
-                  leftIcon={<MapPin className="h-4 w-4" />}
+                  leftIcon={<Link className="h-4 w-4" />}
                   rightIcon={
                     <div className="flex items-center gap-1">
-                      {address && (
+                      {serviceUrl && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => copyToClipboard(address)}
+                          onClick={() => window.open(serviceUrl, '_blank')}
+                          className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {serviceUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(serviceUrl)}
                           className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
                       )}
-                      {hasAddressChanged && (
+                      {hasServiceUrlChanged && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSaveField('address', address)}
+                          onClick={() => handleSaveField('service_url', serviceUrl)}
                           className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
                         >
                           <Check className="h-3 w-3" />
@@ -253,42 +267,94 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
           </div>
         </div>
 
-        {/* Credentials Section - Enhanced */}
+        {/* Account Credentials Section */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
-                <Key className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
+                <Key className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h4 className="text-xl font-bold text-gray-900 dark:text-white">Credentials</h4>
+              <h4 className="text-xl font-bold text-gray-900 dark:text-white">
+                Account Credentials
+              </h4>
             </div>
 
             <div className="space-y-6">
-              {/* Email Address (Read Only) */}
+              {/* Username */}
               <CustomInput
-                label="Email Address"
-                value={email.email_address}
-                readOnly
+                label="Username"
+                value={username}
+                onChange={setUsername}
+                placeholder="Enter username..."
                 variant="filled"
-                leftIcon={<Mail className="h-4 w-4" />}
+                leftIcon={<User className="h-4 w-4" />}
                 rightIcon={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(email.email_address)}
-                    className="p-1 h-6 w-6 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    {username && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(username)}
+                        className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    )}
+                    {hasUsernameChanged && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSaveField('username', username)}
+                        className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        <Check className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 }
               />
 
-              {/* Password (Editable) */}
+              {/* Display Name */}
+              <CustomInput
+                label="Display Name"
+                value={displayName}
+                onChange={setDisplayName}
+                placeholder="Enter display name..."
+                variant="filled"
+                leftIcon={<User className="h-4 w-4" />}
+                rightIcon={
+                  <div className="flex items-center gap-1">
+                    {displayName && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(displayName)}
+                        className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    )}
+                    {hasDisplayNameChanged && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSaveField('name', displayName)}
+                        className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        <Check className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                }
+              />
+
+              {/* Password */}
               <CustomInput
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={setPassword}
+                placeholder="Enter password..."
                 variant="filled"
                 rightIcon={
                   <div className="flex items-center gap-1">
@@ -300,87 +366,21 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
                     >
                       {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(password)}
-                      className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+                    {password && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(password)}
+                        className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    )}
                     {hasPasswordChanged && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleSaveField('password', password)}
-                        className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                }
-              />
-
-              {/* Recovery Email (Editable) */}
-              <CustomInput
-                label="Recovery Email"
-                value={recoveryEmail}
-                onChange={setRecoveryEmail}
-                placeholder="Enter recovery email..."
-                variant="filled"
-                leftIcon={<Mail className="h-4 w-4" />}
-                rightIcon={
-                  <div className="flex items-center gap-1">
-                    {recoveryEmail && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(recoveryEmail)}
-                        className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    )}
-                    {hasRecoveryEmailChanged && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSaveField('recovery_email', recoveryEmail)}
-                        className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                }
-              />
-
-              {/* Phone Numbers (Editable) */}
-              <CustomInput
-                label="Phone Numbers"
-                value={phoneNumbers}
-                onChange={setPhoneNumbers}
-                placeholder="+84 xxx xxx xxx"
-                variant="filled"
-                leftIcon={<Phone className="h-4 w-4" />}
-                rightIcon={
-                  <div className="flex items-center gap-1">
-                    {phoneNumbers && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(phoneNumbers)}
-                        className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    )}
-                    {hasPhoneChanged && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSaveField('phone_numbers', phoneNumbers)}
                         className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
                       >
                         <Check className="h-3 w-3" />
@@ -504,13 +504,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
                     </div>
                   </div>
                 )}
-
-                {/* No tags message */}
-                {editedTags.length === 0 && !showAddTag && (
-                  <span className="text-sm text-gray-500 dark:text-gray-400 italic">
-                    No tags assigned
-                  </span>
-                )}
               </div>
 
               {/* Tag hint */}
@@ -521,72 +514,93 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
               )}
             </div>
 
-            {/* Activity Timeline */}
+            {/* Activity Status */}
             <div className="mt-8">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
-                  <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="w-8 h-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg flex items-center justify-center">
+                  <Activity className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <h5 className="text-lg font-semibold text-gray-900 dark:text-white">Activity</h5>
+                <h5 className="text-lg font-semibold text-gray-900 dark:text-white">Status</h5>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {email.metadata?.created_at && (
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30">
-                    <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white text-sm">
-                        Account Created
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        {formatDate(email.metadata.created_at)}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {email.metadata?.last_login && (
-                  <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-800/30">
-                    <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white text-sm">
-                        Last Login
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        {formatDate(email.metadata.last_login)}
-                        {getDaysSinceLastLogin() && ` (${getDaysSinceLastLogin()} days ago)`}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-800/30">
-                  <Key className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white text-sm">
-                      Password Changed
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                      {formatDate(email.last_password_change)}
-                    </div>
-                  </div>
-                </div>
-
-                {email.metadata?.storage_used && (
-                  <div className="flex items-center gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
-                    <Activity className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white text-sm">
-                        Storage Used
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        {email.metadata.storage_used}
-                      </div>
-                    </div>
-                  </div>
+              <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                <div
+                  className={cn(
+                    'w-3 h-3 rounded-full',
+                    serviceAccount.status === 'active'
+                      ? 'bg-green-500'
+                      : serviceAccount.status === 'suspended'
+                        ? 'bg-red-500'
+                        : 'bg-gray-400'
+                  )}
+                />
+                <span className="font-medium text-gray-900 dark:text-white capitalize">
+                  {serviceAccount.status || 'unknown'}
+                </span>
+                {serviceAccount.status === 'active' && (
+                  <span className="text-xs text-green-600 dark:text-green-400">
+                    Account is active and accessible
+                  </span>
                 )}
               </div>
             </div>
+
+            {/* Notes Section */}
+            <div className="mt-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center">
+                  <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <h5 className="text-lg font-semibold text-gray-900 dark:text-white">Notes</h5>
+                {hasNoteChanged && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSaveField('note', note)}
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50 ml-auto"
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    Save Notes
+                  </Button>
+                )}
+              </div>
+
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Add notes about this service account..."
+                rows={4}
+                className="w-full p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 resize-none"
+              />
+            </div>
+
+            {/* Metadata */}
+            {serviceAccount.metadata && Object.keys(serviceAccount.metadata).length > 0 && (
+              <div className="mt-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                    <Shield className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  </div>
+                  <h5 className="text-lg font-semibold text-gray-900 dark:text-white">Metadata</h5>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(serviceAccount.metadata).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
+                    >
+                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400 capitalize">
+                        {key.replace(/_/g, ' ')}
+                      </div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {String(value)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -594,4 +608,4 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className }) => {
   )
 }
 
-export default EmailSection
+export default ServiceAccountSection

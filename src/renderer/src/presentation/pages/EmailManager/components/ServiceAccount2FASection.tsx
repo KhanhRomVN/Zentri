@@ -1,4 +1,4 @@
-// src/renderer/src/presentation/pages/EmailManager/components/Email2FASection.tsx
+// src/renderer/src/presentation/pages/EmailManager/components/ServiceAccount2FASection.tsx
 import React, { useState } from 'react'
 import { Badge } from '../../../../components/ui/badge'
 import { Button } from '../../../../components/ui/button'
@@ -17,20 +17,27 @@ import {
   ChevronUp,
   Key,
   Smartphone,
-  Mail
+  Mail,
+  Plus,
+  Edit,
+  Trash2
 } from 'lucide-react'
 import { cn } from '../../../../shared/lib/utils'
-import { Email, Email2FA } from '../types'
+import { ServiceAccount, ServiceAccount2FA } from '../types'
 
-interface Email2FASectionProps {
-  email: Email
-  email2FAMethods: Email2FA[]
+interface ServiceAccount2FASectionProps {
+  serviceAccount: ServiceAccount
+  serviceAccount2FAMethods: ServiceAccount2FA[]
   className?: string
 }
 
-const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethods, className }) => {
+const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
+  serviceAccount,
+  serviceAccount2FAMethods,
+  className
+}) => {
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
-  const [is2FAExpanded, setIs2FAExpanded] = useState(false)
+  const [is2FAExpanded, setIs2FAExpanded] = useState(true) // Default expanded for service details
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -102,7 +109,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
     return methodInfo[type] || methodInfo.totp_key
   }
 
-  const renderMethodValue = (method: Email2FA) => {
+  const renderMethodValue = (method: ServiceAccount2FA) => {
     const isVisible = showSecrets[method.id]
 
     if (method.method_type === 'backup_codes' && Array.isArray(method.value)) {
@@ -185,12 +192,27 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
     )
   }
 
-  const has2FA = email2FAMethods.length > 0
-  const active2FAMethods = email2FAMethods.length
+  const handleEdit2FA = (method: ServiceAccount2FA) => {
+    console.log('Edit 2FA method:', method)
+    // Implementation for editing 2FA method
+  }
+
+  const handleDelete2FA = (methodId: string) => {
+    console.log('Delete 2FA method:', methodId)
+    // Implementation for deleting 2FA method
+  }
+
+  const handleAdd2FA = () => {
+    console.log('Add new 2FA method for service:', serviceAccount.id)
+    // Implementation for adding new 2FA method
+  }
+
+  const has2FA = serviceAccount2FAMethods.length > 0
+  const active2FAMethods = serviceAccount2FAMethods.length
 
   return (
     <div className={cn('', className)}>
-      {/* Two-Factor Authentication Methods - Collapsible */}
+      {/* Two-Factor Authentication Methods */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-300">
         <div className="p-6">
           {/* Header with Toggle */}
@@ -207,12 +229,23 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
                   Two-Factor Authentication
                 </h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {email.email_provider} •{' '}
+                  {serviceAccount.service_name} •{' '}
                   {has2FA ? `${active2FAMethods} methods active` : 'Not configured'}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleAdd2FA()
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white shadow-sm"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add 2FA
+              </Button>
               <Badge
                 variant="secondary"
                 className={cn(
@@ -244,7 +277,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
             <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
               {has2FA ? (
                 <div className="space-y-4">
-                  {email2FAMethods.map((method) => {
+                  {serviceAccount2FAMethods.map((method) => {
                     const methodInfo = getTwoFAMethodInfo(method.method_type)
                     const MethodIcon = methodInfo.icon
 
@@ -274,10 +307,24 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                              Active
-                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit2FA(method)}
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900/20"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete2FA(method.id)}
+                              className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
                           </div>
                         </div>
 
@@ -293,7 +340,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
 
                         {/* Method Meta */}
                         <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
-                          <span>Created: {formatDate(method.last_update)}</span>
+                          <span>Last updated: {formatDate(method.last_update)}</span>
                           {method.expire_at && <span>Expires: {formatDate(method.expire_at)}</span>}
                         </div>
 
@@ -308,7 +355,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
                                     key={key}
                                     className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded text-xs"
                                   >
-                                    {key}: {String(value)}
+                                    {key.replace(/_/g, ' ')}: {String(value)}
                                   </span>
                                 ))}
                             </div>
@@ -326,9 +373,16 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
                   <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
                     Two-Factor Authentication Not Configured
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500">
-                    Enable 2FA to enhance account security
+                  <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
+                    Enable 2FA to enhance {serviceAccount.service_name} account security
                   </p>
+                  <Button
+                    onClick={handleAdd2FA}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Shield className="h-4 w-4 mr-1" />
+                    Set up 2FA
+                  </Button>
                 </div>
               )}
             </div>
@@ -339,4 +393,4 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
   )
 }
 
-export default Email2FASection
+export default ServiceAccount2FASection
