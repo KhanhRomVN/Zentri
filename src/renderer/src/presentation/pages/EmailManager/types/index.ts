@@ -11,7 +11,6 @@ export interface Email {
   last_password_change: string
   recovery_email?: string
   phone_numbers?: string
-  category: string
   tags?: string[]
   note?: string
   metadata?: Record<string, any>

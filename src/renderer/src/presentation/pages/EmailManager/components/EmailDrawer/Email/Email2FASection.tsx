@@ -4,6 +4,7 @@ import { Badge } from '../../../../../../components/ui/badge'
 import { Button } from '../../../../../../components/ui/button'
 import { Label } from '../../../../../../components/ui/label'
 import CustomInput from '../../../../../../components/common/CustomInput'
+import CreateEmail2FAForm from './CreateEmail2FAForm'
 import {
   Eye,
   EyeOff,
@@ -17,20 +18,36 @@ import {
   ChevronUp,
   Key,
   Smartphone,
-  Mail
+  Mail,
+  Plus,
+  Edit,
+  Trash2
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { Email, Email2FA } from '../../../types'
+import Metadata from '../../../../../../components/common/Metadata'
 
 interface Email2FASectionProps {
   email: Email
   email2FAMethods: Email2FA[]
+  onAdd2FA?: (data: Omit<Email2FA, 'id'>) => Promise<void>
+  onEdit2FA?: (method: Email2FA) => void
+  onDelete2FA?: (methodId: string) => void
   className?: string
 }
 
-const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethods, className }) => {
+const Email2FASection: React.FC<Email2FASectionProps> = ({
+  email,
+  email2FAMethods,
+  onAdd2FA,
+  onEdit2FA,
+  onDelete2FA,
+  className
+}) => {
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
   const [is2FAExpanded, setIs2FAExpanded] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -111,13 +128,13 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
           <Label className="text-xs text-gray-600 dark:text-gray-400">
             Backup Codes ({method.value.length} codes)
           </Label>
-          <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-800/30">
+          <div className="p-2 bg-orange-50 dark:bg-orange-900/10 rounded border border-orange-100 dark:border-orange-800/30">
             {isVisible ? (
-              <div className="grid grid-cols-2 gap-2 text-sm font-mono">
+              <div className="grid grid-cols-2 gap-1 text-xs font-mono">
                 {method.value.map((code, index) => (
                   <div
                     key={index}
-                    className="p-2 bg-white dark:bg-gray-800 rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="p-1 bg-white dark:bg-gray-800 rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     onClick={() => copyToClipboard(code)}
                     title="Click to copy"
                   >
@@ -126,12 +143,12 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-orange-800 dark:text-orange-300 font-medium text-center py-2">
+              <div className="text-xs text-orange-800 dark:text-orange-300 font-medium text-center py-1">
                 Click to reveal backup codes
               </div>
             )}
             {method.metadata && (
-              <div className="mt-2 text-xs text-orange-700 dark:text-orange-400">
+              <div className="mt-1 text-xs text-orange-700 dark:text-orange-400">
                 Used: {method.metadata.codes_used || 0} /{' '}
                 {method.metadata.total_codes || method.value.length}
               </div>
@@ -143,7 +160,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
 
     // For other method types (single string values)
     return (
-      <div className="space-y-2">
+      <div className="space-y-1">
         <Label className="text-xs text-gray-600 dark:text-gray-400">Secret Value</Label>
         <CustomInput
           value={
@@ -151,20 +168,21 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
               ? typeof method.value === 'string'
                 ? method.value
                 : JSON.stringify(method.value)
-              : '•'.repeat(32)
+              : '•'.repeat(24)
           }
           readOnly
           size="sm"
           variant="filled"
+          className="text-xs"
           rightIcon={
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => toggleSecretVisibility(method.id)}
-                className="p-1 h-5 w-5 hover:bg-gray-100 dark:hover:bg-gray-600"
+                className="p-0.5 h-4 w-4 hover:bg-gray-100 dark:hover:bg-gray-600"
               >
-                {isVisible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                {isVisible ? <EyeOff className="h-2 w-2" /> : <Eye className="h-2 w-2" />}
               </Button>
               <Button
                 variant="ghost"
@@ -174,9 +192,9 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
                     typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
                   )
                 }
-                className="p-1 h-5 w-5 hover:bg-gray-100 dark:hover:bg-gray-600"
+                className="p-0.5 h-4 w-4 hover:bg-gray-100 dark:hover:bg-gray-600"
               >
-                <Copy className="h-3 w-3" />
+                <Copy className="h-2 w-2" />
               </Button>
             </div>
           }
@@ -185,55 +203,102 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
     )
   }
 
+  const handleEdit2FA = (method: Email2FA) => {
+    if (onEdit2FA) {
+      onEdit2FA(method)
+    }
+  }
+
+  const handleDelete2FA = (methodId: string) => {
+    if (onDelete2FA) {
+      onDelete2FA(methodId)
+    }
+  }
+
+  const handleAdd2FA = () => {
+    setShowCreateForm(true)
+    setIs2FAExpanded(true)
+  }
+
+  const handleCreate2FA = async (data: Omit<Email2FA, 'id'>) => {
+    if (!onAdd2FA) return
+
+    try {
+      setIsCreating(true)
+      await onAdd2FA(data)
+      setShowCreateForm(false)
+    } catch (error) {
+      console.error('Error creating 2FA method:', error)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleCancelCreate = () => {
+    setShowCreateForm(false)
+  }
+
   const has2FA = email2FAMethods.length > 0
   const active2FAMethods = email2FAMethods.length
 
   return (
     <div className={cn('', className)}>
-      {/* Two-Factor Authentication Methods - Collapsible */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-300">
-        <div className="p-6">
-          {/* Header with Toggle */}
+      {/* Two-Factor Authentication Methods - Compact Design */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="p-4">
+          {/* Compact Header with Toggle */}
           <button
             onClick={() => setIs2FAExpanded(!is2FAExpanded)}
             className="w-full flex items-center justify-between group"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
-                <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                <Shield className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
               <div className="text-left">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h4 className="text-base font-bold text-gray-900 dark:text-white">
                   Two-Factor Authentication
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {email.email_provider} •{' '}
-                  {has2FA ? `${active2FAMethods} methods active` : 'Not configured'}
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  {has2FA
+                    ? `${active2FAMethods} method${active2FAMethods !== 1 ? 's' : ''} active`
+                    : 'Not configured'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleAdd2FA()
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white shadow-sm text-xs px-2 py-1 h-7"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add 2FA
+              </Button>
               <Badge
                 variant="secondary"
                 className={cn(
-                  'text-xs border',
+                  'text-xs border px-1.5 py-0.5',
                   has2FA
                     ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
                     : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
                 )}
               >
                 {has2FA ? (
-                  <CheckCircle className="h-3 w-3 mr-1" />
+                  <CheckCircle className="h-2 w-2 mr-1" />
                 ) : (
-                  <AlertCircle className="h-3 w-3 mr-1" />
+                  <AlertCircle className="h-2 w-2 mr-1" />
                 )}
                 {has2FA ? 'Enabled' : 'Disabled'}
               </Badge>
-              <div className="w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors">
+              <div className="w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors">
                 {is2FAExpanded ? (
-                  <ChevronUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  <ChevronUp className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                 ) : (
-                  <ChevronDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                 )}
               </div>
             </div>
@@ -241,9 +306,25 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
 
           {/* Collapsible Content */}
           {is2FAExpanded && (
-            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              {/* Create Form */}
+              {showCreateForm && (
+                <div className="mb-4">
+                  <CreateEmail2FAForm
+                    email={{
+                      id: email.id!,
+                      email_address: email.email_address,
+                      email_provider: email.email_provider
+                    }}
+                    onSubmit={handleCreate2FA}
+                    onCancel={handleCancelCreate}
+                    loading={isCreating}
+                  />
+                </div>
+              )}
+
               {has2FA ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {email2FAMethods.map((method) => {
                     const methodInfo = getTwoFAMethodInfo(method.method_type)
                     const MethodIcon = methodInfo.icon
@@ -251,86 +332,98 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({ email, email2FAMethod
                     return (
                       <div
                         key={method.id}
-                        className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50/50 dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50/50 dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
-                        {/* Method Header */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
-                              <MethodIcon className="h-4 w-4 text-white" />
+                        {/* Compact Method Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-600 rounded flex items-center justify-center shadow-sm">
+                              <MethodIcon className="h-3 w-3 text-white" />
                             </div>
                             <div>
                               <Badge
                                 variant="secondary"
-                                className={cn('border text-xs', methodInfo.color)}
+                                className={cn('border text-xs px-1.5 py-0.5', methodInfo.color)}
                               >
                                 {methodInfo.label}
                               </Badge>
                               {method.app && (
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  App: {method.app}
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {method.app}
                                 </div>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                              Active
-                            </span>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit2FA(method)}
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900/20 px-2 py-1 h-6 text-xs"
+                            >
+                              <Edit className="h-2 w-2 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete2FA(method.id)}
+                              className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20 px-2 py-1 h-6 text-xs"
+                            >
+                              <Trash2 className="h-2 w-2 mr-1" />
+                              Delete
+                            </Button>
                           </div>
                         </div>
 
-                        {/* Method Description */}
-                        <div className="mb-4">
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {methodInfo.description}
-                          </p>
-                        </div>
-
-                        {/* Method Value */}
+                        {/* Method Value - Compact */}
                         {renderMethodValue(method)}
 
-                        {/* Method Meta */}
-                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
-                          <span>Created: {formatDate(method.last_update)}</span>
+                        {/* Compact Meta */}
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                          <span>Updated: {formatDate(method.last_update)}</span>
                           {method.expire_at && <span>Expires: {formatDate(method.expire_at)}</span>}
                         </div>
 
                         {/* Additional Metadata */}
                         {method.metadata && Object.keys(method.metadata).length > 0 && (
                           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                            <div className="flex flex-wrap gap-2">
-                              {Object.entries(method.metadata)
-                                .filter(([key]) => !['codes_used', 'total_codes'].includes(key))
-                                .map(([key, value]) => (
-                                  <span
-                                    key={key}
-                                    className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded text-xs"
-                                  >
-                                    {key}: {String(value)}
-                                  </span>
-                                ))}
-                            </div>
+                            <Metadata
+                              metadata={method.metadata}
+                              title=""
+                              compact={true}
+                              collapsible={true}
+                              defaultExpanded={false}
+                              showDeleteButtons={false}
+                              maxVisibleFields={3}
+                            />
                           </div>
                         )}
                       </div>
                     )
                   })}
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Shield className="h-8 w-8 text-gray-400" />
+              ) : !showCreateForm ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <Shield className="h-6 w-6 text-gray-400" />
                   </div>
-                  <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">
+                  <p className="text-gray-600 dark:text-gray-400 font-medium mb-1 text-sm">
                     Two-Factor Authentication Not Configured
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">
                     Enable 2FA to enhance account security
                   </p>
+                  <Button
+                    onClick={handleAdd2FA}
+                    className="bg-green-600 hover:bg-green-700 text-white text-sm"
+                    size="sm"
+                  >
+                    <Shield className="h-3 w-3 mr-1" />
+                    Set up 2FA
+                  </Button>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
         </div>

@@ -1,27 +1,21 @@
-import React, { useRef, useEffect, forwardRef } from "react";
-import { AlertCircle, CheckCircle, Info } from "lucide-react";
+import React, { useRef, useEffect, forwardRef } from 'react'
+import { AlertCircle, CheckCircle, Info } from 'lucide-react'
 
 interface CustomTextAreaProps
-  extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange"> {
-  label?: string;
-  required?: boolean;
-  error?: string;
-  success?: string;
-  hint?: string;
-  variant?:
-    | "default"
-    | "filled"
-    | "outlined"
-    | "underlined"
-    | "floating"
-    | "primary";
-  size?: "sm" | "md" | "lg";
-  showCharCount?: boolean;
-  maxLength?: number;
-  autoResize?: boolean;
-  maxRows?: number;
-  minRows?: number;
-  onChange?: (value: string) => void;
+  extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChange'> {
+  label?: string
+  required?: boolean
+  error?: string
+  success?: string
+  hint?: string
+  variant?: 'default' | 'filled' | 'outlined' | 'underlined' | 'floating' | 'primary'
+  size?: 'sm' | 'md' | 'lg'
+  showCharCount?: boolean
+  maxLength?: number
+  autoResize?: boolean
+  maxRows?: number
+  minRows?: number
+  onChange?: (value: string) => void
 }
 
 const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
@@ -32,15 +26,15 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
       error,
       success,
       hint,
-      variant = "default",
-      size = "md",
+      variant = 'default',
+      size = 'md',
       showCharCount = false,
       maxLength,
       autoResize = true,
       maxRows = 8,
       minRows = 3,
-      className = "",
-      value = "",
+      className = '',
+      value = '',
       onChange,
       disabled,
       rows = 3,
@@ -48,47 +42,53 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
     },
     ref
   ) => {
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [isFocused, setIsFocused] = React.useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const [isFocused, setIsFocused] = React.useState(false)
 
-    const hasValue = String(value).length > 0;
-    const charCount = String(value).length;
+    const hasValue = String(value).length > 0
+    const charCount = String(value).length
 
     // Base styles
     const baseTextareaStyles = `
       w-full transition-all duration-200 outline-none resize-none
       disabled:opacity-50 disabled:cursor-not-allowed
       placeholder:text-gray-400 dark:placeholder:text-gray-500
-    `;
+    `
 
     // Size styles
     const sizeStyles = {
-      sm: "text-sm leading-5",
-      md: "text-base leading-6",
-      lg: "text-lg leading-7",
-    };
+      sm: 'text-sm leading-4',
+      md: 'text-base leading-6',
+      lg: 'text-lg leading-7'
+    }
 
     const paddingStyles = {
-      sm: "px-3 py-2",
-      md: "px-4 py-3",
-      lg: "px-5 py-4",
-    };
+      sm: 'px-3 py-2',
+      md: 'px-4 py-3',
+      lg: 'px-5 py-4'
+    }
+
+    // Label size styles
+    const labelSizeStyles = {
+      sm: 'text-xs font-medium',
+      md: 'text-sm font-medium',
+      lg: 'text-base font-medium'
+    }
 
     // Variant styles
     const variantStyles = {
       default: {
-        container: "relative",
+        container: 'relative',
         textarea: `
           bg-white dark:bg-gray-800 
           border border-gray-300 dark:border-gray-600 
           rounded-lg
           focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
         `,
-        label:
-          "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
+        label: 'block text-gray-700 dark:text-gray-300 mb-2'
       },
       filled: {
-        container: "relative",
+        container: 'relative',
         textarea: `
           bg-gray-50 dark:bg-gray-700 
           border border-transparent 
@@ -96,33 +96,30 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
           focus:bg-white dark:focus:bg-gray-800
           focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
         `,
-        label:
-          "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
+        label: 'block text-gray-700 dark:text-gray-300 mb-2'
       },
       outlined: {
-        container: "relative",
+        container: 'relative',
         textarea: `
           bg-transparent 
           border-2 border-gray-300 dark:border-gray-600 
           rounded-lg
           focus:border-blue-500
         `,
-        label:
-          "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
+        label: 'block text-gray-700 dark:text-gray-300 mb-2'
       },
       underlined: {
-        container: "relative",
+        container: 'relative',
         textarea: `
           bg-transparent 
           border-0 border-b-2 border-gray-300 dark:border-gray-600 
           rounded-none
           focus:border-blue-500
         `,
-        label:
-          "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
+        label: 'block text-gray-700 dark:text-gray-300 mb-2'
       },
       floating: {
-        container: "relative",
+        container: 'relative',
         textarea: `
           bg-white dark:bg-gray-800 
           border border-gray-300 dark:border-gray-600 
@@ -133,13 +130,13 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
           absolute left-4 transition-all duration-200 pointer-events-none z-10
           ${
             isFocused || hasValue
-              ? "top-2 text-xs text-blue-500 dark:text-blue-400"
-              : "top-4 text-base text-gray-400"
+              ? `top-2 text-xs text-blue-500 dark:text-blue-400`
+              : `${size === 'sm' ? 'top-3 text-sm' : size === 'lg' ? 'top-5 text-lg' : 'top-4 text-base'} text-gray-400`
           }
-        `,
+        `
       },
       primary: {
-        container: "relative",
+        container: 'relative',
         textarea: `
           bg-input-background
           border border-gray-300 dark:border-gray-600 
@@ -147,93 +144,101 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
           hover:border-gray-400 dark:hover:border-gray-500
           focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
         `,
-        label:
-          "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
-      },
-    };
+        label: 'block text-gray-700 dark:text-gray-300 mb-2'
+      }
+    }
 
     // Status styles
     const getStatusStyles = () => {
       if (error) {
         return {
           border:
-            "border-red-500 dark:border-red-400 hover:border-red-600 dark:hover:border-red-300 focus:border-red-500 focus:ring-red-500/20",
-          icon: <AlertCircle className="w-5 h-5 text-red-500" />,
-          message: "text-red-600 dark:text-red-400",
-        };
+            'border-red-500 dark:border-red-400 hover:border-red-600 dark:hover:border-red-300 focus:border-red-500 focus:ring-red-500/20',
+          icon: (
+            <AlertCircle
+              className={size === 'sm' ? 'w-4 h-4' : 'w-5 h-5'}
+              color="rgb(239, 68, 68)"
+            />
+          ),
+          message: 'text-red-600 dark:text-red-400'
+        }
       }
       if (success) {
         return {
           border:
-            "border-green-500 dark:border-green-400 focus:border-green-500 focus:ring-green-500/20",
-          icon: <CheckCircle className="w-5 h-5 text-green-500" />,
-          message: "text-green-600 dark:text-green-400",
-        };
+            'border-green-500 dark:border-green-400 focus:border-green-500 focus:ring-green-500/20',
+          icon: (
+            <CheckCircle
+              className={size === 'sm' ? 'w-4 h-4' : 'w-5 h-5'}
+              color="rgb(34, 197, 94)"
+            />
+          ),
+          message: 'text-green-600 dark:text-green-400'
+        }
       }
       return {
-        border: "",
+        border: '',
         icon: null,
-        message: "text-gray-500 dark:text-gray-400",
-      };
-    };
+        message: 'text-gray-500 dark:text-gray-400'
+      }
+    }
 
-    const statusStyles = getStatusStyles();
+    const statusStyles = getStatusStyles()
 
     // Auto resize functionality
     const adjustHeight = React.useCallback(() => {
-      if (!autoResize) return;
+      if (!autoResize) return
 
-      const textarea =
-        textareaRef.current ||
-        (ref as React.RefObject<HTMLTextAreaElement>)?.current;
-      if (!textarea) return;
+      const textarea = textareaRef.current || (ref as React.RefObject<HTMLTextAreaElement>)?.current
+      if (!textarea) return
 
       // Reset height to measure content
-      textarea.style.height = "auto";
+      textarea.style.height = 'auto'
 
-      // Calculate line height and max/min heights
-      const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
-      const minHeight = lineHeight * minRows;
-      const maxHeight = lineHeight * maxRows;
+      // Calculate line height and max/min heights based on size
+      const baseFontSize = size === 'sm' ? 14 : size === 'lg' ? 18 : 16
+      const lineHeight = baseFontSize * 1.5
+      const minHeight = lineHeight * minRows
+      const maxHeight = lineHeight * maxRows
 
       // Set height based on content with constraints
-      const contentHeight = textarea.scrollHeight;
-      const newHeight = Math.max(minHeight, Math.min(maxHeight, contentHeight));
+      const contentHeight = textarea.scrollHeight
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, contentHeight))
 
-      textarea.style.height = `${newHeight}px`;
+      textarea.style.height = `${newHeight}px`
 
       // Show scrollbar if content exceeds max height
       if (contentHeight > maxHeight) {
-        textarea.style.overflowY = "auto";
+        textarea.style.overflowY = 'auto'
       } else {
-        textarea.style.overflowY = "hidden";
+        textarea.style.overflowY = 'hidden'
       }
-    }, [autoResize, maxRows, minRows]);
+    }, [autoResize, maxRows, minRows, size])
 
     // Auto resize when value changes
     useEffect(() => {
-      adjustHeight();
-    }, [value, adjustHeight]);
+      adjustHeight()
+    }, [value, adjustHeight])
 
     // Auto resize on mount
     useEffect(() => {
-      adjustHeight();
-    }, [adjustHeight]);
+      adjustHeight()
+    }, [adjustHeight])
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      if (maxLength && e.target.value.length > maxLength) return;
-      onChange?.(e.target.value);
-    };
+      if (maxLength && e.target.value.length > maxLength) return
+      onChange?.(e.target.value)
+    }
 
     const handleInput = () => {
-      adjustHeight();
-    };
+      adjustHeight()
+    }
 
     return (
       <div className={variantStyles[variant].container}>
         {/* Label for non-floating variants */}
-        {label && variant !== "floating" && (
-          <label className={variantStyles[variant].label}>
+        {label && variant !== 'floating' && (
+          <label className={`${variantStyles[variant].label} ${labelSizeStyles[size]}`}>
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -242,7 +247,7 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
         {/* Textarea Container */}
         <div className="relative">
           {/* Floating Label */}
-          {label && variant === "floating" && (
+          {label && variant === 'floating' && (
             <label className={variantStyles[variant].label}>
               {label}
               {required && <span className="text-red-500 ml-1">*</span>}
@@ -252,11 +257,11 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
           {/* Textarea */}
           <textarea
             ref={(node) => {
-              textareaRef.current = node;
-              if (typeof ref === "function") {
-                ref(node);
+              textareaRef.current = node
+              if (typeof ref === 'function') {
+                ref(node)
               } else if (ref) {
-                ref.current = node;
+                ref.current = node
               }
             }}
             value={value}
@@ -274,21 +279,21 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
               ${statusStyles.border}
               ${className}
             `
-              .replace(/\s+/g, " ")
+              .replace(/\s+/g, ' ')
               .trim()}
             {...props}
           />
         </div>
 
         {/* Bottom Section */}
-        <div className="mt-2 flex items-center justify-between">
+        <div className={`${size === 'sm' ? 'mt-1' : 'mt-2'} flex items-center justify-between`}>
           <div className="flex-1">
             {/* Error Message */}
             {error && (
               <p
-                className={`text-sm flex items-center gap-1 ${statusStyles.message}`}
+                className={`${size === 'sm' ? 'text-xs' : 'text-sm'} flex items-center gap-1 ${statusStyles.message}`}
               >
-                <AlertCircle className="w-4 h-4" />
+                <AlertCircle className={size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'} />
                 {error}
               </p>
             )}
@@ -296,9 +301,9 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
             {/* Success Message */}
             {success && !error && (
               <p
-                className={`text-sm flex items-center gap-1 ${statusStyles.message}`}
+                className={`${size === 'sm' ? 'text-xs' : 'text-sm'} flex items-center gap-1 ${statusStyles.message}`}
               >
-                <CheckCircle className="w-4 h-4" />
+                <CheckCircle className={size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'} />
                 {success}
               </p>
             )}
@@ -306,9 +311,9 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
             {/* Hint Message */}
             {hint && !error && !success && (
               <p
-                className={`text-sm flex items-center gap-1 ${statusStyles.message}`}
+                className={`${size === 'sm' ? 'text-xs' : 'text-sm'} flex items-center gap-1 ${statusStyles.message}`}
               >
-                <Info className="w-4 h-4" />
+                <Info className={size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'} />
                 {hint}
               </p>
             )}
@@ -317,10 +322,8 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
           {/* Character Count */}
           {showCharCount && maxLength && (
             <span
-              className={`text-sm ml-2 ${
-                charCount > maxLength * 0.9
-                  ? "text-red-500"
-                  : "text-gray-400 dark:text-gray-500"
+              className={`${size === 'sm' ? 'text-xs' : 'text-sm'} ml-2 ${
+                charCount > maxLength * 0.9 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'
               }`}
             >
               {charCount}/{maxLength}
@@ -328,10 +331,10 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
           )}
         </div>
       </div>
-    );
+    )
   }
-);
+)
 
-CustomTextArea.displayName = "CustomTextArea";
+CustomTextArea.displayName = 'CustomTextArea'
 
-export default CustomTextArea;
+export default CustomTextArea

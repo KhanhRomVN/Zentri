@@ -17,6 +17,7 @@ interface CustomComboboxProps {
   searchable?: boolean
   multiple?: boolean
   creatable?: boolean
+  size?: 'sm' | 'md' | 'lg'
 }
 
 const OPTION_INPUT_THRESHOLD = 10
@@ -30,7 +31,8 @@ const CustomCombobox: FC<CustomComboboxProps> = ({
   placeholder = 'Please enter/select your option...',
   searchable,
   multiple = false,
-  creatable = false
+  creatable = false,
+  size = 'md'
 }) => {
   // Auto determine if should be searchable
   const isInput = useMemo(() => {
@@ -50,6 +52,7 @@ const CustomCombobox: FC<CustomComboboxProps> = ({
       multiple={multiple}
       isInput={isInput}
       creatable={creatable}
+      size={size}
     />
   )
 }
@@ -63,7 +66,8 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
   placeholder,
   multiple = false,
   creatable = false,
-  isInput = false
+  isInput = false,
+  size = 'md'
 }) => {
   const [input, setInput] = useState('')
   const [showDrop, setShowDrop] = useState(false)
@@ -73,6 +77,45 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
   const isMulti = !!multiple
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Size styles
+  const sizeStyles = {
+    sm: {
+      input: 'h-8 py-1.5 text-sm',
+      padding: isInput ? 'pl-8 pr-8' : 'pl-2.5 pr-8',
+      searchIcon: 'left-2.5 w-3.5 h-3.5',
+      chevron: 'right-2 w-4 h-4 p-1 flex items-center justify-center', // Fixed: increased icon size and added flex centering
+      label: 'text-xs font-medium mb-1',
+      badge: 'text-xs px-2 py-0.5',
+      badgeIcon: 'w-2.5 h-2.5',
+      option: 'px-2.5 py-1.5 text-sm',
+      dropdown: 'max-h-48'
+    },
+    md: {
+      input: 'h-12 py-3 text-base',
+      padding: isInput ? 'pl-10 pr-8' : 'pl-3 pr-8',
+      searchIcon: 'left-3 w-4 h-4',
+      chevron: 'right-2 w-4 h-4 p-1',
+      label: 'text-sm font-medium mb-2',
+      badge: 'text-sm px-3 py-1',
+      badgeIcon: 'w-3.5 h-3.5',
+      option: 'px-3 py-2.5 text-sm',
+      dropdown: 'max-h-60'
+    },
+    lg: {
+      input: 'h-14 py-4 text-lg',
+      padding: isInput ? 'pl-12 pr-10' : 'pl-4 pr-10',
+      searchIcon: 'left-4 w-5 h-5',
+      chevron: 'right-3 w-5 h-5 p-1',
+      label: 'text-base font-medium mb-2',
+      badge: 'text-base px-4 py-1.5',
+      badgeIcon: 'w-4 h-4',
+      option: 'px-4 py-3 text-base',
+      dropdown: 'max-h-72'
+    }
+  }
+
+  const currentSize = sizeStyles[size]
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -131,10 +174,9 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
     [options, dynamicOptions]
   )
 
-  // Filtered options - FIXED: Always show all options when dropdown opens
+  // Filtered options
   const filteredOpts = useMemo(() => {
     if (isMulti && Array.isArray(value)) {
-      // For multi-select, exclude already selected options
       const availableOptions = allOptions.filter(
         (opt) => !value.some((v) => String(v) === String(opt.value || ''))
       )
@@ -151,7 +193,6 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
       })
     }
 
-    // For single select - FIXED: Show all options when no input
     if (!input.trim()) {
       return allOptions
     }
@@ -172,19 +213,15 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
         ? allOptions.filter((o) => o.value === value)
         : []
 
-  // Display value logic - IMPROVED
+  // Display value logic
   let displayValue: string = ''
   if (isMulti && Array.isArray(value)) {
-    // For multi-select, input is just for searching
     displayValue = input
   } else if (!isMulti && typeof value === 'string') {
     if (isInputFocused || showDrop) {
-      // When focused or dropdown open, show input for editing/searching
       displayValue = input
     } else {
-      // When not focused and dropdown closed
       if (value && !input) {
-        // Show the selected option's label
         const selectedOption = allOptions.find((o) => o.value === value)
         displayValue = selectedOption ? selectedOption.label : value
       } else {
@@ -200,9 +237,7 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
     setShowDrop(true)
     setIsInputFocused(true)
 
-    // FIXED: For non-searchable dropdowns, don't populate input with current value
     if (!isInput && !isMulti && typeof value === 'string' && value) {
-      // For dropdown-only mode, keep input empty for clean selection
       setInput('')
     }
 
@@ -267,35 +302,28 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
     }
   }
 
-  // Handle input changes - IMPROVED
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setInput(newValue)
     setShowDrop(true)
 
-    // FIXED: For non-searchable single selects, clear selection when typing
     if (!isInput && !isMulti && newValue === '') {
       onChange('')
     }
   }
 
-  // Handle focus - IMPROVED
   const handleFocus = () => {
     setIsInputFocused(true)
     setShowDrop(true)
 
-    // FIXED: Different behavior for searchable vs non-searchable
     if (isInput && !isMulti && typeof value === 'string' && value && !input) {
-      // For searchable inputs, populate with current label for editing
       const selectedOption = allOptions.find((o) => o.value === value)
       if (selectedOption) {
         setInput(selectedOption.label)
       }
     }
-    // For non-searchable dropdowns, keep input empty for clean selection
   }
 
-  // Handle blur
   const handleBlur = () => {
     setIsInputFocused(false)
   }
@@ -303,13 +331,14 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
   return (
     <div className={cn('w-full', className)}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label className={`block text-gray-700 dark:text-gray-300 ${currentSize.label}`}>
           {label}
         </label>
       )}
+
       {/* Input container */}
       <div className="relative" ref={dropdownRef}>
-        <div className="relative flex items-center">
+        <div className="relative flex items-center h-full">
           <input
             ref={inputRef}
             type="text"
@@ -317,51 +346,53 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
             value={displayValue}
             placeholder={placeholder}
             className={cn(
-              'w-full h-12 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400',
-              isInput ? 'pl-10 pr-8' : 'pl-3 pr-8'
+              `w-full ${currentSize.input} bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400`,
+              currentSize.padding
             )}
             onChange={handleInputChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            readOnly={!isInput && !creatable} // Make non-searchable inputs readonly
+            readOnly={!isInput && !creatable}
           />
-          {/* Conditionally show Search Icon */}
+
+          {/* Search Icon */}
           {isInput && (
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <Search
+              className={`absolute ${currentSize.searchIcon} text-gray-400 pointer-events-none`}
+            />
           )}
+
           {/* Chevron/Close Button */}
           {showDrop ? (
             <button
               type="button"
               aria-label="Close menu"
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
+              className={`absolute ${currentSize.chevron} z-20 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-600 top-1/2 -translate-y-1/2`}
               tabIndex={0}
               onClick={closeDropdown}
             >
-              <XIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+              <XIcon className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           ) : (
             <button
               type="button"
               aria-label="Open menu"
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
+              className={`absolute ${currentSize.chevron} z-20 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-600 top-1/2 -translate-y-1/2`}
               tabIndex={0}
               onClick={openDropdown}
-              onMouseDown={(e) => {
-                e.preventDefault()
-              }}
             >
-              <ChevronDown className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-transform" />
+              <ChevronDown className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-transform" />
             </button>
           )}
         </div>
+
         {/* Dropdown Menu */}
         {showDrop && (
           <div className="absolute left-0 right-0 top-full z-30 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
-            <div className="max-h-60 overflow-auto py-1">
+            <div className={`${currentSize.dropdown} overflow-auto py-1`}>
               {filteredOpts.length === 0 ? (
-                <div className="px-3 py-2.5 text-gray-400 dark:text-gray-600 text-sm">
+                <div className={`${currentSize.option} text-gray-400 dark:text-gray-600`}>
                   No options found
                   {creatable &&
                     input.trim() !== '' &&
@@ -379,7 +410,7 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
                     key={opt.value}
                     tabIndex={0}
                     className={cn(
-                      'w-full text-left px-3 py-2.5 flex items-center gap-2.5 transition-colors text-sm',
+                      `w-full text-left ${currentSize.option} flex items-center gap-2.5 transition-colors`,
                       isMulti && Array.isArray(value)
                         ? value.includes(opt.value)
                           ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
@@ -393,7 +424,9 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
                     onMouseDown={() => toggleMulti(opt.value)}
                   >
                     {isMulti && Array.isArray(value) && value.includes(opt.value) && (
-                      <span className="w-3.5 h-3.5 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                      <span
+                        className={`${size === 'sm' ? 'w-2.5 h-2.5' : size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'} flex items-center justify-center text-blue-600 dark:text-blue-400`}
+                      >
                         ✓
                       </span>
                     )}
@@ -405,21 +438,27 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
           </div>
         )}
       </div>
+
       {/* Multi-select badges */}
       {isMulti && selectedOpts.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
+        <div
+          className={`flex flex-wrap gap-${size === 'sm' ? '1' : '2'} ${size === 'sm' ? 'mt-1' : 'mt-2'}`}
+        >
           {selectedOpts.map((opt) => (
             <span
               key={opt.value}
-              className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-sm px-3 py-1 rounded-md flex items-center gap-1.5 font-medium"
+              className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 ${currentSize.badge} rounded-md flex items-center gap-1.5 font-medium`}
             >
               <span>{opt.label}</span>
               <button
                 type="button"
                 className="hover:text-red-500 dark:hover:text-red-400 focus:outline-none transition-colors"
-                onClick={() => handleRemoveBadge(opt.value)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleRemoveBadge(opt.value)
+                }}
               >
-                <XIcon className="w-3.5 h-3.5" />
+                <XIcon className={currentSize.badgeIcon} />
               </button>
             </span>
           ))}

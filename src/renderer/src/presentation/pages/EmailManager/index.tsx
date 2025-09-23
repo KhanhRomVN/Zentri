@@ -25,7 +25,8 @@ const EmailManagerPage = () => {
     loadEmails,
     closeDatabase,
     clearError,
-    createEmail
+    createEmail,
+    updateEmail
   } = useDatabaseManager()
 
   const [searchTerm] = useState('')
@@ -246,7 +247,12 @@ const EmailManagerPage = () => {
 
         {/* Email Details Drawer */}
         {isDatabaseReady && (
-          <EmailDrawer isOpen={isDrawerOpen} onClose={handleCloseDrawer} email={selectedEmail} />
+          <EmailDrawer
+            isOpen={isDrawerOpen}
+            onClose={handleCloseDrawer}
+            email={selectedEmail}
+            onUpdateEmail={updateEmail}
+          />
         )}
 
         {/* Create Email Modal */}

@@ -383,7 +383,7 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
             )}
           </div>
 
-          {/* Tags & Category */}
+          {/* Tags */}
           <div className="flex items-center gap-2 ml-2">
             {service.service_type && (
               <Badge

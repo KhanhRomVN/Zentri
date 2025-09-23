@@ -214,7 +214,6 @@ export class DatabaseService {
         last_password_change TEXT NOT NULL,
         recovery_email TEXT,
         phone_numbers TEXT,
-        category TEXT NOT NULL,
         tags TEXT, -- JSON array
         note TEXT,
         metadata TEXT, -- JSON object
@@ -292,7 +291,6 @@ export class DatabaseService {
 
       // Create indexes for better performance
       `CREATE INDEX IF NOT EXISTS idx_emails_provider ON emails (email_provider)`,
-      `CREATE INDEX IF NOT EXISTS idx_emails_category ON emails (category)`,
       `CREATE INDEX IF NOT EXISTS idx_email_2fa_email_id ON email_2fa (email_id)`,
       `CREATE INDEX IF NOT EXISTS idx_service_accounts_email_id ON service_accounts (email_id)`,
       `CREATE INDEX IF NOT EXISTS idx_service_accounts_type ON service_accounts (service_type)`,
@@ -329,8 +327,8 @@ export class DatabaseService {
     await window.electronAPI.sqlite.runQuery(
       `INSERT INTO emails (
         id, email_address, email_provider, name, age, address, password,
-        last_password_change, recovery_email, phone_numbers, category, tags, note, metadata, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        last_password_change, recovery_email, phone_numbers, tags, note, metadata, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         email.email_address,
@@ -342,7 +340,6 @@ export class DatabaseService {
         email.last_password_change,
         email.recovery_email || null,
         email.phone_numbers || null,
-        email.category,
         JSON.stringify(email.tags || []),
         email.note || null,
         JSON.stringify(email.metadata || {}),
@@ -393,10 +390,6 @@ export class DatabaseService {
     if (updates.phone_numbers !== undefined) {
       fields.push('phone_numbers = ?')
       values.push(updates.phone_numbers)
-    }
-    if (updates.category !== undefined) {
-      fields.push('category = ?')
-      values.push(updates.category)
     }
     if (updates.tags !== undefined) {
       fields.push('tags = ?')
@@ -475,7 +468,6 @@ export class DatabaseService {
       last_password_change: row.last_password_change,
       recovery_email: row.recovery_email,
       phone_numbers: row.phone_numbers,
-      category: row.category,
       tags: row.tags ? JSON.parse(row.tags) : [],
       note: row.note,
       metadata: row.metadata ? JSON.parse(row.metadata) : {}

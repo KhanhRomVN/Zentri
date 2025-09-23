@@ -24,11 +24,12 @@ interface EmailDrawerProps {
   isOpen: boolean
   onClose: () => void
   email?: Email | null
+  onUpdateEmail?: (id: string, updates: Partial<Email>) => Promise<boolean>
 }
 
 type ViewType = 'email' | 'services' | '2fa' | 'service_detail'
 
-const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => {
+const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpdateEmail }) => {
   const [currentView, setCurrentView] = useState<ViewType>('email')
   const [selectedService, setSelectedService] = useState<ServiceAccount | null>(null)
   const [loading, setLoading] = useState(false)
@@ -256,6 +257,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email }) => 
                   email={email}
                   onServiceClick={() => setCurrentView('services')}
                   serviceAccounts={emailServiceAccounts}
+                  onUpdateEmail={onUpdateEmail}
                 />
 
                 {/* Two-Factor Authentication Section */}

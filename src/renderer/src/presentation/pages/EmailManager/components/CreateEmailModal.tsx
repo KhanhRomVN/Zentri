@@ -7,9 +7,9 @@ import CustomTextArea from '../../../../components/common/CustomTextArea'
 import { Badge } from '../../../../components/ui/badge'
 import { Button } from '../../../../components/ui/button'
 import { Mail, Key, User, MapPin, Phone, Tag, Plus, X, AlertCircle, Calendar } from 'lucide-react'
-import { cn } from '../../../../shared/lib/utils'
 import { Email } from '../types'
 import { EMAIL_PROVIDERS, EMAIL_CATEGORIES } from '../constants'
+import Metadata from '../../../../components/common/Metadata'
 
 interface CreateEmailModalProps {
   isOpen: boolean
@@ -76,9 +76,9 @@ const CreateEmailModal: React.FC<CreateEmailModalProps> = ({
   const [password, setPassword] = useState('')
   const [recoveryEmail, setRecoveryEmail] = useState('')
   const [phoneNumbers, setPhoneNumbers] = useState('')
-  const [category, setCategory] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [note, setNote] = useState('')
+  const [customMetadata] = useState<Record<string, any>>({})
 
   // Form validation state
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -94,15 +94,6 @@ const CreateEmailModal: React.FC<CreateEmailModalProps> = ({
     { value: EMAIL_PROVIDERS.YAHOO, label: 'Yahoo' },
     { value: EMAIL_PROVIDERS.OUTLOOK, label: 'Outlook' },
     { value: EMAIL_PROVIDERS.ICLOUD, label: 'iCloud' }
-  ]
-
-  // Category options
-  const categoryOptions = [
-    { value: EMAIL_CATEGORIES.WORK, label: 'Work' },
-    { value: EMAIL_CATEGORIES.PERSONAL, label: 'Personal' },
-    { value: EMAIL_CATEGORIES.BUSINESS, label: 'Business' },
-    { value: EMAIL_CATEGORIES.EDUCATION, label: 'Education' },
-    { value: EMAIL_CATEGORIES.OTHER, label: 'Other' }
   ]
 
   // Auto-detect email provider when email address changes
@@ -152,10 +143,6 @@ const CreateEmailModal: React.FC<CreateEmailModalProps> = ({
       newErrors.password = 'Password must be at least 6 characters long'
     }
 
-    if (!category) {
-      newErrors.category = 'Category is required'
-    }
-
     // Age validation
     if (age && (isNaN(Number(age)) || Number(age) < 1 || Number(age) > 150)) {
       newErrors.age = 'Please enter a valid age between 1 and 150'
@@ -186,12 +173,12 @@ const CreateEmailModal: React.FC<CreateEmailModalProps> = ({
       last_password_change: new Date().toISOString(),
       recovery_email: recoveryEmail.trim() || undefined,
       phone_numbers: phoneNumbers.trim() || undefined,
-      category: category,
       tags: tags.length > 0 ? tags : undefined,
       note: note.trim() || undefined,
       metadata: {
         created_via: 'create_email_modal',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        ...customMetadata
       }
     }
 
@@ -216,7 +203,6 @@ const CreateEmailModal: React.FC<CreateEmailModalProps> = ({
     setPassword('')
     setRecoveryEmail('')
     setPhoneNumbers('')
-    setCategory('')
     setTags([])
     setNote('')
     setErrors({})
@@ -299,30 +285,12 @@ const CreateEmailModal: React.FC<CreateEmailModalProps> = ({
               searchable={false}
               creatable={false}
             />
-
-            {/* Category */}
-            <CustomCombobox
-              label="Category"
-              value={category}
-              options={categoryOptions}
-              onChange={(value) => setCategory(value as string)}
-              placeholder="Select category..."
-              searchable={false}
-              creatable={false}
-            />
           </div>
 
           {errors.emailProvider && (
             <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
               <AlertCircle className="w-4 h-4" />
               {errors.emailProvider}
-            </p>
-          )}
-
-          {errors.category && (
-            <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-              <AlertCircle className="w-4 h-4" />
-              {errors.category}
             </p>
           )}
         </div>
@@ -535,6 +503,23 @@ const CreateEmailModal: React.FC<CreateEmailModalProps> = ({
             maxLength={500}
             minRows={3}
             maxRows={6}
+          />
+        </div>
+
+        {/* Metadata Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Additional Metadata
+          </h3>
+          <Metadata
+            metadata={{}}
+            onMetadataChange={() => {
+              // Metadata sẽ được xử lý trong handleSubmit
+            }}
+            title="Custom Fields"
+            maxFields={10}
+            keyPlaceholder="Enter field name (e.g., security_question, backup_phone)"
+            compact={false}
           />
         </div>
 
