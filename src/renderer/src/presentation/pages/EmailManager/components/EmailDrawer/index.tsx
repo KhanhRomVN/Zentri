@@ -176,6 +176,45 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     return null
   }
 
+  const handleAdd2FA = async (data: Omit<Email2FA, 'id'>) => {
+    try {
+      console.log('Adding 2FA method:', data)
+
+      // Call the database service to create the 2FA method
+      const newMethod = await databaseService.createEmail2FA(data)
+
+      console.log('2FA method created:', newMethod)
+
+      // Refresh the 2FA methods list
+      const updated2FA = await databaseService.getEmail2FAByEmailId(email!.id!)
+      setEmail2FAMethods(updated2FA)
+    } catch (error) {
+      console.error('Error adding 2FA method:', error)
+      throw error // Re-throw so the form can handle the error
+    }
+  }
+
+  // Handle editing 2FA method
+  const handleEdit2FA = async (method: Email2FA) => {
+    console.log('Edit 2FA method:', method)
+    // You can implement a modal or inline editing here
+  }
+
+  // Handle deleting 2FA method
+  const handleDelete2FA = async (methodId: string) => {
+    try {
+      console.log('Deleting 2FA method:', methodId)
+
+      await databaseService.deleteEmail2FA(methodId)
+
+      // Refresh the 2FA methods list
+      const updated2FA = await databaseService.getEmail2FAByEmailId(email!.id!)
+      setEmail2FAMethods(updated2FA)
+    } catch (error) {
+      console.error('Error deleting 2FA method:', error)
+    }
+  }
+
   // Handle service click to navigate to service detail view
   const handleServiceClick = async (service: ServiceAccount) => {
     setSelectedService(service)
@@ -261,7 +300,13 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                 />
 
                 {/* Two-Factor Authentication Section */}
-                <Email2FASection email={email} email2FAMethods={email2FAMethods} />
+                <Email2FASection
+                  email={email}
+                  email2FAMethods={email2FAMethods}
+                  onAdd2FA={handleAdd2FA}
+                  onEdit2FA={handleEdit2FA}
+                  onDelete2FA={handleDelete2FA}
+                />
 
                 {/* Service Accounts Section */}
                 <AccountServicesList

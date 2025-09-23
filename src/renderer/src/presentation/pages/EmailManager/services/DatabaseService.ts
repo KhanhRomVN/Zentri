@@ -540,6 +540,71 @@ export class DatabaseService {
       metadata: row.metadata ? JSON.parse(row.metadata) : {}
     }
   }
+
+  // Email 2FA CRUD operations
+  async createEmail2FA(email2FAData: Omit<Email2FA, 'id'>): Promise<Email2FA> {
+    const id = uuidv4()
+
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO email_2fa (
+      id, email_id, method_type, app, value, last_update, expire_at, metadata
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        email2FAData.email_id,
+        email2FAData.method_type,
+        email2FAData.app || null,
+        typeof email2FAData.value === 'string'
+          ? email2FAData.value
+          : JSON.stringify(email2FAData.value),
+        email2FAData.last_update,
+        email2FAData.expire_at || null,
+        JSON.stringify(email2FAData.metadata || {})
+      ]
+    )
+
+    return { ...email2FAData, id }
+  }
+
+  async updateEmail2FA(id: string, updates: Partial<Email2FA>): Promise<void> {
+    const fields = []
+    const values = []
+
+    if (updates.method_type !== undefined) {
+      fields.push('method_type = ?')
+      values.push(updates.method_type)
+    }
+    if (updates.app !== undefined) {
+      fields.push('app = ?')
+      values.push(updates.app)
+    }
+    if (updates.value !== undefined) {
+      fields.push('value = ?')
+      values.push(typeof updates.value === 'string' ? updates.value : JSON.stringify(updates.value))
+    }
+    if (updates.last_update !== undefined) {
+      fields.push('last_update = ?')
+      values.push(updates.last_update)
+    }
+    if (updates.expire_at !== undefined) {
+      fields.push('expire_at = ?')
+      values.push(updates.expire_at)
+    }
+    if (updates.metadata !== undefined) {
+      fields.push('metadata = ?')
+      values.push(JSON.stringify(updates.metadata))
+    }
+
+    if (fields.length > 0) {
+      values.push(id) // for WHERE clause
+      const query = `UPDATE email_2fa SET ${fields.join(', ')} WHERE id = ?`
+      await window.electronAPI.sqlite.runQuery(query, values)
+    }
+  }
+
+  async deleteEmail2FA(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM email_2fa WHERE id = ?', [id])
+  }
 }
 
 export const databaseService = new DatabaseService()

@@ -323,46 +323,31 @@ const Metadata: React.FC<MetadataProps> = ({
       {/* Edit Form */}
       {editingField && renderEditForm()}
 
-      {entries.length > 0 ? (
-        <div className="space-y-3">
-          {visibleEntries.map(([key, value]) => renderField(key, value))}
+      <div className="space-y-3">
+        {visibleEntries.map(([key, value]) => renderField(key, value))}
 
-          {/* Show More/Less Button */}
-          {hasMoreFields && (
-            <div className="text-center pt-2">
-              <button
-                onClick={() => setShowAll(!showAll)}
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-1 rounded text-sm transition-colors"
-              >
-                {showAll ? (
-                  <>
-                    <ChevronUp className="h-4 w-4 mr-1 inline" />
-                    Show Less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4 mr-1 inline" />
-                    Show {entries.length - maxVisibleFields!} More Fields
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      ) : !editingField ? (
-        <div className="text-center py-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600">
-          <Database className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-600 dark:text-gray-400 font-medium">No metadata fields</p>
-          <p className="text-sm text-gray-500 dark:text-gray-500 mb-3">
-            No additional information available
-          </p>
-          {canModify && allowCreate && (
-            <CustomButton variant="ghost" size="sm" onClick={startCreateField} icon={Plus}>
-              Add Field
-            </CustomButton>
-          )}
-        </div>
-      ) : null}
+        {/* Show More/Less Button */}
+        {hasMoreFields && (
+          <div className="text-center pt-2">
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-1 rounded text-sm transition-colors"
+            >
+              {showAll ? (
+                <>
+                  <ChevronUp className="h-4 w-4 mr-1 inline" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4 mr-1 inline" />
+                  Show {entries.length - maxVisibleFields!} More Fields
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
     </>
   )
 

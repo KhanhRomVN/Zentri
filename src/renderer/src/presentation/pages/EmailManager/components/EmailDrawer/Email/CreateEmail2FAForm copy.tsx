@@ -1,6 +1,6 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/CreateEmail2FAForm.tsx
 import React, { useState, useEffect } from 'react'
-import CustomButton from '../../../../../../components/common/CustomButton'
+import { Button } from '../../../../../../components/ui/button'
 import CustomInput from '../../../../../../components/common/CustomInput'
 import CustomTextArea from '../../../../../../components/common/CustomTextArea'
 import CustomCombobox from '../../../../../../components/common/CustomCombobox'
@@ -19,7 +19,6 @@ import {
 import { cn } from '../../../../../../shared/lib/utils'
 import { Email2FA, Email } from '../../../types'
 import Metadata from '../../../../../../components/common/Metadata'
-import { Button } from '../../../../../../components/ui/button'
 
 interface CreateEmail2FAFormProps {
   email: Email
@@ -261,13 +260,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
     onCancel()
   }
 
-  // Get minimum date for expiry (today + 1 day)
-  const getMinExpiryDate = () => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    return tomorrow.toISOString().slice(0, 16) // Format for datetime-local input
-  }
-
   // Render value input based on method type
   const renderValueInput = () => {
     if (!selectedMethod) return null
@@ -427,7 +419,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
         {/* Value Input */}
         {formData.method_type && renderValueInput()}
 
-        {/* Expiry Date (Optional) - Fixed to prevent past dates */}
+        {/* Expiry Date (Optional) */}
         {formData.method_type && (
           <CustomInput
             label="Expiry Date (Optional)"
@@ -440,7 +432,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             error={errors.expire_at}
             disabled={loading}
             size="sm"
-            minDate={getMinExpiryDate()}
           />
         )}
 
@@ -451,7 +442,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             onMetadataChange={(newMetadata) =>
               setFormData((prev) => ({ ...prev, metadata: newMetadata }))
             }
-            title="Metadata"
+            title="Additional 2FA Metadata"
             maxFields={8}
             keyPlaceholder="Enter metadata field (e.g., backup_location, notes)"
             compact={true}
@@ -460,27 +451,27 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           />
         )}
 
-        {/* Form Actions - Using CustomButton */}
+        {/* Form Actions */}
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <CustomButton
-            variant="secondary"
-            size="sm"
+          <Button
+            type="button"
+            variant="outline"
             onClick={handleCancel}
             disabled={loading}
+            size="sm"
             className="min-w-[80px]"
           >
             Cancel
-          </CustomButton>
-          <CustomButton
-            variant="success"
-            size="sm"
+          </Button>
+          <Button
             type="submit"
             disabled={loading || !formData.method_type || !formData.value.trim()}
             loading={loading}
-            className="min-w-[140px] bg-green-600 hover:bg-green-700 text-white"
+            size="sm"
+            className="min-w-[100px] bg-green-600 hover:bg-green-700 text-white"
           >
             Add 2FA Method
-          </CustomButton>
+          </Button>
         </div>
       </form>
     </div>

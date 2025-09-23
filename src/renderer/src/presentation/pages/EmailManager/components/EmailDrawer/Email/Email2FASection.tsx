@@ -1,7 +1,8 @@
 // src/renderer/src/presentation/pages/EmailManager/components/Email2FASection.tsx
 import React, { useState } from 'react'
-import { Badge } from '../../../../../../components/ui/badge'
 import { Button } from '../../../../../../components/ui/button'
+import CustomBadge from '../../../../../../components/common/CustomBadge'
+import CustomButton from '../../../../../../components/common/CustomButton'
 import { Label } from '../../../../../../components/ui/label'
 import CustomInput from '../../../../../../components/common/CustomInput'
 import CreateEmail2FAForm from './CreateEmail2FAForm'
@@ -26,11 +27,12 @@ import {
 import { cn } from '../../../../../../shared/lib/utils'
 import { Email, Email2FA } from '../../../types'
 import Metadata from '../../../../../../components/common/Metadata'
+import { Badge } from '../../../../../../components/ui/badge'
 
 interface Email2FASectionProps {
   email: Email
   email2FAMethods: Email2FA[]
-  onAdd2FA?: (data: Omit<Email2FA, 'id'>) => Promise<void>
+  onAdd2FA: (data: Omit<Email2FA, 'id'>) => Promise<void>
   onEdit2FA?: (method: Email2FA) => void
   onDelete2FA?: (methodId: string) => void
   className?: string
@@ -221,14 +223,15 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
   }
 
   const handleCreate2FA = async (data: Omit<Email2FA, 'id'>) => {
-    if (!onAdd2FA) return
-
     try {
       setIsCreating(true)
+      console.log('Creating 2FA method:', data) // Debug log
       await onAdd2FA(data)
       setShowCreateForm(false)
+      console.log('2FA method created successfully') // Debug log
     } catch (error) {
       console.error('Error creating 2FA method:', error)
+      // You might want to show a toast notification here
     } finally {
       setIsCreating(false)
     }
@@ -267,33 +270,26 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              <CustomButton
                 size="sm"
+                variant="success"
+                icon={Plus}
                 onClick={(e) => {
                   e.stopPropagation()
                   handleAdd2FA()
                 }}
-                className="bg-green-600 hover:bg-green-700 text-white shadow-sm text-xs px-2 py-1 h-7"
+                className="shadow-sm text-xs px-2 py-1 h-7"
               >
-                <Plus className="h-3 w-3 mr-1" />
                 Add 2FA
-              </Button>
-              <Badge
-                variant="secondary"
-                className={cn(
-                  'text-xs border px-1.5 py-0.5',
-                  has2FA
-                    ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                    : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
-                )}
+              </CustomButton>
+              <CustomBadge
+                variant={has2FA ? 'success' : 'secondary'}
+                size="sm"
+                icon={has2FA ? CheckCircle : AlertCircle}
+                className="text-xs px-1.5 py-0.5"
               >
-                {has2FA ? (
-                  <CheckCircle className="h-2 w-2 mr-1" />
-                ) : (
-                  <AlertCircle className="h-2 w-2 mr-1" />
-                )}
                 {has2FA ? 'Enabled' : 'Disabled'}
-              </Badge>
+              </CustomBadge>
               <div className="w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors">
                 {is2FAExpanded ? (
                   <ChevronUp className="h-3 w-3 text-gray-600 dark:text-gray-400" />
