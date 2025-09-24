@@ -72,7 +72,7 @@ export const useDatabaseManager = () => {
   }, [])
 
   // Handle database selection from modal
-  const handleDatabaseSelected = useCallback(async (path: string) => {
+  const handleDatabaseSelected = useCallback(async () => {
     try {
       setState((prev) => ({
         ...prev,

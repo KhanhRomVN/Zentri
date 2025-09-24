@@ -5,22 +5,7 @@ import CustomInput from '../../../../../../components/common/CustomInput'
 import CustomTextArea from '../../../../../../components/common/CustomTextArea'
 import CustomTag from '../../../../../../components/common/CustomTag'
 import Metadata from '../../../../../../components/common/Metadata'
-import {
-  Eye,
-  EyeOff,
-  Copy,
-  Calendar,
-  Clock,
-  Phone,
-  Key,
-  Check,
-  Mail,
-  Activity,
-  User,
-  MapPin,
-  Tag,
-  FileText
-} from 'lucide-react'
+import { Eye, EyeOff, Copy, Phone, Check, Mail, User, MapPin, Tag, FileText } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { Email, ServiceAccount } from '../../../types'
 
@@ -67,16 +52,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
     } catch (err) {
       console.error('Failed to copy:', err)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   // Hàm xử lý lưu field

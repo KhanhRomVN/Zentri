@@ -23,6 +23,7 @@ import { Button } from '../../../../../../components/ui/button'
 
 interface CreateEmail2FAFormProps {
   email: Email
+  existingMethods: Email2FA[] // Thêm prop để truyền các method đã tồn tại
   onSubmit: (data: Omit<Email2FA, 'id'>) => Promise<void>
   onCancel: () => void
   loading?: boolean
@@ -39,7 +40,8 @@ const twoFAMethodOptions = [
     placeholder: 'Enter TOTP secret key...',
     inputType: 'text',
     showAppName: false,
-    autoFillFromEmail: false
+    autoFillFromEmail: false,
+    unique: true // TOTP có thể có nhiều (cho nhiều app khác nhau)
   },
   {
     value: 'backup_codes',
@@ -49,7 +51,8 @@ const twoFAMethodOptions = [
     placeholder: 'Enter backup codes (one per line)...',
     inputType: 'textarea',
     showAppName: false,
-    autoFillFromEmail: false
+    autoFillFromEmail: false,
+    unique: true // Chỉ nên có 1 set backup codes
   },
   {
     value: 'app_password',
@@ -59,7 +62,8 @@ const twoFAMethodOptions = [
     placeholder: 'Enter app password...',
     inputType: 'password',
     showAppName: true,
-    autoFillFromEmail: false
+    autoFillFromEmail: false,
+    unique: false // Có thể có nhiều app password cho các app khác nhau
   },
   {
     value: 'security_key',
@@ -69,7 +73,8 @@ const twoFAMethodOptions = [
     placeholder: 'Enter security key ID...',
     inputType: 'text',
     showAppName: false,
-    autoFillFromEmail: false
+    autoFillFromEmail: false,
+    unique: false // Có thể có nhiều security key
   },
   {
     value: 'recovery_email',
@@ -80,7 +85,8 @@ const twoFAMethodOptions = [
     inputType: 'email',
     showAppName: false,
     autoFillFromEmail: true,
-    autoFillField: 'recovery_email'
+    autoFillField: 'recovery_email',
+    unique: true // Chỉ nên có 1 recovery email
   },
   {
     value: 'sms',
@@ -91,12 +97,14 @@ const twoFAMethodOptions = [
     inputType: 'tel',
     showAppName: false,
     autoFillFromEmail: true,
-    autoFillField: 'phone_numbers'
+    autoFillField: 'phone_numbers',
+    unique: true // Chỉ nên có 1 SMS verification
   }
 ]
 
 const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
   email,
+  existingMethods = [],
   onSubmit,
   onCancel,
   loading = false,
@@ -118,6 +126,14 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Lọc các method options để loại bỏ các method unique đã tồn tại
+  const availableMethodOptions = twoFAMethodOptions.filter((method) => {
+    if (!method.unique) return true // Nếu method không unique, luôn hiển thị
+
+    // Nếu method là unique, chỉ hiển thị nếu chưa tồn tại
+    return !existingMethods.some((existing) => existing.method_type === method.value)
+  })
+
   // Get selected method info
   const selectedMethod = twoFAMethodOptions.find((opt) => opt.value === formData.method_type)
 
@@ -126,9 +142,19 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
     if (selectedMethod?.autoFillFromEmail && selectedMethod.autoFillField) {
       const emailValue = email[selectedMethod.autoFillField as keyof Email]
       if (emailValue) {
+        let valueToFill = ''
+
+        // Handle different field types
+        if (selectedMethod.autoFillField === 'phone_numbers' && Array.isArray(emailValue)) {
+          // Nếu là array phone numbers, lấy số đầu tiên
+          valueToFill = emailValue.length > 0 ? emailValue[0] : ''
+        } else {
+          valueToFill = String(emailValue)
+        }
+
         setFormData((prev) => ({
           ...prev,
-          value: String(emailValue)
+          value: valueToFill
         }))
       }
     } else {
@@ -268,6 +294,28 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
     return tomorrow.toISOString().slice(0, 16) // Format for datetime-local input
   }
 
+  // Get field label based on method type
+  const getValueLabel = () => {
+    if (!selectedMethod) return 'Value'
+
+    switch (formData.method_type) {
+      case 'recovery_email':
+        return 'Recovery Email Address'
+      case 'sms':
+        return 'Phone Number'
+      case 'totp_key':
+        return 'TOTP Secret Key'
+      case 'backup_codes':
+        return 'Backup Codes'
+      case 'app_password':
+        return 'App Password'
+      case 'security_key':
+        return 'Security Key ID'
+      default:
+        return 'Value'
+    }
+  }
+
   // Render value input based on method type
   const renderValueInput = () => {
     if (!selectedMethod) return null
@@ -295,7 +343,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             </div>
           )}
           <CustomTextArea
-            label="Backup Codes"
+            label={getValueLabel()}
             value={formData.value}
             onChange={(value) => setFormData((prev) => ({ ...prev, value }))}
             placeholder={selectedMethod.placeholder}
@@ -319,7 +367,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           </div>
         )}
         <CustomInput
-          label="Value"
+          label={getValueLabel()}
           type={selectedMethod.inputType}
           value={formData.value}
           onChange={(value) => setFormData((prev) => ({ ...prev, value }))}
@@ -358,6 +406,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           onClick={handleCancel}
           disabled={loading}
           className="p-1 h-6 w-6"
+          type="button" // Explicit type để tránh submit
         >
           <X className="h-3 w-3" />
         </Button>
@@ -370,7 +419,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           <CustomCombobox
             label="2FA Method Type"
             value={formData.method_type}
-            options={twoFAMethodOptions.map((option) => ({
+            options={availableMethodOptions.map((option) => ({
               value: option.value,
               label: option.label
             }))}
@@ -444,20 +493,25 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           />
         )}
 
-        {/* Metadata Form */}
+        {/* Metadata Form - FIX: Ngăn submit form khi click expand */}
         {formData.method_type && (
-          <Metadata
-            metadata={formData.metadata}
-            onMetadataChange={(newMetadata) =>
-              setFormData((prev) => ({ ...prev, metadata: newMetadata }))
-            }
-            title="Metadata"
-            maxFields={8}
-            keyPlaceholder="Enter metadata field (e.g., backup_location, notes)"
-            compact={true}
-            size="sm"
-            allowedTypes={['text', 'textarea', 'date', 'boolean']}
-          />
+          <div onClick={(e) => e.preventDefault()}>
+            <Metadata
+              metadata={formData.metadata}
+              onMetadataChange={(newMetadata) =>
+                setFormData((prev) => ({ ...prev, metadata: newMetadata }))
+              }
+              title="Additional Metadata"
+              compact={true}
+              size="sm"
+              allowCreate={true}
+              allowEdit={true}
+              allowDelete={true}
+              collapsible={true}
+              defaultExpanded={false}
+              className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/50"
+            />
+          </div>
         )}
 
         {/* Form Actions - Using CustomButton */}
@@ -468,6 +522,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             onClick={handleCancel}
             disabled={loading}
             className="min-w-[80px]"
+            type="button" // Explicit type để tránh submit
           >
             Cancel
           </CustomButton>
