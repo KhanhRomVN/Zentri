@@ -1,608 +1,551 @@
 // src/renderer/src/presentation/pages/EmailManager/components/ServiceAccountSection.tsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '../../../../../../components/ui/button'
 import CustomInput from '../../../../../../components/common/CustomInput'
+import CustomCombobox from '../../../../../../components/common/CustomCombobox'
+import Metadata from '../../../../../../components/common/Metadata'
 import {
   Eye,
   EyeOff,
   Copy,
-  Calendar,
-  Globe,
-  Key,
   Check,
   User,
+  Globe,
   Link,
-  Tag,
-  Plus,
-  X,
+  Key,
   Activity,
-  Shield,
-  ExternalLink
+  ExternalLink,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Database
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount } from '../../../types'
+import { Favicon } from '../../../../../../shared/utils/faviconUtils'
 
 interface ServiceAccountSectionProps {
   serviceAccount: ServiceAccount
+  onServiceUpdate?: (serviceId: string, field: string, value: string) => Promise<boolean>
   className?: string
 }
 
-// Curated beautiful hex colors for tags
-const TAG_COLORS = [
-  '#FF6B6B', // Coral Red
-  '#4ECDC4', // Teal
-  '#45B7D1', // Sky Blue
-  '#96CEB4', // Mint Green
-  '#FFEAA7', // Light Yellow
-  '#DDA0DD', // Plum
-  '#98D8C8', // Mint
-  '#F7DC6F', // Light Gold
-  '#BB8FCE', // Light Purple
-  '#85C1E9', // Light Blue
-  '#F8C471', // Peach
-  '#82E0AA', // Light Green
-  '#F1948A', // Light Pink
-  '#85929E', // Blue Gray
-  '#D7BDE2', // Lavender
-  '#A9DFBF', // Pale Green
-  '#F9E79F', // Pale Yellow
-  '#AED6F1', // Pale Blue
-  '#F5B7B1', // Pale Pink
-  '#D5A6BD' // Dusty Pink
+// Service type options
+const serviceTypeOptions = [
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'communication', label: 'Communication' },
+  { value: 'developer', label: 'Developer' },
+  { value: 'cloud_storage', label: 'Cloud Storage' },
+  { value: 'ai_saas', label: 'AI & SaaS' },
+  { value: 'productivity_tool', label: 'Productivity' },
+  { value: 'payment_finance', label: 'Payment & Finance' },
+  { value: 'ecommerce', label: 'E-commerce' },
+  { value: 'entertainment', label: 'Entertainment' },
+  { value: 'education', label: 'Education' },
+  { value: 'hosting_domain', label: 'Hosting & Domain' },
+  { value: 'security_vpn', label: 'Security & VPN' },
+  { value: 'government', label: 'Government' },
+  { value: 'health', label: 'Health' },
+  { value: 'gaming', label: 'Gaming' },
+  { value: 'travel_transport', label: 'Travel & Transport' },
+  { value: 'news_media', label: 'News & Media' },
+  { value: 'forum_community', label: 'Forum & Community' },
+  { value: 'iot_smart_device', label: 'IoT & Smart Device' },
+  { value: 'other', label: 'Other' }
 ]
 
-// Function to get consistent color for a tag
-const getTagColor = (tag: string): string => {
-  const index = tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % TAG_COLORS.length
-  return TAG_COLORS[index]
-}
-
-// Function to determine if text should be dark or light based on background
-const getTextColor = (hexColor: string): string => {
-  // Convert hex to RGB
-  const r = parseInt(hexColor.slice(1, 3), 16)
-  const g = parseInt(hexColor.slice(3, 5), 16)
-  const b = parseInt(hexColor.slice(5, 7), 16)
-
-  // Calculate luminance
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-
-  return luminance > 0.5 ? '#374151' : '#FFFFFF' // Dark gray or white
-}
+// Status options
+const statusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'suspended', label: 'Suspended' }
+]
 
 const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
   serviceAccount,
+  onServiceUpdate,
   className
 }) => {
-  const [showPassword, setShowPassword] = useState(false)
-  const [hoveredTag, setHoveredTag] = useState<string | null>(null)
-  const [showAddTag, setShowAddTag] = useState(false)
-  const [newTagValue, setNewTagValue] = useState('')
-
-  // Editable fields - mock tags for demonstration
-  const [editedTags, setEditedTags] = useState<string[]>([
-    serviceAccount.service_type.replace(/_/g, ' '),
-    serviceAccount.status || 'active'
-  ])
+  // Form state
   const [serviceName, setServiceName] = useState(serviceAccount.service_name || '')
+  const [serviceType, setServiceType] = useState(serviceAccount.service_type || '')
   const [serviceUrl, setServiceUrl] = useState(serviceAccount.service_url || '')
+  const [status, setStatus] = useState(serviceAccount.status || 'active')
   const [username, setUsername] = useState(serviceAccount.username || '')
-  const [displayName, setDisplayName] = useState(serviceAccount.name || '')
+  const [name, setName] = useState(serviceAccount.name || '')
   const [password, setPassword] = useState(serviceAccount.password || '')
   const [note, setNote] = useState(serviceAccount.note || '')
+  const [metadata, setMetadata] = useState(serviceAccount.metadata || {})
 
+  // UI state
+  const [isExpanded, setIsExpanded] = useState(true)
+  const [savingField, setSavingField] = useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
+
+  // Reset form khi serviceAccount thay đổi
+  useEffect(() => {
+    setServiceName(serviceAccount.service_name || '')
+    setServiceType(serviceAccount.service_type || '')
+    setServiceUrl(serviceAccount.service_url || '')
+    setStatus(serviceAccount.status || 'active')
+    setUsername(serviceAccount.username || '')
+    setName(serviceAccount.name || '')
+    setPassword(serviceAccount.password || '')
+    setNote(serviceAccount.note || '')
+    setMetadata(serviceAccount.metadata || {})
+    setSaveStatus({})
+  }, [serviceAccount])
+
+  // Kiểm tra thay đổi
+  const hasServiceNameChanged = serviceName !== (serviceAccount.service_name || '')
+  const hasServiceTypeChanged = serviceType !== (serviceAccount.service_type || '')
+  const hasServiceUrlChanged = serviceUrl !== (serviceAccount.service_url || '')
+  const hasStatusChanged = status !== (serviceAccount.status || 'active')
+  const hasUsernameChanged = username !== (serviceAccount.username || '')
+  const hasNameChanged = name !== (serviceAccount.name || '')
+  const hasPasswordChanged = password !== (serviceAccount.password || '')
+  const hasNoteChanged = note !== (serviceAccount.note || '')
+  const hasMetadataChanged =
+    JSON.stringify(metadata) !== JSON.stringify(serviceAccount.metadata || {})
+
+  // Hàm lưu field
+  const handleSaveField = async (field: string, value: string) => {
+    if (!serviceAccount.id || !onServiceUpdate) {
+      console.error('Missing service ID or update function')
+      return
+    }
+
+    try {
+      setSavingField(field)
+      const success = await onServiceUpdate(serviceAccount.id, field, value)
+
+      if (success) {
+        setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
+        setTimeout(() => {
+          setSaveStatus((prev) => ({ ...prev, [field]: null }))
+        }, 2000)
+      } else {
+        setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
+      }
+    } catch (error) {
+      console.error(`Error saving ${field}:`, error)
+      setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
+    } finally {
+      setSavingField(null)
+    }
+  }
+
+  // Render status icon
+  const renderStatusIcon = (field: string, hasChanged: boolean, currentValue: string) => {
+    if (savingField === field) {
+      return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+    }
+
+    if (saveStatus[field] === 'success') {
+      return <Check className="h-4 w-4 text-green-600" />
+    }
+
+    if (saveStatus[field] === 'error') {
+      return <AlertCircle className="h-4 w-4 text-red-600" />
+    }
+
+    if (hasChanged) {
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation()
+            handleSaveField(field, currentValue)
+          }}
+          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
+          disabled={savingField !== null}
+        >
+          <Check className="h-3 w-3" />
+        </Button>
+      )
+    }
+
+    return null
+  }
+
+  // Copy to clipboard
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
-      // You could add a toast notification here
     } catch (err) {
       console.error('Failed to copy:', err)
     }
   }
 
-  // Check if values have changed
-  const hasServiceNameChanged = serviceName !== (serviceAccount.service_name || '')
-  const hasServiceUrlChanged = serviceUrl !== (serviceAccount.service_url || '')
-  const hasUsernameChanged = username !== (serviceAccount.username || '')
-  const hasDisplayNameChanged = displayName !== (serviceAccount.name || '')
-  const hasPasswordChanged = password !== (serviceAccount.password || '')
-  const hasNoteChanged = note !== (serviceAccount.note || '')
-  const hasTagsChanged =
-    JSON.stringify(editedTags.sort()) !==
-    JSON.stringify(
-      [serviceAccount.service_type.replace(/_/g, ' '), serviceAccount.status || 'active'].sort()
-    )
-
-  const handleSaveField = (field: string, value: string | string[]) => {
-    console.log(`Saving ${field}:`, value)
-    // Handle save logic here
+  // Handle dropdown changes
+  const handleServiceTypeChange = (value: string | string[]) => {
+    const newType = Array.isArray(value) ? value[0] : value
+    setServiceType(newType)
   }
 
-  // Tag management functions
-  const handleAddTag = () => {
-    if (newTagValue.trim() && !editedTags.includes(newTagValue.trim())) {
-      const updatedTags = [...editedTags, newTagValue.trim()]
-      setEditedTags(updatedTags)
-      setNewTagValue('')
-      setShowAddTag(false)
-    }
+  const handleStatusChange = (value: string | string[]) => {
+    const newStatus = Array.isArray(value) ? value[0] : value
+    setStatus(newStatus)
   }
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    const updatedTags = editedTags.filter((tag) => tag !== tagToRemove)
-    setEditedTags(updatedTags)
+  // Handle metadata change
+  const handleMetadataChange = (newMetadata: Record<string, any>) => {
+    setMetadata(newMetadata)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleAddTag()
-    } else if (e.key === 'Escape') {
-      setShowAddTag(false)
-      setNewTagValue('')
-    }
-  }
-
+  // Get service type label
   const getServiceTypeLabel = (type: string) => {
-    const typeLabels: Record<string, string> = {
-      social_media: 'Social Media',
-      communication: 'Communication',
-      developer: 'Developer',
-      cloud_storage: 'Cloud Storage',
-      ai_saas: 'AI & SaaS',
-      productivity_tool: 'Productivity',
-      payment_finance: 'Payment & Finance',
-      ecommerce: 'E-commerce',
-      entertainment: 'Entertainment',
-      education: 'Education',
-      hosting_domain: 'Hosting & Domain',
-      security_vpn: 'Security & VPN',
-      government: 'Government',
-      health: 'Health',
-      gaming: 'Gaming',
-      travel_transport: 'Travel & Transport',
-      news_media: 'News & Media',
-      forum_community: 'Forum & Community',
-      iot_smart_device: 'IoT & Smart Device',
-      other: 'Other'
+    const option = serviceTypeOptions.find((opt) => opt.value === type)
+    return option ? option.label : type.replace(/_/g, ' ')
+  }
+
+  // Handle external link
+  const handleExternalLink = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (serviceUrl) {
+      window.open(serviceUrl, '_blank')
     }
-    return typeLabels[type] || type.replace(/_/g, ' ')
   }
 
   return (
-    <div className={cn('space-y-6', className)}>
-      {/* Main Content - Vertical Layout */}
-      <div className="space-y-6">
-        {/* Service Information Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-300">
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
-                <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-                Service Information
-              </h4>
+    <div
+      className={cn(
+        'group relative bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden',
+        className
+      )}
+    >
+      {/* Status Indicator */}
+      <div
+        className={cn(
+          'absolute top-0 left-0 w-1 h-full',
+          status === 'active'
+            ? 'bg-emerald-500'
+            : status === 'suspended'
+              ? 'bg-red-500'
+              : 'bg-gray-400'
+        )}
+      />
+
+      {/* Header */}
+      <div className="p-3 transition-all duration-200">
+        <div className="flex items-center justify-between">
+          {/* Left Section - Favicon + Service Info */}
+          <div className="flex items-center gap-3 flex-1 min-w-0 pl-2">
+            {/* Service Favicon */}
+            <div className="relative flex-shrink-0">
+              <Favicon
+                url={serviceUrl}
+                size={24}
+                className="rounded"
+                fallbackIcon={<Globe className="h-4 w-4 text-gray-600" />}
+              />
+              {/* Status Dot */}
+              <div
+                className={cn(
+                  'absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800',
+                  status === 'active'
+                    ? 'bg-emerald-500'
+                    : status === 'suspended'
+                      ? 'bg-red-500'
+                      : 'bg-gray-400'
+                )}
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Service Name */}
-              <CustomInput
-                label="Service Name"
-                value={serviceName}
-                onChange={setServiceName}
-                placeholder="Enter service name..."
-                variant="filled"
-                leftIcon={<Globe className="h-4 w-4" />}
-                rightIcon={
-                  hasServiceNameChanged ? (
+            {/* Service Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                  {serviceName}
+                </h3>
+                {serviceUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleExternalLink}
+                    className="p-0.5 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-100 dark:hover:bg-blue-900/20"
+                    title="Open website"
+                  >
+                    <ExternalLink className="h-2.5 w-2.5 text-blue-600" />
+                  </Button>
+                )}
+              </div>
+
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {getServiceTypeLabel(serviceType)} • {status || 'unknown'}
+              </div>
+            </div>
+          </div>
+
+          {/* Expand/Collapse Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-0.5 h-5 w-5 text-gray-400 hover:text-gray-600"
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-3 w-3 transition-transform" />
+            ) : (
+              <ChevronDown className="h-3 w-3 transition-transform" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-4 animate-in slide-in-from-top-2 duration-300">
+          {/* Divider */}
+          <div className="border-t border-gray-100 dark:border-gray-700 ml-2" />
+
+          {/* Header */}
+          <div className="flex items-center justify-between ml-2">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Service Account Details
+            </div>
+          </div>
+
+          {/* Service Information Section */}
+          <div className="space-y-3 ml-2">
+            {/* Service Name */}
+            <CustomInput
+              label="Service Name"
+              value={serviceName}
+              onChange={setServiceName}
+              size="sm"
+              variant="filled"
+              leftIcon={<Globe className="h-3 w-3" />}
+              required
+              disabled={savingField !== null && savingField !== 'service_name'}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  {renderStatusIcon('service_name', hasServiceNameChanged, serviceName)}
+                  {serviceName && !hasServiceNameChanged && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleSaveField('service_name', serviceName)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        copyToClipboard(serviceName)
+                      }}
+                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                      disabled={savingField !== null}
+                    >
+                      <Copy className="h-2.5 w-2.5" />
+                    </Button>
+                  )}
+                </div>
+              }
+            />
+
+            {/* Service Type & Status - Same Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Service Type */}
+              <div className="space-y-1">
+                <CustomCombobox
+                  label="Service Type"
+                  value={serviceType}
+                  options={serviceTypeOptions}
+                  onChange={handleServiceTypeChange}
+                  placeholder="Select service type..."
+                  size="sm"
+                />
+                {hasServiceTypeChanged && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSaveField('service_type', serviceType)}
                       className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      disabled={savingField !== null}
                     >
                       <Check className="h-3 w-3" />
                     </Button>
-                  ) : undefined
-                }
-              />
+                  </div>
+                )}
+              </div>
 
-              {/* Service Type (Read Only) */}
-              <CustomInput
-                label="Service Type"
-                value={getServiceTypeLabel(serviceAccount.service_type)}
-                readOnly
-                variant="filled"
-                leftIcon={<Tag className="h-4 w-4" />}
-              />
-
-              {/* Service URL */}
-              <div className="md:col-span-2">
-                <CustomInput
-                  label="Service URL"
-                  value={serviceUrl}
-                  onChange={setServiceUrl}
-                  placeholder="https://example.com"
-                  variant="filled"
-                  leftIcon={<Link className="h-4 w-4" />}
-                  rightIcon={
-                    <div className="flex items-center gap-1">
-                      {serviceUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(serviceUrl, '_blank')}
-                          className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      )}
-                      {serviceUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(serviceUrl)}
-                          className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      )}
-                      {hasServiceUrlChanged && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSaveField('service_url', serviceUrl)}
-                          className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                        >
-                          <Check className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  }
+              {/* Status */}
+              <div className="space-y-1">
+                <CustomCombobox
+                  label="Status"
+                  value={status}
+                  options={statusOptions}
+                  onChange={handleStatusChange}
+                  placeholder="Select status..."
+                  size="sm"
                 />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Account Credentials Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-300">
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
-                <Key className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-                Account Credentials
-              </h4>
-            </div>
-
-            <div className="space-y-6">
-              {/* Username */}
-              <CustomInput
-                label="Username"
-                value={username}
-                onChange={setUsername}
-                placeholder="Enter username..."
-                variant="filled"
-                leftIcon={<User className="h-4 w-4" />}
-                rightIcon={
-                  <div className="flex items-center gap-1">
-                    {username && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(username)}
-                        className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    )}
-                    {hasUsernameChanged && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSaveField('username', username)}
-                        className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                }
-              />
-
-              {/* Display Name */}
-              <CustomInput
-                label="Display Name"
-                value={displayName}
-                onChange={setDisplayName}
-                placeholder="Enter display name..."
-                variant="filled"
-                leftIcon={<User className="h-4 w-4" />}
-                rightIcon={
-                  <div className="flex items-center gap-1">
-                    {displayName && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(displayName)}
-                        className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    )}
-                    {hasDisplayNameChanged && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSaveField('name', displayName)}
-                        className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                }
-              />
-
-              {/* Password */}
-              <CustomInput
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={setPassword}
-                placeholder="Enter password..."
-                variant="filled"
-                rightIcon={
-                  <div className="flex items-center gap-1">
+                {hasStatusChanged && (
+                  <div className="flex justify-end">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      onClick={() => handleSaveField('status', status)}
+                      className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      disabled={savingField !== null}
                     >
-                      {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      <Check className="h-3 w-3" />
                     </Button>
-                    {password && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(password)}
-                        className="p-1 h-6 w-6 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    )}
-                    {hasPasswordChanged && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSaveField('password', password)}
-                        className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-                    )}
                   </div>
-                }
-              />
-            </div>
-
-            {/* Enhanced Tags Section */}
-            <div className="mt-8">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
-                    <Tag className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <h5 className="text-lg font-semibold text-gray-900 dark:text-white">Tags</h5>
-                </div>
-
-                {/* Save Tags Button */}
-                {hasTagsChanged && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSaveField('tags', editedTags)}
-                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                  >
-                    <Check className="h-4 w-4 mr-1" />
-                    Save Tags
-                  </Button>
                 )}
               </div>
+            </div>
 
-              <div className="flex flex-wrap gap-3 items-center">
-                {/* Existing Tags */}
-                {editedTags.length > 0 &&
-                  editedTags.map((tag, index) => {
-                    const bgColor = getTagColor(tag)
-                    const textColor = getTextColor(bgColor)
-
-                    return (
-                      <div
-                        key={index}
-                        className="relative group"
-                        onMouseEnter={() => setHoveredTag(tag)}
-                        onMouseLeave={() => setHoveredTag(null)}
-                      >
-                        <div
-                          className="px-3 py-1.5 rounded-lg text-sm font-medium border transition-all duration-200 cursor-default"
-                          style={{
-                            backgroundColor: bgColor,
-                            color: textColor,
-                            borderColor: bgColor
-                          }}
-                        >
-                          {tag}
-
-                          {/* Delete Button - appears on hover */}
-                          {hoveredTag === tag && (
-                            <button
-                              onClick={() => handleRemoveTag(tag)}
-                              className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full hover:opacity-80 transition-opacity"
-                              style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
-                            >
-                              <X className="h-2.5 w-2.5" style={{ color: textColor }} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                {/* Add Tag Button/Input */}
-                {!showAddTag ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddTag(true)}
-                    className="border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-600 h-8"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Tag
-                  </Button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={newTagValue}
-                        onChange={(e) => setNewTagValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Enter tag name..."
-                        autoFocus
-                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-w-[120px]"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-1">
+            {/* Service URL */}
+            <CustomInput
+              label="Service URL"
+              value={serviceUrl}
+              onChange={setServiceUrl}
+              size="sm"
+              variant="filled"
+              leftIcon={<Link className="h-3 w-3" />}
+              placeholder="https://example.com"
+              disabled={savingField !== null && savingField !== 'service_url'}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  {renderStatusIcon('service_url', hasServiceUrlChanged, serviceUrl)}
+                  {serviceUrl && !hasServiceUrlChanged && (
+                    <>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={handleAddTag}
-                        disabled={!newTagValue.trim() || editedTags.includes(newTagValue.trim())}
-                        className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setShowAddTag(false)
-                          setNewTagValue('')
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          window.open(serviceUrl, '_blank')
                         }}
-                        className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                        className="p-0.5 h-4 w-4 text-gray-500 hover:text-green-600"
+                        disabled={savingField !== null}
                       >
-                        <X className="h-3 w-3" />
+                        <ExternalLink className="h-2.5 w-2.5" />
                       </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Tag hint */}
-              {showAddTag && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Press Enter to add tag, Escape to cancel
-                </p>
-              )}
-            </div>
-
-            {/* Activity Status */}
-            <div className="mt-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg flex items-center justify-center">
-                  <Activity className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <h5 className="text-lg font-semibold text-gray-900 dark:text-white">Status</h5>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <div
-                  className={cn(
-                    'w-3 h-3 rounded-full',
-                    serviceAccount.status === 'active'
-                      ? 'bg-green-500'
-                      : serviceAccount.status === 'suspended'
-                        ? 'bg-red-500'
-                        : 'bg-gray-400'
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          copyToClipboard(serviceUrl)
+                        }}
+                        className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                        disabled={savingField !== null}
+                      >
+                        <Copy className="h-2.5 w-2.5" />
+                      </Button>
+                    </>
                   )}
-                />
-                <span className="font-medium text-gray-900 dark:text-white capitalize">
-                  {serviceAccount.status || 'unknown'}
-                </span>
-                {serviceAccount.status === 'active' && (
-                  <span className="text-xs text-green-600 dark:text-green-400">
-                    Account is active and accessible
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Notes Section */}
-            <div className="mt-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center">
-                  <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </div>
-                <h5 className="text-lg font-semibold text-gray-900 dark:text-white">Notes</h5>
-                {hasNoteChanged && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSaveField('note', note)}
-                    className="text-green-600 hover:text-green-700 hover:bg-green-50 ml-auto"
-                  >
-                    <Check className="h-4 w-4 mr-1" />
-                    Save Notes
-                  </Button>
-                )}
-              </div>
+              }
+            />
 
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Add notes about this service account..."
-                rows={4}
-                className="w-full p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 resize-none"
-              />
-            </div>
-
-            {/* Metadata */}
-            {serviceAccount.metadata && Object.keys(serviceAccount.metadata).length > 0 && (
-              <div className="mt-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                    <Shield className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                  </div>
-                  <h5 className="text-lg font-semibold text-gray-900 dark:text-white">Metadata</h5>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(serviceAccount.metadata).map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
+            {/* Username */}
+            <CustomInput
+              label="Username"
+              value={username}
+              onChange={setUsername}
+              size="sm"
+              variant="filled"
+              leftIcon={<User className="h-3 w-3" />}
+              placeholder="Enter username"
+              disabled={savingField !== null && savingField !== 'username'}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  {renderStatusIcon('username', hasUsernameChanged, username)}
+                  {username && !hasUsernameChanged && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        copyToClipboard(username)
+                      }}
+                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                      disabled={savingField !== null}
                     >
-                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400 capitalize">
-                        {key.replace(/_/g, ' ')}
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {String(value)}
-                      </div>
-                    </div>
-                  ))}
+                      <Copy className="h-2.5 w-2.5" />
+                    </Button>
+                  )}
                 </div>
-              </div>
-            )}
+              }
+            />
+
+            {/* Display Name */}
+            <CustomInput
+              label="Display Name"
+              value={name}
+              onChange={setName}
+              size="sm"
+              variant="filled"
+              leftIcon={<User className="h-3 w-3" />}
+              placeholder="Enter display name"
+              disabled={savingField !== null && savingField !== 'name'}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  {renderStatusIcon('name', hasNameChanged, name)}
+                  {name && !hasNameChanged && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        copyToClipboard(name)
+                      }}
+                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                      disabled={savingField !== null}
+                    >
+                      <Copy className="h-2.5 w-2.5" />
+                    </Button>
+                  )}
+                </div>
+              }
+            />
+
+            {/* Password */}
+            <CustomInput
+              label="Password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              size="sm"
+              variant="filled"
+              leftIcon={<Key className="h-3 w-3" />}
+              placeholder="Enter password"
+              disabled={savingField !== null && savingField !== 'password'}
+              rightIcon={renderStatusIcon('password', hasPasswordChanged, password)}
+            />
+
+            {/* Notes */}
+            <CustomInput
+              label="Notes"
+              value={note}
+              onChange={setNote}
+              size="sm"
+              variant="filled"
+              multiline={true}
+              rows={2}
+              placeholder="Add notes about this service"
+              disabled={savingField !== null && savingField !== 'note'}
+              rightIcon={renderStatusIcon('note', hasNoteChanged, note)}
+            />
+          </div>
+
+          {/* Metadata Section */}
+          <div className="ml-2">
+            <Metadata
+              metadata={metadata}
+              onMetadataChange={handleMetadataChange}
+              title="Service Metadata"
+              compact={true}
+              size="sm"
+              collapsible={true}
+              defaultExpanded={false}
+              allowCreate={true}
+              allowEdit={true}
+              allowDelete={true}
+            />
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
