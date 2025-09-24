@@ -13,32 +13,42 @@ import {
   Activity
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
-import { ServiceAccount } from '../../../types'
+import { ServiceAccount, Email } from '../../../types'
 import AccountServiceCard from './AccountServiceCard'
+import CreateAccountServiceForm from './CreateAccountServiceForm' // Import form
+import CustomButton from '../../../../../../components/common/CustomButton'
 
 interface AccountServicesListProps {
   services: ServiceAccount[]
   emailAddress?: string
+  email?: Email // Thêm prop email để truyền cho form
   onServiceAdd?: (service: Omit<ServiceAccount, 'id' | 'email_id'>) => void
   onServiceEdit?: (service: ServiceAccount) => void
   onServiceDelete?: (serviceId: string) => void
-  onServiceClick?: (service: ServiceAccount) => void // Still available for "View Details" button
+  onServiceClick?: (service: ServiceAccount) => void
+  onViewAllServices?: () => void
   className?: string
   compact?: boolean
-  showViewDetailsButton?: boolean // NEW: Control whether to show "View Details" button
+  showViewDetailsButton?: boolean
 }
 
 const AccountServicesList: React.FC<AccountServicesListProps> = ({
   services,
   emailAddress,
+  email, // Nhận prop email
+  onServiceAdd,
   onServiceClick,
   className,
   compact = false,
-  showViewDetailsButton = false // NEW: Default to false, so cards just expand by default
+  showViewDetailsButton = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<string>('')
+
+  // Thêm state để quản lý form
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [isCreatingService, setIsCreatingService] = useState(false)
 
   // Filter services based on search and filters
   const filteredServices = services.filter((service) => {
@@ -93,9 +103,34 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
     return statusLabels[status] || status
   }
 
+  // Sửa handleAddService để hiển thị form
   const handleAddService = () => {
-    // Implementation for add service modal
-    console.log('Open add service modal')
+    setShowCreateForm(true)
+  }
+
+  // Thêm handler để tạo service
+  const handleCreateService = async (serviceData: Omit<ServiceAccount, 'id' | 'email_id'>) => {
+    try {
+      setIsCreatingService(true)
+
+      if (onServiceAdd) {
+        await onServiceAdd(serviceData)
+      }
+
+      // Đóng form sau khi tạo thành công
+      setShowCreateForm(false)
+      console.log('Service account created successfully:', serviceData)
+    } catch (error) {
+      console.error('Error creating service account:', error)
+      // Có thể hiển thị thông báo lỗi ở đây
+    } finally {
+      setIsCreatingService(false)
+    }
+  }
+
+  // Handler để hủy tạo service
+  const handleCancelCreate = () => {
+    setShowCreateForm(false)
   }
 
   return (
@@ -130,6 +165,17 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
           Add Service
         </Button>
       </div>
+
+      {/* Create Service Form - Thêm form ở đây */}
+      {showCreateForm && email && (
+        <CreateAccountServiceForm
+          email={email}
+          existingServices={services}
+          onSubmit={handleCreateService}
+          onCancel={handleCancelCreate}
+          loading={isCreatingService}
+        />
+      )}
 
       {/* Search and Filters */}
       {services.length > 0 && (
@@ -178,15 +224,38 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
       {/* Services List */}
       {filteredServices.length > 0 ? (
         <div className="space-y-4">
-          {filteredServices.map((service) => (
+          {/* Services Cards - Limited display */}
+          {(compact
+            ? filteredServices.slice(0, Math.min(5, filteredServices.length))
+            : filteredServices
+          ).map((service) => (
             <AccountServiceCard
               key={service.id}
               service={service}
-              // CHANGE: Only pass onServiceClick if showViewDetailsButton is true
               onServiceClick={showViewDetailsButton ? onServiceClick : undefined}
               defaultExpanded={false}
             />
           ))}
+
+          {/* "More" button when there are more than 5 services in compact mode */}
+          {compact && filteredServices.length > 5 && (
+            <div className="text-center pt-4">
+              <CustomButton
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  console.log('Navigate to full services view')
+                  if (onServiceClick) {
+                    onServiceClick({ view: 'all_services' } as any)
+                  }
+                }}
+                className="border-dashed border-2 border-blue-300 hover:border-blue-400 text-blue-600 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                View All Services ({filteredServices.length - 5} more)
+              </CustomButton>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">

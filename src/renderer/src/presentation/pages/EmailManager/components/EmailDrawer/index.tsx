@@ -222,6 +222,32 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     await loadServiceData(service)
   }
 
+  // THÊM: Handle service add
+  const handleServiceAdd = async (serviceData: Omit<ServiceAccount, 'id' | 'email_id'>) => {
+    if (!email?.id) return
+
+    try {
+      setLoading(true)
+
+      // Create service account in database
+      const newService = await databaseService.createServiceAccount({
+        ...serviceData,
+        email_id: email.id
+      })
+
+      console.log('Service account created:', newService)
+
+      // Refresh service accounts list
+      const updatedServices = await databaseService.getServiceAccountsByEmailId(email.id)
+      setEmailServiceAccounts(updatedServices)
+    } catch (error) {
+      console.error('Error creating service account:', error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (!email) return null
 
   return (
@@ -308,14 +334,12 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                   onDelete2FA={handleDelete2FA}
                 />
 
-                {/* Service Accounts Section */}
+                {/* Service Accounts Section - THÊM email prop */}
                 <AccountServicesList
                   services={emailServiceAccounts}
                   emailAddress={email.email_address}
-                  onServiceAdd={(service) => {
-                    console.log('Adding new service account:', service)
-                    // Implementation for adding service account
-                  }}
+                  email={email} // THÊM prop này
+                  onServiceAdd={handleServiceAdd} // THÊM handler này
                   onServiceEdit={(service) => {
                     console.log('Editing service account:', service)
                     // Implementation for editing service account
@@ -325,7 +349,8 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                     // Implementation for deleting service account
                   }}
                   onServiceClick={handleServiceClick}
-                  compact={false}
+                  onViewAllServices={() => setCurrentView('services')}
+                  compact={true}
                   showViewDetailsButton={true}
                 />
               </motion.div>
@@ -373,6 +398,27 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                     // Implementation for deleting secret
                   }}
                   compact={false}
+                />
+              </motion.div>
+            )}
+
+            {currentView === 'services' && (
+              <motion.div
+                key="services-view"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="p-4 space-y-6 pb-8"
+              >
+                <AccountServicesList
+                  services={emailServiceAccounts}
+                  emailAddress={email.email_address}
+                  email={email}
+                  onServiceAdd={handleServiceAdd}
+                  onServiceClick={handleServiceClick}
+                  compact={false} // Full view
+                  showViewDetailsButton={true}
                 />
               </motion.div>
             )}
