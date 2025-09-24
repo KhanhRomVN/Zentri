@@ -46,12 +46,10 @@ const Metadata: React.FC<MetadataProps> = ({
   hideEmpty = false,
   maxVisibleFields,
   allowCreate = true,
-  allowEdit = true,
   allowDelete = true,
   size = 'md',
   protectedFields = [],
   shouldRenderField,
-  editable = true,
   showDeleteButtons = true
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)

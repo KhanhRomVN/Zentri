@@ -1,7 +1,7 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/AccountService/ServiceAccount2FASection.tsx
 import React, { useState } from 'react'
 import CustomBadge from '../../../../../../components/common/CustomBadge'
 import CustomButton from '../../../../../../components/common/CustomButton'
+import CreateServiceAccount2FAForm from './CreateServiceAccount2FAForm'
 import {
   Shield,
   CheckCircle,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount, ServiceAccount2FA } from '../../../types'
+import ServiceAccount2FACard from './ServiceAccount2FACard'
 
 interface ServiceAccount2FASectionProps {
   serviceAccount: ServiceAccount
@@ -21,18 +22,22 @@ interface ServiceAccount2FASectionProps {
   onAdd2FA?: (data: Omit<ServiceAccount2FA, 'id'>) => Promise<void>
   onEdit2FA?: (method: ServiceAccount2FA) => void
   onDelete2FA?: (methodId: string) => void
+  onSave2FA?: (id: string, updates: Partial<ServiceAccount2FA>) => Promise<void>
   className?: string
 }
 
 const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
   serviceAccount,
   serviceAccount2FAMethods,
+  onAdd2FA,
   onEdit2FA,
   onDelete2FA,
+  onSave2FA,
   className
 }) => {
   const [is2FAExpanded, setIs2FAExpanded] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   const has2FA = serviceAccount2FAMethods.length > 0
   const active2FAMethods = serviceAccount2FAMethods.length
@@ -40,6 +45,22 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
   const handleAdd2FA = () => {
     setShowCreateForm(true)
     setIs2FAExpanded(true)
+  }
+
+  const handleCreate2FA = async (data: Omit<ServiceAccount2FA, 'id'>) => {
+    try {
+      setIsCreating(true)
+      console.log('Creating ServiceAccount 2FA method:', data)
+      if (onAdd2FA) {
+        await onAdd2FA(data)
+      }
+      setShowCreateForm(false)
+      console.log('ServiceAccount 2FA method created successfully')
+    } catch (error) {
+      console.error('Error creating ServiceAccount 2FA method:', error)
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   const handleCancelCreate = () => {
@@ -162,25 +183,15 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
         {is2FAExpanded && (
           <div className="px-4 pb-4">
             <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-4">
-              {/* Create Form - Placeholder for future implementation */}
+              {/* Create Form */}
               {showCreateForm && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700 p-4">
-                  <div className="text-center py-4">
-                    <p className="text-blue-700 dark:text-blue-300 text-sm">
-                      2FA creation form for {serviceAccount.service_name} will be implemented here
-                    </p>
-                    <div className="flex gap-2 justify-center mt-3">
-                      <CustomButton
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleCancelCreate}
-                        className="text-xs"
-                      >
-                        Cancel
-                      </CustomButton>
-                    </div>
-                  </div>
-                </div>
+                <CreateServiceAccount2FAForm
+                  serviceAccount={serviceAccount}
+                  existingMethods={serviceAccount2FAMethods}
+                  onSubmit={handleCreate2FA}
+                  onCancel={handleCancelCreate}
+                  loading={isCreating}
+                />
               )}
 
               {/* Methods List */}
@@ -197,45 +208,13 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
 
                   <div className="grid gap-3">
                     {serviceAccount2FAMethods.map((method) => (
-                      <div
+                      <ServiceAccount2FACard
                         key={method.id}
-                        className="bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 p-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {method.method_type.replace(/_/g, ' ')}
-                            </span>
-                            {method.app && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                ({method.app})
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-1">
-                            <CustomButton
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onEdit2FA?.(method)}
-                              className="text-blue-600 hover:text-blue-700 text-xs px-2 py-1"
-                            >
-                              Edit
-                            </CustomButton>
-                            <CustomButton
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDelete2FA?.(method.id)}
-                              className="text-red-600 hover:text-red-700 text-xs px-2 py-1"
-                            >
-                              Delete
-                            </CustomButton>
-                          </div>
-                        </div>
-                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          Last updated: {new Date(method.last_update).toLocaleDateString()}
-                        </div>
-                      </div>
+                        method={method}
+                        onEdit={onEdit2FA}
+                        onDelete={onDelete2FA}
+                        onSave={onSave2FA}
+                      />
                     ))}
                   </div>
                 </div>
@@ -264,18 +243,6 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
                     >
                       Set up 2FA Now
                     </CustomButton>
-                  </div>
-
-                  {/* Security Tips */}
-                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <h5 className="font-medium text-blue-900 dark:text-blue-100 mb-1 text-sm">
-                      Security Tips for {serviceAccount.service_name}
-                    </h5>
-                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-0.5 text-left max-w-sm mx-auto">
-                      <li>• Use TOTP apps like Google Authenticator</li>
-                      <li>• Keep backup codes secure</li>
-                      <li>• Enable app-specific passwords if available</li>
-                    </ul>
                   </div>
                 </div>
               ) : null}

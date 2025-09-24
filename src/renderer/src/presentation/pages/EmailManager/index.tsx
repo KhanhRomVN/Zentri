@@ -61,9 +61,7 @@ const EmailManagerPage = () => {
       (item) =>
         item.email_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.email_provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.tags &&
-          item.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase()))
+        (item.tags && item.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase())))
     )
   }, [emails, searchTerm, isDatabaseReady])
 

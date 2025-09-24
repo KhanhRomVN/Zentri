@@ -689,6 +689,73 @@ export class DatabaseService {
   async deleteServiceAccount(id: string): Promise<void> {
     await window.electronAPI.sqlite.runQuery('DELETE FROM service_accounts WHERE id = ?', [id])
   }
+
+  // ServiceAccount2FA CRUD operations
+  async createServiceAccount2FA(
+    serviceAccount2FAData: Omit<ServiceAccount2FA, 'id'>
+  ): Promise<ServiceAccount2FA> {
+    const id = uuidv4()
+
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO service_account_2fa (
+      id, service_account_id, method_type, app, value, last_update, expire_at, metadata
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        serviceAccount2FAData.service_account_id,
+        serviceAccount2FAData.method_type,
+        serviceAccount2FAData.app || null,
+        typeof serviceAccount2FAData.value === 'string'
+          ? serviceAccount2FAData.value
+          : JSON.stringify(serviceAccount2FAData.value),
+        serviceAccount2FAData.last_update,
+        serviceAccount2FAData.expire_at || null,
+        JSON.stringify(serviceAccount2FAData.metadata || {})
+      ]
+    )
+
+    return { ...serviceAccount2FAData, id }
+  }
+
+  async updateServiceAccount2FA(id: string, updates: Partial<ServiceAccount2FA>): Promise<void> {
+    const fields = []
+    const values = []
+
+    if (updates.method_type !== undefined) {
+      fields.push('method_type = ?')
+      values.push(updates.method_type)
+    }
+    if (updates.app !== undefined) {
+      fields.push('app = ?')
+      values.push(updates.app)
+    }
+    if (updates.value !== undefined) {
+      fields.push('value = ?')
+      values.push(typeof updates.value === 'string' ? updates.value : JSON.stringify(updates.value))
+    }
+    if (updates.last_update !== undefined) {
+      fields.push('last_update = ?')
+      values.push(updates.last_update)
+    }
+    if (updates.expire_at !== undefined) {
+      fields.push('expire_at = ?')
+      values.push(updates.expire_at)
+    }
+    if (updates.metadata !== undefined) {
+      fields.push('metadata = ?')
+      values.push(JSON.stringify(updates.metadata))
+    }
+
+    if (fields.length > 0) {
+      values.push(id) // for WHERE clause
+      const query = `UPDATE service_account_2fa SET ${fields.join(', ')} WHERE id = ?`
+      await window.electronAPI.sqlite.runQuery(query, values)
+    }
+  }
+
+  async deleteServiceAccount2FA(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM service_account_2fa WHERE id = ?', [id])
+  }
 }
 
 export const databaseService = new DatabaseService()

@@ -248,16 +248,23 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
     // Lưu metadata vào database
     if (service.id && onServiceUpdate) {
       try {
-        await onServiceUpdate(service.id, 'metadata', JSON.stringify(newMetadata))
-        setSaveStatus((prev) => ({ ...prev, metadata: 'success' }))
+        setSavingField('metadata')
+        const success = await onServiceUpdate(service.id, 'metadata', JSON.stringify(newMetadata))
 
-        // Reset status sau 2 giây
-        setTimeout(() => {
-          setSaveStatus((prev) => ({ ...prev, metadata: null }))
-        }, 2000)
+        if (success) {
+          setSaveStatus((prev) => ({ ...prev, metadata: 'success' }))
+          // Reset status sau 2 giây
+          setTimeout(() => {
+            setSaveStatus((prev) => ({ ...prev, metadata: null }))
+          }, 2000)
+        } else {
+          setSaveStatus((prev) => ({ ...prev, metadata: 'error' }))
+        }
       } catch (error) {
         console.error('Error saving metadata:', error)
         setSaveStatus((prev) => ({ ...prev, metadata: 'error' }))
+      } finally {
+        setSavingField(null)
       }
     }
   }

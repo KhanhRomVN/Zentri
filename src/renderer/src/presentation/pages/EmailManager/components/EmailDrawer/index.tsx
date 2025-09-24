@@ -200,6 +200,64 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     // You can implement a modal or inline editing here
   }
 
+  // Handle ServiceAccount2FA operations
+  const handleAddService2FA = async (data: Omit<ServiceAccount2FA, 'id'>) => {
+    try {
+      console.log('Adding ServiceAccount 2FA method:', data)
+
+      // Gọi database service để tạo ServiceAccount2FA
+      const newMethod = await databaseService.createServiceAccount2FA(data)
+
+      console.log('ServiceAccount 2FA method created:', newMethod)
+
+      // Refresh danh sách ServiceAccount2FA cho service hiện tại
+      if (selectedService) {
+        const updated2FA = await databaseService.getServiceAccount2FAByServiceId(selectedService.id)
+        setSelectedService2FA(updated2FA)
+      }
+    } catch (error) {
+      console.error('Error adding ServiceAccount 2FA method:', error)
+      throw error // Re-throw để form có thể handle error
+    }
+  }
+
+  const handleEditService2FA = async (method: ServiceAccount2FA) => {
+    console.log('Edit ServiceAccount 2FA method:', method)
+    // Implement edit logic sau
+  }
+
+  const handleDeleteService2FA = async (methodId: string) => {
+    try {
+      console.log('Deleting ServiceAccount 2FA method:', methodId)
+
+      await databaseService.deleteServiceAccount2FA(methodId)
+
+      // Refresh danh sách ServiceAccount2FA
+      if (selectedService) {
+        const updated2FA = await databaseService.getServiceAccount2FAByServiceId(selectedService.id)
+        setSelectedService2FA(updated2FA)
+      }
+    } catch (error) {
+      console.error('Error deleting ServiceAccount 2FA method:', error)
+    }
+  }
+
+  const handleSaveService2FA = async (id: string, updates: Partial<ServiceAccount2FA>) => {
+    try {
+      console.log('Saving ServiceAccount 2FA method:', id, updates)
+
+      await databaseService.updateServiceAccount2FA(id, updates)
+
+      // Refresh danh sách ServiceAccount2FA
+      if (selectedService) {
+        const updated2FA = await databaseService.getServiceAccount2FAByServiceId(selectedService.id)
+        setSelectedService2FA(updated2FA)
+      }
+    } catch (error) {
+      console.error('Error saving ServiceAccount 2FA method:', error)
+    }
+  }
+
   const handleServiceUpdate = async (
     serviceId: string,
     field: string,
@@ -229,6 +287,16 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
           break
         case 'note':
           updates.note = value
+          break
+        case 'metadata':
+          try {
+            // Parse JSON để kiểm tra tính hợp lệ
+            JSON.parse(value)
+            updates.metadata = JSON.parse(value)
+          } catch (parseError) {
+            console.error('Invalid metadata JSON:', parseError)
+            return false
+          }
           break
         default:
           console.warn('Unknown field:', field)
@@ -423,6 +491,10 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                 <ServiceAccount2FASection
                   serviceAccount={selectedService}
                   serviceAccount2FAMethods={selectedService2FA}
+                  onAdd2FA={handleAddService2FA}
+                  onEdit2FA={handleEditService2FA}
+                  onDelete2FA={handleDeleteService2FA}
+                  onSave2FA={handleSaveService2FA}
                 />
 
                 {/* Service Account Secrets List */}
