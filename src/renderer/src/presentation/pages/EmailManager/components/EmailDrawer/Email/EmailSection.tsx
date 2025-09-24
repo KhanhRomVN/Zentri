@@ -2,7 +2,6 @@
 import React, { useState } from 'react'
 import { Button } from '../../../../../../components/ui/button'
 import CustomInput from '../../../../../../components/common/CustomInput'
-import CustomTextArea from '../../../../../../components/common/CustomTextArea'
 import CustomTag from '../../../../../../components/common/CustomTag'
 import Metadata from '../../../../../../components/common/Metadata'
 import { Eye, EyeOff, Copy, Phone, Check, Mail, User, MapPin, Tag, FileText } from 'lucide-react'
@@ -32,8 +31,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
   // Metadata với các trường hệ thống không thể xóa
   const [metadata, setMetadata] = useState<Record<string, any>>(() => {
     // Chỉ giữ lại created_at và last_password_change từ metadata gốc
-    const baseMetadata = { ...email.metadata } || {}
-
+    const baseMetadata = email.metadata ? { ...email.metadata } : {}
     // Đảm bảo các trường hệ thống luôn tồn tại
     return {
       created_at: baseMetadata.created_at || new Date().toISOString(),
@@ -55,7 +53,10 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
   }
 
   // Hàm xử lý lưu field
-  const handleSaveField = async (field: string, value: string | string[] | number) => {
+  const handleSaveField = async (
+    field: string,
+    value: string | string[] | number | Record<string, any>
+  ) => {
     if (!email.id || !onUpdateEmail) {
       console.error('Missing email ID or update function')
       return
@@ -133,7 +134,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
   const hasRecoveryEmailChanged = recoveryEmail !== (email.recovery_email || '')
   const hasPasswordChanged = password !== (email.pasword || '')
   const hasNoteChanged = note !== (email.note || '')
-  const hasMetadataChanged = JSON.stringify(metadata) !== JSON.stringify(email.metadata || {})
 
   const handleTagsChange = (newTags: string[]) => {
     setEditedTags(newTags)
@@ -216,7 +216,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
     <div className={cn('space-y-6', className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="pl-2">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             Account Information
@@ -412,7 +412,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
 
           {/* Note Section - Full Width Row */}
           <div className="grid grid-cols-1 gap-3 mb-4">
-            <CustomTextArea
+            <CustomInput
               label="Notes"
               value={note}
               onChange={setNote}
@@ -477,7 +477,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
                 maxVisibleFields={10}
                 protectedFields={['created_at', 'last_password_change']}
                 // THÊM: Custom render để ẩn hoàn toàn các trường đã xóa
-                shouldRenderField={(key, value) => {
+                shouldRenderField={(_, value) => {
                   // Không hiển thị các trường có giá trị null/undefined/empty
                   if (value === null || value === undefined || value === '') {
                     return false

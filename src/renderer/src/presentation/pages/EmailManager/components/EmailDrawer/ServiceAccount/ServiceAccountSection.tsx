@@ -5,20 +5,16 @@ import CustomInput from '../../../../../../components/common/CustomInput'
 import CustomCombobox from '../../../../../../components/common/CustomCombobox'
 import Metadata from '../../../../../../components/common/Metadata'
 import {
-  Eye,
-  EyeOff,
   Copy,
   Check,
   User,
   Globe,
   Link,
   Key,
-  Activity,
   ExternalLink,
   AlertCircle,
   ChevronDown,
-  ChevronUp,
-  Database
+  ChevronUp
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount } from '../../../types'
@@ -105,8 +101,6 @@ const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
   const hasNameChanged = name !== (serviceAccount.name || '')
   const hasPasswordChanged = password !== (serviceAccount.password || '')
   const hasNoteChanged = note !== (serviceAccount.note || '')
-  const hasMetadataChanged =
-    JSON.stringify(metadata) !== JSON.stringify(serviceAccount.metadata || {})
 
   // Hàm lưu field
   const handleSaveField = async (field: string, value: string) => {
@@ -181,12 +175,12 @@ const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
   // Handle dropdown changes
   const handleServiceTypeChange = (value: string | string[]) => {
     const newType = Array.isArray(value) ? value[0] : value
-    setServiceType(newType)
+    setServiceType(newType as ServiceAccount['service_type'])
   }
 
   const handleStatusChange = (value: string | string[]) => {
     const newStatus = Array.isArray(value) ? value[0] : value
-    setStatus(newStatus)
+    setStatus(newStatus as 'active' | 'inactive' | 'suspended')
   }
 
   // Handle metadata change
@@ -542,6 +536,8 @@ const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
               allowCreate={true}
               allowEdit={true}
               allowDelete={true}
+              protectedFields={['created_at']}
+              showDeleteButtons={true}
             />
           </div>
         </div>

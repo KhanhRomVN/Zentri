@@ -21,7 +21,7 @@ import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount, ServiceAccount2FA, ServiceAccountSecret } from '../../../types'
 import { Favicon } from '../../../../../../shared/utils/faviconUtils'
 
-interface AccountServiceCardProps {
+interface ServiceAccountCardProps {
   service: ServiceAccount
   onServiceClick?: (service: ServiceAccount) => void
   onServiceView?: (service: ServiceAccount) => void
@@ -65,7 +65,7 @@ const statusOptions = [
   { value: 'suspended', label: 'Suspended' }
 ]
 
-const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
+const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
   service,
   onServiceClick,
   onServiceView,
@@ -129,12 +129,10 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
   const hasServiceNameChanged = serviceName !== service.service_name
   const hasServiceTypeChanged = serviceType !== service.service_type
   const hasServiceUrlChanged = serviceUrl !== (service.service_url || '')
-  const hasStatusChanged = status !== (service.status || 'active')
   const hasUsernameChanged = username !== (service.username || '')
   const hasNameChanged = name !== (service.name || '')
   const hasPasswordChanged = password !== (service.password || '')
   const hasNoteChanged = note !== (service.note || '')
-  const hasMetadataChanged = JSON.stringify(metadata) !== JSON.stringify(service.metadata || {})
 
   // Hàm xử lý lưu field
   const handleSaveField = async (field: string, value: string) => {
@@ -235,17 +233,40 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
   // Handle dropdown changes
   const handleServiceTypeChange = (value: string | string[]) => {
     const newType = Array.isArray(value) ? value[0] : value
-    setServiceType(newType)
+    setServiceType(newType as ServiceAccount['service_type'])
   }
 
   const handleStatusChange = (value: string | string[]) => {
     const newStatus = Array.isArray(value) ? value[0] : value
-    setStatus(newStatus)
+    setStatus(newStatus as 'active' | 'inactive' | 'suspended')
   }
 
   // Handle metadata change
-  const handleMetadataChange = (newMetadata: Record<string, any>) => {
+  const handleMetadataChange = async (newMetadata: Record<string, any>) => {
     setMetadata(newMetadata)
+
+    // Lưu metadata vào database
+    if (service.id && onServiceUpdate) {
+      try {
+        await onServiceUpdate(service.id, 'metadata', JSON.stringify(newMetadata))
+        setSaveStatus((prev) => ({ ...prev, metadata: 'success' }))
+
+        // Reset status sau 2 giây
+        setTimeout(() => {
+          setSaveStatus((prev) => ({ ...prev, metadata: null }))
+        }, 2000)
+      } catch (error) {
+        console.error('Error saving metadata:', error)
+        setSaveStatus((prev) => ({ ...prev, metadata: 'error' }))
+      }
+    }
+  }
+
+  const handleMetadataDelete = async (key: string) => {
+    const newMetadata = { ...metadata }
+    delete newMetadata[key]
+
+    await handleMetadataChange(newMetadata)
   }
 
   return (
@@ -588,6 +609,7 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
             <Metadata
               metadata={metadata}
               onMetadataChange={handleMetadataChange}
+              onDelete={handleMetadataDelete}
               title="Service Metadata"
               compact={true}
               size="sm"
@@ -596,6 +618,8 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
               allowCreate={true}
               allowEdit={true}
               allowDelete={true}
+              protectedFields={['created_at']}
+              showDeleteButtons={true}
             />
           </div>
 
@@ -609,7 +633,7 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
               </div>
               <div className="space-y-2">
                 {nestedServices.map((nestedService) => (
-                  <AccountServiceCard
+                  <ServiceAccountCard
                     key={nestedService.id}
                     service={nestedService}
                     onServiceClick={handleNestedServiceClick}
@@ -628,4 +652,4 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
   )
 }
 
-export default AccountServiceCard
+export default ServiceAccountCard

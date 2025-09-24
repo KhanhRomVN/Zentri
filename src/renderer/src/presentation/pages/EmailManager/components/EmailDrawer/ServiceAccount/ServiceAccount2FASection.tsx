@@ -2,7 +2,6 @@
 import React, { useState } from 'react'
 import CustomBadge from '../../../../../../components/common/CustomBadge'
 import CustomButton from '../../../../../../components/common/CustomButton'
-import ServiceAccount2FACard from './ServiceAccount2FACard' // Giả sử có component này
 import {
   Shield,
   CheckCircle,
@@ -28,14 +27,12 @@ interface ServiceAccount2FASectionProps {
 const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
   serviceAccount,
   serviceAccount2FAMethods,
-  onAdd2FA,
   onEdit2FA,
   onDelete2FA,
   className
 }) => {
   const [is2FAExpanded, setIs2FAExpanded] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
 
   const has2FA = serviceAccount2FAMethods.length > 0
   const active2FAMethods = serviceAccount2FAMethods.length
@@ -43,22 +40,6 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
   const handleAdd2FA = () => {
     setShowCreateForm(true)
     setIs2FAExpanded(true)
-  }
-
-  const handleCreate2FA = async (data: Omit<ServiceAccount2FA, 'id'>) => {
-    try {
-      setIsCreating(true)
-      console.log('Creating service 2FA method:', data)
-      if (onAdd2FA) {
-        await onAdd2FA(data)
-      }
-      setShowCreateForm(false)
-      console.log('Service 2FA method created successfully')
-    } catch (error) {
-      console.error('Error creating service 2FA method:', error)
-    } finally {
-      setIsCreating(false)
-    }
   }
 
   const handleCancelCreate = () => {

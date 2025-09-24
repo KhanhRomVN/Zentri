@@ -120,7 +120,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
     <div className={cn('space-y-6', className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="pl-2">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
             Two-Factor Authentication

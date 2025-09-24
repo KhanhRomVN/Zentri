@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import CustomButton from '../../../../../../components/common/CustomButton'
 import CustomInput from '../../../../../../components/common/CustomInput'
 import CustomCombobox from '../../../../../../components/common/CustomCombobox'
-import { Globe, User, Key, Link, Plus, X, AlertCircle, Shield, Activity, Tag } from 'lucide-react'
+import { Globe, User, Key, Link, Plus, X, AlertCircle, Shield, Activity } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount, Email } from '../../../types'
 import Metadata from '../../../../../../components/common/Metadata'
@@ -299,11 +299,9 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
         password: formData.password.trim() || undefined,
         note: formData.note.trim() || undefined,
         metadata: {
-          created_by: 'user',
-          email_provider: email.email_provider,
-          email_address: email.email_address,
-          service_category: selectedServiceType?.description || '',
           created_at: new Date().toISOString(),
+          created_by: 'user',
+          service_category: selectedServiceType?.description || '',
           ...formData.metadata
         }
       }

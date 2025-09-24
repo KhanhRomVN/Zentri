@@ -4,11 +4,11 @@ import { Input } from '../../../../../../components/ui/input'
 import { Plus, Search, Filter, Globe } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount, Email } from '../../../types'
-import AccountServiceCard from './AccountServiceCard'
-import CreateAccountServiceForm from './CreateAccountServiceForm' // Import form
+import ServiceAccountCard from './ServiceAccountCard'
+import CreateServiceAccountForm from './CreateServiceAccountForm'
 import CustomButton from '../../../../../../components/common/CustomButton'
 
-interface AccountServicesListProps {
+interface ServiceAccountListProps {
   services: ServiceAccount[]
   emailAddress?: string
   email?: Email
@@ -23,7 +23,7 @@ interface AccountServicesListProps {
   showViewDetailsButton?: boolean
 }
 
-const AccountServicesList: React.FC<AccountServicesListProps> = ({
+const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
   services,
   emailAddress,
   email, // Nhận prop email
@@ -160,7 +160,7 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
 
       {/* Create Service Form - Thêm form ở đây */}
       {showCreateForm && email && (
-        <CreateAccountServiceForm
+        <CreateServiceAccountForm
           email={email}
           existingServices={services}
           onSubmit={handleCreateService}
@@ -204,7 +204,7 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
                 <option value="">All statuses</option>
                 {serviceStatuses.map((status) => (
                   <option key={status} value={status}>
-                    {getStatusLabel(status)}
+                    {getStatusLabel(status || 'unknown')}
                   </option>
                 ))}
               </select>
@@ -221,7 +221,7 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
             ? filteredServices.slice(0, Math.min(5, filteredServices.length))
             : filteredServices
           ).map((service) => (
-            <AccountServiceCard
+            <ServiceAccountCard
               key={service.id}
               service={service}
               onServiceClick={showViewDetailsButton ? onServiceClick : undefined}
@@ -234,7 +234,7 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
           {compact && filteredServices.length > 5 && (
             <div className="text-center pt-4">
               <CustomButton
-                variant="outline"
+                variant="secondary"
                 size="md"
                 onClick={() => {
                   console.log('Navigate to full services view')
@@ -282,4 +282,4 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
   )
 }
 
-export default AccountServicesList
+export default ServiceAccountList

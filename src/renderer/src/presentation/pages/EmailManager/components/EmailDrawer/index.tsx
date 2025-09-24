@@ -6,10 +6,10 @@ import CustomBreadcrumb, { BreadcrumbItem } from '../../../../../components/comm
 import CustomButton from '../../../../../components/common/CustomButton'
 import EmailSection from './Email/EmailSection'
 import Email2FASection from './Email/Email2FASection'
-import AccountServicesList from './AccountService/AccountServicesList'
-import ServiceAccountSection from './AccountService/ServiceAccountSection'
-import ServiceAccount2FASection from './AccountService/ServiceAccount2FASection'
-import ServiceAccountSecretList from './AccountService/ServiceAccountSecretList'
+import ServiceAccountList from './ServiceAccount/ServiceAccountList'
+import ServiceAccountSection from './ServiceAccount/ServiceAccountSection'
+import ServiceAccount2FASection from './ServiceAccount/ServiceAccount2FASection'
+import ServiceAccountSecretList from './ServiceAccount/ServiceAccountSecretList'
 import { ArrowLeft, X } from 'lucide-react'
 import {
   Email,
@@ -387,7 +387,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                 />
 
                 {/* Service Accounts Section - THÊM email prop */}
-                <AccountServicesList
+                <ServiceAccountList
                   services={emailServiceAccounts}
                   emailAddress={email.email_address}
                   email={email}
@@ -455,7 +455,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                 transition={{ duration: 0.3 }}
                 className="p-4 space-y-6 pb-8"
               >
-                <AccountServicesList
+                <ServiceAccountList
                   services={emailServiceAccounts}
                   emailAddress={email.email_address}
                   email={email}
