@@ -1,76 +1,207 @@
-import React, { useState } from 'react'
-import { Badge } from '../../../../../../components/ui/badge'
+import React, { useState, useEffect } from 'react'
 import { Button } from '../../../../../../components/ui/button'
+import CustomInput from '../../../../../../components/common/CustomInput'
+import CustomCombobox from '../../../../../../components/common/CustomCombobox'
+import Metadata from '../../../../../../components/common/Metadata'
 import {
   ExternalLink,
   User,
-  Edit,
-  Trash2,
   ChevronRight,
   ChevronDown,
   Globe,
   Shield,
   Eye,
-  EyeOff,
   Copy,
   Key,
-  Link
+  Link,
+  Database,
+  Check
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
-import { ServiceAccount } from '../../../types'
+import { ServiceAccount, ServiceAccount2FA, ServiceAccountSecret } from '../../../types'
+import { Favicon } from '../../../../../../shared/utils/faviconUtils'
 
 interface AccountServiceCardProps {
   service: ServiceAccount
-  onServiceClick?: (service: ServiceAccount) => void // For navigating to service detail - now optional
+  onServiceClick?: (service: ServiceAccount) => void
+  onServiceView?: (service: ServiceAccount) => void
+  onServiceUpdate?: (serviceId: string, field: string, value: string) => Promise<boolean>
+  serviceSecrets?: ServiceAccountSecret[]
+  service2FA?: ServiceAccount2FA[]
   className?: string
   defaultExpanded?: boolean
   showNestedServices?: boolean
   nestedServices?: ServiceAccount[]
 }
 
+// Service type options for the dropdown
+const serviceTypeOptions = [
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'communication', label: 'Communication' },
+  { value: 'developer', label: 'Developer' },
+  { value: 'cloud_storage', label: 'Cloud Storage' },
+  { value: 'ai_saas', label: 'AI & SaaS' },
+  { value: 'productivity_tool', label: 'Productivity' },
+  { value: 'payment_finance', label: 'Payment & Finance' },
+  { value: 'ecommerce', label: 'E-commerce' },
+  { value: 'entertainment', label: 'Entertainment' },
+  { value: 'education', label: 'Education' },
+  { value: 'hosting_domain', label: 'Hosting & Domain' },
+  { value: 'security_vpn', label: 'Security & VPN' },
+  { value: 'government', label: 'Government' },
+  { value: 'health', label: 'Health' },
+  { value: 'gaming', label: 'Gaming' },
+  { value: 'travel_transport', label: 'Travel & Transport' },
+  { value: 'news_media', label: 'News & Media' },
+  { value: 'forum_community', label: 'Forum & Community' },
+  { value: 'iot_smart_device', label: 'IoT & Smart Device' },
+  { value: 'other', label: 'Other' }
+]
+
+// Status options for the dropdown
+const statusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'suspended', label: 'Suspended' }
+]
+
 const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
   service,
-  onServiceClick, // Keep this for potential "View Details" button
+  onServiceClick,
+  onServiceView,
+  onServiceUpdate,
+  serviceSecrets = [],
+  service2FA = [],
   className,
   defaultExpanded = false,
   showNestedServices = false,
   nestedServices = []
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
-  const [showPassword, setShowPassword] = useState(false)
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700'
-      case 'inactive':
-        return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'
-      case 'suspended':
-        return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700'
-      default:
-        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700'
+  // Editable fields - khởi tạo từ service prop
+  const [serviceName, setServiceName] = useState(service.service_name)
+  const [serviceType, setServiceType] = useState(service.service_type)
+  const [serviceUrl, setServiceUrl] = useState(service.service_url || '')
+  const [status, setStatus] = useState(service.status || 'active')
+  const [username, setUsername] = useState(service.username || '')
+  const [name, setName] = useState(service.name || '')
+  const [password, setPassword] = useState(service.password || '')
+  const [note, setNote] = useState(service.note || '')
+  const [metadata, setMetadata] = useState(service.metadata || {})
+
+  // State để theo dõi trạng thái loading và feedback
+  const [savingField, setSavingField] = useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
+
+  // Reset edited data khi service prop thay đổi
+  useEffect(() => {
+    setServiceName(service.service_name)
+    setServiceType(service.service_type)
+    setServiceUrl(service.service_url || '')
+    setStatus(service.status || 'active')
+    setUsername(service.username || '')
+    setName(service.name || '')
+    setPassword(service.password || '')
+    setNote(service.note || '')
+    setMetadata(service.metadata || {})
+    setSaveStatus({})
+  }, [service])
+
+  // Get service type label
+  const getServiceTypeLabel = (type: string) => {
+    const option = serviceTypeOptions.find((opt) => opt.value === type)
+    return option ? option.label : type.replace(/_/g, ' ')
+  }
+
+  // Get stats for collapsed view
+  const getServiceStats = () => {
+    return {
+      hasPassword: !!service.password,
+      secretsCount: serviceSecrets.length,
+      twoFACount: service2FA.length
     }
   }
 
-  // Priority display value: name > username > service metadata
-  const getPrimaryDisplayValue = () => {
-    if (service.name) return { value: service.name, icon: User, label: 'Name' }
-    if (service.username) return { value: service.username, icon: User, label: 'Username' }
-    if (service.password)
-      return {
-        value: showPassword ? service.password : '•'.repeat(Math.min(service.password.length, 12)),
-        icon: Key,
-        label: 'Password',
-        isPassword: true
+  const stats = getServiceStats()
+
+  // Check if values have changed
+  const hasServiceNameChanged = serviceName !== service.service_name
+  const hasServiceTypeChanged = serviceType !== service.service_type
+  const hasServiceUrlChanged = serviceUrl !== (service.service_url || '')
+  const hasStatusChanged = status !== (service.status || 'active')
+  const hasUsernameChanged = username !== (service.username || '')
+  const hasNameChanged = name !== (service.name || '')
+  const hasPasswordChanged = password !== (service.password || '')
+  const hasNoteChanged = note !== (service.note || '')
+  const hasMetadataChanged = JSON.stringify(metadata) !== JSON.stringify(service.metadata || {})
+
+  // Hàm xử lý lưu field
+  const handleSaveField = async (field: string, value: string) => {
+    if (!service.id || !onServiceUpdate) {
+      console.error('Missing service ID or update function')
+      return
+    }
+
+    try {
+      setSavingField(field)
+
+      // Gọi hàm update từ parent
+      const success = await onServiceUpdate(service.id, field, value)
+
+      if (success) {
+        setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
+        // Reset status sau 2 giây
+        setTimeout(() => {
+          setSaveStatus((prev) => ({ ...prev, [field]: null }))
+        }, 2000)
+      } else {
+        setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
       }
-    return null
+    } catch (error) {
+      console.error(`Error saving ${field}:`, error)
+      setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
+    } finally {
+      setSavingField(null)
+    }
   }
 
-  // Handle card click - MAIN CHANGE: Now only expands/collapses
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't expand if clicking on buttons
-    if ((e.target as HTMLElement).closest('button')) return
+  // Hàm render icon trạng thái cho input
+  const renderStatusIcon = (field: string, hasChanged: boolean, currentValue: string) => {
+    if (savingField === field) {
+      return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+    }
 
+    if (saveStatus[field] === 'success') {
+      return <Check className="h-4 w-4 text-green-600" />
+    }
+
+    if (saveStatus[field] === 'error') {
+      return <div className="text-red-600">!</div>
+    }
+
+    if (hasChanged) {
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleSaveField(field, currentValue)}
+          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
+          disabled={savingField !== null}
+        >
+          <Check className="h-2.5 w-2.5" />
+        </Button>
+      )
+    }
+
+    return undefined
+  }
+
+  // Handle card click - toggle expand/collapse
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't expand if clicking on buttons or inputs
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input'))
+      return
     setIsExpanded(!isExpanded)
   }
 
@@ -81,20 +212,11 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
     }
   }
 
-  const handleEdit = (e: React.MouseEvent) => {
+  const handleView = (e: React.MouseEvent) => {
     e.stopPropagation()
-    console.log('Edit service:', service.id)
-  }
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    console.log('Delete service:', service.id)
-  }
-
-  // NEW: Handle service detail navigation - separate button
-  const handleViewDetails = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (onServiceClick) {
+    if (onServiceView) {
+      onServiceView(service)
+    } else if (onServiceClick) {
       onServiceClick(service)
     }
   }
@@ -104,43 +226,37 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
     navigator.clipboard.writeText(text)
   }
 
-  const togglePasswordVisibility = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setShowPassword(!showPassword)
-  }
-
-  // Handle password section clicks in collapsed mode
-  const handlePasswordClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setShowPassword(!showPassword)
-  }
-
-  const handlePasswordRightClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (service.password) {
-      navigator.clipboard.writeText(service.password)
-      console.log('Password copied to clipboard')
-    }
-  }
-
   const handleNestedServiceClick = (nestedService: ServiceAccount) => {
     if (onServiceClick) {
       onServiceClick(nestedService)
     }
   }
 
-  const primaryValue = getPrimaryDisplayValue()
+  // Handle dropdown changes
+  const handleServiceTypeChange = (value: string | string[]) => {
+    const newType = Array.isArray(value) ? value[0] : value
+    setServiceType(newType)
+  }
+
+  const handleStatusChange = (value: string | string[]) => {
+    const newStatus = Array.isArray(value) ? value[0] : value
+    setStatus(newStatus)
+  }
+
+  // Handle metadata change
+  const handleMetadataChange = (newMetadata: Record<string, any>) => {
+    setMetadata(newMetadata)
+  }
 
   return (
     <div
       className={cn(
-        'group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-300 overflow-hidden cursor-pointer hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-600 hover:-translate-y-1',
+        'group relative bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600',
         className
       )}
-      onClick={handleCardClick} // MAIN CHANGE: Always handles expand/collapse
+      onClick={handleCardClick}
     >
-      {/* Status Indicator - Moved to Left Border */}
+      {/* Status Indicator */}
       <div
         className={cn(
           'absolute top-0 left-0 w-1 h-full',
@@ -153,15 +269,18 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
       />
 
       {/* Collapsed View */}
-      <div className="p-4 transition-all duration-300">
+      <div className="p-3 transition-all duration-200">
         <div className="flex items-center justify-between">
-          {/* Left Section - Icon + Info */}
+          {/* Left Section - Favicon + Service Info */}
           <div className="flex items-center gap-3 flex-1 min-w-0 pl-2">
-            {/* Service Icon */}
+            {/* Service Favicon */}
             <div className="relative flex-shrink-0">
-              <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center shadow-sm">
-                <Globe className="h-4 w-4 text-white" />
-              </div>
+              <Favicon
+                url={service.service_url}
+                size={24}
+                className="rounded"
+                fallbackIcon={<Globe className="h-4 w-4 text-gray-600" />}
+              />
               {/* Status Dot */}
               <div
                 className={cn(
@@ -178,7 +297,7 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
             {/* Service Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                   {service.service_name}
                 </h3>
                 {service.service_url && (
@@ -186,79 +305,68 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
                     variant="ghost"
                     size="sm"
                     onClick={handleExternalLink}
-                    className="p-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-100 dark:hover:bg-blue-900/20"
+                    className="p-0.5 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-100 dark:hover:bg-blue-900/20"
                     title="Open website"
                   >
-                    <ExternalLink className="h-3 w-3 text-blue-600" />
+                    <ExternalLink className="h-2.5 w-2.5 text-blue-600" />
                   </Button>
                 )}
               </div>
 
-              {/* Primary Display Value */}
-              {primaryValue && (
-                <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                  <primaryValue.icon className="h-3 w-3" />
-                  <span className="text-sm font-medium truncate">{primaryValue.value}</span>
-                  {primaryValue.isPassword && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={togglePasswordVisibility}
-                        className="p-0.5 h-4 w-4 text-gray-500 hover:text-amber-600"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-2.5 w-2.5" />
-                        ) : (
-                          <Eye className="h-2.5 w-2.5" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => copyToClipboard(service.password!, e)}
-                        className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
-                      >
-                        <Copy className="h-2.5 w-2.5" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {getServiceTypeLabel(service.service_type)} • {service.status || 'unknown'}
+              </div>
             </div>
           </div>
 
-          {/* Right Section - Password Display + Expand Button */}
-          <div className="flex items-center gap-3">
-            {/* Password Section - Always show if password exists */}
-            {service.password && !isExpanded && (
-              <div
-                className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                onClick={handlePasswordClick}
-                onContextMenu={handlePasswordRightClick}
-                title="Left click to toggle visibility, right click to copy"
-              >
-                <Key className="h-3 w-3 text-amber-600" />
-                <span className="text-xs font-mono text-gray-700 dark:text-gray-300 select-none">
-                  {showPassword
-                    ? service.password.length > 8
-                      ? `${service.password.substring(0, 8)}...`
-                      : service.password
-                    : '•'.repeat(Math.min(service.password.length, 8))}
-                </span>
-              </div>
-            )}
+          {/* Right Section - Stats + Actions + Expand Button */}
+          <div className="flex items-center gap-2">
+            {/* Service Stats */}
+            <div className="flex items-center gap-1">
+              {stats.hasPassword && (
+                <div className="flex items-center justify-center w-5 h-5 bg-amber-100 dark:bg-amber-900/20 rounded">
+                  <Key className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" />
+                </div>
+              )}
+              {stats.secretsCount > 0 && (
+                <div className="flex items-center justify-center w-5 h-5 bg-purple-100 dark:bg-purple-900/20 rounded">
+                  <Database className="h-2.5 w-2.5 text-purple-600 dark:text-purple-400" />
+                  <span className="text-xs font-bold text-purple-700 dark:text-purple-300 ml-0.5">
+                    {stats.secretsCount}
+                  </span>
+                </div>
+              )}
+              {stats.twoFACount > 0 && (
+                <div className="flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900/20 rounded">
+                  <Shield className="h-2.5 w-2.5 text-green-600 dark:text-green-400" />
+                  <span className="text-xs font-bold text-green-700 dark:text-green-300 ml-0.5">
+                    {stats.twoFACount}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* View Details Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleView}
+              className="p-0.5 h-5 w-5 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              title="View service details"
+            >
+              <Eye className="h-3 w-3" />
+            </Button>
 
             {/* Expand/Collapse Button */}
             <Button
               variant="ghost"
               size="sm"
-              className="p-1 h-6 w-6 text-gray-400 hover:text-gray-600"
+              className="p-0.5 h-5 w-5 text-gray-400 hover:text-gray-600"
             >
               {isExpanded ? (
-                <ChevronDown className="h-4 w-4 transition-transform" />
+                <ChevronDown className="h-3 w-3 transition-transform" />
               ) : (
-                <ChevronRight className="h-4 w-4 transition-transform" />
+                <ChevronRight className="h-3 w-3 transition-transform" />
               )}
             </Button>
           </div>
@@ -267,177 +375,228 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
 
       {/* Expanded View */}
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-4 animate-in slide-in-from-top-2 duration-300">
+        <div className="px-3 pb-3 space-y-4 animate-in slide-in-from-top-2 duration-300">
           {/* Divider */}
           <div className="border-t border-gray-100 dark:border-gray-700 ml-2" />
 
-          {/* Detailed Information */}
-          <div className="space-y-3 ml-2">
-            {/* All available information */}
-            {service.username && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Username
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-gray-900 dark:text-white">
-                    {service.username}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => service.username && copyToClipboard(service.username, e)}
-                    className="p-1 h-6 w-6 text-gray-500 hover:text-blue-600"
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {service.name && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Display Name
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-gray-900 dark:text-white">
-                    {service.name}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => copyToClipboard(service.name!, e)}
-                    className="p-1 h-6 w-6 text-gray-500 hover:text-blue-600"
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {service.password && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Key className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Password
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-gray-900 dark:text-white">
-                    {showPassword
-                      ? service.password.length > 12
-                        ? `${service.password.substring(0, 12)}...`
-                        : service.password
-                      : '•'.repeat(Math.min(service.password.length, 12))}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={togglePasswordVisibility}
-                    className="p-1 h-6 w-6 text-gray-500 hover:text-amber-600"
-                  >
-                    {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => copyToClipboard(service.password!, e)}
-                    className="p-1 h-6 w-6 text-gray-500 hover:text-blue-600"
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {service.service_url && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Link className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Service URL
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-gray-900 dark:text-white truncate max-w-32">
-                    {service.service_url}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => copyToClipboard(service.service_url!, e)}
-                    className="p-1 h-6 w-6 text-gray-500 hover:text-blue-600"
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Tags */}
-          <div className="flex items-center gap-2 ml-2">
-            {service.service_type && (
-              <Badge
-                variant="secondary"
-                className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300"
-              >
-                {service.service_type.replace(/_/g, ' ')}
-              </Badge>
-            )}
-            <Badge variant="secondary" className={getStatusColor(service.status)}>
-              {service.status || 'unknown'}
-            </Badge>
-          </div>
-
-          {/* Notes */}
-          {service.note && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30 ml-2">
-              <div className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Notes</div>
-              <div className="text-sm text-blue-700 dark:text-blue-200">{service.note}</div>
+          {/* Header */}
+          <div className="flex items-center justify-between ml-2">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Service Details
             </div>
-          )}
+          </div>
 
-          {/* Action Buttons - UPDATED: Separate View Details from Edit/Delete */}
-          <div className="flex items-center justify-end gap-2 pt-2 ml-2">
-            {/* NEW: View Details Button - Only show if onServiceClick is provided */}
-            {onServiceClick && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleViewDetails}
-                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-700 dark:hover:bg-indigo-900/20"
-              >
-                <Shield className="h-4 w-4 mr-1" />
-                View Details
-              </Button>
-            )}
-            <Button
-              variant="outline"
+          {/* Service Information Section */}
+          <div className="space-y-3 ml-2">
+            {/* Service Name */}
+            <CustomInput
+              label="Service Name"
+              value={serviceName}
+              onChange={setServiceName}
               size="sm"
-              onClick={handleEdit}
-              className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900/20"
-            >
-              <Edit className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
+              variant="filled"
+              leftIcon={<Globe className="h-3 w-3" />}
+              required
+              disabled={savingField !== null && savingField !== 'service_name'}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  {renderStatusIcon('service_name', hasServiceNameChanged, serviceName)}
+                  {serviceName && !hasServiceNameChanged && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => copyToClipboard(serviceName, e)}
+                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                      disabled={savingField !== null}
+                    >
+                      <Copy className="h-2.5 w-2.5" />
+                    </Button>
+                  )}
+                </div>
+              }
+            />
+
+            {/* Service Type & Status - Same Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Service Type */}
+              <div className="space-y-1">
+                <CustomCombobox
+                  label="Service Type"
+                  value={serviceType}
+                  options={serviceTypeOptions}
+                  onChange={handleServiceTypeChange}
+                  placeholder="Select service type..."
+                  size="sm"
+                />
+                {hasServiceTypeChanged && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSaveField('service_type', serviceType)}
+                      className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      disabled={savingField !== null}
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Status */}
+              <div className="space-y-1">
+                <CustomCombobox
+                  label="Status"
+                  value={status}
+                  options={statusOptions}
+                  onChange={handleStatusChange}
+                  placeholder="Select status..."
+                  size="sm"
+                />
+              </div>
+            </div>
+
+            {/* Service URL */}
+            <CustomInput
+              label="Service URL"
+              value={serviceUrl}
+              onChange={setServiceUrl}
               size="sm"
-              onClick={handleDelete}
-              className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete
-            </Button>
+              variant="filled"
+              leftIcon={<Link className="h-3 w-3" />}
+              placeholder="https://example.com"
+              disabled={savingField !== null && savingField !== 'service_url'}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  {renderStatusIcon('service_url', hasServiceUrlChanged, serviceUrl)}
+                  {serviceUrl && !hasServiceUrlChanged && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          window.open(serviceUrl, '_blank')
+                        }}
+                        className="p-0.5 h-4 w-4 text-gray-500 hover:text-green-600"
+                        disabled={savingField !== null}
+                      >
+                        <ExternalLink className="h-2.5 w-2.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => copyToClipboard(serviceUrl, e)}
+                        className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                        disabled={savingField !== null}
+                      >
+                        <Copy className="h-2.5 w-2.5" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              }
+            />
+
+            {/* Username */}
+            <CustomInput
+              label="Username"
+              value={username}
+              onChange={setUsername}
+              size="sm"
+              variant="filled"
+              leftIcon={<User className="h-3 w-3" />}
+              placeholder="Enter username"
+              disabled={savingField !== null && savingField !== 'username'}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  {renderStatusIcon('username', hasUsernameChanged, username)}
+                  {username && !hasUsernameChanged && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => copyToClipboard(username, e)}
+                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                      disabled={savingField !== null}
+                    >
+                      <Copy className="h-2.5 w-2.5" />
+                    </Button>
+                  )}
+                </div>
+              }
+            />
+
+            {/* Display Name */}
+            <CustomInput
+              label="Display Name"
+              value={name}
+              onChange={setName}
+              size="sm"
+              variant="filled"
+              leftIcon={<User className="h-3 w-3" />}
+              placeholder="Enter display name"
+              disabled={savingField !== null && savingField !== 'name'}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  {renderStatusIcon('name', hasNameChanged, name)}
+                  {name && !hasNameChanged && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => copyToClipboard(name, e)}
+                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                      disabled={savingField !== null}
+                    >
+                      <Copy className="h-2.5 w-2.5" />
+                    </Button>
+                  )}
+                </div>
+              }
+            />
+
+            {/* Password */}
+            <CustomInput
+              label="Password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              size="sm"
+              variant="filled"
+              leftIcon={<Key className="h-3 w-3" />}
+              placeholder="Enter password"
+              disabled={savingField !== null && savingField !== 'password'}
+              rightIcon={renderStatusIcon('password', hasPasswordChanged, password)}
+            />
+
+            {/* Notes */}
+            <CustomInput
+              label="Notes"
+              value={note}
+              onChange={setNote}
+              size="sm"
+              variant="filled"
+              multiline={true}
+              rows={2}
+              placeholder="Add notes about this service"
+              disabled={savingField !== null && savingField !== 'note'}
+              rightIcon={renderStatusIcon('note', hasNoteChanged, note)}
+            />
+          </div>
+
+          {/* Metadata Section */}
+          <div className="ml-2">
+            <Metadata
+              metadata={metadata}
+              onMetadataChange={handleMetadataChange}
+              title="Service Metadata"
+              compact={true}
+              size="sm"
+              collapsible={true}
+              defaultExpanded={false}
+              allowCreate={true}
+              allowEdit={true}
+              allowDelete={true}
+            />
           </div>
 
           {/* Nested Services List */}
@@ -454,33 +613,12 @@ const AccountServiceCard: React.FC<AccountServiceCardProps> = ({
                     key={nestedService.id}
                     service={nestedService}
                     onServiceClick={handleNestedServiceClick}
+                    onServiceView={onServiceView}
+                    onServiceUpdate={onServiceUpdate}
                     className="ml-4 border-l-2 border-blue-200 dark:border-blue-700"
                     defaultExpanded={false}
                   />
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* Metadata Bottom Bar */}
-          {service.metadata && Object.keys(service.metadata).length > 0 && (
-            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 -mx-4 -mb-4 rounded-b-2xl">
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(service.metadata)
-                  .slice(0, 3)
-                  .map(([key, value]) => (
-                    <span
-                      key={key}
-                      className="px-2 py-1 text-xs bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-md border border-gray-200 dark:border-gray-600"
-                    >
-                      {key.replace(/_/g, ' ')}: <span className="font-medium">{String(value)}</span>
-                    </span>
-                  ))}
-                {Object.keys(service.metadata).length > 3 && (
-                  <span className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">
-                    +{Object.keys(service.metadata).length - 3} more
-                  </span>
-                )}
               </div>
             </div>
           )}

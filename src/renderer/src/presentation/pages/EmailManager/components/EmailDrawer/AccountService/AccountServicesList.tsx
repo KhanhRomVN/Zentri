@@ -1,17 +1,7 @@
 import React, { useState } from 'react'
 import { Button } from '../../../../../../components/ui/button'
 import { Input } from '../../../../../../components/ui/input'
-import {
-  Plus,
-  Search,
-  Filter,
-  Globe,
-  Shield,
-  Users,
-  Zap,
-  AlertTriangle,
-  Activity
-} from 'lucide-react'
+import { Plus, Search, Filter, Globe } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount, Email } from '../../../types'
 import AccountServiceCard from './AccountServiceCard'
@@ -21,11 +11,12 @@ import CustomButton from '../../../../../../components/common/CustomButton'
 interface AccountServicesListProps {
   services: ServiceAccount[]
   emailAddress?: string
-  email?: Email // Thêm prop email để truyền cho form
+  email?: Email
   onServiceAdd?: (service: Omit<ServiceAccount, 'id' | 'email_id'>) => void
   onServiceEdit?: (service: ServiceAccount) => void
   onServiceDelete?: (serviceId: string) => void
   onServiceClick?: (service: ServiceAccount) => void
+  onServiceUpdate?: (serviceId: string, field: string, value: string) => Promise<boolean> // THÊM DÒNG NÀY
   onViewAllServices?: () => void
   className?: string
   compact?: boolean
@@ -38,6 +29,7 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
   email, // Nhận prop email
   onServiceAdd,
   onServiceClick,
+  onServiceUpdate,
   className,
   compact = false,
   showViewDetailsButton = false
@@ -233,6 +225,7 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
               key={service.id}
               service={service}
               onServiceClick={showViewDetailsButton ? onServiceClick : undefined}
+              onServiceUpdate={onServiceUpdate}
               defaultExpanded={false}
             />
           ))}
@@ -283,84 +276,6 @@ const AccountServicesList: React.FC<AccountServicesListProps> = ({
               Add First Service
             </Button>
           )}
-        </div>
-      )}
-
-      {/* Quick Stats */}
-      {services.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {services.filter((s) => s.status === 'active').length}
-              </div>
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Active</div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {services.filter((s) => s.service_type === 'social_media').length}
-              </div>
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Social Media</div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-2">
-              <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                {services.filter((s) => s.service_type === 'security_vpn').length}
-              </div>
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Security</div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                {services.filter((s) => s.status === 'suspended' || s.status === 'inactive').length}
-              </div>
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Issues</div>
-          </div>
-        </div>
-      )}
-
-      {/* Service Type Distribution - Only show if there are multiple types */}
-      {serviceTypes.length > 1 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <Zap className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            Service Distribution
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {serviceTypes.map((type) => {
-              const count = services.filter((s) => s.service_type === type).length
-              const percentage = Math.round((count / services.length) * 100)
-
-              return (
-                <div
-                  key={type}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {getTypeLabel(type)}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {count} service{count !== 1 ? 's' : ''} ({percentage}%)
-                    </div>
-                  </div>
-                  <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{count}</div>
-                </div>
-              )
-            })}
-          </div>
         </div>
       )}
     </div>

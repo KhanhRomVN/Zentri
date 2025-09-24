@@ -117,34 +117,46 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
   const SecurityIcon = securityStatus.icon
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-6', className)}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
+            Two-Factor Authentication
+            <CustomBadge
+              variant={has2FA ? 'success' : 'secondary'}
+              size="sm"
+              icon={has2FA ? CheckCircle : AlertCircle}
+              className="text-xs ml-2"
+            >
+              {has2FA ? 'Enabled' : 'Disabled'}
+            </CustomBadge>
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+            {active2FAMethods} method{active2FAMethods !== 1 ? 's' : ''} configured • Security
+            level: {securityStatus.level}
+          </p>
+        </div>
+        <CustomButton
+          size="sm"
+          variant="success"
+          icon={Plus}
+          onClick={handleAdd2FA}
+          className="shadow-sm px-3 py-1.5 text-xs"
+        >
+          Add 2FA
+        </CustomButton>
+      </div>
+
       {/* Main Card - Reduced padding and spacing */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
         {/* Header - Reduced padding */}
         <div className="p-4 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Icon - Smaller size */}
-              <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
-                <Shield className="h-4 w-4 text-white" />
-              </div>
-
-              {/* Title and Info */}
+              {/* Stats Info */}
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                    Two-Factor Authentication
-                  </h3>
-                  <CustomBadge
-                    variant={has2FA ? 'success' : 'secondary'}
-                    size="sm"
-                    icon={has2FA ? CheckCircle : AlertCircle}
-                    className="text-xs"
-                  >
-                    {has2FA ? 'Enabled' : 'Disabled'}
-                  </CustomBadge>
-                </div>
-
                 <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                   <div className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
@@ -170,16 +182,6 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
 
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
-              <CustomButton
-                size="sm"
-                variant="success"
-                icon={Plus}
-                onClick={handleAdd2FA}
-                className="shadow-sm px-3 py-1.5 text-xs"
-              >
-                Add 2FA
-              </CustomButton>
-
               <button
                 onClick={() => setIs2FAExpanded(!is2FAExpanded)}
                 className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"

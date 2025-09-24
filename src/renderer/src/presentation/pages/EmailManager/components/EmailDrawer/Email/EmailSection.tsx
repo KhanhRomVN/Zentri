@@ -213,17 +213,23 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn('space-y-6', className)}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            Account Information
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+            Personal details and authentication for {email.email_address}
+          </p>
+        </div>
+      </div>
+
       {/* Main Account Information Section - Consolidated */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
         <div className="p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg flex items-center justify-center">
-              <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h4 className="text-lg font-bold text-gray-900 dark:text-white">Account Information</h4>
-          </div>
-
           {/* Full Name - Full Width Row */}
           <div className="grid grid-cols-1 gap-3 mb-4">
             <CustomInput

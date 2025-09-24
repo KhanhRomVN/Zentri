@@ -200,6 +200,58 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     // You can implement a modal or inline editing here
   }
 
+  const handleServiceUpdate = async (
+    serviceId: string,
+    field: string,
+    value: string
+  ): Promise<boolean> => {
+    try {
+      console.log('Updating service:', serviceId, field, value)
+
+      // Tạo object updates dựa trên field
+      const updates: Partial<ServiceAccount> = {}
+
+      switch (field) {
+        case 'service_name':
+          updates.service_name = value
+          break
+        case 'service_url':
+          updates.service_url = value
+          break
+        case 'username':
+          updates.username = value
+          break
+        case 'name':
+          updates.name = value
+          break
+        case 'password':
+          updates.password = value
+          break
+        case 'note':
+          updates.note = value
+          break
+        default:
+          console.warn('Unknown field:', field)
+          return false
+      }
+
+      // Gọi database service để update
+      await databaseService.updateServiceAccount(serviceId, updates)
+
+      // Refresh danh sách service accounts
+      if (email?.id) {
+        const updatedServices = await databaseService.getServiceAccountsByEmailId(email.id)
+        setEmailServiceAccounts(updatedServices)
+      }
+
+      console.log('Service updated successfully')
+      return true
+    } catch (error) {
+      console.error('Error updating service:', error)
+      return false
+    }
+  }
+
   // Handle deleting 2FA method
   const handleDelete2FA = async (methodId: string) => {
     try {
@@ -338,18 +390,10 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                 <AccountServicesList
                   services={emailServiceAccounts}
                   emailAddress={email.email_address}
-                  email={email} // THÊM prop này
-                  onServiceAdd={handleServiceAdd} // THÊM handler này
-                  onServiceEdit={(service) => {
-                    console.log('Editing service account:', service)
-                    // Implementation for editing service account
-                  }}
-                  onServiceDelete={(serviceId) => {
-                    console.log('Deleting service account:', serviceId)
-                    // Implementation for deleting service account
-                  }}
+                  email={email}
+                  onServiceAdd={handleServiceAdd}
                   onServiceClick={handleServiceClick}
-                  onViewAllServices={() => setCurrentView('services')}
+                  onServiceUpdate={handleServiceUpdate}
                   compact={true}
                   showViewDetailsButton={true}
                 />
@@ -417,7 +461,8 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                   email={email}
                   onServiceAdd={handleServiceAdd}
                   onServiceClick={handleServiceClick}
-                  compact={false} // Full view
+                  onServiceUpdate={handleServiceUpdate}
+                  compact={false}
                   showViewDetailsButton={true}
                 />
               </motion.div>
