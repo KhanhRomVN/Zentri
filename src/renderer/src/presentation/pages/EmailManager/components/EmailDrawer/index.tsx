@@ -339,9 +339,9 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     try {
       await databaseService.updateServiceAccountSecret(secretId, {
         expire_at: updatedSecret.expire_at,
-        secret: updatedSecret.secret
+        secret: updatedSecret.secret,
+        secret_name: updatedSecret.secret_name
       })
-
       // Refresh secrets list
       if (selectedService) {
         const updatedSecrets = await databaseService.getServiceAccountSecretsByServiceId(
@@ -383,7 +383,8 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
       // Tạo secret mới trong database với cấu trúc secret mới
       const newSecret = await databaseService.createServiceAccountSecret({
         service_account_id: selectedService.id,
-        secret: secretData.secret || { secret_name: '' },
+        secret_name: secretData.secret_name,
+        secret: secretData.secret || { secret_name: secretData.secret_name },
         expire_at: secretData.expire_at
       })
 
@@ -571,7 +572,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                   onSecretChange={handleSecretChange}
                   onDeleteSecret={handleDeleteSecret}
                   loading={loading}
-                  error={undefined} // hoặc có thể thêm error state riêng cho secrets
+                  error={undefined}
                 />
               </motion.div>
             )}

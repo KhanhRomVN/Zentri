@@ -87,10 +87,8 @@ export interface ServiceAccount2FA {
 export interface ServiceAccountSecret {
   id: string
   service_account_id: string
-  secret: {
-    secret_name: string
-    [key: string]: any
-  }
+  secret_name: string
+  secret: Record<string, any>
   expire_at?: string
 }
 

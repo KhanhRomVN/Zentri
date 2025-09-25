@@ -518,10 +518,12 @@ export class DatabaseService {
   }
 
   private mapRowToServiceAccountSecret(row: any): ServiceAccountSecret {
+    const parsedSecret = row.secret ? JSON.parse(row.secret) : { secret_name: '' }
     return {
       id: row.id,
       service_account_id: row.service_account_id,
-      secret: row.secret ? JSON.parse(row.secret) : { secret_name: '' },
+      secret_name: parsedSecret.secret_name || 'Unknown Secret',
+      secret: parsedSecret,
       expire_at: row.expire_at
     }
   }
@@ -754,12 +756,12 @@ export class DatabaseService {
     try {
       await window.electronAPI.sqlite.runQuery(
         `INSERT INTO service_account_secrets (
-  id, service_account_id, secret, expire_at, created_at, updated_at
+id, service_account_id, secret, expire_at, created_at, updated_at
 ) VALUES (?, ?, ?, ?, ?, ?)`,
         [
           id,
           secretData.service_account_id,
-          JSON.stringify(secretData.secret || { secret_name: '' }),
+          JSON.stringify(secretData.secret || { secret_name: secretData.secret_name || 'Unknown' }),
           secretData.expire_at || null,
           now,
           now
@@ -789,8 +791,13 @@ export class DatabaseService {
     }
 
     if (updates.secret !== undefined) {
+      // Ensure secret_name is included in the secret object
+      const secretWithName = {
+        ...updates.secret,
+        secret_name: updates.secret_name || updates.secret.secret_name
+      }
       fields.push('secret = ?')
-      values.push(JSON.stringify(updates.secret))
+      values.push(JSON.stringify(secretWithName))
     }
 
     if (fields.length > 0) {

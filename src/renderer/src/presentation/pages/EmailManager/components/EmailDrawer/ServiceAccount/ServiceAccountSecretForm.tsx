@@ -1,8 +1,9 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccountSecretForm.tsx
-import React, { useState } from 'react'
+
+import React, { useState, useCallback, useMemo } from 'react'
 import CustomButton from '../../../../../../components/common/CustomButton'
 import CustomInput from '../../../../../../components/common/CustomInput'
-import { Key, AlertCircle, Plus, Calendar, X, Save, Trash2, Edit } from 'lucide-react'
+import { Key, AlertCircle, Plus, Calendar, X, Save, Trash2 } from 'lucide-react'
 import { ServiceAccount, ServiceAccountSecret } from '../../../types'
 
 interface ServiceAccountSecretFormProps {
@@ -11,12 +12,6 @@ interface ServiceAccountSecretFormProps {
   onCancel?: () => void
   loading?: boolean
   className?: string
-}
-
-interface CreateSecretFormData {
-  secret_name: string
-  expire_at: string
-  customFields: Record<string, any>
 }
 
 interface SecretField {
@@ -28,164 +23,125 @@ const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
   serviceAccount,
   onAddSecret,
   onCancel,
-  loading = false,
   className
 }) => {
   const [isCreating, setIsCreating] = useState(false)
 
-  // Form state cho tạo secret mới
-  const [createFormData, setCreateFormData] = useState<CreateSecretFormData>({
+  // Form state đơn giản
+  const [formData, setFormData] = useState({
     secret_name: '',
     expire_at: '',
-    customFields: {}
+    fields: [] as SecretField[]
   })
-  const [createFormErrors, setCreateFormErrors] = useState<Record<string, string>>({})
 
-  // State cho custom fields form
-  const [customFields, setCustomFields] = useState<SecretField[]>([])
-  const [newFieldKey, setNewFieldKey] = useState('')
-  const [newFieldValue, setNewFieldValue] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Handle thêm custom field mới
-  const handleAddCustomField = () => {
-    if (!newFieldKey.trim() || !newFieldValue.trim()) {
+  // State cho field đang thêm
+  const [newField, setNewField] = useState({
+    key: '',
+    value: ''
+  })
+
+  // Thêm field mới
+  const handleAddField = useCallback(() => {
+    if (!newField.key.trim() || !newField.value.trim()) {
       alert('Please enter both field name and value')
-      return
-    }
-
-    // Không cho phép tạo field có tên secret_name (reserved)
-    if (newFieldKey.trim().toLowerCase() === 'secret_name') {
-      alert('Field name "secret_name" is reserved. Please use a different name.')
       return
     }
 
     // Kiểm tra trùng key
-    if (customFields.some((field) => field.key === newFieldKey.trim())) {
+    if (formData.fields.some((field) => field.key === newField.key.trim())) {
       alert('Field name already exists')
       return
     }
 
-    const newField: SecretField = {
-      key: newFieldKey.trim(),
-      value: newFieldValue.trim()
+    setFormData((prev) => ({
+      ...prev,
+      fields: [
+        ...prev.fields,
+        {
+          key: newField.key.trim(),
+          value: newField.value.trim()
+        }
+      ]
+    }))
+
+    // Reset new field inputs
+    setNewField({ key: '', value: '' })
+  }, [newField.key, newField.value, formData.fields])
+
+  // Xóa field
+  const handleRemoveField = useCallback((index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      fields: prev.fields.filter((_, i) => i !== index)
+    }))
+  }, [])
+
+  // Validate form
+  const validateForm = useCallback((): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.secret_name.trim()) {
+      newErrors.secret_name = 'Secret name is required'
     }
 
-    setCustomFields((prev) => [...prev, newField])
-
-    // Update createFormData.customFields
-    const updatedCustomFields = { ...createFormData.customFields }
-    updatedCustomFields[newField.key] = newField.value
-    setCreateFormData((prev) => ({ ...prev, customFields: updatedCustomFields }))
-
-    // Reset input fields
-    setNewFieldKey('')
-    setNewFieldValue('')
-  }
-
-  // Handle xóa custom field
-  const handleRemoveCustomField = (keyToRemove: string) => {
-    setCustomFields((prev) => prev.filter((field) => field.key !== keyToRemove))
-
-    // Update createFormData.customFields
-    const updatedCustomFields = { ...createFormData.customFields }
-    delete updatedCustomFields[keyToRemove]
-    setCreateFormData((prev) => ({ ...prev, customFields: updatedCustomFields }))
-  }
-
-  // Handle update custom field
-  const handleUpdateCustomField = (oldKey: string, newKey: string, newValue: string) => {
-    if (!newKey.trim() || !newValue.trim()) {
-      alert('Please enter both field name and value')
-      return
+    if (formData.expire_at) {
+      const expiryDate = new Date(formData.expire_at)
+      if (expiryDate <= new Date()) {
+        newErrors.expire_at = 'Expiry date must be in the future'
+      }
     }
 
-    // Không cho phép tạo field có tên secret_name (reserved)
-    if (newKey.trim().toLowerCase() === 'secret_name') {
-      alert('Field name "secret_name" is reserved. Please use a different name.')
-      return
+    if (formData.fields.length === 0) {
+      newErrors.fields = 'Please add at least one custom field (API key, token, etc.)'
     }
 
-    // Kiểm tra trùng key (trừ chính nó)
-    if (oldKey !== newKey && customFields.some((field) => field.key === newKey.trim())) {
-      alert('Field name already exists')
-      return
-    }
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }, [formData.secret_name, formData.expire_at, formData.fields.length])
 
-    // Update custom fields
-    setCustomFields((prev) =>
-      prev.map((field) =>
-        field.key === oldKey ? { key: newKey.trim(), value: newValue.trim() } : field
-      )
-    )
-
-    // Update createFormData.customFields
-    const updatedCustomFields = { ...createFormData.customFields }
-    if (oldKey !== newKey) {
-      delete updatedCustomFields[oldKey]
-    }
-    updatedCustomFields[newKey.trim()] = newValue.trim()
-    setCreateFormData((prev) => ({ ...prev, customFields: updatedCustomFields }))
-  }
-
+  // Submit form
   const handleCreateSecret = async () => {
+    if (!validateForm()) return
+
     try {
       setIsCreating(true)
-      setCreateFormErrors({})
+      setErrors({})
 
-      // Validate form
-      const newErrors: Record<string, string> = {}
-
-      // Validate secret name (bắt buộc)
-      if (!createFormData.secret_name.trim()) {
-        newErrors.secret_name = 'Secret name is required'
-      }
-
-      // Validate expiry date if provided
-      if (createFormData.expire_at) {
-        const expiryDate = new Date(createFormData.expire_at)
-        if (expiryDate <= new Date()) {
-          newErrors.expire_at = 'Expiry date must be in the future'
-        }
-      }
-
-      // Check if có ít nhất 1 custom field
-      if (customFields.length === 0) {
-        newErrors.customFields = 'Please add at least one custom field (API key, token, etc.)'
-      }
-
-      if (Object.keys(newErrors).length > 0) {
-        setCreateFormErrors(newErrors)
-        return
-      }
+      // Convert fields array to object
+      const customFieldsObject = formData.fields.reduce(
+        (acc, field) => {
+          acc[field.key] = field.value
+          return acc
+        },
+        {} as Record<string, string>
+      )
 
       console.log('[DEBUG] Creating new secret for service:', serviceAccount.id)
-      console.log('[DEBUG] Secret name:', createFormData.secret_name)
-      console.log('[DEBUG] Custom fields:', customFields)
+      console.log('[DEBUG] Secret name:', formData.secret_name)
+      console.log('[DEBUG] Custom fields:', customFieldsObject)
+
+      const secretData: Omit<ServiceAccountSecret, 'id'> = {
+        service_account_id: serviceAccount.id,
+        secret_name: formData.secret_name.trim(),
+        secret: {
+          secret_name: formData.secret_name.trim(),
+          ...customFieldsObject
+        },
+        expire_at: formData.expire_at || undefined
+      }
+
+      console.log('[DEBUG] Final secret data to create:', secretData)
 
       if (onAddSecret) {
-        // Prepare secret data với cấu trúc mới
-        const secretData: Omit<ServiceAccountSecret, 'id'> = {
-          service_account_id: serviceAccount.id,
-          secret: {
-            secret_name: createFormData.secret_name.trim(),
-            ...createFormData.customFields
-          },
-          expire_at: createFormData.expire_at || undefined
-        }
-
-        console.log('[DEBUG] Final secret data to create:', secretData)
-
-        // Gọi callback để parent component xử lý việc tạo secret mới
         await onAddSecret(secretData)
-
-        // Reset form CHỈ sau khi tạo thành công
         handleResetForm()
-
         console.log('[DEBUG] Secret created successfully, form reset')
       }
     } catch (error) {
       console.error('[ERROR] Error creating secret:', error)
-      setCreateFormErrors({
+      setErrors({
         general:
           error instanceof Error ? error.message : 'Failed to create secret. Please try again.'
       })
@@ -194,198 +150,30 @@ const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
     }
   }
 
-  const handleResetForm = () => {
-    setCreateFormData({
+  // Reset form
+  const handleResetForm = useCallback(() => {
+    setFormData({
       secret_name: '',
       expire_at: '',
-      customFields: {}
+      fields: []
     })
-    setCustomFields([])
-    setNewFieldKey('')
-    setNewFieldValue('')
-    setCreateFormErrors({})
-  }
+    setNewField({ key: '', value: '' })
+    setErrors({})
+  }, [])
 
-  const handleCancelCreate = () => {
+  const handleCancelCreate = useCallback(() => {
     handleResetForm()
     onCancel?.()
-  }
+  }, [handleResetForm, onCancel])
 
   // Get minimum date for expiry (today + 1 day)
-  const getMinExpiryDate = () => {
+  const getMinExpiryDate = useCallback(() => {
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     return tomorrow.toISOString().slice(0, 16)
-  }
+  }, [])
 
-  // Custom Field Item Component
-  const CustomFieldItem: React.FC<{
-    field: SecretField
-    onUpdate: (newKey: string, newValue: string) => void
-    onRemove: () => void
-  }> = ({ field, onUpdate, onRemove }) => {
-    const [isEditing, setIsEditing] = useState(false)
-    const [editKey, setEditKey] = useState(field.key)
-    const [editValue, setEditValue] = useState(field.value)
-
-    const handleSave = () => {
-      onUpdate(editKey, editValue)
-      setIsEditing(false)
-    }
-
-    const handleCancel = () => {
-      setEditKey(field.key)
-      setEditValue(field.value)
-      setIsEditing(false)
-    }
-
-    if (isEditing) {
-      return (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Edit className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-            <h5 className="font-medium text-yellow-900 dark:text-yellow-100">Edit Field</h5>
-          </div>
-          <CustomInput
-            label="Field Name"
-            value={newFieldKey}
-            onChange={(value) => setNewFieldKey(value)}
-            placeholder="e.g., API Key, Access Token, Client Secret..."
-            variant="filled"
-            size="sm"
-            disabled={isCreating}
-            hint="Cannot use 'secret_name' as field name"
-          />
-          <CustomInput
-            label="Field Value"
-            value={newFieldValue}
-            onChange={(value) => setNewFieldValue(value)}
-            placeholder="Enter the secret value..."
-            variant="filled"
-            size="sm"
-            disabled={isCreating}
-          />
-          <div className="flex justify-end gap-2">
-            <CustomButton variant="secondary" size="sm" onClick={handleCancel}>
-              Cancel
-            </CustomButton>
-            <CustomButton variant="primary" size="sm" onClick={handleSave}>
-              Save Changes
-            </CustomButton>
-          </div>
-        </div>
-      )
-    }
-
-    // Display mode
-    return (
-      <div>
-        <CustomInput
-          label={field.key}
-          value={field.value}
-          readOnly
-          variant="filled"
-          size="sm"
-          rightIcon={
-            <div className="flex items-center gap-1">
-              {/* Edit Button */}
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-1 h-5 w-5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                title="Edit field"
-              >
-                <Edit className="h-3 w-3" />
-              </button>
-
-              {/* Delete Button */}
-              <button
-                onClick={onRemove}
-                className="p-1 h-5 w-5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                title="Delete field"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          }
-        />
-      </div>
-    )
-  }
-
-  // Custom Fields Form Component
-  const CustomFieldsForm = () => (
-    <div className="space-y-4">
-      {/* Add New Field Form */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
-            Add Custom Field
-          </span>
-          <span className="text-xs text-gray-500">(API keys, tokens, etc.)</span>
-        </div>
-
-        <div className="space-y-3">
-          <CustomInput
-            label="Field Name"
-            value={newFieldKey}
-            onChange={setNewFieldKey}
-            placeholder="e.g., API Key, Access Token, Client Secret..."
-            variant="filled"
-            size="sm"
-            disabled={isCreating}
-            hint="Cannot use 'secret_name' as field name"
-          />
-          <CustomInput
-            label="Field Value"
-            value={newFieldValue}
-            onChange={setNewFieldValue}
-            placeholder="Enter the secret value..."
-            variant="filled"
-            size="sm"
-            disabled={isCreating}
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <CustomButton
-            variant="primary"
-            size="sm"
-            onClick={handleAddCustomField}
-            disabled={isCreating || !newFieldKey.trim() || !newFieldValue.trim()}
-            icon={Plus}
-            className="bg-blue-600 hover:bg-blue-700 text-xs"
-          >
-            Add Field
-          </CustomButton>
-        </div>
-      </div>
-
-      {/* Created Fields - Below the form */}
-      {customFields.length > 0 && (
-        <div className="space-y-3">
-          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Custom Fields ({customFields.length})
-          </h5>
-          {customFields.map((field, index) => (
-            <CustomFieldItem
-              key={`${field.key}-${index}`}
-              field={field}
-              onUpdate={(newKey, newValue) => handleUpdateCustomField(field.key, newKey, newValue)}
-              onRemove={() => handleRemoveCustomField(field.key)}
-            />
-          ))}
-        </div>
-      )}
-
-      {createFormErrors.customFields && (
-        <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-          <AlertCircle className="h-4 w-4" />
-          {createFormErrors.customFields}
-        </p>
-      )}
-    </div>
-  )
+  const minExpiryDate = useMemo(() => getMinExpiryDate(), [getMinExpiryDate])
 
   return (
     <div className={`space-y-4 ${className || ''}`}>
@@ -415,47 +203,132 @@ const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
 
       {/* Secret Name Field - Required */}
       <CustomInput
+        key="secret-name-input"
         label="Secret Name"
-        value={createFormData.secret_name}
-        onChange={(value) => setCreateFormData((prev) => ({ ...prev, secret_name: value }))}
+        value={formData.secret_name}
+        onChange={(value) => setFormData((prev) => ({ ...prev, secret_name: value }))}
         placeholder="e.g., Production API Keys, Development Tokens..."
         variant="filled"
         size="sm"
         leftIcon={<Key className="h-4 w-4" />}
         hint="Give this secret collection a descriptive name"
-        error={createFormErrors.secret_name}
+        error={errors.secret_name}
         required
         disabled={isCreating}
       />
 
-      {/* Custom Fields Form - ALWAYS VISIBLE */}
-      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-        <CustomFieldsForm />
+      {/* Custom Fields Section */}
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Custom Fields ({formData.fields.length})
+          </h5>
+        </div>
+
+        {/* Add New Field Form - giống như CreateServiceAccount2FAForm */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+              Add Custom Field
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <CustomInput
+              key="new-field-key-input"
+              label="Field Name"
+              value={newField.key}
+              onChange={(value) => setNewField((prev) => ({ ...prev, key: value }))}
+              placeholder="e.g., API Key, Access Token..."
+              variant="filled"
+              size="sm"
+              disabled={isCreating}
+            />
+            <CustomInput
+              key="new-field-value-input"
+              label="Field Value"
+              value={newField.value}
+              onChange={(value) => setNewField((prev) => ({ ...prev, value: value }))}
+              placeholder="Enter the secret value..."
+              variant="filled"
+              size="sm"
+              disabled={isCreating}
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <CustomButton
+              variant="primary"
+              size="sm"
+              onClick={handleAddField}
+              disabled={isCreating || !newField.key.trim() || !newField.value.trim()}
+              icon={Plus}
+            >
+              Add Field
+            </CustomButton>
+          </div>
+        </div>
+
+        {/* Display Added Fields */}
+        {formData.fields.length > 0 && (
+          <div className="space-y-3">
+            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">Added Fields</h5>
+            {formData.fields.map((field, index) => (
+              <CustomInput
+                key={`field-${index}-${field.key}`}
+                label={field.key}
+                value={field.value}
+                readOnly
+                variant="filled"
+                size="sm"
+                rightIcon={
+                  <button
+                    onClick={() => handleRemoveField(index)}
+                    className="p-1 h-5 w-5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                    title="Delete field"
+                    disabled={isCreating}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                }
+              />
+            ))}
+          </div>
+        )}
+
+        {errors.fields && (
+          <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+            <AlertCircle className="h-4 w-4" />
+            {errors.fields}
+          </p>
+        )}
       </div>
 
       {/* Expiry Date */}
       <CustomInput
+        key="expiry-date-input"
         label="Expiry Date (Optional)"
         type="datetime-local"
-        value={createFormData.expire_at}
-        onChange={(value) => setCreateFormData((prev) => ({ ...prev, expire_at: value }))}
+        value={formData.expire_at}
+        onChange={(value) => setFormData((prev) => ({ ...prev, expire_at: value }))}
         variant="filled"
         size="sm"
         leftIcon={<Calendar className="h-4 w-4" />}
         hint="Set when these secrets expire (if applicable)"
-        error={createFormErrors.expire_at}
+        error={errors.expire_at}
         disabled={isCreating}
-        minDate={getMinExpiryDate()}
+        minDate={minExpiryDate}
       />
 
       {/* Form Actions */}
       <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
         {/* Hiển thị lỗi general nếu có */}
-        {createFormErrors.general && (
+        {errors.general && (
           <div className="flex-1 mr-3">
             <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
               <AlertCircle className="h-4 w-4" />
-              {createFormErrors.general}
+              {errors.general}
             </p>
           </div>
         )}
@@ -473,7 +346,7 @@ const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
           variant="primary"
           size="sm"
           onClick={handleCreateSecret}
-          disabled={isCreating || customFields.length === 0 || !createFormData.secret_name.trim()}
+          disabled={isCreating || formData.fields.length === 0 || !formData.secret_name.trim()}
           loading={isCreating}
           icon={Save}
           className="min-w-[120px] bg-purple-600 hover:bg-purple-700"

@@ -227,15 +227,14 @@ const ServiceAccountSecretSection: React.FC<ServiceAccountSecretSectionProps> = 
                       <ServiceAccountSecretCard
                         key={secret.id}
                         secret={secret}
-                        viewMode="collapse"
-                        onDelete={onDeleteSecret}
-                        onSecretChange={onSecretChange}
+                        onSecretChange={onSecretChange || undefined}
+                        onDeleteSecret={onDeleteSecret || undefined}
                       />
                     ))}
                   </div>
                 </div>
               ) : !loading && !error && !hasSecrets && !showCreateForm ? (
-                /* Empty State */
+                /* Empty State - giữ nguyên */
                 <div className="text-center py-8">
                   <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mx-auto mb-3">
                     <Key className="h-6 w-6 text-gray-400" />
