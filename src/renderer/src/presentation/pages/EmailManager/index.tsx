@@ -9,6 +9,7 @@ import CreateEmailModal from './components/CreateEmailModal'
 import { Plus, Mail, Database, X, AlertCircle } from 'lucide-react'
 import { useDatabaseManager } from './hooks/useDatabaseManager'
 import { Email } from './types'
+import { databaseService } from './services/DatabaseService'
 
 const EmailManagerPage = () => {
   const {
@@ -34,6 +35,7 @@ const EmailManagerPage = () => {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
+  const [isMigrating, setIsMigrating] = useState(false)
   // Create Email Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreatingEmail, setIsCreatingEmail] = useState(false)
@@ -64,6 +66,31 @@ const EmailManagerPage = () => {
         (item.tags && item.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase())))
     )
   }, [emails, searchTerm, isDatabaseReady])
+
+  const handleMigration = async () => {
+    if (!isDatabaseReady) return
+
+    try {
+      setIsMigrating(true)
+      console.log('[MIGRATION] Starting database migration...')
+
+      // Gọi migration method
+      await databaseService.migrateServiceAccountSecrets()
+
+      console.log('[MIGRATION] Migration completed successfully!')
+
+      // Refresh data sau khi migration
+      await loadEmails()
+
+      // Hiển thị thông báo thành công (có thể thay bằng toast notification)
+      alert('Migration completed successfully! Database has been updated.')
+    } catch (error) {
+      console.error('[MIGRATION ERROR]', error)
+      alert(`Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsMigrating(false)
+    }
+  }
 
   // Handle row click to open drawer
   const handleRowClick = (email: Email) => {
@@ -173,6 +200,17 @@ const EmailManagerPage = () => {
                   className="min-w-[100px]"
                 >
                   Refresh
+                </CustomButton>
+                <CustomButton
+                  variant="warning"
+                  size="md"
+                  icon={Database}
+                  onClick={handleMigration}
+                  disabled={!isDatabaseReady || isLoading || isMigrating}
+                  loading={isMigrating}
+                  className="min-w-[120px] bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  Migration
                 </CustomButton>
                 <CustomButton
                   variant="primary"

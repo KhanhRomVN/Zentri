@@ -129,7 +129,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
     <div className={cn('space-y-6', className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="pl-2">
           <h3
             className={cn(
               'font-bold text-gray-900 dark:text-white flex items-center gap-2',

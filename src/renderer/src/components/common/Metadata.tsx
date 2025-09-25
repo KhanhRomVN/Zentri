@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import CustomInput from './CustomInput'
 import CustomButton from './CustomButton'
-import { Database, Copy, Trash2, ChevronDown, ChevronUp, Plus } from 'lucide-react'
+import { Database, Copy, Trash2, ChevronDown, ChevronUp, Plus, Edit2 } from 'lucide-react'
 import { cn } from '../../shared/lib/utils'
 
 interface MetadataProps {
@@ -33,6 +33,12 @@ interface EditingField {
   isNew: boolean
 }
 
+interface EditingExistingField {
+  originalKey: string
+  newKey: string
+  newValue: string
+}
+
 const Metadata: React.FC<MetadataProps> = ({
   metadata = {},
   onMetadataChange,
@@ -47,6 +53,7 @@ const Metadata: React.FC<MetadataProps> = ({
   maxVisibleFields,
   allowCreate = true,
   allowDelete = true,
+  allowEdit = true,
   size = 'md',
   protectedFields = [],
   shouldRenderField,
@@ -55,6 +62,9 @@ const Metadata: React.FC<MetadataProps> = ({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const [showAll, setShowAll] = useState(false)
   const [editingField, setEditingField] = useState<EditingField | null>(null)
+  const [editingExistingField, setEditingExistingField] = useState<EditingExistingField | null>(
+    null
+  )
 
   const canModify = !readOnly && onMetadataChange
 
@@ -91,6 +101,11 @@ const Metadata: React.FC<MetadataProps> = ({
 
   // Start creating new field
   const startCreateField = () => {
+    // Tự động expand nếu đang collapse
+    if (!isExpanded) {
+      setIsExpanded(true)
+    }
+
     setEditingField({
       key: '',
       value: '',
@@ -98,13 +113,27 @@ const Metadata: React.FC<MetadataProps> = ({
     })
   }
 
+  // Start editing existing field
+  const startEditField = (originalKey: string, originalValue: any) => {
+    if (protectedFields.includes(originalKey)) {
+      return // Không cho phép edit protected fields
+    }
+
+    setEditingExistingField({
+      originalKey,
+      newKey: originalKey,
+      newValue: String(originalValue)
+    })
+  }
+
   // Cancel editing
   const cancelEdit = () => {
     setEditingField(null)
+    setEditingExistingField(null)
   }
 
-  // Save field
-  const saveField = () => {
+  // Save new field
+  const saveNewField = () => {
     if (!editingField || !canModify) return
 
     const trimmedKey = editingField.key.trim()
@@ -131,6 +160,44 @@ const Metadata: React.FC<MetadataProps> = ({
 
     onMetadataChange(newMetadata)
     setEditingField(null)
+  }
+
+  // Save edited field
+  const saveEditedField = () => {
+    if (!editingExistingField || !canModify) return
+
+    const trimmedKey = editingExistingField.newKey.trim()
+    const trimmedValue = editingExistingField.newValue.trim()
+
+    // Validation
+    if (!trimmedKey) {
+      alert('Field name is required')
+      return
+    }
+
+    if (!trimmedValue) {
+      alert('Field value is required')
+      return
+    }
+
+    // Check if key already exists (except original key)
+    if (trimmedKey !== editingExistingField.originalKey && metadata.hasOwnProperty(trimmedKey)) {
+      alert('Field name already exists')
+      return
+    }
+
+    const newMetadata = { ...metadata }
+
+    // If key changed, delete old key
+    if (trimmedKey !== editingExistingField.originalKey) {
+      delete newMetadata[editingExistingField.originalKey]
+    }
+
+    // Set new key and value
+    newMetadata[trimmedKey] = trimmedValue
+
+    onMetadataChange(newMetadata)
+    setEditingExistingField(null)
   }
 
   // Delete field
@@ -182,9 +249,63 @@ const Metadata: React.FC<MetadataProps> = ({
 
   const currentSize = sizeClasses[size]
 
-  // Render field display
+  // Render field display or edit mode
   const renderField = (key: string, value: any) => {
     const displayValue = String(value)
+    const isProtected = protectedFields.includes(key)
+    const isBeingEdited = editingExistingField?.originalKey === key
+
+    if (isBeingEdited && editingExistingField) {
+      return (
+        <div
+          key={key}
+          className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 space-y-3"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Edit2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h5 className="font-medium text-blue-900 dark:text-blue-100">Edit Field</h5>
+          </div>
+
+          <div className="space-y-3">
+            {/* Field Name */}
+            <CustomInput
+              label="Field Name"
+              value={editingExistingField.newKey}
+              onChange={(value) =>
+                setEditingExistingField((prev) => (prev ? { ...prev, newKey: value } : null))
+              }
+              placeholder="Enter field name..."
+              variant="filled"
+              size="sm"
+              required
+            />
+
+            {/* Field Value */}
+            <CustomInput
+              label="Field Value"
+              value={editingExistingField.newValue}
+              onChange={(value) =>
+                setEditingExistingField((prev) => (prev ? { ...prev, newValue: value } : null))
+              }
+              placeholder="Enter field value..."
+              variant="filled"
+              size="sm"
+              required
+            />
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 pt-1">
+              <CustomButton variant="primary" size="sm" onClick={saveEditedField}>
+                Save Changes
+              </CustomButton>
+              <CustomButton variant="secondary" size="sm" onClick={cancelEdit}>
+                Cancel
+              </CustomButton>
+            </div>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div key={key} className="">
@@ -196,8 +317,19 @@ const Metadata: React.FC<MetadataProps> = ({
           size="sm"
           rightIcon={
             <div className="flex items-center gap-1">
+              {/* Edit Button - Chỉ hiện với non-protected fields và khi allowEdit = true */}
+              {canModify && allowEdit && !isProtected && (
+                <button
+                  onClick={() => startEditField(key, value)}
+                  className="p-1 h-5 w-5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                  title="Edit field"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </button>
+              )}
+
               {/* Copy Button - Ẩn với protected fields đặc biệt như created_at */}
-              {!protectedFields.includes(key) && (
+              {!isProtected && (
                 <button
                   onClick={() => copyToClipboard(displayValue)}
                   className="p-1 h-5 w-5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
@@ -208,7 +340,7 @@ const Metadata: React.FC<MetadataProps> = ({
               )}
 
               {/* Delete Button - Ẩn với protected fields */}
-              {canModify && allowDelete && showDeleteButtons && !protectedFields.includes(key) && (
+              {canModify && allowDelete && showDeleteButtons && !isProtected && (
                 <button
                   onClick={() => deleteField(key)}
                   className="p-1 h-5 w-5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
@@ -224,8 +356,8 @@ const Metadata: React.FC<MetadataProps> = ({
     )
   }
 
-  // Render editing form
-  const renderEditForm = () => {
+  // Render editing form for new field
+  const renderNewFieldForm = () => {
     if (!editingField) return null
 
     return (
@@ -260,7 +392,7 @@ const Metadata: React.FC<MetadataProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-1">
-            <CustomButton variant="primary" size="sm" onClick={saveField}>
+            <CustomButton variant="primary" size="sm" onClick={saveNewField}>
               Add Field
             </CustomButton>
             <CustomButton variant="secondary" size="sm" onClick={cancelEdit}>
@@ -295,7 +427,7 @@ const Metadata: React.FC<MetadataProps> = ({
 
       <div className="flex items-center gap-2">
         {/* Add Field Button */}
-        {canModify && allowCreate && !editingField && (
+        {canModify && allowCreate && !editingField && !editingExistingField && (
           <button
             onClick={startCreateField}
             className="p-1 h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
@@ -320,14 +452,14 @@ const Metadata: React.FC<MetadataProps> = ({
 
   const contentSection = (
     <>
-      {/* Edit Form */}
-      {editingField && renderEditForm()}
+      {/* New Field Form */}
+      {editingField && renderNewFieldForm()}
 
       <div className="space-y-3">
         {visibleEntries.map(([key, value]) => renderField(key, value))}
 
         {/* Show More/Less Button */}
-        {hasMoreFields && (
+        {hasMoreFields && !editingField && !editingExistingField && (
           <div className="text-center pt-2">
             <button
               onClick={() => setShowAll(!showAll)}

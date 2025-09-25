@@ -18,10 +18,8 @@ import {
   Key,
   Smartphone,
   Mail,
-  Edit,
   Trash2,
-  Save,
-  X
+  Check
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { Email2FA } from '../../../types'
@@ -35,16 +33,44 @@ interface Email2FACardProps {
   compact?: boolean
 }
 
-const Email2FACard: React.FC<Email2FACardProps> = ({
-  method,
-  onEdit,
-  onDelete,
-  onSave,
-  className
-}) => {
+const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, className }) => {
   const [showSecret, setShowSecret] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editingData, setEditingData] = useState<Email2FA>(method)
+
+  // State cho inline editing
+  const [appValue, setAppValue] = useState(method.app || '')
+  const [secretValue, setSecretValue] = useState(
+    typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
+  )
+  const formatDateForInput = (dateString: string | undefined): string => {
+    if (!dateString) return ''
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return ''
+      // Format to YYYY-MM-DDTHH:MM for datetime-local input
+      return date.toISOString().slice(0, 16)
+    } catch {
+      return ''
+    }
+  }
+
+  const [editingMetadata, setEditingMetadata] = useState(method.metadata || {})
+  const [expireDateValue, setExpireDateValue] = useState(formatDateForInput(method.expire_at))
+  // State cho việc lưu
+  const [savingField, setSavingField] = useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
+
+  // Helper function to format date for datetime-local input
+
+  // Helper function to parse date from input
+  const parseDateFromInput = (inputValue: string): string => {
+    if (!inputValue) return ''
+    try {
+      // Input value is already in YYYY-MM-DDTHH:MM format, convert to ISO
+      return new Date(inputValue).toISOString()
+    } catch {
+      return ''
+    }
+  }
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -111,24 +137,94 @@ const Email2FACard: React.FC<Email2FACardProps> = ({
     return methodInfo[type] || methodInfo.totp_key
   }
 
-  const handleSave = async () => {
-    if (onSave) {
-      await onSave(method.id, editingData)
+  // Hàm lưu field
+  const handleSaveField = async (field: string, value: any) => {
+    if (!onSave) return
+
+    try {
+      setSavingField(field)
+
+      const updates: Partial<Email2FA> = {}
+
+      switch (field) {
+        case 'app':
+          updates.app = value
+          break
+        case 'value':
+          updates.value = value
+          break
+        case 'metadata':
+          updates.metadata = value
+          break
+        case 'expire_at':
+          updates.expire_at = parseDateFromInput(value) || null
+          break
+        default:
+          console.warn(`Unknown field: ${field}`)
+          return
+      }
+
+      await onSave(method.id, updates)
+
+      setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
+      // Reset status sau 2 giây
+      setTimeout(() => {
+        setSaveStatus((prev) => ({ ...prev, [field]: null }))
+      }, 2000)
+    } catch (error) {
+      console.error(`Error saving ${field}:`, error)
+      setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
+    } finally {
+      setSavingField(null)
     }
-    setIsEditing(false)
   }
 
-  const handleCancel = () => {
-    setEditingData(method)
-    setIsEditing(false)
-  }
+  const hasExpireDateChanged = expireDateValue !== (method.expire_at || '')
 
-  const handleEdit = () => {
-    if (onEdit) {
-      onEdit(method)
-    } else {
-      setIsEditing(true)
+  // Check if values have changed
+  const hasAppChanged = appValue !== (method.app || '')
+  const hasSecretChanged =
+    secretValue !== (typeof method.value === 'string' ? method.value : JSON.stringify(method.value))
+
+  // Hàm render icon trạng thái cho input
+  const renderStatusIcon = (field: string, hasChanged: boolean) => {
+    if (savingField === field) {
+      return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
     }
+
+    if (saveStatus[field] === 'success') {
+      return <Check className="h-4 w-4 text-green-600" />
+    }
+
+    if (saveStatus[field] === 'error') {
+      return <div className="text-red-600">!</div>
+    }
+
+    if (hasChanged) {
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (field === 'app') {
+              handleSaveField('app', appValue)
+            } else if (field === 'value') {
+              handleSaveField('value', secretValue)
+            } else if (field === 'metadata') {
+              handleSaveField('metadata', editingMetadata)
+            } else if (field === 'expire_at') {
+              handleSaveField('expire_at', expireDateValue)
+            }
+          }}
+          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
+          disabled={savingField !== null}
+        >
+          <Check className="h-2.5 w-2.5" />
+        </Button>
+      )
+    }
+
+    return undefined
   }
 
   const handleDelete = () => {
@@ -137,20 +233,24 @@ const Email2FACard: React.FC<Email2FACardProps> = ({
     }
   }
 
-  const renderMethodValue = () => {
-    const currentValue = isEditing ? editingData.value : method.value
+  const handleMetadataChange = (newMetadata: Record<string, any>) => {
+    setEditingMetadata(newMetadata)
+    // Auto save khi có thay đổi
+    handleSaveField('metadata', newMetadata)
+  }
 
-    if (method.method_type === 'backup_codes' && Array.isArray(currentValue)) {
+  const renderMethodValue = () => {
+    if (method.method_type === 'backup_codes' && Array.isArray(method.value)) {
       return (
         <div className="space-y-3">
           <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Backup Codes ({currentValue.length} codes)
+            Backup Codes ({method.value.length} codes)
           </Label>
 
           <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-800/30">
             {showSecret ? (
               <div className="grid grid-cols-2 gap-2">
-                {currentValue.map((code, index) => (
+                {method.value.map((code, index) => (
                   <div
                     key={index}
                     className="p-2 bg-white dark:bg-gray-800 rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-mono text-sm"
@@ -181,7 +281,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({
               <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800">
                 <div className="text-sm text-orange-700 dark:text-orange-400">
                   Used: {method.metadata.codes_used || 0} /{' '}
-                  {method.metadata.total_codes || currentValue.length}
+                  {method.metadata.total_codes || method.value.length}
                 </div>
               </div>
             )}
@@ -190,58 +290,41 @@ const Email2FACard: React.FC<Email2FACardProps> = ({
       )
     }
 
-    // For single string values
+    // For single string values - với inline editing
     return (
       <div className="space-y-2">
         <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Secret Value</Label>
 
-        {isEditing ? (
-          <CustomInput
-            value={typeof currentValue === 'string' ? currentValue : JSON.stringify(currentValue)}
-            onChange={(value) => setEditingData((prev) => ({ ...prev, value }))}
-            variant="outlined"
-            size="sm"
-            multiline={typeof currentValue !== 'string'}
-            rows={2}
-          />
-        ) : (
-          <CustomInput
-            value={
-              showSecret
-                ? typeof currentValue === 'string'
-                  ? currentValue
-                  : JSON.stringify(currentValue)
-                : '•'.repeat(24)
-            }
-            readOnly
-            size="sm"
-            variant="filled"
-            rightIcon={
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSecret(!showSecret)}
-                  className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
-                >
-                  {showSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    copyToClipboard(
-                      typeof currentValue === 'string' ? currentValue : JSON.stringify(currentValue)
-                    )
-                  }
-                  className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-            }
-          />
-        )}
+        <CustomInput
+          value={showSecret ? secretValue : '•'.repeat(24)}
+          onChange={(value) => setSecretValue(value)}
+          variant="filled"
+          size="sm"
+          multiline={secretValue.length > 50}
+          rows={2}
+          rightIcon={
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSecret(!showSecret)}
+                className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
+              >
+                {showSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyToClipboard(secretValue)}
+                className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+              {renderStatusIcon('value', hasSecretChanged)}
+            </div>
+          }
+          disabled={savingField !== null && savingField !== 'value'}
+        />
       </div>
     )
   }
@@ -265,32 +348,24 @@ const Email2FACard: React.FC<Email2FACardProps> = ({
             </div>
 
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="secondary" className={cn('text-sm px-2 py-1', methodInfo.color)}>
-                  {methodInfo.label}
-                </Badge>
-                <CustomBadge variant="success" size="sm" icon={CheckCircle} className="text-xs">
-                  Active
-                </CustomBadge>
+              <div className="flex items-center gap-2 mb-1 text-text-primary">
+                {methodInfo.label}
               </div>
 
-              {(method.app || isEditing) && (
+              {method.app && (
                 <div className="flex items-center gap-2">
                   <Label className="text-xs text-gray-500 dark:text-gray-400">App:</Label>
-                  {isEditing ? (
+                  <div className="flex-1 max-w-40">
                     <CustomInput
-                      value={editingData.app || ''}
-                      onChange={(value) => setEditingData((prev) => ({ ...prev, app: value }))}
+                      value={appValue}
+                      onChange={setAppValue}
                       placeholder="App name"
-                      variant="outlined"
+                      variant="filled"
                       size="sm"
-                      className="flex-1 max-w-32"
+                      rightIcon={renderStatusIcon('app', hasAppChanged)}
+                      disabled={savingField !== null && savingField !== 'app'}
                     />
-                  ) : (
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {method.app}
-                    </span>
-                  )}
+                  </div>
                 </div>
               )}
 
@@ -300,51 +375,14 @@ const Email2FACard: React.FC<Email2FACardProps> = ({
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions - Chỉ còn Delete */}
           <div className="flex items-center gap-1">
-            {isEditing ? (
-              <>
-                <CustomButton
-                  variant="success"
-                  size="sm"
-                  onClick={handleSave}
-                  icon={Save}
-                  className="text-xs px-2 py-1"
-                >
-                  Save
-                </CustomButton>
-                <CustomButton
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleCancel}
-                  icon={X}
-                  className="text-xs px-2 py-1"
-                >
-                  Cancel
-                </CustomButton>
-              </>
-            ) : (
-              <>
-                <CustomButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleEdit}
-                  icon={Edit}
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-xs px-2 py-1"
-                >
-                  Edit
-                </CustomButton>
-                <CustomButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDelete}
-                  icon={Trash2}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1"
-                >
-                  Delete
-                </CustomButton>
-              </>
-            )}
+            <CustomButton
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              icon={Trash2}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1" children={undefined}            ></CustomButton>
           </div>
         </div>
 
@@ -352,38 +390,44 @@ const Email2FACard: React.FC<Email2FACardProps> = ({
         {renderMethodValue()}
 
         {/* Dates and Status */}
-        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-4">
+        <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
+          <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
             <span>Updated: {formatDate(method.last_update)}</span>
-            {method.expire_at && (
-              <span className="text-amber-600 dark:text-amber-400">
-                Expires: {formatDate(method.expire_at)}
-              </span>
-            )}
+          </div>
+
+          {/* Expire Date Field */}
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-500 dark:text-gray-400">Expire Date:</Label>
+            <CustomInput
+              value={expireDateValue}
+              onChange={setExpireDateValue}
+              placeholder="Select expiry date"
+              variant="filled"
+              size="sm"
+              type="datetime-local"
+              showTime={false}
+              rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
+              disabled={savingField !== null && savingField !== 'expire_at'}
+            />
           </div>
         </div>
 
-        {/* Metadata */}
-        {method.metadata && Object.keys(method.metadata).length > 0 && (
-          <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
-            <Metadata
-              metadata={method.metadata}
-              title="Additional Information"
-              compact={true}
-              collapsible={true}
-              defaultExpanded={false}
-              size="sm"
-              maxVisibleFields={3}
-              readOnly={!isEditing}
-              showDeleteButtons={isEditing}
-              onMetadataChange={
-                isEditing
-                  ? (metadata) => setEditingData((prev) => ({ ...prev, metadata }))
-                  : undefined
-              }
-            />
-          </div>
-        )}
+        {/* Metadata với inline editing */}
+        <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+          <Metadata
+            metadata={editingMetadata || {}}
+            title="Additional Information"
+            compact={true}
+            collapsible={true}
+            defaultExpanded={false}
+            size="sm"
+            maxVisibleFields={3}
+            showDeleteButtons={true}
+            onMetadataChange={handleMetadataChange}
+            showAddButton={true}
+            allowEmpty={true}
+          />
+        </div>
       </div>
     </div>
   )

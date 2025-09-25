@@ -275,15 +275,8 @@ export class DatabaseService {
       `CREATE TABLE IF NOT EXISTS service_account_secrets (
         id TEXT PRIMARY KEY,
         service_account_id TEXT NOT NULL,
-        secret_type TEXT NOT NULL CHECK (secret_type IN (
-          'api_key', 'cookie', 'access_token', 'refresh_token', 'private_key',
-          'client_secret', 'session_id', 'csrf_token', 'encryption_key', 'other'
-        )),
-        name TEXT,
-        value TEXT NOT NULL, -- JSON for arrays or string for single values
-        last_update TEXT NOT NULL,
+        secret TEXT NOT NULL,
         expire_at TEXT,
-        metadata TEXT, -- JSON object
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (service_account_id) REFERENCES service_accounts (id) ON DELETE CASCADE
@@ -528,16 +521,8 @@ export class DatabaseService {
     return {
       id: row.id,
       service_account_id: row.service_account_id,
-      secret_type: row.secret_type,
-      name: row.name,
-      value: row.value
-        ? row.value.startsWith('[') || row.value.startsWith('{')
-          ? JSON.parse(row.value)
-          : row.value
-        : '',
-      last_update: row.last_update,
-      expire_at: row.expire_at,
-      metadata: row.metadata ? JSON.parse(row.metadata) : {}
+      secret: row.secret ? JSON.parse(row.secret) : { secret_name: '' },
+      expire_at: row.expire_at
     }
   }
 
@@ -755,6 +740,187 @@ export class DatabaseService {
 
   async deleteServiceAccount2FA(id: string): Promise<void> {
     await window.electronAPI.sqlite.runQuery('DELETE FROM service_account_2fa WHERE id = ?', [id])
+  }
+
+  async createServiceAccountSecret(
+    secretData: Omit<ServiceAccountSecret, 'id'>
+  ): Promise<ServiceAccountSecret> {
+    const id = uuidv4()
+    const now = new Date().toISOString()
+
+    console.log('[DEBUG] Creating secret with data:', secretData)
+    console.log('[DEBUG] Secret fields to store:', secretData.secretList)
+
+    try {
+      await window.electronAPI.sqlite.runQuery(
+        `INSERT INTO service_account_secrets (
+  id, service_account_id, secret, expire_at, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          secretData.service_account_id,
+          JSON.stringify(secretData.secret || { secret_name: '' }),
+          secretData.expire_at || null,
+          now,
+          now
+        ]
+      )
+
+      console.log('[DEBUG] Secret created successfully with ID:', id)
+      return { ...secretData, id }
+    } catch (error) {
+      console.error('[ERROR] Failed to create secret:', error)
+      throw new Error(
+        `Failed to create secret: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    }
+  }
+
+  async updateServiceAccountSecret(
+    id: string,
+    updates: Partial<ServiceAccountSecret>
+  ): Promise<void> {
+    const fields = []
+    const values = []
+
+    if (updates.expire_at !== undefined) {
+      fields.push('expire_at = ?')
+      values.push(updates.expire_at)
+    }
+
+    if (updates.secret !== undefined) {
+      fields.push('secret = ?')
+      values.push(JSON.stringify(updates.secret))
+    }
+
+    if (fields.length > 0) {
+      fields.push('updated_at = ?')
+      values.push(new Date().toISOString())
+      values.push(id)
+
+      const query = `UPDATE service_account_secrets SET ${fields.join(', ')} WHERE id = ?`
+      await window.electronAPI.sqlite.runQuery(query, values)
+    }
+  }
+
+  async deleteServiceAccountSecret(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM service_account_secrets WHERE id = ?', [
+      id
+    ])
+  }
+
+  async migrateServiceAccountSecrets(): Promise<void> {
+    try {
+      console.log('[MIGRATION] Checking if migration is needed...')
+
+      // Kiểm tra xem có cột secret không (thay vì secretList)
+      const tableInfo = await window.electronAPI.sqlite.getAllRows(
+        'PRAGMA table_info(service_account_secrets)'
+      )
+
+      console.log('[MIGRATION] Current table structure:', tableInfo)
+
+      const hasSecretType = tableInfo.some((col: any) => col.name === 'secret_type')
+      const hasSecretList = tableInfo.some((col: any) => col.name === 'secretList')
+      const hasSecret = tableInfo.some((col: any) => col.name === 'secret')
+      const hasMetadata = tableInfo.some((col: any) => col.name === 'metadata')
+
+      console.log('[MIGRATION] Table analysis:', {
+        hasSecretType,
+        hasSecretList,
+        hasSecret,
+        hasMetadata
+      })
+
+      if (hasSecretType || hasSecretList || !hasSecret) {
+        console.log('[MIGRATION] Migration needed. Starting process...')
+
+        // Backup existing data first
+        const existingData = await window.electronAPI.sqlite.getAllRows(
+          'SELECT * FROM service_account_secrets'
+        )
+        console.log('[MIGRATION] Backing up existing data:', existingData.length, 'records')
+
+        // Drop existing table
+        await window.electronAPI.sqlite.runQuery('DROP TABLE IF EXISTS service_account_secrets')
+
+        // Create new table with correct structure
+        await window.electronAPI.sqlite.runQuery(`
+        CREATE TABLE service_account_secrets (
+          id TEXT PRIMARY KEY,
+          service_account_id TEXT NOT NULL,
+          secret TEXT NOT NULL,
+          expire_at TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (service_account_id) REFERENCES service_accounts (id) ON DELETE CASCADE
+        )
+      `)
+
+        // Restore data with new structure
+        for (const row of existingData) {
+          // Migrate từ secretList sang secret format mới
+          let secretData = '{"secret_name": "Migrated Secret"}'
+
+          if (row.secretList) {
+            try {
+              const oldData = JSON.parse(row.secretList)
+              secretData = JSON.stringify({
+                secret_name: 'Migrated Secret',
+                ...oldData
+              })
+            } catch (e) {
+              console.warn('Failed to parse old secretList, using default')
+            }
+          } else if (row.metadata) {
+            try {
+              const oldData = JSON.parse(row.metadata)
+              secretData = JSON.stringify({
+                secret_name: 'Migrated Secret',
+                ...oldData
+              })
+            } catch (e) {
+              console.warn('Failed to parse old metadata, using default')
+            }
+          }
+
+          const now = new Date().toISOString()
+
+          await window.electronAPI.sqlite.runQuery(
+            `
+    INSERT INTO service_account_secrets (id, service_account_id, secret, expire_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `,
+            [
+              row.id,
+              row.service_account_id,
+              secretData,
+              row.expire_at,
+              row.created_at || now,
+              row.updated_at || now
+            ]
+          )
+        }
+
+        // Recreate index
+        await window.electronAPI.sqlite.runQuery(
+          'CREATE INDEX IF NOT EXISTS idx_service_account_secrets_service_id ON service_account_secrets (service_account_id)'
+        )
+
+        console.log(
+          '[MIGRATION] Migration completed successfully! Restored',
+          existingData.length,
+          'records'
+        )
+      } else {
+        console.log('[MIGRATION] No migration needed. Table structure is already correct.')
+      }
+    } catch (error) {
+      console.error('[MIGRATION ERROR]', error)
+      throw new Error(
+        `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    }
   }
 }
 

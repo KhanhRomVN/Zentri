@@ -9,7 +9,6 @@ import Email2FASection from './Email/Email2FASection'
 import ServiceAccountList from './ServiceAccount/ServiceAccountList'
 import ServiceAccountSection from './ServiceAccount/ServiceAccountSection'
 import ServiceAccount2FASection from './ServiceAccount/ServiceAccount2FASection'
-import ServiceAccountSecretList from './ServiceAccount/ServiceAccountSecretList'
 import { ArrowLeft, X } from 'lucide-react'
 import {
   Email,
@@ -19,6 +18,7 @@ import {
   ServiceAccountSecret
 } from '../../types'
 import { databaseService } from '../../services/DatabaseService'
+import ServiceAccountSecretSection from './ServiceAccount/ServiceAccountSecretSection'
 
 interface EmailDrawerProps {
   isOpen: boolean
@@ -335,6 +335,73 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     }
   }
 
+  const handleSecretChange = async (secretId: string, updatedSecret: ServiceAccountSecret) => {
+    try {
+      await databaseService.updateServiceAccountSecret(secretId, {
+        expire_at: updatedSecret.expire_at,
+        secret: updatedSecret.secret
+      })
+
+      // Refresh secrets list
+      if (selectedService) {
+        const updatedSecrets = await databaseService.getServiceAccountSecretsByServiceId(
+          selectedService.id
+        )
+        setSelectedServiceSecrets(updatedSecrets)
+      }
+    } catch (error) {
+      console.error('Error updating secret:', error)
+    }
+  }
+
+  const handleDeleteSecret = async (secretId: string) => {
+    try {
+      console.log('Deleting secret:', secretId)
+
+      // Cần thêm method deleteServiceAccountSecret vào DatabaseService
+      await databaseService.deleteServiceAccountSecret(secretId)
+
+      // Refresh secrets list
+      if (selectedService) {
+        const updatedSecrets = await databaseService.getServiceAccountSecretsByServiceId(
+          selectedService.id
+        )
+        setSelectedServiceSecrets(updatedSecrets)
+      }
+    } catch (error) {
+      console.error('Error deleting secret:', error)
+    }
+  }
+
+  const handleAddSecret = async (secretData: Omit<ServiceAccountSecret, 'id'>) => {
+    if (!selectedService) return
+
+    try {
+      console.log('Adding new secret for service:', selectedService.id)
+      console.log('Secret data to create:', secretData)
+
+      // Tạo secret mới trong database với cấu trúc secret mới
+      const newSecret = await databaseService.createServiceAccountSecret({
+        service_account_id: selectedService.id,
+        secret: secretData.secret || { secret_name: '' },
+        expire_at: secretData.expire_at
+      })
+
+      console.log('New secret created successfully:', newSecret)
+
+      console.log('Secret created:', newSecret)
+
+      // Refresh secrets list
+      const updatedSecrets = await databaseService.getServiceAccountSecretsByServiceId(
+        selectedService.id
+      )
+      setSelectedServiceSecrets(updatedSecrets)
+    } catch (error) {
+      console.error('Error adding secret:', error)
+      throw error // Re-throw để form có thể handle error
+    }
+  }
+
   // Handle service click to navigate to service detail view
   const handleServiceClick = async (service: ServiceAccount) => {
     setSelectedService(service)
@@ -497,23 +564,14 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                   onSave2FA={handleSaveService2FA}
                 />
 
-                {/* Service Account Secrets List */}
-                <ServiceAccountSecretList
+                <ServiceAccountSecretSection
                   serviceAccount={selectedService}
                   secrets={selectedServiceSecrets}
-                  onSecretAdd={(secret) => {
-                    console.log('Adding new secret for service:', selectedService.id, secret)
-                    // Implementation for adding secret
-                  }}
-                  onSecretEdit={(secret) => {
-                    console.log('Editing secret:', secret)
-                    // Implementation for editing secret
-                  }}
-                  onSecretDelete={(secretId) => {
-                    console.log('Deleting secret:', secretId)
-                    // Implementation for deleting secret
-                  }}
-                  compact={false}
+                  onAddSecret={handleAddSecret}
+                  onSecretChange={handleSecretChange}
+                  onDeleteSecret={handleDeleteSecret}
+                  loading={loading}
+                  error={undefined} // hoặc có thể thêm error state riêng cho secrets
                 />
               </motion.div>
             )}

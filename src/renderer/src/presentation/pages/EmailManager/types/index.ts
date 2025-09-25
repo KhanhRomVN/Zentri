@@ -87,22 +87,11 @@ export interface ServiceAccount2FA {
 export interface ServiceAccountSecret {
   id: string
   service_account_id: string
-  secret_type:
-    | 'api_key'
-    | 'cookie'
-    | 'access_token'
-    | 'refresh_token'
-    | 'private_key'
-    | 'client_secret'
-    | 'session_id'
-    | 'csrf_token'
-    | 'encryption_key'
-    | 'other'
-  name?: string
-  value: string | string[]
-  last_update: string
+  secret: {
+    secret_name: string
+    [key: string]: any
+  }
   expire_at?: string
-  metadata?: Record<string, any>
 }
 
 // Database service types

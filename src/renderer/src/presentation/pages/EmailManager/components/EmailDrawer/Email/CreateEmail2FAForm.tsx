@@ -254,8 +254,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
         last_update: new Date().toISOString(),
         expire_at: formData.expire_at || undefined,
         metadata: {
-          created_by: 'user',
-          email_provider: email.email_provider,
           ...(formData.method_type === 'backup_codes' && {
             total_codes: Array.isArray(processedValue) ? processedValue.length : 0,
             codes_used: 0

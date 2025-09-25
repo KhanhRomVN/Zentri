@@ -259,26 +259,6 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
                     >
                       Set up 2FA Now
                     </CustomButton>
-
-                    <CustomButton
-                      variant="secondary"
-                      size="sm"
-                      className="text-gray-600 dark:text-gray-400"
-                    >
-                      Learn More
-                    </CustomButton>
-                  </div>
-
-                  {/* Security Tips - Condensed */}
-                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <h5 className="font-medium text-blue-900 dark:text-blue-100 mb-1 text-sm">
-                      Security Tips
-                    </h5>
-                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-0.5 text-left max-w-sm mx-auto">
-                      <li>• Use TOTP apps like Google Authenticator</li>
-                      <li>• Keep backup codes secure</li>
-                      <li>• Enable multiple 2FA methods</li>
-                    </ul>
                   </div>
                 </div>
               ) : null}

@@ -40,9 +40,9 @@ const twoFAMethodOptions = [
     description: 'Time-based One-Time Password secret key',
     placeholder: 'Enter TOTP secret key...',
     inputType: 'text',
-    showAppName: true,
+    showAppName: false, // Chỉ App Password mới cần App Name
     autoFillFromService: false,
-    unique: false
+    unique: true // TOTP chỉ nên có 1 cho mỗi service
   },
   {
     value: 'backup_codes',
@@ -62,9 +62,9 @@ const twoFAMethodOptions = [
     description: 'Application-specific password',
     placeholder: 'Enter app password...',
     inputType: 'password',
-    showAppName: true,
+    showAppName: true, // Chỉ App Password mới cần
     autoFillFromService: false,
-    unique: false
+    unique: false // Có thể có nhiều app password cho các app khác nhau
   },
   {
     value: 'security_key',
@@ -136,14 +136,11 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
 
   // Auto-fill app name when method type changes for certain methods
   useEffect(() => {
-    if (selectedMethod?.showAppName && !formData.app) {
-      // Suggest app name based on service name for TOTP and app passwords
-      if (formData.method_type === 'totp_key' || formData.method_type === 'app_password') {
-        setFormData((prev) => ({
-          ...prev,
-          app: serviceAccount.service_name
-        }))
-      }
+    if (selectedMethod?.showAppName && !formData.app && formData.method_type === 'app_password') {
+      setFormData((prev) => ({
+        ...prev,
+        app: serviceAccount.service_name
+      }))
     }
   }, [formData.method_type, serviceAccount.service_name, selectedMethod, formData.app])
 
@@ -194,8 +191,8 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
     }
 
     // Validate app name for methods that require it
-    if (selectedMethod?.showAppName && !formData.app.trim()) {
-      newErrors.app = 'App name is required for this method'
+    if (formData.method_type === 'app_password' && !formData.app.trim()) {
+      newErrors.app = 'App name is required for app passwords'
     }
 
     // Validate expiry date if provided
@@ -237,13 +234,12 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
         last_update: new Date().toISOString(),
         expire_at: formData.expire_at || undefined,
         metadata: {
-          created_by: 'user',
-          service_name: serviceAccount.service_name,
-          service_type: serviceAccount.service_type,
+          // Chỉ thêm metadata cho backup codes
           ...(formData.method_type === 'backup_codes' && {
             total_codes: Array.isArray(processedValue) ? processedValue.length : 0,
             codes_used: 0
           }),
+          // Chỉ thêm metadata do user tự nhập
           ...formData.metadata
         }
       }
