@@ -81,18 +81,18 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
   // Size styles
   const sizeStyles = {
     sm: {
-      input: 'h-8 py-1.5 text-sm',
-      padding: isInput ? 'pl-8 pr-8' : 'pl-2.5 pr-8',
+      input: 'py-2 text-sm',
+      padding: isInput ? 'pl-8 pr-8' : 'pl-3 pr-8',
       searchIcon: 'left-2.5 w-3.5 h-3.5',
       chevron: 'right-2 w-4 h-4 p-1 flex items-center justify-center', // Fixed: increased icon size and added flex centering
-      label: 'text-xs font-medium mb-1',
+      label: 'text-sm font-medium mb-2',
       badge: 'text-xs px-2 py-0.5',
       badgeIcon: 'w-2.5 h-2.5',
       option: 'px-2.5 py-1.5 text-sm',
       dropdown: 'max-h-48'
     },
     md: {
-      input: 'h-12 py-3 text-base',
+      input: 'py-3 text-base',
       padding: isInput ? 'pl-10 pr-8' : 'pl-3 pr-8',
       searchIcon: 'left-3 w-4 h-4',
       chevron: 'right-2 w-4 h-4 p-1',
@@ -103,7 +103,7 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
       dropdown: 'max-h-60'
     },
     lg: {
-      input: 'h-14 py-4 text-lg',
+      input: 'py-4 text-lg',
       padding: isInput ? 'pl-12 pr-10' : 'pl-4 pr-10',
       searchIcon: 'left-4 w-5 h-5',
       chevron: 'right-3 w-5 h-5 p-1',
@@ -346,7 +346,7 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
             value={displayValue}
             placeholder={placeholder}
             className={cn(
-              `w-full ${currentSize.input} bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400`,
+              `w-full ${currentSize.input} bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:bg-white dark:focus:bg-gray-800`,
               currentSize.padding
             )}
             onChange={handleInputChange}

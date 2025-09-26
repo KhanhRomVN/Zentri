@@ -405,7 +405,7 @@ const DateAndTimePicker: React.FC<DateAndTimePickerProps> = ({
   }
 
   const sizeClasses = {
-    sm: 'h-8 text-xs px-2',
+    sm: 'h-8 text-sm px-2',
     md: 'h-10 text-sm px-3',
     lg: 'h-12 text-base px-4'
   }
@@ -457,20 +457,20 @@ const DateAndTimePicker: React.FC<DateAndTimePickerProps> = ({
     if (leftIcon) {
       switch (size) {
         case 'sm':
-          return 'pl-8 pr-8'
+          return 'pl-8 pr-8' // Match với CustomInput withLeftIcon
         case 'md':
-          return 'pl-10 pr-10'
+          return 'pl-12 pr-12' // Match với CustomInput withLeftIcon (tăng từ 10 lên 12)
         case 'lg':
-          return 'pl-12 pr-12'
+          return 'pl-14 pr-14' // Match với CustomInput withLeftIcon (tăng từ 12 lên 14)
       }
     }
     switch (size) {
       case 'sm':
-        return 'pl-2 pr-8'
+        return 'pl-3 pr-8' // Match với CustomInput default (tăng từ 2 lên 3)
       case 'md':
-        return 'pl-3 pr-10'
+        return 'pl-4 pr-12' // Match với CustomInput default (tăng từ 3 lên 4)
       case 'lg':
-        return 'pl-4 pr-12'
+        return 'pl-5 pr-14' // Match với CustomInput default (tăng từ 4 lên 5)
     }
   }
 
@@ -620,8 +620,9 @@ const DateAndTimePicker: React.FC<DateAndTimePickerProps> = ({
             <div
               className={cn(
                 'absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none z-10',
-                size === 'sm' && 'left-2',
-                size === 'lg' && 'left-4'
+                size === 'sm' && 'left-2.5', // Match với CustomInput
+                size === 'md' && 'left-3', // Match với CustomInput
+                size === 'lg' && 'left-4' // Match với CustomInput
               )}
             >
               {leftIcon}

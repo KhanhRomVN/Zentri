@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { cn } from '../../shared/lib/utils'
 import { Button } from '../ui/button'
 import { motion } from 'framer-motion'
-import { Mail, Settings } from 'lucide-react'
+import { Mail, Settings, Users } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 interface MainSidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -13,6 +13,12 @@ const menuItems = [
     label: 'Email Manager',
     href: '/',
     description: 'Quản lý email & dịch vụ'
+  },
+  {
+    icon: Users,
+    label: 'People Manager',
+    href: '/people',
+    description: 'Quản lý người dùng'
   },
   {
     icon: Settings,

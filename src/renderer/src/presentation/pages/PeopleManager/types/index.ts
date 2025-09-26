@@ -278,3 +278,36 @@ export interface PeopleManagerState {
     tags?: string[]
   }
 }
+
+export interface DatabaseInfo {
+  path: string
+  name: string
+  lastAccess: string
+}
+
+export interface PeopleManagerState {
+  currentDatabase: DatabaseInfo | null
+  isLoading: boolean
+  error: string | null
+  selectedPerson: Person | null
+  searchQuery: string
+  filters: {
+    gender?: string[]
+    nationality?: string[]
+    tags?: string[]
+  }
+}
+
+export interface FilterOptions {
+  genders: string[]
+  nationalities: string[]
+  tags: string[]
+}
+
+export interface PeopleStatistics {
+  totalPeople: number
+  withEmail: number
+  withPhone: number
+  withAddress: number
+  genderStats: Record<string, number>
+}
