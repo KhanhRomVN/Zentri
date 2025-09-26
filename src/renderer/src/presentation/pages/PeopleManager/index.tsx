@@ -7,7 +7,7 @@ import DatabaseModal from './components/DatabaseModal'
 import PeopleListPanel from './components/PeopleListPanel'
 import { Person } from './types'
 import CreatePeopleModal from './components/CreatePeopleModal'
-// import PeopleDetailPanel from './components/PeopleDetailPanel'
+import PeopleDetailPanel from './components/PeopleDetailPanel'
 
 const PeopleManagerPage = () => {
   const {
@@ -15,7 +15,6 @@ const PeopleManagerPage = () => {
     currentDatabase,
     isLoading,
     error,
-    isDatabaseReady,
     showDatabaseModal,
 
     // People data
@@ -28,7 +27,6 @@ const PeopleManagerPage = () => {
     setSearchQuery,
     filters,
     updateFilters,
-    clearFilters,
 
     // Actions
     selectPerson,
@@ -82,16 +80,29 @@ const PeopleManagerPage = () => {
     }
   }
 
+  const handleUpdatePerson = async (id: string, updates: Partial<Person>): Promise<boolean> => {
+    try {
+      const success = await updatePerson(id, updates)
+      if (success && selectedPerson?.id === id) {
+        console.log('Person updated successfully:', id)
+      }
+      return success
+    } catch (error) {
+      console.error('Error updating person:', error)
+      return false
+    }
+  }
+
   // If database modal should be shown, render only the modal
   if (showDatabaseModal) {
     return <DatabaseModal onDatabaseSelected={handleDatabaseSelected} />
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background overflow-hidden">
       <div className="w-full h-full flex">
         {/* Left Panel - People List */}
-        <div className="w-96 flex-shrink-0 h-screen overflow-hidden">
+        <div className=" flex-shrink-0 h-screen overflow-hidden">
           <PeopleListPanel
             people={filteredPeople}
             selectedPerson={selectedPerson}
@@ -106,10 +117,10 @@ const PeopleManagerPage = () => {
         </div>
 
         {/* Right Panel - Person Details */}
-        <div className="flex-1 min-w-0">
-          <div className="h-full flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
+          <div className="h-full flex flex-col min-h-0">
             {/* Header */}
-            <div className="flex-none px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex-none border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <CustomBreadcrumb items={breadcrumbItems} className="text-text-secondary" />
@@ -157,13 +168,9 @@ const PeopleManagerPage = () => {
             </div>
 
             {/* Content */}
-            {/* <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-hidden">
               {selectedPerson ? (
-                <PeopleDetailPanel
-                  person={selectedPerson}
-                  onUpdatePerson={updatePerson}
-                  onDeletePerson={deletePerson}
-                />
+                <PeopleDetailPanel person={selectedPerson} onUpdatePerson={handleUpdatePerson} />
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center space-y-4">
@@ -179,7 +186,7 @@ const PeopleManagerPage = () => {
                   </div>
                 </div>
               )}
-            </div> */}
+            </div>
 
             <CreatePeopleModal
               isOpen={showCreateModal}

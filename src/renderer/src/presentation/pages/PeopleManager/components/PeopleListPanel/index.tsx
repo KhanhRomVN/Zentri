@@ -1,7 +1,6 @@
 // src/renderer/src/presentation/pages/PeopleManager/components/PeopleListPanel/index.tsx
 import React, { useState, useMemo } from 'react'
-import { Search, Plus, Users, SlidersHorizontal } from 'lucide-react'
-import CustomInput from '../../../../../components/common/CustomInput'
+import { Search, Plus, Users, SlidersHorizontal, X } from 'lucide-react'
 import CustomButton from '../../../../../components/common/CustomButton'
 import PeopleCard from './components/PeopleCard'
 import { Person } from '../../types'
@@ -98,126 +97,109 @@ const PeopleListPanel: React.FC<PeopleListPanelProps> = ({
     filters.tags.length > 0
 
   return (
-    <div className="h-full flex flex-col border-r border-border-default">
-      {/* Header */}
-      <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
+    <div className="h-full flex flex-col border-r border-border-default w-[420px]">
+      {/* Header với các action buttons */}
+      <div className="flex-none p-4 border-b border-border-default bg-background">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              People ({filteredPeople.length})
-            </h2>
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Users className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">People</h2>
+              <p className="text-xs text-text-secondary">{filteredPeople.length} contacts</p>
+            </div>
           </div>
-          <CustomButton
-            variant="primary"
-            size="sm"
-            icon={Plus}
-            onClick={onCreateNewPerson}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Add Person
-          </CustomButton>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="p-2 hover:bg-sidebar-itemHover rounded-lg transition-colors"
+              title="Filter (Coming Soon)"
+            >
+              <SlidersHorizontal className="h-4 w-4 text-text-secondary" />
+            </button>
+            <button
+              onClick={onCreateNewPerson}
+              className="p-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors"
+              title="Add new person"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Filters Panel */}
-        {showFilters && (
-          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-3">
-            {/* Gender Filter */}
-            <div>
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                Gender
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {filterOptions.genders.map((gender) => (
-                  <button
-                    key={gender}
-                    onClick={() => handleFilterToggle('gender', gender)}
-                    className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                      filters.gender.includes(gender)
-                        ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700'
-                        : 'bg-white text-gray-600 border-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500'
-                    }`}
-                  >
-                    {gender}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Nationality Filter */}
-            {filterOptions.nationalities.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                  Nationality
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {filterOptions.nationalities.slice(0, 5).map((nationality) => (
-                    <button
-                      key={nationality}
-                      onClick={() => handleFilterToggle('nationality', nationality)}
-                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                        filters.nationality.includes(nationality)
-                          ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700'
-                          : 'bg-white text-gray-600 border-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500'
-                      }`}
-                    >
-                      {nationality}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tags Filter */}
-            {filterOptions.tags.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                  Tags
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {filterOptions.tags.slice(0, 8).map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => handleFilterToggle('tags', tag)}
-                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                        filters.tags.includes(tag)
-                          ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700'
-                          : 'bg-white text-gray-600 border-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-secondary/60" />
+          <input
+            type="text"
+            placeholder="Search people..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-input-background border border-border-default rounded-lg text-text-primary placeholder-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all duration-200 text-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => onSearchChange('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+            >
+              <X className="h-3 w-3 text-text-secondary" />
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Active Filters Bar */}
+      {hasActiveFilters && (
+        <div className="flex-none px-4 py-2 border-b border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+              Active filters
+            </span>
+            <button
+              onClick={clearAllFilters}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* People List */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="flex items-center justify-center h-40">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
           </div>
         ) : filteredPeople.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-500 dark:text-gray-400">
-            <Users className="h-12 w-12 mb-2 opacity-50" />
-            <p className="text-sm">
-              {people.length === 0 ? 'No people found' : 'No matching people found'}
+          <div className="flex flex-col items-center justify-center h-60 text-text-secondary px-6">
+            <div className="p-3 rounded-lg mb-3">
+              <Users className="h-8 w-8 opacity-50" />
+            </div>
+            <h3 className="text-sm font-semibold text-text-primary mb-1 text-center">
+              {people.length === 0 ? 'No contacts yet' : 'No results found'}
+            </h3>
+            <p className="text-xs text-center text-text-secondary mb-3">
+              {people.length === 0
+                ? 'Get started by adding your first contact'
+                : 'Try adjusting your search or filters'}
             </p>
             {people.length === 0 && (
-              <button
+              <CustomButton
+                variant="primary"
+                size="sm"
                 onClick={onCreateNewPerson}
-                className="text-blue-600 hover:text-blue-700 text-sm mt-2"
+                icon={Plus}
+                className="bg-primary hover:bg-primary/90 text-xs"
               >
-                Add your first person
-              </button>
+                Add First Contact
+              </CustomButton>
             )}
           </div>
         ) : (
-          <div className="p-2 space-y-2">
+          <div className="p-3 space-y-2 border-b border-border-default">
             {filteredPeople.map((person) => (
               <PeopleCard
                 key={person.id}
