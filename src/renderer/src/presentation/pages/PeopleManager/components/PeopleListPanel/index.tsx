@@ -1,6 +1,6 @@
 // src/renderer/src/presentation/pages/PeopleManager/components/PeopleListPanel/index.tsx
 import React, { useState, useMemo } from 'react'
-import { Search, Filter, Plus, Users, SlidersHorizontal } from 'lucide-react'
+import { Search, Plus, Users, SlidersHorizontal } from 'lucide-react'
 import CustomInput from '../../../../../components/common/CustomInput'
 import CustomButton from '../../../../../components/common/CustomButton'
 import PeopleCard from './components/PeopleCard'
@@ -98,10 +98,10 @@ const PeopleListPanel: React.FC<PeopleListPanelProps> = ({
     filters.tags.length > 0
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+    <div className="h-full flex flex-col border-r border-border-default">
       {/* Header */}
       <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -117,42 +117,6 @@ const PeopleListPanel: React.FC<PeopleListPanelProps> = ({
           >
             Add Person
           </CustomButton>
-        </div>
-
-        {/* Search Bar */}
-        <div className="space-y-3">
-          <CustomInput
-            placeholder="Search people..."
-            value={searchQuery}
-            onChange={onSearchChange}
-            leftIcon={<Search className="h-4 w-4" />}
-            variant="filled"
-          />
-
-          {/* Filter Toggle */}
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Filters
-              {hasActiveFilters && (
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                  Active
-                </span>
-              )}
-            </button>
-
-            {hasActiveFilters && (
-              <button
-                onClick={clearAllFilters}
-                className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-              >
-                Clear all
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Filters Panel */}

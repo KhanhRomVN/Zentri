@@ -323,18 +323,18 @@ export class PeopleService {
 
     await window.electronAPI.sqlite.runQuery(
       `INSERT INTO people (
-        id, full_name, preferred_name, gender, date_of_birth, place_of_birth,
-        nationality, ethnic_origin, primary_email, secondary_emails, primary_phone,
-        secondary_phones, emergency_contact, height, weight, eye_color, hair_color,
-        blood_type, distinguishing_marks, identification_documents, current_address,
-        occupation, employer, job_title, work_experience, education, bank_accounts,
-        tax_identification_number, credit_cards, medical_conditions, allergies,
-        medications, primary_care_physician, marital_status, spouse, children,
-        parents, siblings, social_media_profiles, website, online_usernames,
-        languages, skills, hobbies, certifications, criminal_record, military_service,
-        vehicles, properties, insurance_policies, metadata, created_at, updated_at,
-        last_verified, tags, notes, privacy_level
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, full_name, preferred_name, gender, date_of_birth, place_of_birth,
+      nationality, ethnic_origin, primary_email, secondary_emails, primary_phone,
+      secondary_phones, emergency_contact, height, weight, eye_color, hair_color,
+      blood_type, distinguishing_marks, identification_documents, current_address,
+      occupation, employer, job_title, work_experience, education, bank_accounts,
+      tax_identification_number, credit_cards, medical_conditions, allergies,
+      medications, primary_care_physician, marital_status, spouse, children,
+      parents, siblings, social_media_profiles, website, online_usernames,
+      languages, skills, hobbies, certifications, criminal_record, military_service,
+      vehicles, properties, insurance_policies, metadata, created_at, updated_at,
+      last_verified, tags, notes, privacy_level
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         person.full_name,
@@ -387,8 +387,8 @@ export class PeopleService {
         JSON.stringify(person.properties || []),
         JSON.stringify(person.insurance_policies || []),
         JSON.stringify(person.metadata || {}),
-        now,
-        now,
+        now, // created_at
+        now, // updated_at
         person.last_verified || null,
         JSON.stringify(person.tags || []),
         person.notes || null,
