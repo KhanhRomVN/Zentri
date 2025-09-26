@@ -15,6 +15,12 @@ import {
 } from 'lucide-react'
 import { Person } from '../../types'
 import BasicInfoSection from './components/BasicInfoSection'
+import DocumentsSection from './components/DocumentsSection'
+import EventsSection from './components/EventsSection'
+import MedicalInfoSection from './components/MedicalInfoSection'
+import ContactInfoSection from './components/ContactInfoSection'
+import ProfessionalInfoSection from './components/ProfessionalInfoSection'
+import FamilyInfoSection from './components/FamilyInfoSection'
 import CustomButton from '../../../../../components/common/CustomButton'
 
 interface PeopleDetailPanelProps {
@@ -24,11 +30,12 @@ interface PeopleDetailPanelProps {
 
 type TabType =
   | 'basic_info'
+  | 'contact_info'
+  | 'professional_info'
+  | 'family_info'
+  | 'medical_info'
   | 'documents'
   | 'events'
-  | 'relationships'
-  | 'addresses'
-  | 'medical'
   | 'legal'
   | 'media'
 
@@ -48,6 +55,30 @@ const TABS: TabConfig[] = [
     description: 'Personal information and contact details'
   },
   {
+    id: 'contact_info',
+    label: 'Contact',
+    icon: MapPin,
+    description: 'Contact details and addresses'
+  },
+  {
+    id: 'professional_info',
+    label: 'Professional',
+    icon: Shield,
+    description: 'Work and education information'
+  },
+  {
+    id: 'family_info',
+    label: 'Family',
+    icon: Users,
+    description: 'Family relationships and connections'
+  },
+  {
+    id: 'medical_info',
+    label: 'Medical',
+    icon: Heart,
+    description: 'Health information and medical records'
+  },
+  {
     id: 'documents',
     label: 'Documents',
     icon: FileText,
@@ -59,27 +90,6 @@ const TABS: TabConfig[] = [
     label: 'Events',
     icon: Calendar,
     description: 'Timeline and important dates',
-    comingSoon: true
-  },
-  {
-    id: 'relationships',
-    label: 'Relationships',
-    icon: Users,
-    description: 'Family, friends and connections',
-    comingSoon: true
-  },
-  {
-    id: 'addresses',
-    label: 'Addresses',
-    icon: MapPin,
-    description: 'Current and previous addresses',
-    comingSoon: true
-  },
-  {
-    id: 'medical',
-    label: 'Medical',
-    icon: Heart,
-    description: 'Health information and medical records',
     comingSoon: true
   },
   {
@@ -114,10 +124,65 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({ person, onUpdateP
     switch (activeTab) {
       case 'basic_info':
         return <BasicInfoSection person={person} onUpdatePerson={onUpdatePerson} />
+
+      case 'contact_info':
+        return <ContactInfoSection person={person} onUpdatePerson={onUpdatePerson} />
+
+      case 'professional_info':
+        return <ProfessionalInfoSection person={person} onUpdatePerson={onUpdatePerson} />
+
+      case 'family_info':
+        return <FamilyInfoSection person={person} onUpdatePerson={onUpdatePerson} />
+
+      case 'medical_info':
+        return <MedicalInfoSection person={person} onUpdatePerson={onUpdatePerson} />
+
+      case 'documents':
+        return <DocumentsSection person={person} onUpdatePerson={onUpdatePerson} />
+
+      case 'events':
+        return <EventsSection person={person} onUpdatePerson={onUpdatePerson} />
+
+      case 'legal':
+        return (
+          <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+            <div className="text-center space-y-4">
+              <Shield className="h-16 w-16 mx-auto opacity-50" />
+              <div>
+                <h3 className="text-lg font-medium">Legal Information</h3>
+                <p className="text-sm mt-2">
+                  Legal documents and records management coming soon...
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'media':
+        return (
+          <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+            <div className="text-center space-y-4">
+              <Camera className="h-16 w-16 mx-auto opacity-50" />
+              <div>
+                <h3 className="text-lg font-medium">Media Gallery</h3>
+                <p className="text-sm mt-2">Photo and media management coming soon...</p>
+              </div>
+            </div>
+          </div>
+        )
+
       default:
         return (
           <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-            {TABS.find((tab) => tab.id === activeTab)?.label} feature coming soon...
+            <div className="text-center space-y-4">
+              <div className="text-4xl">🚧</div>
+              <div>
+                <h3 className="text-lg font-medium">Feature in Development</h3>
+                <p className="text-sm mt-2">
+                  {TABS.find((tab) => tab.id === activeTab)?.label} feature coming soon...
+                </p>
+              </div>
+            </div>
           </div>
         )
     }

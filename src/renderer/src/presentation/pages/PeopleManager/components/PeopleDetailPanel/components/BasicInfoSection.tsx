@@ -129,7 +129,88 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
       setSavingField(field)
 
       const updates: Partial<Person> = {}
-      // ... (giữ nguyên logic xử lý updates)
+
+      // Xử lý mapping field name sang database field
+      switch (field) {
+        case 'full_name':
+          updates.full_name = value as string
+          break
+        case 'preferred_name':
+          updates.preferred_name = value as string
+          break
+        case 'gender':
+          updates.gender = value as string
+          break
+        case 'date_of_birth':
+          updates.date_of_birth = value as string
+          break
+        case 'place_of_birth':
+          updates.place_of_birth = value as string
+          break
+        case 'nationality':
+          updates.nationality = value as string
+          break
+        case 'ethnic_origin':
+          updates.ethnic_origin = value as string
+          break
+        case 'primary_email':
+          updates.primary_email = value as string
+          break
+        case 'primary_phone':
+          updates.primary_phone = value as string
+          break
+        case 'occupation':
+          updates.occupation = value as string
+          break
+        case 'employer':
+          updates.employer = value as string
+          break
+        case 'job_title':
+          updates.job_title = value as string
+          break
+        case 'height':
+          updates.height = value ? parseInt(value as string) : undefined
+          break
+        case 'weight':
+          updates.weight = value ? parseInt(value as string) : undefined
+          break
+        case 'eye_color':
+          updates.eye_color = value as string
+          break
+        case 'hair_color':
+          updates.hair_color = value as string
+          break
+        case 'blood_type':
+          updates.blood_type = value as string
+          break
+        case 'marital_status':
+          updates.marital_status = value as string
+          break
+        case 'website':
+          updates.website = value as string
+          break
+        case 'tax_identification_number':
+          updates.tax_identification_number = value as string
+          break
+        case 'primary_care_physician':
+          updates.primary_care_physician = value as string
+          break
+        case 'tags':
+          updates.tags = value as string[]
+          break
+        case 'notes':
+          updates.notes = value as string
+          break
+        case 'privacy_level':
+          updates.privacy_level = value as string
+          break
+        case 'metadata':
+          updates.metadata = value as Record<string, any>
+          break
+        default:
+          console.warn(`Unhandled field: ${field}`)
+          return
+      }
 
       const success = await onUpdatePerson(person.id, updates)
 
