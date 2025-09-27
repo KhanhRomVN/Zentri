@@ -332,7 +332,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
   return (
     <div
       className={cn(
-        'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
+        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
         className
       )}
     >
@@ -343,9 +343,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
             <Plus className="h-3 w-3 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h4 className="text-base font-bold text-gray-900 dark:text-white">
-              Add Service Account
-            </h4>
+            <h4 className="text-base font-bold text-text-primary">Add Service Account</h4>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Connect a new service account to {email.email_address}
             </p>
@@ -431,9 +429,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <h5 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Account Credentials
-            </h5>
+            <h5 className="text-sm font-semibold text-text-primary">Account Credentials</h5>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

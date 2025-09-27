@@ -205,7 +205,7 @@ const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
   return (
     <div
       className={cn(
-        'group relative bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden',
+        'group relative bg-card-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden',
         className
       )}
     >
@@ -250,9 +250,7 @@ const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
             {/* Service Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                  {serviceName}
-                </h3>
+                <h3 className="text-sm font-semibold text-text-primary truncate">{serviceName}</h3>
                 {serviceUrl && (
                   <Button
                     variant="ghost"

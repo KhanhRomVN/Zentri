@@ -217,7 +217,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="pl-2">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
             <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             Account Information
           </h3>
@@ -228,7 +228,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
       </div>
 
       {/* Main Account Information Section - Consolidated */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
+      <div className="bg-card-background rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
         <div className="p-4">
           {/* Full Name - Full Width Row */}
           <div className="grid grid-cols-1 gap-3 mb-4">
@@ -434,7 +434,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
               <div className="w-6 h-6 bg-purple-50 dark:bg-purple-900/20 rounded-md flex items-center justify-center">
                 <Tag className="h-3 w-3 text-purple-600 dark:text-purple-400" />
               </div>
-              <h5 className="text-sm font-semibold text-gray-900 dark:text-white">Tags</h5>
+              <h5 className="text-sm font-semibold text-text-primary">Tags</h5>
             </div>
 
             <CustomTag

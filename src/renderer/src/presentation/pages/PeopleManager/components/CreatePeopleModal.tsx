@@ -137,7 +137,7 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
       <div className="p-6 space-y-6">
         {/* Basic Information */}
         <div className="space-y-4">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-base font-semibold text-text-primary flex items-center gap-2">
             <User className="h-4 w-4 text-blue-600" />
             Basic Information
           </h3>
@@ -205,7 +205,7 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
 
         {/* Contact Information */}
         <div className="space-y-4">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-base font-semibold text-text-primary flex items-center gap-2">
             <Mail className="h-4 w-4 text-green-600" />
             Contact Information
           </h3>

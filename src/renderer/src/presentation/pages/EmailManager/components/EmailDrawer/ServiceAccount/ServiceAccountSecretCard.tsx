@@ -305,7 +305,7 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
   return (
     <div
       className={cn(
-        'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200',
+        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200',
         isExpired && 'border-red-300 dark:border-red-600 bg-red-50/30 dark:bg-red-900/10',
         isExpiringSoon &&
           !isExpired &&
@@ -323,7 +323,7 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
 
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-base font-semibold text-gray-900 dark:text-white">
+                <span className="text-base font-semibold text-text-primary">
                   {secret.secret_name || 'Unnamed Secret'}
                 </span>
                 {isExpired && (

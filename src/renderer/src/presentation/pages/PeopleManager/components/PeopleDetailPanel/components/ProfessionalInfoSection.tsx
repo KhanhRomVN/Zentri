@@ -243,7 +243,7 @@ const ProfessionalInfoSection: React.FC<ProfessionalInfoSectionProps> = ({
     <div className={cn('space-y-4 p-4', className)}>
       {/* Header */}
       <div className="pl-1">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Briefcase className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           Professional Information
         </h3>
@@ -261,7 +261,7 @@ const ProfessionalInfoSection: React.FC<ProfessionalInfoSectionProps> = ({
               <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/20 rounded flex items-center justify-center">
                 <Briefcase className="h-3 w-3 text-blue-600 dark:text-blue-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Employment</h5>
+              <h5 className="text-sm font-medium text-text-primary">Employment</h5>
             </div>
 
             <div className="space-y-3">
@@ -337,7 +337,7 @@ const ProfessionalInfoSection: React.FC<ProfessionalInfoSectionProps> = ({
               <div className="w-5 h-5 bg-green-50 dark:bg-green-900/20 rounded flex items-center justify-center">
                 <Code className="h-3 w-3 text-green-600 dark:text-green-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Skills</h5>
+              <h5 className="text-sm font-medium text-text-primary">Skills</h5>
             </div>
 
             <CustomTag
@@ -363,7 +363,7 @@ const ProfessionalInfoSection: React.FC<ProfessionalInfoSectionProps> = ({
                 <div className="w-5 h-5 bg-orange-50 dark:bg-orange-900/20 rounded flex items-center justify-center">
                   <Languages className="h-3 w-3 text-orange-600 dark:text-orange-400" />
                 </div>
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white">Languages</h5>
+                <h5 className="text-sm font-medium text-text-primary">Languages</h5>
               </div>
 
               <Button
@@ -433,9 +433,7 @@ const ProfessionalInfoSection: React.FC<ProfessionalInfoSectionProps> = ({
                 <div className="w-5 h-5 bg-purple-50 dark:bg-purple-900/20 rounded flex items-center justify-center">
                   <Building className="h-3 w-3 text-purple-600 dark:text-purple-400" />
                 </div>
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white">
-                  Work Experience
-                </h5>
+                <h5 className="text-sm font-medium text-text-primary">Work Experience</h5>
               </div>
 
               <Button
@@ -538,7 +536,7 @@ const ProfessionalInfoSection: React.FC<ProfessionalInfoSectionProps> = ({
                 <div className="w-5 h-5 bg-green-50 dark:bg-green-900/20 rounded flex items-center justify-center">
                   <GraduationCap className="h-3 w-3 text-green-600 dark:text-green-400" />
                 </div>
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white">Education</h5>
+                <h5 className="text-sm font-medium text-text-primary">Education</h5>
               </div>
 
               <Button
@@ -646,9 +644,7 @@ const ProfessionalInfoSection: React.FC<ProfessionalInfoSectionProps> = ({
                 <div className="w-5 h-5 bg-yellow-50 dark:bg-yellow-900/20 rounded flex items-center justify-center">
                   <Award className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />
                 </div>
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white">
-                  Certifications
-                </h5>
+                <h5 className="text-sm font-medium text-text-primary">Certifications</h5>
               </div>
 
               <Button

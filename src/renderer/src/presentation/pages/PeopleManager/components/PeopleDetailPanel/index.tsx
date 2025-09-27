@@ -230,7 +230,7 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({ person, onUpdateP
               {/* Basic Details - Bố cục chặt chẽ hơn */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white truncate">
+                  <h1 className="text-xl font-bold text-text-primary truncate">
                     {getPersonDisplayName(person)}
                   </h1>
                   {person.preferred_name && person.preferred_name !== person.full_name && (

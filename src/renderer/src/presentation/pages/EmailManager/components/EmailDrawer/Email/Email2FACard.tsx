@@ -19,7 +19,9 @@ import {
   Smartphone,
   Mail,
   Trash2,
-  Check
+  Check,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { Email2FA } from '../../../types'
@@ -28,13 +30,14 @@ interface Email2FACardProps {
   method: Email2FA
   onEdit?: (method: Email2FA) => void
   onDelete?: (methodId: string) => void
-  onSave?: (id: string, updates: Partial<Email2FA>) => void
+  onSave?: (id: string, updates: Partial<Email2FA>) => Promise<void>
   className?: string
   compact?: boolean
 }
 
 const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, className }) => {
   const [showSecret, setShowSecret] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false) // Default collapsed
 
   // State cho inline editing
   const [appValue, setAppValue] = useState(method.app || '')
@@ -58,8 +61,6 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
   // State cho việc lưu
   const [savingField, setSavingField] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
-
-  // Helper function to format date for datetime-local input
 
   // Helper function to parse date from input
   const parseDateFromInput = (inputValue: string): string => {
@@ -91,13 +92,20 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
   const getTwoFAMethodInfo = (type: string) => {
     const methodInfo: Record<
       string,
-      { icon: React.ElementType; label: string; color: string; description: string }
+      {
+        icon: React.ElementType
+        label: string
+        color: string
+        bgColor: string
+        description: string
+      }
     > = {
       backup_codes: {
         icon: FileText,
         label: 'Backup Codes',
         color:
           'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300',
+        bgColor: 'bg-gradient-to-br from-orange-500 to-orange-600',
         description: 'Recovery codes for account access'
       },
       totp_key: {
@@ -105,12 +113,14 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
         label: 'TOTP Key',
         color:
           'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300',
+        bgColor: 'bg-gradient-to-br from-green-500 to-emerald-600',
         description: 'Time-based One-Time Password secret'
       },
       app_password: {
         icon: Key,
         label: 'App Password',
         color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300',
+        bgColor: 'bg-gradient-to-br from-blue-500 to-blue-600',
         description: 'Application-specific password'
       },
       security_key: {
@@ -118,6 +128,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
         label: 'Security Key',
         color:
           'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300',
+        bgColor: 'bg-gradient-to-br from-purple-500 to-purple-600',
         description: 'Hardware security key'
       },
       recovery_email: {
@@ -125,12 +136,14 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
         label: 'Recovery Email',
         color:
           'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300',
+        bgColor: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
         description: 'Alternative email for recovery'
       },
       sms: {
         icon: Smartphone,
         label: 'SMS',
         color: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-300',
+        bgColor: 'bg-gradient-to-br from-pink-500 to-pink-600',
         description: 'SMS-based verification'
       }
     }
@@ -253,7 +266,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                 {method.value.map((code, index) => (
                   <div
                     key={index}
-                    className="p-2 bg-white dark:bg-gray-800 rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-mono text-sm"
+                    className="p-2 bg-card-background rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-mono text-sm"
                     onClick={() => copyToClipboard(code)}
                     title="Click to copy"
                   >
@@ -333,101 +346,126 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
   const MethodIcon = methodInfo.icon
 
   return (
-    <div
-      className={cn(
-        'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200',
-        className
-      )}
-    >
-      <div className="p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
-              <MethodIcon className="h-5 w-5 text-white" />
-            </div>
-
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1 text-text-primary">
-                {methodInfo.label}
+    <div className={cn('transition-all duration-200', className)}>
+      <div className="space-y-0">
+        {/* Header - Always Visible */}
+        <div className=" pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div
+                className={`w-10 h-10 ${methodInfo.bgColor} rounded-lg flex items-center justify-center shadow-sm flex-shrink-0`}
+              >
+                <MethodIcon className="h-4 w-4 text-white" />
               </div>
 
-              {method.app && (
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-gray-500 dark:text-gray-400">App:</Label>
-                  <div className="flex-1 max-w-40">
-                    <CustomInput
-                      value={appValue}
-                      onChange={setAppValue}
-                      placeholder="App name"
-                      variant="filled"
-                      size="sm"
-                      rightIcon={renderStatusIcon('app', hasAppChanged)}
-                      disabled={savingField !== null && savingField !== 'app'}
-                    />
-                  </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-text-primary font-medium">{methodInfo.label}</span>
+                  {method.app && (
+                    <CustomBadge variant="secondary" size="xs" className="text-xs">
+                      {method.app}
+                    </CustomBadge>
+                  )}
                 </div>
-              )}
 
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {methodInfo.description}
-              </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {methodInfo.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <CustomButton
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                icon={Trash2}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-1 h-7 w-7 hover:bg-gray-100 dark:hover:bg-gray-600 ml-1"
+              >
+                {isExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                )}
+              </Button>
             </div>
           </div>
-
-          {/* Actions - Chỉ còn Delete */}
-          <div className="flex items-center gap-1">
-            <CustomButton
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              icon={Trash2}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1" children={undefined}            ></CustomButton>
-          </div>
         </div>
 
-        {/* Method Value */}
-        {renderMethodValue()}
+        {/* Expandable Content */}
+        {isExpanded && (
+          <div className=" space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+            {/* App Name Field (if applicable) */}
+            {method.app && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Application
+                </Label>
+                <CustomInput
+                  value={appValue}
+                  onChange={setAppValue}
+                  placeholder="App name"
+                  variant="filled"
+                  size="sm"
+                  rightIcon={renderStatusIcon('app', hasAppChanged)}
+                  disabled={savingField !== null && savingField !== 'app'}
+                />
+              </div>
+            )}
 
-        {/* Dates and Status */}
-        <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
-          <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-            <span>Updated: {formatDate(method.last_update)}</span>
+            {/* Method Value */}
+            {renderMethodValue()}
+
+            {/* Dates and Status */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                <span>Last Updated: {formatDate(method.last_update)}</span>
+              </div>
+
+              {/* Expire Date Field */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Expiry Date
+                </Label>
+                <CustomInput
+                  value={expireDateValue}
+                  onChange={setExpireDateValue}
+                  placeholder="Select expiry date"
+                  variant="filled"
+                  size="sm"
+                  type="datetime-local"
+                  showTime={false}
+                  rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
+                  disabled={savingField !== null && savingField !== 'expire_at'}
+                />
+              </div>
+            </div>
+
+            {/* Metadata với inline editing */}
+            <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+              <Metadata
+                metadata={editingMetadata || {}}
+                title="Additional Information"
+                compact={true}
+                collapsible={true}
+                defaultExpanded={false}
+                size="sm"
+                maxVisibleFields={3}
+                showDeleteButtons={true}
+                onMetadataChange={handleMetadataChange}
+                showAddButton={true}
+                allowEmpty={true}
+              />
+            </div>
           </div>
-
-          {/* Expire Date Field */}
-          <div className="space-y-2">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Expire Date:</Label>
-            <CustomInput
-              value={expireDateValue}
-              onChange={setExpireDateValue}
-              placeholder="Select expiry date"
-              variant="filled"
-              size="sm"
-              type="datetime-local"
-              showTime={false}
-              rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
-              disabled={savingField !== null && savingField !== 'expire_at'}
-            />
-          </div>
-        </div>
-
-        {/* Metadata với inline editing */}
-        <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
-          <Metadata
-            metadata={editingMetadata || {}}
-            title="Additional Information"
-            compact={true}
-            collapsible={true}
-            defaultExpanded={false}
-            size="sm"
-            maxVisibleFields={3}
-            showDeleteButtons={true}
-            onMetadataChange={handleMetadataChange}
-            showAddButton={true}
-            allowEmpty={true}
-          />
-        </div>
+        )}
       </div>
     </div>
   )

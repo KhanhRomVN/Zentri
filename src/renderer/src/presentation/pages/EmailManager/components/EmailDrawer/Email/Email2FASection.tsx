@@ -121,7 +121,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="pl-2">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
             <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
             Two-Factor Authentication
             <CustomBadge
@@ -150,7 +150,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
       </div>
 
       {/* Main Card - Reduced padding and spacing */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
+      <div className="bg-card-background rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
         {/* Header - Reduced padding */}
         <div className="p-4 pb-3">
           <div className="flex items-center justify-between">
@@ -214,15 +214,6 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
               {/* Methods List */}
               {has2FA ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-gray-900 dark:text-white text-sm">
-                      Active 2FA Methods
-                    </h4>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {active2FAMethods} total
-                    </span>
-                  </div>
-
                   <div className="grid gap-3">
                     {email2FAMethods.map((method) => (
                       <Email2FACard
@@ -241,7 +232,7 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
                     <Lock className="h-6 w-6 text-gray-400" />
                   </div>
 
-                  <h4 className="text-base font-medium text-gray-900 dark:text-white mb-2">
+                  <h4 className="text-base font-medium text-text-primary mb-2">
                     No 2FA Methods Configured
                   </h4>
 

@@ -415,9 +415,7 @@ const Metadata: React.FC<MetadataProps> = ({
         >
           <Database className={cn('text-indigo-600 dark:text-indigo-400', currentSize.icon)} />
         </div>
-        <h4 className={cn('font-semibold text-gray-900 dark:text-white', currentSize.title)}>
-          {title}
-        </h4>
+        <h4 className={cn('font-semibold text-text-primary', currentSize.title)}>{title}</h4>
         {entries.length > 0 && (
           <span className={cn('text-gray-500 dark:text-gray-400', compact ? 'text-xs' : 'text-sm')}>
             ({entries.length} field{entries.length !== 1 ? 's' : ''})

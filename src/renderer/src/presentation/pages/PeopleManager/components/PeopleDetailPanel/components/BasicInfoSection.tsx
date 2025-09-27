@@ -344,7 +344,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
       {/* Header - Compact hơn */}
       <div className="flex items-center justify-between">
         <div className="pl-1">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
             <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             Basic Information
           </h3>
@@ -363,7 +363,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/20 rounded flex items-center justify-center">
                 <User className="h-3 w-3 text-blue-600 dark:text-blue-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Identity</h5>
+              <h5 className="text-sm font-medium text-text-primary">Identity</h5>
             </div>
 
             <div className="space-y-3">
@@ -474,7 +474,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               <div className="w-5 h-5 bg-green-50 dark:bg-green-900/20 rounded flex items-center justify-center">
                 <Mail className="h-3 w-3 text-green-600 dark:text-green-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Contact</h5>
+              <h5 className="text-sm font-medium text-text-primary">Contact</h5>
             </div>
 
             <div className="space-y-3">
@@ -572,7 +572,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               <div className="w-5 h-5 bg-purple-50 dark:bg-purple-900/20 rounded flex items-center justify-center">
                 <Briefcase className="h-3 w-3 text-purple-600 dark:text-purple-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Professional</h5>
+              <h5 className="text-sm font-medium text-text-primary">Professional</h5>
             </div>
 
             <div className="space-y-3">
@@ -635,7 +635,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               <div className="w-5 h-5 bg-orange-50 dark:bg-orange-900/20 rounded flex items-center justify-center">
                 <Palette className="h-3 w-3 text-orange-600 dark:text-orange-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Physical</h5>
+              <h5 className="text-sm font-medium text-text-primary">Physical</h5>
             </div>
 
             <div className="space-y-3">
@@ -718,7 +718,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               <div className="w-5 h-5 bg-pink-50 dark:bg-pink-900/20 rounded flex items-center justify-center">
                 <Heart className="h-3 w-3 text-pink-600 dark:text-pink-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Status</h5>
+              <h5 className="text-sm font-medium text-text-primary">Status</h5>
             </div>
 
             <div className="space-y-3">
@@ -787,7 +787,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               <div className="w-5 h-5 bg-purple-50 dark:bg-purple-900/20 rounded flex items-center justify-center">
                 <Tag className="h-3 w-3 text-purple-600 dark:text-purple-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Tags</h5>
+              <h5 className="text-sm font-medium text-text-primary">Tags</h5>
             </div>
 
             <CustomTag
@@ -811,7 +811,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               <div className="w-5 h-5 bg-yellow-50 dark:bg-yellow-900/20 rounded flex items-center justify-center">
                 <FileText className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Notes</h5>
+              <h5 className="text-sm font-medium text-text-primary">Notes</h5>
             </div>
 
             <CustomInput

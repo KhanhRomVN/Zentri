@@ -42,7 +42,7 @@ const DocumentsSection: React.FC<DocumentsSectionProps> = ({
     <div className={cn('space-y-4 p-4', className)}>
       {/* Header */}
       <div className="pl-1">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
           Documents
         </h3>
@@ -55,9 +55,7 @@ const DocumentsSection: React.FC<DocumentsSectionProps> = ({
       <div className="bg-card-background rounded-lg border border-border-default hover:border-border-hover shadow-sm hover:shadow transition-all duration-200">
         <div className="p-6 text-center">
           <FileText className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-          <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Document Management
-          </h4>
+          <h4 className="text-lg font-medium text-text-primary mb-2">Document Management</h4>
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
             Upload and manage identification documents, certificates, and other important files.
             This feature is coming soon.
@@ -90,7 +88,7 @@ const DocumentsSection: React.FC<DocumentsSectionProps> = ({
                     <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <h5 className="font-medium text-gray-900 dark:text-white capitalize">
+                    <h5 className="font-medium text-text-primary capitalize">
                       {doc.type?.replace('_', ' ')}
                     </h5>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{doc.number}</p>
@@ -160,9 +158,7 @@ const DocumentsSection: React.FC<DocumentsSectionProps> = ({
       ) : (
         <div className="bg-card-background rounded-lg border border-border-default p-8 text-center">
           <FileText className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No Documents Added
-          </h4>
+          <h4 className="text-lg font-medium text-text-primary mb-2">No Documents Added</h4>
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
             This person doesn't have any documents uploaded yet.
           </p>

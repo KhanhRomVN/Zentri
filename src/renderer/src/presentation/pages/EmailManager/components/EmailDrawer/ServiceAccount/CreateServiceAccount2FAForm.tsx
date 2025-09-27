@@ -336,7 +336,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
   return (
     <div
       className={cn(
-        'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
+        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
         className
       )}
     >
@@ -347,7 +347,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
             <Plus className="h-3 w-3 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <h4 className="text-base font-bold text-gray-900 dark:text-white">
+            <h4 className="text-base font-bold text-text-primary">
               Add 2FA Method for {serviceAccount.service_name}
             </h4>
             <p className="text-xs text-gray-600 dark:text-gray-400">

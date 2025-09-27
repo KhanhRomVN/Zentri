@@ -136,7 +136,7 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
       default: {
         container: 'relative',
         input: `
-        bg-white dark:bg-gray-800 
+        bg-card-background 
         border border-gray-300 dark:border-gray-600 
         rounded-lg
         focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
@@ -177,7 +177,7 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
       floating: {
         container: 'relative',
         input: `
-        bg-white dark:bg-gray-800 
+        bg-card-background 
         border border-gray-300 dark:border-gray-600 
         rounded-lg pt-6 pb-2
         focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20

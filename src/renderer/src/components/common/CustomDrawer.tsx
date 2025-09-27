@@ -259,7 +259,7 @@ const MotionCustomDrawer: React.FC<MotionCustomDrawerProps> = ({
                 variants={headerVariants}
                 initial="hidden"
                 animate="visible"
-                className="flex-shrink-0 px-6 py-5 border-b border-border bg-card-background"
+                className="flex-shrink-0 px-6 py-5 border-b border-border bg-drawer-background"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">

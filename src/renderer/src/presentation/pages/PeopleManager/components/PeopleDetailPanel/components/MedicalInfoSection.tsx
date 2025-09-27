@@ -161,7 +161,7 @@ const MedicalInfoSection: React.FC<MedicalInfoSectionProps> = ({
     <div className={cn('space-y-4 p-4', className)}>
       {/* Header */}
       <div className="pl-1">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Heart className="h-4 w-4 text-red-600 dark:text-red-400" />
           Medical Information
         </h3>
@@ -179,9 +179,7 @@ const MedicalInfoSection: React.FC<MedicalInfoSectionProps> = ({
               <div className="w-5 h-5 bg-red-50 dark:bg-red-900/20 rounded flex items-center justify-center">
                 <Droplets className="h-3 w-3 text-red-600 dark:text-red-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">
-                Basic Information
-              </h5>
+              <h5 className="text-sm font-medium text-text-primary">Basic Information</h5>
             </div>
 
             <div className="space-y-3">
@@ -226,9 +224,7 @@ const MedicalInfoSection: React.FC<MedicalInfoSectionProps> = ({
               <div className="w-5 h-5 bg-orange-50 dark:bg-orange-900/20 rounded flex items-center justify-center">
                 <AlertTriangle className="h-3 w-3 text-orange-600 dark:text-orange-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">
-                Medical Conditions
-              </h5>
+              <h5 className="text-sm font-medium text-text-primary">Medical Conditions</h5>
             </div>
 
             <CustomTag
@@ -253,7 +249,7 @@ const MedicalInfoSection: React.FC<MedicalInfoSectionProps> = ({
               <div className="w-5 h-5 bg-yellow-50 dark:bg-yellow-900/20 rounded flex items-center justify-center">
                 <AlertTriangle className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Allergies</h5>
+              <h5 className="text-sm font-medium text-text-primary">Allergies</h5>
             </div>
 
             <CustomTag
@@ -279,7 +275,7 @@ const MedicalInfoSection: React.FC<MedicalInfoSectionProps> = ({
                 <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/20 rounded flex items-center justify-center">
                   <Pill className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                 </div>
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white">Medications</h5>
+                <h5 className="text-sm font-medium text-text-primary">Medications</h5>
               </div>
 
               <Button

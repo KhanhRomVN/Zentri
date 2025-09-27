@@ -105,7 +105,7 @@ const EventsSection: React.FC<EventsSectionProps> = ({ person, className, onUpda
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="pl-1">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
             <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             Events & Timeline
           </h3>
@@ -129,7 +129,7 @@ const EventsSection: React.FC<EventsSectionProps> = ({ person, className, onUpda
       {/* Add Event Form */}
       {showAddEvent && (
         <div className="bg-card-background rounded-lg border border-border-default p-4">
-          <h4 className="font-medium text-gray-900 dark:text-white mb-3">Add New Event</h4>
+          <h4 className="font-medium text-text-primary mb-3">Add New Event</h4>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <CustomInput
@@ -224,7 +224,7 @@ const EventsSection: React.FC<EventsSectionProps> = ({ person, className, onUpda
                   </div>
 
                   <div>
-                    <h5 className="font-medium text-gray-900 dark:text-white">{event.title}</h5>
+                    <h5 className="font-medium text-text-primary">{event.title}</h5>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
                         <Tag className="h-3 w-3" />
@@ -271,9 +271,7 @@ const EventsSection: React.FC<EventsSectionProps> = ({ person, className, onUpda
       ) : (
         <div className="bg-card-background rounded-lg border border-border-default p-8 text-center">
           <Calendar className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No Events Added
-          </h4>
+          <h4 className="text-lg font-medium text-text-primary mb-2">No Events Added</h4>
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
             Track important events, meetings, and milestones for {person.full_name}.
           </p>

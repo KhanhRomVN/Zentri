@@ -241,7 +241,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                 {method.value.map((code, index) => (
                   <div
                     key={index}
-                    className="p-2 bg-white dark:bg-gray-800 rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-mono text-sm"
+                    className="p-2 bg-card-background rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-mono text-sm"
                     onClick={() => copyToClipboard(code)}
                     title="Click to copy"
                   >
@@ -323,7 +323,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
   return (
     <div
       className={cn(
-        'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200',
+        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200',
         className
       )}
     >

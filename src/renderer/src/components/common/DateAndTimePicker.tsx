@@ -413,7 +413,7 @@ const DateAndTimePicker: React.FC<DateAndTimePickerProps> = ({
   // Variant styles matching CustomInput
   const variantStyles = {
     default: `
-      bg-white dark:bg-gray-800 
+      bg-card-background 
       border border-gray-300 dark:border-gray-600 
       rounded-lg
       focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
@@ -438,7 +438,7 @@ const DateAndTimePicker: React.FC<DateAndTimePickerProps> = ({
       focus:border-blue-500
     `,
     floating: `
-      bg-white dark:bg-gray-800 
+      bg-card-background 
       border border-gray-300 dark:border-gray-600 
       rounded-lg pt-6 pb-2
       focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
@@ -475,7 +475,7 @@ const DateAndTimePicker: React.FC<DateAndTimePickerProps> = ({
   }
 
   const pickerContent = (
-    <div className="w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+    <div className="w-96 bg-card-background rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
       {/* Horizontal Layout Container */}
       <div className="flex">
         {/* Calendar Section */}

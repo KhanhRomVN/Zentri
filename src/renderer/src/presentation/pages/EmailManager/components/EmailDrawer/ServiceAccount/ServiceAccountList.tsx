@@ -132,7 +132,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
         <div className="pl-2">
           <h3
             className={cn(
-              'font-bold text-gray-900 dark:text-white flex items-center gap-2',
+              'font-bold text-text-primary flex items-center gap-2',
               compact ? 'text-lg' : 'text-xl'
             )}
           >
@@ -171,7 +171,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
 
       {/* Search and Filters */}
       {services.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="bg-card-background rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -251,7 +251,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
           )}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <div className="text-center py-12 bg-card-background rounded-xl border border-gray-200 dark:border-gray-700">
           <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
             {services.length === 0 ? (
               <Globe className="h-8 w-8 text-gray-400" />
@@ -259,7 +259,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
               <Search className="h-8 w-8 text-gray-400" />
             )}
           </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-medium text-text-primary mb-2">
             {services.length === 0 ? 'No service accounts' : 'No services found'}
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-4">

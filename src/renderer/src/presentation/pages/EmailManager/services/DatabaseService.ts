@@ -207,6 +207,7 @@ export class DatabaseService {
         id TEXT PRIMARY KEY,
         email_address TEXT NOT NULL UNIQUE,
         email_provider TEXT NOT NULL CHECK (email_provider IN ('gmail', 'yahoo', 'outlook', 'icloud')),
+        category TEXT DEFAULT 'personal',
         name TEXT,
         age INTEGER,
         address TEXT,
@@ -816,117 +817,104 @@ id, service_account_id, secret, expire_at, created_at, updated_at
     ])
   }
 
-  async migrateServiceAccountSecrets(): Promise<void> {
+  async migrateDatabaseTables(): Promise<void> {
     try {
-      console.log('[MIGRATION] Checking if migration is needed...')
+      console.log('[MIGRATION] Starting database migration...')
 
-      // Kiểm tra xem có cột secret không (thay vì secretList)
-      const tableInfo = await window.electronAPI.sqlite.getAllRows(
-        'PRAGMA table_info(service_account_secrets)'
-      )
+      // Migration cho bảng emails - xử lý field category
+      await this.migrateEmailsTable()
 
-      console.log('[MIGRATION] Current table structure:', tableInfo)
-
-      const hasSecretType = tableInfo.some((col: any) => col.name === 'secret_type')
-      const hasSecretList = tableInfo.some((col: any) => col.name === 'secretList')
-      const hasSecret = tableInfo.some((col: any) => col.name === 'secret')
-      const hasMetadata = tableInfo.some((col: any) => col.name === 'metadata')
-
-      console.log('[MIGRATION] Table analysis:', {
-        hasSecretType,
-        hasSecretList,
-        hasSecret,
-        hasMetadata
-      })
-
-      if (hasSecretType || hasSecretList || !hasSecret) {
-        console.log('[MIGRATION] Migration needed. Starting process...')
-
-        // Backup existing data first
-        const existingData = await window.electronAPI.sqlite.getAllRows(
-          'SELECT * FROM service_account_secrets'
-        )
-        console.log('[MIGRATION] Backing up existing data:', existingData.length, 'records')
-
-        // Drop existing table
-        await window.electronAPI.sqlite.runQuery('DROP TABLE IF EXISTS service_account_secrets')
-
-        // Create new table with correct structure
-        await window.electronAPI.sqlite.runQuery(`
-        CREATE TABLE service_account_secrets (
-          id TEXT PRIMARY KEY,
-          service_account_id TEXT NOT NULL,
-          secret TEXT NOT NULL,
-          expire_at TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (service_account_id) REFERENCES service_accounts (id) ON DELETE CASCADE
-        )
-      `)
-
-        // Restore data with new structure
-        for (const row of existingData) {
-          // Migrate từ secretList sang secret format mới
-          let secretData = '{"secret_name": "Migrated Secret"}'
-
-          if (row.secretList) {
-            try {
-              const oldData = JSON.parse(row.secretList)
-              secretData = JSON.stringify({
-                secret_name: 'Migrated Secret',
-                ...oldData
-              })
-            } catch (e) {
-              console.warn('Failed to parse old secretList, using default')
-            }
-          } else if (row.metadata) {
-            try {
-              const oldData = JSON.parse(row.metadata)
-              secretData = JSON.stringify({
-                secret_name: 'Migrated Secret',
-                ...oldData
-              })
-            } catch (e) {
-              console.warn('Failed to parse old metadata, using default')
-            }
-          }
-
-          const now = new Date().toISOString()
-
-          await window.electronAPI.sqlite.runQuery(
-            `
-    INSERT INTO service_account_secrets (id, service_account_id, secret, expire_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `,
-            [
-              row.id,
-              row.service_account_id,
-              secretData,
-              row.expire_at,
-              row.created_at || now,
-              row.updated_at || now
-            ]
-          )
-        }
-
-        // Recreate index
-        await window.electronAPI.sqlite.runQuery(
-          'CREATE INDEX IF NOT EXISTS idx_service_account_secrets_service_id ON service_account_secrets (service_account_id)'
-        )
-
-        console.log(
-          '[MIGRATION] Migration completed successfully! Restored',
-          existingData.length,
-          'records'
-        )
-      } else {
-        console.log('[MIGRATION] No migration needed. Table structure is already correct.')
-      }
+      console.log('[MIGRATION] All migrations completed successfully!')
     } catch (error) {
       console.error('[MIGRATION ERROR]', error)
       throw new Error(
         `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       )
+    }
+  }
+
+  // Method mới để migration bảng emails
+  private async migrateEmailsTable(): Promise<void> {
+    try {
+      console.log('[MIGRATION] Checking emails table structure...')
+
+      // Kiểm tra cấu trúc bảng hiện tại
+      const tableInfo = await window.electronAPI.sqlite.getAllRows('PRAGMA table_info(emails)')
+
+      const hasCategory = tableInfo.some((col: any) => col.name === 'category')
+
+      if (hasCategory) {
+        console.log('[MIGRATION] Emails table already has category field, removing it...')
+
+        // Backup dữ liệu hiện tại
+        const existingEmails = await window.electronAPI.sqlite.getAllRows('SELECT * FROM emails')
+
+        // Drop và tạo lại bảng emails với cấu trúc đúng (không có category)
+        await window.electronAPI.sqlite.runQuery('DROP TABLE IF EXISTS emails')
+
+        // Tạo lại bảng emails với cấu trúc đúng
+        await window.electronAPI.sqlite.runQuery(`
+        CREATE TABLE emails (
+          id TEXT PRIMARY KEY,
+          email_address TEXT NOT NULL UNIQUE,
+          email_provider TEXT NOT NULL CHECK (email_provider IN ('gmail', 'yahoo', 'outlook', 'icloud')),
+          name TEXT,
+          age INTEGER,
+          address TEXT,
+          password TEXT NOT NULL,
+          last_password_change TEXT NOT NULL,
+          recovery_email TEXT,
+          phone_numbers TEXT,
+          tags TEXT,
+          note TEXT,
+          metadata TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `)
+
+        // Restore dữ liệu (loại bỏ field category)
+        for (const email of existingEmails) {
+          await window.electronAPI.sqlite.runQuery(
+            `INSERT INTO emails (
+            id, email_address, email_provider, name, age, address, password,
+            last_password_change, recovery_email, phone_numbers, tags, note, metadata,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              email.id,
+              email.email_address,
+              email.email_provider,
+              email.name,
+              email.age,
+              email.address,
+              email.password,
+              email.last_password_change,
+              email.recovery_email,
+              email.phone_numbers,
+              email.tags,
+              email.note,
+              email.metadata,
+              email.created_at || new Date().toISOString(),
+              email.updated_at || new Date().toISOString()
+            ]
+          )
+        }
+
+        // Tạo lại index
+        await window.electronAPI.sqlite.runQuery(
+          'CREATE INDEX IF NOT EXISTS idx_emails_provider ON emails (email_provider)'
+        )
+
+        console.log(
+          `[MIGRATION] Emails table migrated successfully! Restored ${existingEmails.length} records`
+        )
+      } else {
+        console.log('[MIGRATION] Emails table structure is correct, no migration needed')
+      }
+    } catch (error) {
+      console.error('[MIGRATION] Error migrating emails table:', error)
+      throw error
     }
   }
 }

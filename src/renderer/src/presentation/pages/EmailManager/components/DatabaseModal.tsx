@@ -127,7 +127,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
         className={cn(
-          'bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full max-w-lg',
+          'bg-card-background rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full max-w-lg',
           className
         )}
         onClick={(e) => e.stopPropagation()}
@@ -180,9 +180,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
                     <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                      Recent Database
-                    </h3>
+                    <h3 className="font-semibold text-text-primary mb-1">Recent Database</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 truncate">
                       {recentDatabase.name}
                     </p>
@@ -225,9 +223,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
                   <Plus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                    Create New Database
-                  </h3>
+                  <h3 className="font-semibold text-text-primary mb-1">Create New Database</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Start fresh with a new empty database
                   </p>
@@ -247,9 +243,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
                   <FolderOpen className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                    Open Existing Database
-                  </h3>
+                  <h3 className="font-semibold text-text-primary mb-1">Open Existing Database</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Continue working with an existing database file
                   </p>

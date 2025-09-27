@@ -75,7 +75,7 @@ const EmailManagerPage = () => {
       console.log('[MIGRATION] Starting database migration...')
 
       // Gọi migration method
-      await databaseService.migrateServiceAccountSecrets()
+      await databaseService.migrateDatabaseTables()
 
       console.log('[MIGRATION] Migration completed successfully!')
 
@@ -266,7 +266,7 @@ const EmailManagerPage = () => {
                     <Database className="h-8 w-8 text-gray-400" />
                   </div>
                   <div>
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                    <p className="text-lg font-medium text-text-primary">
                       {isLoading ? 'Loading Database...' : 'No Database Selected'}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">

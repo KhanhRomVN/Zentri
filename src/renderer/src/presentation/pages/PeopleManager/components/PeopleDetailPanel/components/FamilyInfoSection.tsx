@@ -200,7 +200,7 @@ const FamilyInfoSection: React.FC<FamilyInfoSectionProps> = ({
     <div className={cn('space-y-4 p-4', className)}>
       {/* Header */}
       <div className="pl-1">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Users className="h-4 w-4 text-pink-600 dark:text-pink-400" />
           Family Information
         </h3>
@@ -218,7 +218,7 @@ const FamilyInfoSection: React.FC<FamilyInfoSectionProps> = ({
               <div className="w-5 h-5 bg-pink-50 dark:bg-pink-900/20 rounded flex items-center justify-center">
                 <Heart className="h-3 w-3 text-pink-600 dark:text-pink-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Marital Status</h5>
+              <h5 className="text-sm font-medium text-text-primary">Marital Status</h5>
             </div>
 
             <CustomCombobox
@@ -246,7 +246,7 @@ const FamilyInfoSection: React.FC<FamilyInfoSectionProps> = ({
                 <div className="w-5 h-5 bg-red-50 dark:bg-red-900/20 rounded flex items-center justify-center">
                   <UserPlus className="h-3 w-3 text-red-600 dark:text-red-400" />
                 </div>
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white">Spouse</h5>
+                <h5 className="text-sm font-medium text-text-primary">Spouse</h5>
               </div>
 
               <div className="space-y-3">
@@ -303,7 +303,7 @@ const FamilyInfoSection: React.FC<FamilyInfoSectionProps> = ({
               <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/20 rounded flex items-center justify-center">
                 <Users className="h-3 w-3 text-blue-600 dark:text-blue-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Children</h5>
+              <h5 className="text-sm font-medium text-text-primary">Children</h5>
             </div>
 
             <Button
@@ -384,7 +384,7 @@ const FamilyInfoSection: React.FC<FamilyInfoSectionProps> = ({
               <div className="w-5 h-5 bg-green-50 dark:bg-green-900/20 rounded flex items-center justify-center">
                 <Users className="h-3 w-3 text-green-600 dark:text-green-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Parents</h5>
+              <h5 className="text-sm font-medium text-text-primary">Parents</h5>
             </div>
 
             <Button
@@ -465,7 +465,7 @@ const FamilyInfoSection: React.FC<FamilyInfoSectionProps> = ({
               <div className="w-5 h-5 bg-orange-50 dark:bg-orange-900/20 rounded flex items-center justify-center">
                 <Users className="h-3 w-3 text-orange-600 dark:text-orange-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Siblings</h5>
+              <h5 className="text-sm font-medium text-text-primary">Siblings</h5>
             </div>
 
             <Button

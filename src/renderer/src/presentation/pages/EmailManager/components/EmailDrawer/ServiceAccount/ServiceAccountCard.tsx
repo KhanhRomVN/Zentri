@@ -279,7 +279,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
   return (
     <div
       className={cn(
-        'group relative bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600',
+        'group relative bg-card-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600',
         className
       )}
       onClick={handleCardClick}
@@ -325,7 +325,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
             {/* Service Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                <h3 className="text-sm font-semibold text-text-primary truncate">
                   {service.service_name}
                 </h3>
                 {service.service_url && (
@@ -634,7 +634,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
           {showNestedServices && nestedServices && nestedServices.length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 ml-2">
               <div className="mb-3">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                <h4 className="text-sm font-semibold text-text-primary">
                   Related Services ({nestedServices.length})
                 </h4>
               </div>

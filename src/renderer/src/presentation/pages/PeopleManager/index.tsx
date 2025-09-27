@@ -176,9 +176,7 @@ const PeopleManagerPage = () => {
                   <div className="text-center space-y-4">
                     <Users className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto" />
                     <div>
-                      <p className="text-lg font-medium text-gray-900 dark:text-white">
-                        No Person Selected
-                      </p>
+                      <p className="text-lg font-medium text-text-primary">No Person Selected</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         Select a person from the list to view details
                       </p>

@@ -18,6 +18,7 @@ interface CustomComboboxProps {
   multiple?: boolean
   creatable?: boolean
   size?: 'sm' | 'md' | 'lg'
+  required?: boolean
 }
 
 const OPTION_INPUT_THRESHOLD = 10
@@ -32,7 +33,8 @@ const CustomCombobox: FC<CustomComboboxProps> = ({
   searchable,
   multiple = false,
   creatable = false,
-  size = 'md'
+  size = 'md',
+  required = false
 }) => {
   // Auto determine if should be searchable
   const isInput = useMemo(() => {
@@ -53,6 +55,7 @@ const CustomCombobox: FC<CustomComboboxProps> = ({
       isInput={isInput}
       creatable={creatable}
       size={size}
+      required={required}
     />
   )
 }
@@ -67,7 +70,8 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
   multiple = false,
   creatable = false,
   isInput = false,
-  size = 'md'
+  size = 'md',
+  required = false
 }) => {
   const [input, setInput] = useState('')
   const [showDrop, setShowDrop] = useState(false)
@@ -333,6 +337,7 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
       {label && (
         <label className={`block text-gray-700 dark:text-gray-300 ${currentSize.label}`}>
           {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
 
@@ -346,7 +351,7 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
             value={displayValue}
             placeholder={placeholder}
             className={cn(
-              `w-full ${currentSize.input} bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:bg-white dark:focus:bg-gray-800`,
+              `w-full ${currentSize.input} bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-text-primary placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:bg-white dark:focus:bg-gray-800`,
               currentSize.padding
             )}
             onChange={handleInputChange}
@@ -389,7 +394,7 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
 
         {/* Dropdown Menu */}
         {showDrop && (
-          <div className="absolute left-0 right-0 top-full z-30 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
+          <div className="absolute left-0 right-0 top-full z-30 mt-2 bg-card-background border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
             <div className={`${currentSize.dropdown} overflow-auto py-1`}>
               {filteredOpts.length === 0 ? (
                 <div className={`${currentSize.option} text-gray-400 dark:text-gray-600`}>

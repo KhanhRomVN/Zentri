@@ -80,7 +80,7 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
       default: {
         container: 'relative',
         textarea: `
-          bg-white dark:bg-gray-800 
+          bg-card-background 
           border border-gray-300 dark:border-gray-600 
           rounded-lg
           focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
@@ -121,7 +121,7 @@ const CustomTextArea = forwardRef<HTMLTextAreaElement, CustomTextAreaProps>(
       floating: {
         container: 'relative',
         textarea: `
-          bg-white dark:bg-gray-800 
+          bg-card-background 
           border border-gray-300 dark:border-gray-600 
           rounded-lg pt-6 pb-2
           focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20

@@ -258,10 +258,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             total_codes: Array.isArray(processedValue) ? processedValue.length : 0,
             codes_used: 0
           }),
-          ...(selectedMethod?.autoFillFromEmail && {
-            auto_filled_from_email: true,
-            auto_fill_field: selectedMethod.autoFillField
-          }),
           ...formData.metadata
         }
       }
@@ -381,7 +377,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
   return (
     <div
       className={cn(
-        'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
+        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
         className
       )}
     >
@@ -392,7 +388,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             <Plus className="h-3 w-3 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <h4 className="text-base font-bold text-gray-900 dark:text-white">Add 2FA Method</h4>
+            <h4 className="text-base font-bold text-text-primary">Add 2FA Method</h4>
             <p className="text-xs text-gray-600 dark:text-gray-400">
               Configure a new two-factor authentication method for {email.email_address}
             </p>

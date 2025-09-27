@@ -203,7 +203,7 @@ const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
     <div className={cn('space-y-4 p-4', className)}>
       {/* Header */}
       <div className="pl-1">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           Contact Information
         </h3>
@@ -221,7 +221,7 @@ const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
               <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/20 rounded flex items-center justify-center">
                 <Mail className="h-3 w-3 text-blue-600 dark:text-blue-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Email Addresses</h5>
+              <h5 className="text-sm font-medium text-text-primary">Email Addresses</h5>
             </div>
 
             <div className="space-y-3">
@@ -298,7 +298,7 @@ const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
               <div className="w-5 h-5 bg-green-50 dark:bg-green-900/20 rounded flex items-center justify-center">
                 <Phone className="h-3 w-3 text-green-600 dark:text-green-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Phone Numbers</h5>
+              <h5 className="text-sm font-medium text-text-primary">Phone Numbers</h5>
             </div>
 
             <div className="space-y-3">
@@ -375,7 +375,7 @@ const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
               <div className="w-5 h-5 bg-orange-50 dark:bg-orange-900/20 rounded flex items-center justify-center">
                 <MapPin className="h-3 w-3 text-orange-600 dark:text-orange-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Current Address</h5>
+              <h5 className="text-sm font-medium text-text-primary">Current Address</h5>
             </div>
 
             <div className="space-y-3">
@@ -459,7 +459,7 @@ const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
               <div className="w-5 h-5 bg-purple-50 dark:bg-purple-900/20 rounded flex items-center justify-center">
                 <Globe className="h-3 w-3 text-purple-600 dark:text-purple-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">Online Presence</h5>
+              <h5 className="text-sm font-medium text-text-primary">Online Presence</h5>
             </div>
 
             <div className="space-y-3">
@@ -502,9 +502,7 @@ const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
                 <div className="w-5 h-5 bg-pink-50 dark:bg-pink-900/20 rounded flex items-center justify-center">
                   <Users className="h-3 w-3 text-pink-600 dark:text-pink-400" />
                 </div>
-                <h5 className="text-sm font-medium text-gray-900 dark:text-white">
-                  Social Media Profiles
-                </h5>
+                <h5 className="text-sm font-medium text-text-primary">Social Media Profiles</h5>
               </div>
 
               <Button
@@ -583,9 +581,7 @@ const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
               <div className="w-5 h-5 bg-red-50 dark:bg-red-900/20 rounded flex items-center justify-center">
                 <Building className="h-3 w-3 text-red-600 dark:text-red-400" />
               </div>
-              <h5 className="text-sm font-medium text-gray-900 dark:text-white">
-                Emergency Contact
-              </h5>
+              <h5 className="text-sm font-medium text-text-primary">Emergency Contact</h5>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
