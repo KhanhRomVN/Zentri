@@ -167,7 +167,8 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
           updates.value = value
           break
         case 'metadata':
-          updates.metadata = value
+          updates.metadata = value as Record<string, any>
+          updates.last_update = new Date().toISOString()
           break
         case 'expire_at':
           updates.expire_at = parseDateFromInput(value) || null
@@ -192,7 +193,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     }
   }
 
-  const hasExpireDateChanged = expireDateValue !== (method.expire_at || '')
+  const hasExpireDateChanged = expireDateValue !== formatDateForInput(method.expire_at)
 
   // Check if values have changed
   const hasAppChanged = appValue !== (method.app || '')
@@ -246,10 +247,34 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     }
   }
 
-  const handleMetadataChange = (newMetadata: Record<string, any>) => {
-    setEditingMetadata(newMetadata)
-    // Auto save khi có thay đổi
-    handleSaveField('metadata', newMetadata)
+  const handleMetadataChange = async (newMetadata: Record<string, any>) => {
+    console.log('[DEBUG] handleMetadataChange called with:', newMetadata)
+    console.log('[DEBUG] Current method.metadata:', method.metadata)
+
+    // Loại bỏ các trường có giá trị null, undefined hoặc empty string
+    const cleanedMetadata = Object.fromEntries(
+      Object.entries(newMetadata).filter(
+        ([_, value]) => value !== null && value !== undefined && value !== ''
+      )
+    )
+
+    console.log('[DEBUG] Cleaned metadata:', cleanedMetadata)
+    setEditingMetadata(cleanedMetadata)
+
+    // Gọi trực tiếp onSave nếu có thay đổi
+    if (onSave) {
+      try {
+        await onSave(method.id, {
+          metadata: cleanedMetadata,
+          last_update: new Date().toISOString()
+        })
+        console.log('[DEBUG] Metadata saved successfully')
+      } catch (error) {
+        console.error('[DEBUG] Error saving metadata:', error)
+      }
+    } else {
+      console.warn('[DEBUG] onSave prop not provided')
+    }
   }
 
   const renderMethodValue = () => {
@@ -452,6 +477,13 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
             <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
               <Metadata
                 metadata={editingMetadata || {}}
+                onMetadataChange={handleMetadataChange}
+                onDelete={(key) => {
+                  const newMetadata = { ...editingMetadata }
+                  delete newMetadata[key]
+                  setEditingMetadata(newMetadata)
+                  handleSaveField('metadata', newMetadata)
+                }}
                 title="Additional Information"
                 compact={true}
                 collapsible={true}
@@ -459,9 +491,18 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                 size="sm"
                 maxVisibleFields={3}
                 showDeleteButtons={true}
-                onMetadataChange={handleMetadataChange}
-                showAddButton={true}
+                hideEmpty={true}
+                editable={true}
                 allowEmpty={true}
+                showAddButton={true}
+                // Custom render để ẩn hoàn toàn các trường đã xóa
+                shouldRenderField={(_, value) => {
+                  // Không hiển thị các trường có giá trị null/undefined/empty
+                  if (value === null || value === undefined || value === '') {
+                    return false
+                  }
+                  return true
+                }}
               />
             </div>
           </div>

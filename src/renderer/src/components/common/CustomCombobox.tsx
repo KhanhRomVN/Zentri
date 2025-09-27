@@ -250,10 +250,14 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
     }, 0)
   }
 
-  const closeDropdown = () => {
-    setShowDrop(false)
+  const clearValue = () => {
     setInput('')
-    setIsInputFocused(false)
+    setIsInputFocused(true)
+    if (isMulti) {
+      onChange([])
+    } else {
+      onChange('')
+    }
   }
 
   const toggleMulti = (val: string) => {
@@ -369,15 +373,19 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
           )}
 
           {/* Chevron/Close Button */}
-          {showDrop ? (
+          {showDrop || (isMulti ? Array.isArray(value) && value.length > 0 : value) ? (
             <button
               type="button"
-              aria-label="Close menu"
+              aria-label={showDrop ? 'Close menu' : 'Clear selection'}
               className={`absolute ${currentSize.chevron} z-20 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-600 top-1/2 -translate-y-1/2`}
               tabIndex={0}
-              onClick={closeDropdown}
+              onClick={() => {
+                clearValue()
+              }}
             >
-              <XIcon className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+              <XIcon
+                className={`${currentSize.chevron.includes('w-4 h-4') ? 'w-4 h-4' : currentSize.chevron.includes('w-5 h-5') ? 'w-5 h-5' : 'w-3.5 h-3.5'} text-gray-400 hover:text-gray-600 dark:hover:text-gray-300`}
+              />
             </button>
           ) : (
             <button
@@ -394,7 +402,11 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
 
         {/* Dropdown Menu */}
         {showDrop && (
-          <div className="absolute left-0 right-0 top-full z-30 mt-2 bg-card-background border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
+          <div
+            className="absolute left-0 top-full z-30 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95"
+            style={{ width: '100%', minWidth: 'max-content' }}
+          >
+            {' '}
             <div className={`${currentSize.dropdown} overflow-auto py-1`}>
               {filteredOpts.length === 0 ? (
                 <div className={`${currentSize.option} text-gray-400 dark:text-gray-600`}>
@@ -430,7 +442,9 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
                   >
                     {isMulti && Array.isArray(value) && value.includes(opt.value) && (
                       <span
-                        className={`${size === 'sm' ? 'w-2.5 h-2.5' : size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'} flex items-center justify-center text-blue-600 dark:text-blue-400`}
+                        className={`${
+                          size === 'sm' ? 'w-2.5 h-2.5' : size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'
+                        } flex items-center justify-center text-blue-600 dark:text-blue-400`}
                       >
                         ✓
                       </span>
@@ -447,7 +461,9 @@ const ComboboxInput: FC<Omit<CustomComboboxProps, 'searchable'> & { isInput?: bo
       {/* Multi-select badges */}
       {isMulti && selectedOpts.length > 0 && (
         <div
-          className={`flex flex-wrap gap-${size === 'sm' ? '1' : '2'} ${size === 'sm' ? 'mt-1' : 'mt-2'}`}
+          className={`flex flex-wrap gap-${size === 'sm' ? '1' : '2'} ${
+            size === 'sm' ? 'mt-1' : 'mt-2'
+          }`}
         >
           {selectedOpts.map((opt) => (
             <span
