@@ -80,7 +80,6 @@ export const URL_SUBTYPE_OPTIONS = [
   { value: 'video_url', label: 'Video URL' },
   { value: 'image_url', label: 'Image URL' },
   { value: 'website_url', label: 'Website URL' },
-  { value: 'api_url', label: 'API Endpoint URL' },
   { value: 'custom_url', label: 'Custom URL' }
 ]
 

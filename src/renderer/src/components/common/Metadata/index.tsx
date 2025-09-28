@@ -315,8 +315,9 @@ const Metadata: React.FC<MetadataProps> = ({
                     newValue: resetValue, // Luôn reset value
                     arrayItems: newType === 'array' ? [] : [], // Reset array items
                     codeLanguage: newType === 'code' ? 'javascript' : undefined,
-                    urlSubType: newType === 'url' ? 'video_url' : undefined,
-                    localFileSubType: newType === 'localfile' ? 'image' : undefined
+                    urlSubType: newType === 'url' ? prev.urlSubType || 'video_url' : undefined,
+                    localFileSubType:
+                      newType === 'localfile' ? prev.localFileSubType || 'image' : undefined
                   }
                 })
               }}
@@ -338,7 +339,9 @@ const Metadata: React.FC<MetadataProps> = ({
                   setEditingExistingField((prev) => (prev ? { ...prev, newValue: value } : null)),
                 {
                   arrayItems: editingExistingField.arrayItems,
-                  codeLanguage: editingExistingField.codeLanguage
+                  codeLanguage: editingExistingField.codeLanguage,
+                  urlSubType: editingExistingField.urlSubType,
+                  localFileSubType: editingExistingField.localFileSubType
                 },
                 (props) => setEditingExistingField((prev) => (prev ? { ...prev, ...props } : null)),
                 false
@@ -464,8 +467,9 @@ const Metadata: React.FC<MetadataProps> = ({
                   value: newType === 'null' ? '' : prev.value,
                   arrayItems: newType === 'array' ? prev.arrayItems || [] : [],
                   codeLanguage: newType === 'code' ? prev.codeLanguage || 'javascript' : undefined,
-                  urlSubType: newType === 'url' ? 'video_url' : undefined,
-                  localFileSubType: newType === 'localfile' ? 'image' : undefined
+                  urlSubType: newType === 'url' ? prev.urlSubType || 'video_url' : undefined,
+                  localFileSubType:
+                    newType === 'localfile' ? prev.localFileSubType || 'image' : undefined
                 }
               })
             }}
@@ -486,7 +490,9 @@ const Metadata: React.FC<MetadataProps> = ({
               (value) => setEditingField((prev) => (prev ? { ...prev, value } : null)),
               {
                 arrayItems: editingField.arrayItems,
-                codeLanguage: editingField.codeLanguage
+                codeLanguage: editingField.codeLanguage,
+                urlSubType: editingField.urlSubType,
+                localFileSubType: editingField.localFileSubType
               },
               (props) => setEditingField((prev) => (prev ? { ...prev, ...props } : null)),
               false

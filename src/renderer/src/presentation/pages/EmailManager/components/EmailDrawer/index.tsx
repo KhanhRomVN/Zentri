@@ -410,6 +410,23 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     await loadServiceData(service)
   }
 
+  const handleSave2FA = async (id: string, updates: Partial<Email2FA>) => {
+    try {
+      console.log('[DEBUG] handleSave2FA called with:', { id, updates })
+
+      await databaseService.updateEmail2FA(id, updates)
+
+      // Refresh the 2FA methods list
+      const updated2FA = await databaseService.getEmail2FAByEmailId(email!.id!)
+      setEmail2FAMethods(updated2FA)
+
+      console.log('[DEBUG] 2FA updated successfully')
+    } catch (error) {
+      console.error('Error saving 2FA method:', error)
+      throw error // Re-throw để component con có thể handle error
+    }
+  }
+
   // THÊM: Handle service add
   const handleServiceAdd = async (serviceData: Omit<ServiceAccount, 'id' | 'email_id'>) => {
     if (!email?.id) return
@@ -520,6 +537,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
                   onAdd2FA={handleAdd2FA}
                   onEdit2FA={handleEdit2FA}
                   onDelete2FA={handleDelete2FA}
+                  onSave2FA={handleSave2FA}
                 />
 
                 {/* Service Accounts Section - THÊM email prop */}

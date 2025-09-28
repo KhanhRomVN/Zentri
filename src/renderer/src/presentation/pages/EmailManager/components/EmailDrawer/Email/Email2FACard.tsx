@@ -1,5 +1,5 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/Email2FACard.tsx
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from '../../../../../../components/ui/button'
 import { Badge } from '../../../../../../components/ui/badge'
 import CustomBadge from '../../../../../../components/common/CustomBadge'
@@ -56,11 +56,21 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     }
   }
 
-  const [editingMetadata, setEditingMetadata] = useState(method.metadata || {})
+  const [editingMetadata, setEditingMetadata] = useState(() => {
+    // Đảm bảo metadata luôn có giá trị và được deep clone
+    const metadata = method.metadata || {}
+    return JSON.parse(JSON.stringify(metadata))
+  })
+
   const [expireDateValue, setExpireDateValue] = useState(formatDateForInput(method.expire_at))
   // State cho việc lưu
   const [savingField, setSavingField] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
+
+  useEffect(() => {
+    const metadata = method.metadata || {}
+    setEditingMetadata(JSON.parse(JSON.stringify(metadata)))
+  }, [method.metadata])
 
   // Helper function to parse date from input
   const parseDateFromInput = (inputValue: string): string => {
@@ -259,22 +269,12 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     )
 
     console.log('[DEBUG] Cleaned metadata:', cleanedMetadata)
+
+    // Cập nhật state local trước
     setEditingMetadata(cleanedMetadata)
 
-    // Gọi trực tiếp onSave nếu có thay đổi
-    if (onSave) {
-      try {
-        await onSave(method.id, {
-          metadata: cleanedMetadata,
-          last_update: new Date().toISOString()
-        })
-        console.log('[DEBUG] Metadata saved successfully')
-      } catch (error) {
-        console.error('[DEBUG] Error saving metadata:', error)
-      }
-    } else {
-      console.warn('[DEBUG] onSave prop not provided')
-    }
+    // Chỉ gọi handleSaveField thay vì onSave trực tiếp để đảm bảo consistency
+    handleSaveField('metadata', cleanedMetadata)
   }
 
   const renderMethodValue = () => {
@@ -495,9 +495,11 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                 editable={true}
                 allowEmpty={true}
                 showAddButton={true}
-                // Custom render để ẩn hoàn toàn các trường đã xóa
+                allowCreate={true}
+                allowEdit={true}
+                allowDelete={true}
+                readOnly={false}
                 shouldRenderField={(_, value) => {
-                  // Không hiển thị các trường có giá trị null/undefined/empty
                   if (value === null || value === undefined || value === '') {
                     return false
                   }

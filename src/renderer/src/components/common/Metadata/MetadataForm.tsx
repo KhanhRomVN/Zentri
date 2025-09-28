@@ -256,7 +256,7 @@ export const renderFieldInput = (
         <URLInput
           value={value}
           onChange={onChange}
-          subType={(extraProps.urlSubType as URLSubType) || 'custom_url'}
+          subType={(extraProps.urlSubType as URLSubType) || 'video_url'}
           onSubTypeChange={(subType) => setExtraProps({ ...extraProps, urlSubType: subType })}
           disabled={disabled}
         />
@@ -267,7 +267,7 @@ export const renderFieldInput = (
         <LocalFileInput
           value={value}
           onChange={onChange}
-          subType={(extraProps.localFileSubType as LocalFileSubType) || 'custom_file'}
+          subType={(extraProps.localFileSubType as LocalFileSubType) || 'image'}
           onSubTypeChange={(subType) => setExtraProps({ ...extraProps, localFileSubType: subType })}
           disabled={disabled}
           emailAddress={extraProps.emailAddress}
