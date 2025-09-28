@@ -473,10 +473,10 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
                 defaultExpanded={false}
                 editable={true}
                 showDeleteButtons={true}
-                hideEmpty={true} // THAY ĐỔI: Ẩn các trường empty
+                hideEmpty={true}
                 maxVisibleFields={10}
                 protectedFields={['created_at', 'last_password_change']}
-                // THÊM: Custom render để ẩn hoàn toàn các trường đã xóa
+                emailAddress={email.email_address} // THÊM DÒNG NÀY
                 shouldRenderField={(_, value) => {
                   // Không hiển thị các trường có giá trị null/undefined/empty
                   if (value === null || value === undefined || value === '') {

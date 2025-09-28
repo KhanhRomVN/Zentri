@@ -314,7 +314,9 @@ const Metadata: React.FC<MetadataProps> = ({
                     newType,
                     newValue: resetValue, // Luôn reset value
                     arrayItems: newType === 'array' ? [] : [], // Reset array items
-                    codeLanguage: newType === 'code' ? 'javascript' : undefined
+                    codeLanguage: newType === 'code' ? 'javascript' : undefined,
+                    urlSubType: newType === 'url' ? 'video_url' : undefined,
+                    localFileSubType: newType === 'localfile' ? 'image' : undefined
                   }
                 })
               }}
@@ -324,9 +326,11 @@ const Metadata: React.FC<MetadataProps> = ({
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Field Value
-              </label>
+              {!['url', 'localfile', 'code'].includes(editingExistingField.newType) && (
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Field Value
+                </label>
+              )}
               {renderFieldInput(
                 editingExistingField.newType,
                 editingExistingField.newValue,
@@ -459,7 +463,9 @@ const Metadata: React.FC<MetadataProps> = ({
                   type: newType,
                   value: newType === 'null' ? '' : prev.value,
                   arrayItems: newType === 'array' ? prev.arrayItems || [] : [],
-                  codeLanguage: newType === 'code' ? prev.codeLanguage || 'javascript' : undefined
+                  codeLanguage: newType === 'code' ? prev.codeLanguage || 'javascript' : undefined,
+                  urlSubType: newType === 'url' ? 'video_url' : undefined,
+                  localFileSubType: newType === 'localfile' ? 'image' : undefined
                 }
               })
             }}
@@ -469,9 +475,11 @@ const Metadata: React.FC<MetadataProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Field Value
-            </label>
+            {!['url', 'localfile', 'code'].includes(editingField.type) && (
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Field Value
+              </label>
+            )}
             {renderFieldInput(
               editingField.type,
               editingField.value,

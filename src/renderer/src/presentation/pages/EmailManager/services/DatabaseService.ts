@@ -24,6 +24,7 @@ declare global {
         showSaveDialog: (options: any) => Promise<{ canceled: boolean; filePath?: string }>
         showOpenDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[] }>
         exists: (path: string) => Promise<boolean>
+        mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void> // Added for folder creation
       }
       // Thêm API cho persistent storage
       storage: {
@@ -67,14 +68,38 @@ export class DatabaseService {
     }
   }
 
+  // Helper method to get path separator based on OS
+  private getPathSeparator(): string {
+    return navigator.platform.toLowerCase().includes('win') ? '\\' : '/'
+  }
+
+  // Helper method to create EmailManager folder structure
+  private async createEmailManagerFolder(basePath: string): Promise<string> {
+    const separator = this.getPathSeparator()
+    const folderPath = basePath + separator + 'EmailManager'
+
+    try {
+      // Create the EmailManager directory
+      await window.electronAPI.fileSystem.mkdir(folderPath, { recursive: true })
+
+      // Return the full path to the database file
+      return folderPath + separator + 'email_manager.db'
+    } catch (error) {
+      console.error('Error creating EmailManager folder:', error)
+      throw new Error(
+        `Failed to create EmailManager folder: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    }
+  }
+
   // Database lifecycle methods
   async createNewDatabase(): Promise<string | null> {
     try {
       const result = await window.electronAPI.fileSystem.showSaveDialog({
         title: 'Create New Email Manager Database',
-        defaultPath: 'email_manager.db',
+        defaultPath: 'EmailManager', // Changed to suggest folder name
         filters: [
-          { name: 'Database Files', extensions: ['db', 'sqlite'] },
+          { name: 'Email Manager Project', extensions: [''] }, // Allow selecting folders
           { name: 'All Files', extensions: ['*'] }
         ]
       })
@@ -83,19 +108,23 @@ export class DatabaseService {
         return null
       }
 
-      await window.electronAPI.sqlite.createDatabase(result.filePath)
+      // Create the EmailManager folder structure and get the database path
+      const databasePath = await this.createEmailManagerFolder(result.filePath)
+
+      // Create the database at the specified path
+      await window.electronAPI.sqlite.createDatabase(databasePath)
       await this.initializeTables()
 
       this.currentDatabase = {
-        path: result.filePath,
-        name: this.getFileNameFromPath(result.filePath),
+        path: databasePath,
+        name: this.getProjectNameFromPath(result.filePath),
         lastAccess: new Date().toISOString()
       }
 
       // Lưu thông tin database vào storage
       await this.saveLastDatabase(this.currentDatabase)
 
-      return result.filePath
+      return databasePath
     } catch (error) {
       console.error('Error creating database:', error)
       throw error
@@ -120,9 +149,12 @@ export class DatabaseService {
       const filePath = result.filePaths[0]
       await window.electronAPI.sqlite.openDatabase(filePath)
 
+      // Extract project name from the path structure
+      const projectName = this.getProjectNameFromDatabasePath(filePath)
+
       this.currentDatabase = {
         path: filePath,
-        name: this.getFileNameFromPath(filePath),
+        name: projectName,
         lastAccess: new Date().toISOString()
       }
 
@@ -207,7 +239,6 @@ export class DatabaseService {
         id TEXT PRIMARY KEY,
         email_address TEXT NOT NULL UNIQUE,
         email_provider TEXT NOT NULL CHECK (email_provider IN ('gmail', 'yahoo', 'outlook', 'icloud')),
-        category TEXT DEFAULT 'personal',
         name TEXT,
         age INTEGER,
         address TEXT,
@@ -299,6 +330,25 @@ export class DatabaseService {
 
   private getFileNameFromPath(path: string): string {
     return path.split(/[\\/]/).pop() || path
+  }
+
+  // New method to extract project name from the selected folder path
+  private getProjectNameFromPath(path: string): string {
+    const pathParts = path.split(/[\\/]/)
+    return pathParts[pathParts.length - 1] || 'Email Manager Project'
+  }
+
+  // New method to extract project name from database file path
+  private getProjectNameFromDatabasePath(databasePath: string): string {
+    const pathParts = databasePath.split(/[\\/]/)
+    // Find the parent folder of the database file
+    // Expected structure: .../projectName/EmailManager/email_manager.db
+    const EmailManagerIndex = pathParts.findIndex((part) => part === 'EmailManager')
+    if (EmailManagerIndex > 0) {
+      return pathParts[EmailManagerIndex - 1]
+    }
+    // Fallback to database file name if structure is different
+    return this.getFileNameFromPath(databasePath).replace('.db', '')
   }
 
   // Email CRUD operations
@@ -750,9 +800,6 @@ export class DatabaseService {
   ): Promise<ServiceAccountSecret> {
     const id = uuidv4()
     const now = new Date().toISOString()
-
-    console.log('[DEBUG] Creating secret with data:', secretData)
-    console.log('[DEBUG] Secret fields to store:', secretData.secretList)
 
     try {
       await window.electronAPI.sqlite.runQuery(

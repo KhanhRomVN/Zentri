@@ -1,7 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/DatabaseModal.tsx
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Database, FolderOpen, Plus, AlertCircle, Clock, X } from 'lucide-react'
+import { Database, FolderOpen, Plus, AlertCircle, Clock, X, Folder } from 'lucide-react'
 import CustomButton from '../../../../components/common/CustomButton'
 import { databaseService } from '../services/DatabaseService'
 import { cn } from '../../../../shared/lib/utils'
@@ -141,7 +141,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
             <h2 className="text-xl font-bold">Email Manager Database</h2>
           </div>
           <p className="text-blue-100 text-sm">
-            Select a database file to get started with managing your emails
+            Select or create a project folder to get started with managing your emails
           </p>
         </div>
 
@@ -180,7 +180,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
                     <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-text-primary mb-1">Recent Database</h3>
+                    <h3 className="font-semibold text-text-primary mb-1">Recent Project</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 truncate">
                       {recentDatabase.name}
                     </p>
@@ -192,7 +192,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
                 <button
                   onClick={handleForgetRecent}
                   className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded"
-                  title="Forget this database"
+                  title="Forget this project"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -204,7 +204,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
                 disabled={loading}
                 className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
               >
-                Continue with Recent Database
+                Continue with Recent Project
               </motion.button>
             </motion.div>
           )}
@@ -223,10 +223,14 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
                   <Plus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-text-primary mb-1">Create New Database</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Start fresh with a new empty database
+                  <h3 className="font-semibold text-text-primary mb-1">Create New Project</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    Create a new project with organized folder structure
                   </p>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <Folder className="h-3 w-3" />
+                    <span>Creates: ProjectName/emailManager/email_manager.db</span>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -263,7 +267,7 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
               icon={Plus}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
-              Create New
+              Create New Project
             </CustomButton>
 
             <CustomButton
@@ -285,12 +289,18 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
               <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
                 <h4 className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-1">
-                  Database Security
+                  Project Structure
                 </h4>
-                <p className="text-xs text-amber-700 dark:text-amber-400">
-                  Your email data is stored locally in an encrypted SQLite database. Keep your
-                  database file safe and consider regular backups.
+                <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
+                  When creating a new project, the system will create an organized folder structure:
                 </p>
+                <div className="text-xs text-amber-700 dark:text-amber-400 font-mono bg-amber-100 dark:bg-amber-900/30 p-2 rounded">
+                  YourProject/
+                  <br />
+                  └── emailManager/
+                  <br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;└── email_manager.db
+                </div>
               </div>
             </div>
           </div>

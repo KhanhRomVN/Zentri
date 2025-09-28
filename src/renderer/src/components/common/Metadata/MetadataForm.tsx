@@ -2,9 +2,11 @@ import React, { useState } from 'react'
 import CustomInput from '../CustomInput'
 import CustomButton from '../CustomButton'
 import CustomCodeEditor from '../CustomCodeEditor'
+import { URLInput } from './URLInput'
+import { LocalFileInput } from './LocalFileInput'
 import { cn } from '../../../shared/lib/utils'
-import { Check, X, Plus, Calendar, ExternalLink } from 'lucide-react'
-import { MetadataFieldType } from './types'
+import { Check, X, Plus, Calendar } from 'lucide-react'
+import { MetadataFieldType, URLSubType, LocalFileSubType } from './types'
 
 // Boolean Toggle Component
 export const BooleanToggle: React.FC<{
@@ -46,7 +48,6 @@ export const BooleanToggle: React.FC<{
   </div>
 )
 
-// Array Input Component
 // Array Input Component
 export const ArrayInput: React.FC<{
   items: string[]
@@ -133,79 +134,6 @@ export const ArrayInput: React.FC<{
   )
 }
 
-// URL Input Component
-export const URLInput: React.FC<{
-  value: string
-  onChange: (value: string) => void
-  disabled?: boolean
-}> = ({ value, onChange, disabled }) => {
-  const [isValidating, setIsValidating] = useState(false)
-  const [isValid, setIsValid] = useState<boolean | null>(null)
-
-  const validateURL = async (url: string) => {
-    if (!url.trim()) {
-      setIsValid(null)
-      return
-    }
-
-    try {
-      new URL(url) // Basic URL validation
-      setIsValidating(true)
-
-      // Simple check - in real app, you might want to do actual HTTP request
-      const isHttpUrl = url.startsWith('http://') || url.startsWith('https://')
-      setIsValid(isHttpUrl)
-
-      setTimeout(() => setIsValidating(false), 500) // Simulate network check
-    } catch {
-      setIsValid(false)
-      setIsValidating(false)
-    }
-  }
-
-  React.useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      validateURL(value)
-    }, 500)
-
-    return () => clearTimeout(timeoutId)
-  }, [value])
-
-  return (
-    <div className="space-y-2">
-      <CustomInput
-        value={value}
-        onChange={onChange}
-        placeholder="https://example.com"
-        disabled={disabled}
-        size="sm"
-        rightIcon={
-          <div className="flex items-center gap-1">
-            {isValidating && (
-              <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full" />
-            )}
-            {!isValidating && isValid === true && <Check className="h-3 w-3 text-green-500" />}
-            {!isValidating && isValid === false && <X className="h-3 w-3 text-red-500" />}
-            {value && isValid === true && (
-              <a
-                href={value}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-              >
-                <ExternalLink className="h-3 w-3 text-blue-500" />
-              </a>
-            )}
-          </div>
-        }
-      />
-      {!isValidating && isValid === false && (
-        <p className="text-xs text-red-500">Invalid URL format</p>
-      )}
-    </div>
-  )
-}
-
 // DateTime Picker Component
 export const DateTimePicker: React.FC<{
   value: string
@@ -280,7 +208,6 @@ export const DateTimePicker: React.FC<{
 }
 
 // Field Input Renderer
-// Field Input Renderer
 export const renderFieldInput = (
   type: MetadataFieldType,
   value: string,
@@ -300,7 +227,6 @@ export const renderFieldInput = (
       )
 
     case 'date':
-      // Return CustomInput with datetime-local type for direct DateAndTimePicker integration
       return (
         <CustomInput
           type="datetime-local"
@@ -326,7 +252,27 @@ export const renderFieldInput = (
       )
 
     case 'url':
-      return <URLInput value={value} onChange={onChange} disabled={disabled} />
+      return (
+        <URLInput
+          value={value}
+          onChange={onChange}
+          subType={(extraProps.urlSubType as URLSubType) || 'custom_url'}
+          onSubTypeChange={(subType) => setExtraProps({ ...extraProps, urlSubType: subType })}
+          disabled={disabled}
+        />
+      )
+
+    case 'localfile':
+      return (
+        <LocalFileInput
+          value={value}
+          onChange={onChange}
+          subType={(extraProps.localFileSubType as LocalFileSubType) || 'custom_file'}
+          onSubTypeChange={(subType) => setExtraProps({ ...extraProps, localFileSubType: subType })}
+          disabled={disabled}
+          emailAddress={extraProps.emailAddress}
+        />
+      )
 
     case 'code':
       return (

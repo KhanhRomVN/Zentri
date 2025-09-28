@@ -72,12 +72,9 @@ const EmailManagerPage = () => {
 
     try {
       setIsMigrating(true)
-      console.log('[MIGRATION] Starting database migration...')
 
       // Gọi migration method
       await databaseService.migrateDatabaseTables()
-
-      console.log('[MIGRATION] Migration completed successfully!')
 
       // Refresh data sau khi migration
       await loadEmails()
