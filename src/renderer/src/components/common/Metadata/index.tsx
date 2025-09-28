@@ -1,71 +1,44 @@
-// src/renderer/src/components/common/Metadata.tsx
+// src/renderer/src/components/common/metadata/Metadata.tsx
 import React, { useState } from 'react'
-import CustomInput from './CustomInput'
-import CustomCombobox from './CustomCombobox'
-import CustomButton from './CustomButton'
+import CustomInput from '../CustomInput'
+import CustomCombobox from '../CustomCombobox'
+import CustomButton from '../CustomButton'
 import { Database, Copy, Trash2, ChevronDown, ChevronUp, Plus, Edit2 } from 'lucide-react'
-import { cn } from '../../shared/lib/utils'
+import { cn } from '../../../shared/lib/utils'
 
-// Field type definitions
-export type MetadataFieldType =
-  | 'string'
-  | 'number'
-  | 'boolean'
-  | 'date'
-  | 'array'
-  | 'binary'
-  | 'null'
+// Import types and utilities
+import {
+  MetadataProps,
+  EditingField,
+  EditingExistingField,
+  SIZE_CLASSES,
+  FIELD_TYPE_OPTIONS,
+  MetadataFieldType
+} from './types'
+import {
+  detectFieldType,
+  formatValueForType,
+  parseValueByType,
+  getFieldTypeDisplay,
+  copyToClipboard
+} from './utils'
+import { renderFieldInput } from './MetadataForm'
+import CustomCodeEditor from '../CustomCodeEditor'
 
-export interface MetadataFieldInfo {
-  value: any
-  type: MetadataFieldType
-}
+// Enhanced color mapping for different field types
+const getFieldTypeColor = (fieldType: string) => {
+  const colorMap: Record<string, string> = {
+    String: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300',
+    Number: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300',
+    Boolean: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300',
+    Date: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300',
+    Array: 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-300',
+    Code: 'bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-300',
+    URL: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-300',
+    Null: 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400'
+  }
 
-// Field type options for combobox
-const FIELD_TYPE_OPTIONS = [
-  { value: 'string', label: 'String (Text)' },
-  { value: 'number', label: 'Number' },
-  { value: 'boolean', label: 'Boolean (True/False)' },
-  { value: 'date', label: 'Date (ISO String)' },
-  { value: 'array', label: 'Array (Mixed Types)' },
-  { value: 'binary', label: 'Binary/Buffer Data' },
-  { value: 'null', label: 'Null Value' }
-]
-
-interface MetadataProps {
-  metadata: Record<string, any>
-  onMetadataChange?: (metadata: Record<string, any>) => void
-  onDelete?: (key: string) => void
-  title?: string
-  className?: string
-  compact?: boolean
-  collapsible?: boolean
-  defaultExpanded?: boolean
-  readOnly?: boolean
-  hideEmpty?: boolean
-  maxVisibleFields?: number
-  allowCreate?: boolean
-  allowEdit?: boolean
-  allowDelete?: boolean
-  size?: 'sm' | 'md' | 'lg'
-  protectedFields?: string[]
-  shouldRenderField?: (key: string, value: any) => boolean
-  editable?: boolean
-  showDeleteButtons?: boolean
-}
-
-interface EditingField {
-  key: string
-  value: string
-  type: MetadataFieldType
-  isNew: boolean
-}
-
-interface EditingExistingField {
-  originalKey: string
-  newKey: string
-  newValue: string
-  newType: MetadataFieldType
+  return colorMap[fieldType] || 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400'
 }
 
 const Metadata: React.FC<MetadataProps> = ({
@@ -97,111 +70,6 @@ const Metadata: React.FC<MetadataProps> = ({
 
   const canModify = !readOnly && onMetadataChange
 
-  // Utility functions for field types
-  const detectFieldType = (value: any): MetadataFieldType => {
-    if (value === null) return 'null'
-    if (typeof value === 'boolean') return 'boolean'
-    if (typeof value === 'number') return 'number'
-    if (Array.isArray(value)) return 'array'
-    if (typeof value === 'string') {
-      // Check if it's an ISO date
-      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) return 'date'
-      // Check if it's binary data (base64 or buffer indication)
-      if (value.startsWith('data:') || value.includes('base64') || value.includes('buffer'))
-        return 'binary'
-    }
-    return 'string'
-  }
-
-  const formatValueForType = (value: any, type: MetadataFieldType): string => {
-    switch (type) {
-      case 'array':
-        return Array.isArray(value) ? JSON.stringify(value) : '[]'
-      case 'boolean':
-        return String(value)
-      case 'number':
-        return String(value)
-      case 'date':
-        return typeof value === 'string' ? value : new Date().toISOString()
-      case 'binary':
-        return String(value)
-      case 'null':
-        return ''
-      default:
-        return String(value || '')
-    }
-  }
-
-  const parseValueByType = (value: string, type: MetadataFieldType): any => {
-    switch (type) {
-      case 'string':
-        return value
-      case 'number':
-        const num = parseFloat(value)
-        return isNaN(num) ? 0 : num
-      case 'boolean':
-        return value.toLowerCase() === 'true'
-      case 'date':
-        // Validate ISO date format
-        const dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
-        if (!dateRegex.test(value)) {
-          throw new Error('Date must be in ISO format (YYYY-MM-DDTHH:mm:ss)')
-        }
-        return value
-      case 'array':
-        try {
-          const parsed = JSON.parse(value)
-          if (!Array.isArray(parsed)) {
-            throw new Error('Value must be a valid JSON array')
-          }
-          return parsed
-        } catch {
-          throw new Error('Invalid JSON array format')
-        }
-      case 'binary':
-        return value // Store as string, could be base64 or file path
-      case 'null':
-        return null
-      default:
-        return value
-    }
-  }
-
-  const getPlaceholderForType = (type: MetadataFieldType): string => {
-    switch (type) {
-      case 'string':
-        return 'Enter text value...'
-      case 'number':
-        return 'Enter number (e.g., 123 or 45.67)...'
-      case 'boolean':
-        return 'Enter true or false...'
-      case 'date':
-        return 'Enter ISO date (2024-01-01T10:30:00Z)...'
-      case 'array':
-        return 'Enter JSON array ["item1", "item2", 123]...'
-      case 'binary':
-        return 'Enter base64 data or file path...'
-      case 'null':
-        return 'This field will be null'
-      default:
-        return 'Enter value...'
-    }
-  }
-
-  const getFieldTypeDisplay = (value: any): string => {
-    const type = detectFieldType(value)
-    const typeLabels = {
-      string: 'Text',
-      number: 'Number',
-      boolean: 'Bool',
-      date: 'Date',
-      array: 'Array',
-      binary: 'Binary',
-      null: 'Null'
-    }
-    return typeLabels[type] || 'Text'
-  }
-
   const entries = Object.entries(metadata).filter(([key, value]) => {
     if (hideEmpty) {
       if (value === null || value === undefined || value === '') {
@@ -209,7 +77,6 @@ const Metadata: React.FC<MetadataProps> = ({
       }
     }
 
-    // Sử dụng shouldRenderField nếu được cung cấp
     if (shouldRenderField) {
       return shouldRenderField(key, value)
     }
@@ -224,18 +91,10 @@ const Metadata: React.FC<MetadataProps> = ({
   const visibleEntries = maxVisibleFields && !showAll ? entries.slice(0, maxVisibleFields) : entries
   const hasMoreFields = maxVisibleFields && entries.length > maxVisibleFields
 
-  // Copy to clipboard
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch (err) {
-      console.error('Failed to copy:', err)
-    }
-  }
+  const currentSize = SIZE_CLASSES[size]
 
   // Start creating new field
   const startCreateField = () => {
-    // Tự động expand nếu đang collapse
     if (!isExpanded) {
       setIsExpanded(true)
     }
@@ -244,24 +103,28 @@ const Metadata: React.FC<MetadataProps> = ({
       key: '',
       value: '',
       type: 'string',
-      isNew: true
+      isNew: true,
+      codeLanguage: 'javascript',
+      arrayItems: []
     })
   }
 
   // Start editing existing field
   const startEditField = (originalKey: string, originalValue: any) => {
     if (protectedFields.includes(originalKey)) {
-      return // Không cho phép edit protected fields
+      return
     }
 
-    // Detect current type
     const currentType = detectFieldType(originalValue)
 
     setEditingExistingField({
       originalKey,
       newKey: originalKey,
       newValue: formatValueForType(originalValue, currentType),
-      newType: currentType
+      newType: currentType,
+      codeLanguage: currentType === 'code' ? 'javascript' : undefined,
+      arrayItems:
+        currentType === 'array' && Array.isArray(originalValue) ? originalValue.map(String) : []
     })
   }
 
@@ -276,16 +139,9 @@ const Metadata: React.FC<MetadataProps> = ({
     if (!editingField || !canModify) return
 
     const trimmedKey = editingField.key.trim()
-    const trimmedValue = editingField.value.trim()
 
-    // Validation
     if (!trimmedKey) {
       alert('Field name is required')
-      return
-    }
-
-    if (editingField.type !== 'null' && !trimmedValue) {
-      alert('Field value is required (except for null type)')
       return
     }
 
@@ -294,15 +150,34 @@ const Metadata: React.FC<MetadataProps> = ({
       return
     }
 
+    // Validation based on type
+    if (editingField.type === 'array' && editingField.arrayItems?.length === 0) {
+      alert('Array must have at least one item')
+      return
+    }
+
+    if (
+      editingField.type !== 'null' &&
+      editingField.type !== 'array' &&
+      !editingField.value.trim()
+    ) {
+      alert('Field value is required')
+      return
+    }
+
     try {
-      const parsedValue = parseValueByType(trimmedValue, editingField.type)
+      const parsedValue = parseValueByType(editingField.value, editingField.type, {
+        arrayItems: editingField.arrayItems,
+        codeLanguage: editingField.codeLanguage
+      })
+
       const newMetadata = { ...metadata }
       newMetadata[trimmedKey] = parsedValue
 
       onMetadataChange(newMetadata)
       setEditingField(null)
     } catch (error) {
-      alert(`Invalid value for ${editingField.type}: ${error.message}`)
+      alert(`Invalid value for ${editingField.type}: ${(error as Error).message}`)
     }
   }
 
@@ -311,41 +186,54 @@ const Metadata: React.FC<MetadataProps> = ({
     if (!editingExistingField || !canModify) return
 
     const trimmedKey = editingExistingField.newKey.trim()
-    const trimmedValue = editingExistingField.newValue.trim()
 
-    // Validation
     if (!trimmedKey) {
       alert('Field name is required')
       return
     }
 
-    if (editingExistingField.newType !== 'null' && !trimmedValue) {
-      alert('Field value is required (except for null type)')
-      return
-    }
-
-    // Check if key already exists (except original key)
     if (trimmedKey !== editingExistingField.originalKey && metadata.hasOwnProperty(trimmedKey)) {
       alert('Field name already exists')
       return
     }
 
+    // Validation based on type
+    if (editingExistingField.newType === 'array' && editingExistingField.arrayItems?.length === 0) {
+      alert('Array must have at least one item')
+      return
+    }
+
+    if (
+      editingExistingField.newType !== 'null' &&
+      editingExistingField.newType !== 'array' &&
+      !editingExistingField.newValue.trim()
+    ) {
+      alert('Field value is required')
+      return
+    }
+
     try {
-      const parsedValue = parseValueByType(trimmedValue, editingExistingField.newType)
+      const parsedValue = parseValueByType(
+        editingExistingField.newValue,
+        editingExistingField.newType,
+        {
+          arrayItems: editingExistingField.arrayItems,
+          codeLanguage: editingExistingField.codeLanguage
+        }
+      )
+
       const newMetadata = { ...metadata }
 
-      // If key changed, delete old key
       if (trimmedKey !== editingExistingField.originalKey) {
         delete newMetadata[editingExistingField.originalKey]
       }
 
-      // Set new key and value
       newMetadata[trimmedKey] = parsedValue
 
       onMetadataChange(newMetadata)
       setEditingExistingField(null)
     } catch (error) {
-      alert(`Invalid value for ${editingExistingField.newType}: ${error.message}`)
+      alert(`Invalid value for ${editingExistingField.newType}: ${(error as Error).message}`)
     }
   }
 
@@ -353,52 +241,21 @@ const Metadata: React.FC<MetadataProps> = ({
   const deleteField = (key: string) => {
     if (!canModify) return
 
-    // Kiểm tra nếu field được bảo vệ
     if (protectedFields.includes(key)) {
       console.warn(`Cannot delete protected field: ${key}`)
       return
     }
 
-    // Gọi onDelete callback nếu có
     if (onDelete) {
       onDelete(key)
       return
     }
 
-    // Fallback - xóa trực tiếp từ metadata
     const newMetadata = { ...metadata }
     delete newMetadata[key]
     onMetadataChange?.(newMetadata)
   }
 
-  // Size styles
-  const sizeClasses = {
-    sm: {
-      header: 'w-5 h-5',
-      icon: 'h-3 w-3',
-      title: 'text-sm',
-      spacing: 'space-y-2',
-      gap: 'gap-2'
-    },
-    md: {
-      header: 'w-8 h-8',
-      icon: 'h-4 w-4',
-      title: 'text-base',
-      spacing: 'space-y-4',
-      gap: 'gap-3'
-    },
-    lg: {
-      header: 'w-10 h-10',
-      icon: 'h-5 w-5',
-      title: 'text-lg',
-      spacing: 'space-y-6',
-      gap: 'gap-4'
-    }
-  }
-
-  const currentSize = sizeClasses[size]
-
-  // Render field display or edit mode
   const renderField = (key: string, value: any) => {
     const displayValue = String(value)
     const isProtected = protectedFields.includes(key)
@@ -417,7 +274,6 @@ const Metadata: React.FC<MetadataProps> = ({
           </div>
 
           <div className="space-y-3">
-            {/* Field Name */}
             <CustomInput
               label="Field Name"
               value={editingExistingField.newKey}
@@ -430,7 +286,6 @@ const Metadata: React.FC<MetadataProps> = ({
               required
             />
 
-            {/* Field Type */}
             <CustomCombobox
               label="Field Type"
               value={editingExistingField.newType}
@@ -439,10 +294,27 @@ const Metadata: React.FC<MetadataProps> = ({
                 const newType = value as MetadataFieldType
                 setEditingExistingField((prev) => {
                   if (!prev) return null
+
+                  // Luôn reset value khi thay đổi type
+                  let resetValue = ''
+                  if (newType === 'boolean') {
+                    resetValue = 'false'
+                  } else if (newType === 'number') {
+                    resetValue = '0'
+                  } else if (newType === 'date') {
+                    resetValue = ''
+                  } else if (newType === 'array') {
+                    resetValue = ''
+                  } else if (newType === 'null') {
+                    resetValue = ''
+                  }
+
                   return {
                     ...prev,
                     newType,
-                    newValue: newType === 'null' ? '' : prev.newValue
+                    newValue: resetValue, // Luôn reset value
+                    arrayItems: newType === 'array' ? [] : [], // Reset array items
+                    codeLanguage: newType === 'code' ? 'javascript' : undefined
                   }
                 })
               }}
@@ -451,21 +323,24 @@ const Metadata: React.FC<MetadataProps> = ({
               required
             />
 
-            {/* Field Value */}
-            <CustomInput
-              label="Field Value"
-              value={editingExistingField.newValue}
-              onChange={(value) =>
-                setEditingExistingField((prev) => (prev ? { ...prev, newValue: value } : null))
-              }
-              placeholder={getPlaceholderForType(editingExistingField.newType)}
-              variant="filled"
-              size="sm"
-              required={editingExistingField.newType !== 'null'}
-              disabled={editingExistingField.newType === 'null'}
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Field Value
+              </label>
+              {renderFieldInput(
+                editingExistingField.newType,
+                editingExistingField.newValue,
+                (value) =>
+                  setEditingExistingField((prev) => (prev ? { ...prev, newValue: value } : null)),
+                {
+                  arrayItems: editingExistingField.arrayItems,
+                  codeLanguage: editingExistingField.codeLanguage
+                },
+                (props) => setEditingExistingField((prev) => (prev ? { ...prev, ...props } : null)),
+                false
+              )}
+            </div>
 
-            {/* Action Buttons */}
             <div className="flex items-center gap-2 pt-1">
               <CustomButton variant="primary" size="sm" onClick={saveEditedField}>
                 Save Changes
@@ -479,24 +354,28 @@ const Metadata: React.FC<MetadataProps> = ({
       )
     }
 
+    const isCodeField = detectFieldType(value) === 'code'
+    const codeLanguage = isCodeField ? 'javascript' : ''
+
     return (
       <div key={key} className="">
-        <CustomInput
-          label={
-            <div className="flex items-center justify-between">
-              <span>{key}</span>
-              <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-                {fieldType}
-              </span>
-            </div>
-          }
-          value={displayValue}
-          readOnly
-          variant="filled"
-          size="sm"
-          rightIcon={
+        {/* Field Label */}
+        <div className="flex items-center justify-between w-full mb-2">
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate pr-3">
+            {key}
+          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap flex-shrink-0 transition-colors',
+                getFieldTypeColor(fieldType)
+              )}
+            >
+              {fieldType}
+            </span>
+
+            {/* Action buttons */}
             <div className="flex items-center gap-1">
-              {/* Edit Button - Chỉ hiện với non-protected fields và khi allowEdit = true */}
               {canModify && allowEdit && !isProtected && (
                 <button
                   onClick={() => startEditField(key, value)}
@@ -507,7 +386,6 @@ const Metadata: React.FC<MetadataProps> = ({
                 </button>
               )}
 
-              {/* Copy Button - Ẩn với protected fields đặc biệt như created_at */}
               {!isProtected && (
                 <button
                   onClick={() => copyToClipboard(displayValue)}
@@ -518,7 +396,6 @@ const Metadata: React.FC<MetadataProps> = ({
                 </button>
               )}
 
-              {/* Delete Button - Ẩn với protected fields */}
               {canModify && allowDelete && showDeleteButtons && !isProtected && (
                 <button
                   onClick={() => deleteField(key)}
@@ -529,13 +406,25 @@ const Metadata: React.FC<MetadataProps> = ({
                 </button>
               )}
             </div>
-          }
-        />
+          </div>
+        </div>
+
+        {/* Field Value - Use CustomCodeEditor for code fields */}
+        {isCodeField ? (
+          <CustomCodeEditor
+            value={displayValue}
+            language={codeLanguage}
+            onChange={() => {}} // Empty function since it's read-only
+            onLanguageChange={() => {}} // Empty function since it's read-only
+            disabled={true} // Make it read-only
+          />
+        ) : (
+          <CustomInput value={displayValue} readOnly variant="filled" size="sm" />
+        )}
       </div>
     )
   }
 
-  // Render editing form for new field
   const renderNewFieldForm = () => {
     if (!editingField) return null
 
@@ -547,7 +436,6 @@ const Metadata: React.FC<MetadataProps> = ({
         </div>
 
         <div className="space-y-3">
-          {/* Field Name */}
           <CustomInput
             label="Field Name"
             value={editingField.key}
@@ -558,7 +446,6 @@ const Metadata: React.FC<MetadataProps> = ({
             required
           />
 
-          {/* Field Type */}
           <CustomCombobox
             label="Field Type"
             value={editingField.type}
@@ -570,7 +457,9 @@ const Metadata: React.FC<MetadataProps> = ({
                 return {
                   ...prev,
                   type: newType,
-                  value: newType === 'null' ? '' : prev.value
+                  value: newType === 'null' ? '' : prev.value,
+                  arrayItems: newType === 'array' ? prev.arrayItems || [] : [],
+                  codeLanguage: newType === 'code' ? prev.codeLanguage || 'javascript' : undefined
                 }
               })
             }}
@@ -579,19 +468,23 @@ const Metadata: React.FC<MetadataProps> = ({
             required
           />
 
-          {/* Field Value */}
-          <CustomInput
-            label="Field Value"
-            value={editingField.value}
-            onChange={(value) => setEditingField((prev) => (prev ? { ...prev, value } : null))}
-            placeholder={getPlaceholderForType(editingField.type)}
-            variant="filled"
-            size="sm"
-            required={editingField.type !== 'null'}
-            disabled={editingField.type === 'null'}
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Field Value
+            </label>
+            {renderFieldInput(
+              editingField.type,
+              editingField.value,
+              (value) => setEditingField((prev) => (prev ? { ...prev, value } : null)),
+              {
+                arrayItems: editingField.arrayItems,
+                codeLanguage: editingField.codeLanguage
+              },
+              (props) => setEditingField((prev) => (prev ? { ...prev, ...props } : null)),
+              false
+            )}
+          </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-1">
             <CustomButton variant="primary" size="sm" onClick={saveNewField}>
               Add Field
@@ -625,7 +518,6 @@ const Metadata: React.FC<MetadataProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Add Field Button */}
         {canModify && allowCreate && !editingField && !editingExistingField && (
           <button
             onClick={startCreateField}
@@ -636,7 +528,6 @@ const Metadata: React.FC<MetadataProps> = ({
           </button>
         )}
 
-        {/* Collapse Toggle */}
         {collapsible && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -651,13 +542,11 @@ const Metadata: React.FC<MetadataProps> = ({
 
   const contentSection = (
     <>
-      {/* New Field Form */}
       {editingField && renderNewFieldForm()}
 
       <div className="space-y-3">
         {visibleEntries.map(([key, value]) => renderField(key, value))}
 
-        {/* Show More/Less Button */}
         {hasMoreFields && !editingField && !editingExistingField && (
           <div className="text-center pt-2">
             <button
