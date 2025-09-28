@@ -226,8 +226,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       ...prev,
       service_type: typeValue,
       metadata: {
-        ...prev.metadata,
-        service_category: selectedServiceType?.description || ''
+        ...prev.metadata
       }
     }))
     setErrors({})
@@ -301,7 +300,6 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
         metadata: {
           created_at: new Date().toISOString(),
           created_by: 'user',
-          service_category: selectedServiceType?.description || '',
           ...formData.metadata
         }
       }

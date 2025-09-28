@@ -816,7 +816,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
         ]
       )
 
-      console.log('[DEBUG] Secret created successfully with ID:', id)
       return { ...secretData, id }
     } catch (error) {
       console.error('[ERROR] Failed to create secret:', error)
@@ -866,12 +865,7 @@ id, service_account_id, secret, expire_at, created_at, updated_at
 
   async migrateDatabaseTables(): Promise<void> {
     try {
-      console.log('[MIGRATION] Starting database migration...')
-
-      // Migration cho bảng emails - xử lý field category
       await this.migrateEmailsTable()
-
-      console.log('[MIGRATION] All migrations completed successfully!')
     } catch (error) {
       console.error('[MIGRATION ERROR]', error)
       throw new Error(
@@ -880,26 +874,14 @@ id, service_account_id, secret, expire_at, created_at, updated_at
     }
   }
 
-  // Method mới để migration bảng emails
   private async migrateEmailsTable(): Promise<void> {
     try {
-      console.log('[MIGRATION] Checking emails table structure...')
-
-      // Kiểm tra cấu trúc bảng hiện tại
       const tableInfo = await window.electronAPI.sqlite.getAllRows('PRAGMA table_info(emails)')
 
       const hasCategory = tableInfo.some((col: any) => col.name === 'category')
-
       if (hasCategory) {
-        console.log('[MIGRATION] Emails table already has category field, removing it...')
-
-        // Backup dữ liệu hiện tại
         const existingEmails = await window.electronAPI.sqlite.getAllRows('SELECT * FROM emails')
-
-        // Drop và tạo lại bảng emails với cấu trúc đúng (không có category)
         await window.electronAPI.sqlite.runQuery('DROP TABLE IF EXISTS emails')
-
-        // Tạo lại bảng emails với cấu trúc đúng
         await window.electronAPI.sqlite.runQuery(`
         CREATE TABLE emails (
           id TEXT PRIMARY KEY,
@@ -952,12 +934,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
         await window.electronAPI.sqlite.runQuery(
           'CREATE INDEX IF NOT EXISTS idx_emails_provider ON emails (email_provider)'
         )
-
-        console.log(
-          `[MIGRATION] Emails table migrated successfully! Restored ${existingEmails.length} records`
-        )
-      } else {
-        console.log('[MIGRATION] Emails table structure is correct, no migration needed')
       }
     } catch (error) {
       console.error('[MIGRATION] Error migrating emails table:', error)

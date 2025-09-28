@@ -114,7 +114,6 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({ person, onUpdateP
   const handleTabClick = (tabId: TabType) => {
     const tab = TABS.find((t) => t.id === tabId)
     if (tab?.comingSoon) {
-      console.log(`${tab.label} feature is coming soon!`)
       return
     }
     setActiveTab(tabId)

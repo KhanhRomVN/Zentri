@@ -20,22 +20,18 @@ const DocumentsSection: React.FC<DocumentsSectionProps> = ({
 
   const handleUploadDocument = () => {
     // TODO: Implement document upload functionality
-    console.log('Upload document functionality coming soon')
   }
 
   const handleViewDocument = (document: any) => {
     // TODO: Implement document viewing functionality
-    console.log('View document:', document)
   }
 
   const handleDownloadDocument = (document: any) => {
     // TODO: Implement document download functionality
-    console.log('Download document:', document)
   }
 
   const handleDeleteDocument = (documentId: string) => {
     // TODO: Implement document deletion functionality
-    console.log('Delete document:', documentId)
   }
 
   return (

@@ -118,10 +118,6 @@ const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
         {} as Record<string, string>
       )
 
-      console.log('[DEBUG] Creating new secret for service:', serviceAccount.id)
-      console.log('[DEBUG] Secret name:', formData.secret_name)
-      console.log('[DEBUG] Custom fields:', customFieldsObject)
-
       const secretData: Omit<ServiceAccountSecret, 'id'> = {
         service_account_id: serviceAccount.id,
         secret_name: formData.secret_name.trim(),
@@ -132,12 +128,9 @@ const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
         expire_at: formData.expire_at || undefined
       }
 
-      console.log('[DEBUG] Final secret data to create:', secretData)
-
       if (onAddSecret) {
         await onAddSecret(secretData)
         handleResetForm()
-        console.log('[DEBUG] Secret created successfully, form reset')
       }
     } catch (error) {
       console.error('[ERROR] Error creating secret:', error)

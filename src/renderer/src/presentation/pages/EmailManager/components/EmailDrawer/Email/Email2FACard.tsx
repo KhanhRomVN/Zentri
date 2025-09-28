@@ -1,7 +1,6 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/Email2FACard.tsx
 import React, { useEffect, useState } from 'react'
 import { Button } from '../../../../../../components/ui/button'
-import { Badge } from '../../../../../../components/ui/badge'
 import CustomBadge from '../../../../../../components/common/CustomBadge'
 import CustomButton from '../../../../../../components/common/CustomButton'
 import { Label } from '../../../../../../components/ui/label'
@@ -12,7 +11,6 @@ import {
   EyeOff,
   Copy,
   Shield,
-  CheckCircle,
   QrCode,
   FileText,
   Key,
@@ -25,6 +23,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { Email2FA } from '../../../types'
+import CustomArrayInput from '../../../../../../components/common/CustomArrayInput'
 
 interface Email2FACardProps {
   method: Email2FA
@@ -258,22 +257,14 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
   }
 
   const handleMetadataChange = async (newMetadata: Record<string, any>) => {
-    console.log('[DEBUG] handleMetadataChange called with:', newMetadata)
-    console.log('[DEBUG] Current method.metadata:', method.metadata)
-
-    // Loại bỏ các trường có giá trị null, undefined hoặc empty string
     const cleanedMetadata = Object.fromEntries(
       Object.entries(newMetadata).filter(
         ([_, value]) => value !== null && value !== undefined && value !== ''
       )
     )
 
-    console.log('[DEBUG] Cleaned metadata:', cleanedMetadata)
-
-    // Cập nhật state local trước
     setEditingMetadata(cleanedMetadata)
 
-    // Chỉ gọi handleSaveField thay vì onSave trực tiếp để đảm bảo consistency
     handleSaveField('metadata', cleanedMetadata)
   }
 
@@ -281,45 +272,61 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     if (method.method_type === 'backup_codes' && Array.isArray(method.value)) {
       return (
         <div className="space-y-3">
-          <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Backup Codes ({method.value.length} codes)
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Backup Codes ({method.value.length} codes)
+            </Label>
+            <div className="flex items-center gap-2">
+              <CustomButton
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSecret(!showSecret)}
+                icon={showSecret ? EyeOff : Eye}
+                className="text-xs"
+              >
+                {showSecret ? 'Hide' : 'Show'}
+              </CustomButton>
+            </div>
+          </div>
 
           <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-800/30">
-            {showSecret ? (
-              <div className="grid grid-cols-2 gap-2">
-                {method.value.map((code, index) => (
-                  <div
-                    key={index}
-                    className="p-2 bg-card-background rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-mono text-sm"
-                    onClick={() => copyToClipboard(code)}
-                    title="Click to copy"
-                  >
-                    {code}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <div className="text-orange-800 dark:text-orange-300 font-medium mb-2">
-                  Click to reveal backup codes
-                </div>
-                <CustomButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSecret(true)}
-                  icon={Eye}
-                >
-                  Show Codes
-                </CustomButton>
-              </div>
-            )}
+            <CustomArrayInput
+              items={showSecret ? method.value.map(String) : method.value.map(() => '••••••••')}
+              onChange={(newCodes) => {
+                if (onSave && showSecret) {
+                  // Only allow editing when codes are visible
+                  handleSaveField('value', newCodes)
+                }
+              }}
+              disabled={savingField !== null || !showSecret || !onSave}
+              viewMode={!showSecret || savingField !== null}
+              placeholder="Enter backup code..."
+              allowDuplicates={false}
+              maxItems={20}
+              minItems={1}
+              hint={
+                !showSecret
+                  ? 'Codes are hidden - click Show to edit'
+                  : onSave
+                    ? 'Click on any code to copy, or edit directly'
+                    : 'Read-only backup codes'
+              }
+            />
 
             {method.metadata && (
               <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800">
-                <div className="text-sm text-orange-700 dark:text-orange-400">
-                  Used: {method.metadata.codes_used || 0} /{' '}
-                  {method.metadata.total_codes || method.value.length}
+                <div className="text-sm text-orange-700 dark:text-orange-400 flex items-center justify-between">
+                  <span>
+                    Used: {method.metadata.codes_used || 0} /{' '}
+                    {method.metadata.total_codes || method.value.length}
+                  </span>
+                  {method.metadata.codes_used > 0 && (
+                    <span className="text-xs">
+                      Remaining:{' '}
+                      {(method.metadata.total_codes || method.value.length) -
+                        (method.metadata.codes_used || 0)}
+                    </span>
+                  )}
                 </div>
               </div>
             )}

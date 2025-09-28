@@ -20,10 +20,12 @@ import { cn } from '../../../../../../shared/lib/utils'
 import { Email2FA, Email } from '../../../types'
 import Metadata from '../../../../../../components/common/Metadata'
 import { Button } from '../../../../../../components/ui/button'
+import CustomArrayInput from '../../../../../../components/common/CustomArrayInput'
+import { Label } from '@radix-ui/react-label'
 
 interface CreateEmail2FAFormProps {
   email: Email
-  existingMethods: Email2FA[] // Thêm prop để truyền các method đã tồn tại
+  existingMethods: Email2FA[]
   onSubmit: (data: Omit<Email2FA, 'id'>) => Promise<void>
   onCancel: () => void
   loading?: boolean
@@ -41,7 +43,7 @@ const twoFAMethodOptions = [
     inputType: 'text',
     showAppName: false,
     autoFillFromEmail: false,
-    unique: true // TOTP có thể có nhiều (cho nhiều app khác nhau)
+    unique: true
   },
   {
     value: 'backup_codes',
@@ -52,7 +54,7 @@ const twoFAMethodOptions = [
     inputType: 'textarea',
     showAppName: false,
     autoFillFromEmail: false,
-    unique: true // Chỉ nên có 1 set backup codes
+    unique: true
   },
   {
     value: 'app_password',
@@ -63,7 +65,7 @@ const twoFAMethodOptions = [
     inputType: 'password',
     showAppName: true,
     autoFillFromEmail: false,
-    unique: false // Có thể có nhiều app password cho các app khác nhau
+    unique: false
   },
   {
     value: 'security_key',
@@ -74,7 +76,7 @@ const twoFAMethodOptions = [
     inputType: 'text',
     showAppName: false,
     autoFillFromEmail: false,
-    unique: false // Có thể có nhiều security key
+    unique: false
   },
   {
     value: 'recovery_email',
@@ -86,7 +88,7 @@ const twoFAMethodOptions = [
     showAppName: false,
     autoFillFromEmail: true,
     autoFillField: 'recovery_email',
-    unique: true // Chỉ nên có 1 recovery email
+    unique: true
   },
   {
     value: 'sms',
@@ -98,7 +100,7 @@ const twoFAMethodOptions = [
     showAppName: false,
     autoFillFromEmail: true,
     autoFillField: 'phone_numbers',
-    unique: true // Chỉ nên có 1 SMS verification
+    unique: true
   }
 ]
 
@@ -128,14 +130,22 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
 
   // Lọc các method options để loại bỏ các method unique đã tồn tại
   const availableMethodOptions = twoFAMethodOptions.filter((method) => {
-    if (!method.unique) return true // Nếu method không unique, luôn hiển thị
+    if (!method.unique) return true
 
-    // Nếu method là unique, chỉ hiển thị nếu chưa tồn tại
     return !existingMethods.some((existing) => existing.method_type === method.value)
   })
 
   // Get selected method info
   const selectedMethod = twoFAMethodOptions.find((opt) => opt.value === formData.method_type)
+
+  useEffect(() => {
+    if (formData.method_type === 'backup_codes') {
+      formData.value
+        .split('\n')
+        .map((code) => code.trim())
+        .filter((code) => code.length > 0)
+    }
+  }, [formData.value, formData.method_type])
 
   // Auto-fill value from email data when method type changes
   useEffect(() => {
@@ -144,9 +154,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
       if (emailValue) {
         let valueToFill = ''
 
-        // Handle different field types
         if (selectedMethod.autoFillField === 'phone_numbers' && Array.isArray(emailValue)) {
-          // Nếu là array phone numbers, lấy số đầu tiên
           valueToFill = emailValue.length > 0 ? emailValue[0] : ''
         } else {
           valueToFill = String(emailValue)
@@ -188,7 +196,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
     if (!formData.value.trim()) {
       newErrors.value = 'Value is required'
     } else {
-      // Validate based on method type
       if (formData.method_type === 'recovery_email') {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(formData.value.trim())) {
@@ -204,18 +211,22 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           .trim()
           .split('\n')
           .filter((code) => code.trim())
+
         if (codes.length === 0) {
           newErrors.value = 'Please enter at least one backup code'
+        } else {
+          const uniqueCodes = [...new Set(codes)]
+          if (uniqueCodes.length !== codes.length) {
+            newErrors.value = 'Duplicate backup codes are not allowed'
+          }
         }
       }
     }
 
-    // Validate app name for app_password method
     if (formData.method_type === 'app_password' && !formData.app.trim()) {
       newErrors.app = 'App name is required for app passwords'
     }
 
-    // Validate expiry date if provided
     if (formData.expire_at) {
       const expiryDate = new Date(formData.expire_at)
       if (expiryDate <= new Date()) {
@@ -227,21 +238,17 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) return
+  // Handle form submission - NO MORE FORM EVENT
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return
+    }
 
     try {
-      // Prepare value based on method type
       let processedValue: string | string[]
       if (formData.method_type === 'backup_codes') {
-        processedValue = formData.value
-          .trim()
-          .split('\n')
-          .map((code) => code.trim())
-          .filter((code) => code)
+        const rawCodes = formData.value.trim().split('\n')
+        processedValue = rawCodes.map((code) => code.trim()).filter((code) => code)
       } else {
         processedValue = formData.value.trim()
       }
@@ -264,6 +271,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
 
       await onSubmit(email2FAData)
     } catch (error) {
+      console.error('[DEBUG] Error in handleSubmit:', error)
       console.error('Error creating 2FA method:', error)
     }
   }
@@ -285,7 +293,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
   const getMinExpiryDate = () => {
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
-    return tomorrow.toISOString().slice(0, 16) // Format for datetime-local input
+    return tomorrow.toISOString().slice(0, 16)
   }
 
   // Get field label based on method type
@@ -321,10 +329,76 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
       size: 'sm' as const
     }
 
-    // Check if value is auto-filled from email
     const isAutoFilled =
       selectedMethod.autoFillFromEmail &&
       email[selectedMethod.autoFillField as keyof Email] !== undefined
+
+    if (selectedMethod.inputType === 'textarea' && formData.method_type === 'backup_codes') {
+      const currentCodes = formData.value
+        .split('\n')
+        .map((code) => code.trim())
+        .filter((code) => code.length > 0)
+
+      return (
+        <div className="space-y-2">
+          {isAutoFilled && (
+            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-700 rounded-lg p-2">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                💡 Value auto-filled from email {selectedMethod.autoFillField}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {getValueLabel()}
+            </Label>
+            <CustomArrayInput
+              items={currentCodes}
+              onChange={(newCodes) => {
+                const uniqueNewCodes = [...new Set(newCodes)]
+                if (uniqueNewCodes.length !== newCodes.length) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    value: '⚠️ Duplicate backup codes detected and blocked'
+                  }))
+                  return
+                }
+
+                setErrors((prev) => {
+                  const newErrors = { ...prev }
+                  delete newErrors.value
+                  return newErrors
+                })
+                const joinedValue = newCodes.join('\n')
+                setFormData((prev) => {
+                  const newFormData = { ...prev, value: joinedValue }
+                  return newFormData
+                })
+              }}
+              placeholder="Enter backup code..."
+              allowDuplicates={false}
+              maxItems={20}
+              minItems={1}
+              hint="Add backup codes one by one. Each code should be unique."
+              error={errors.value}
+              disabled={loading}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{currentCodes.length} codes added</span>
+            {currentCodes.length > 0 && (
+              <span className="text-green-600 dark:text-green-400">✓ Ready to save</span>
+            )}
+          </div>
+          {process.env.NODE_ENV === 'development' && formData.method_type === 'backup_codes' && (
+            <div className="text-xs text-blue-600 bg-blue-50 p-1 rounded mt-1">
+              Debug: Raw value length: {formData.value.length}, Parsed codes: {currentCodes.length}
+            </div>
+          )}
+        </div>
+      )
+    }
 
     if (selectedMethod.inputType === 'textarea') {
       return (
@@ -341,7 +415,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             value={formData.value}
             onChange={(value) => setFormData((prev) => ({ ...prev, value }))}
             placeholder={selectedMethod.placeholder}
-            hint="Enter one backup code per line"
+            hint="Enter one item per line"
             rows={5}
             maxLength={2000}
             showCharCount
@@ -400,14 +474,13 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           onClick={handleCancel}
           disabled={loading}
           className="p-1 h-6 w-6"
-          type="button" // Explicit type để tránh submit
         >
           <X className="h-3 w-3" />
         </Button>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Form Container - NO MORE <form> TAG */}
+      <div className="space-y-4">
         {/* 2FA Method Selection */}
         <div className="space-y-1">
           <CustomCombobox
@@ -470,7 +543,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
         {/* Value Input */}
         {formData.method_type && renderValueInput()}
 
-        {/* Expiry Date (Optional) - Fixed to prevent past dates */}
+        {/* Expiry Date (Optional) */}
         {formData.method_type && (
           <CustomInput
             label="Expiry Date (Optional)"
@@ -487,9 +560,9 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           />
         )}
 
-        {/* Metadata Form - FIX: Ngăn submit form khi click expand */}
+        {/* Metadata Form */}
         {formData.method_type && (
-          <div onClick={(e) => e.preventDefault()}>
+          <div>
             <Metadata
               metadata={formData.metadata}
               onMetadataChange={(newMetadata) =>
@@ -508,7 +581,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           </div>
         )}
 
-        {/* Form Actions - Using CustomButton */}
+        {/* Form Actions */}
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
           <CustomButton
             variant="secondary"
@@ -516,14 +589,13 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             onClick={handleCancel}
             disabled={loading}
             className="min-w-[80px]"
-            type="button" // Explicit type để tránh submit
           >
             Cancel
           </CustomButton>
           <CustomButton
             variant="success"
             size="sm"
-            type="submit"
+            onClick={handleSubmit}
             disabled={loading || !formData.method_type || !formData.value.trim()}
             loading={loading}
             className="min-w-[140px] bg-green-600 hover:bg-green-700 text-white"
@@ -531,7 +603,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             Add 2FA Method
           </CustomButton>
         </div>
-      </form>
+      </div>
     </div>
   )
 }

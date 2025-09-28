@@ -1,4 +1,4 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/AccountService/CreateServiceAccount2FAForm.tsx
+// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/CreateServiceAccount2FAForm.tsx
 import React, { useState, useEffect } from 'react'
 import CustomButton from '../../../../../../components/common/CustomButton'
 import CustomInput from '../../../../../../components/common/CustomInput'
@@ -21,6 +21,8 @@ import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount2FA, ServiceAccount } from '../../../types'
 import Metadata from '../../../../../../components/common/Metadata'
 import { Button } from '../../../../../../components/ui/button'
+import CustomArrayInput from '../../../../../../components/common/CustomArrayInput'
+import { Label } from '@radix-ui/react-label'
 
 interface CreateServiceAccount2FAFormProps {
   serviceAccount: ServiceAccount
@@ -40,9 +42,9 @@ const twoFAMethodOptions = [
     description: 'Time-based One-Time Password secret key',
     placeholder: 'Enter TOTP secret key...',
     inputType: 'text',
-    showAppName: false, // Chỉ App Password mới cần App Name
+    showAppName: false,
     autoFillFromService: false,
-    unique: true // TOTP chỉ nên có 1 cho mỗi service
+    unique: true
   },
   {
     value: 'backup_codes',
@@ -62,9 +64,9 @@ const twoFAMethodOptions = [
     description: 'Application-specific password',
     placeholder: 'Enter app password...',
     inputType: 'password',
-    showAppName: true, // Chỉ App Password mới cần
+    showAppName: true,
     autoFillFromService: false,
-    unique: false // Có thể có nhiều app password cho các app khác nhau
+    unique: false
   },
   {
     value: 'security_key',
@@ -134,7 +136,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
   // Get selected method info
   const selectedMethod = twoFAMethodOptions.find((opt) => opt.value === formData.method_type)
 
-  // Auto-fill app name when method type changes for certain methods
+  // Auto-fill app name when method type changes for app_password
   useEffect(() => {
     if (selectedMethod?.showAppName && !formData.app && formData.method_type === 'app_password') {
       setFormData((prev) => ({
@@ -234,12 +236,10 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
         last_update: new Date().toISOString(),
         expire_at: formData.expire_at || undefined,
         metadata: {
-          // Chỉ thêm metadata cho backup codes
           ...(formData.method_type === 'backup_codes' && {
             total_codes: Array.isArray(processedValue) ? processedValue.length : 0,
             codes_used: 0
           }),
-          // Chỉ thêm metadata do user tự nhập
           ...formData.metadata
         }
       }
@@ -247,6 +247,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
       await onSubmit(serviceAccount2FAData)
     } catch (error) {
       console.error('Error creating service account 2FA method:', error)
+      throw error
     }
   }
 
@@ -303,6 +304,46 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
       size: 'sm' as const
     }
 
+    if (selectedMethod.inputType === 'textarea' && formData.method_type === 'backup_codes') {
+      // Parse current value into array
+      const currentCodes = formData.value
+        .split('\n')
+        .map((code) => code.trim())
+        .filter((code) => code.length > 0)
+
+      return (
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {getValueLabel()}
+            </Label>
+            <CustomArrayInput
+              items={currentCodes}
+              onChange={(newCodes) => {
+                // Update form data with joined codes
+                const joinedValue = newCodes.join('\n')
+                setFormData((prev) => ({ ...prev, value: joinedValue }))
+              }}
+              placeholder="Enter backup code..."
+              allowDuplicates={false}
+              maxItems={20}
+              minItems={1}
+              hint="Add backup codes one by one. Each code should be unique."
+              error={errors.value}
+              disabled={loading}
+            />
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>{currentCodes.length} codes added</span>
+              {currentCodes.length > 0 && (
+                <span className="text-green-600 dark:text-green-400">✓ Ready to save</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Fallback to textarea for other textarea inputs
     if (selectedMethod.inputType === 'textarea') {
       return (
         <CustomTextArea
@@ -310,7 +351,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
           value={formData.value}
           onChange={(value) => setFormData((prev) => ({ ...prev, value }))}
           placeholder={selectedMethod.placeholder}
-          hint="Enter one backup code per line"
+          hint="Enter one item per line"
           rows={5}
           maxLength={2000}
           showCharCount
@@ -416,12 +457,17 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
               </div>
               <p className="text-xs text-blue-700 dark:text-blue-200">
                 {selectedMethod.description}
+                {selectedMethod.showAppName && (
+                  <span className="block mt-1 text-blue-600 dark:text-blue-400">
+                    • App name will auto-fill from service name
+                  </span>
+                )}
               </p>
             </div>
           )}
         </div>
 
-        {/* App Name (for TOTP and App Password) */}
+        {/* App Name (for App Password) */}
         {selectedMethod?.showAppName && (
           <CustomInput
             label="App Name"
@@ -432,7 +478,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
             leftIcon={<Shield className="h-4 w-4" />}
             hint="Specify which app or service this 2FA method is for"
             error={errors.app}
-            required={selectedMethod.showAppName}
+            required={formData.method_type === 'app_password'}
             disabled={loading}
             size="sm"
           />

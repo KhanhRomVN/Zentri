@@ -104,17 +104,12 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
   const handleCreateService = async (serviceData: Omit<ServiceAccount, 'id' | 'email_id'>) => {
     try {
       setIsCreatingService(true)
-
       if (onServiceAdd) {
         await onServiceAdd(serviceData)
       }
-
-      // Đóng form sau khi tạo thành công
       setShowCreateForm(false)
-      console.log('Service account created successfully:', serviceData)
     } catch (error) {
       console.error('Error creating service account:', error)
-      // Có thể hiển thị thông báo lỗi ở đây
     } finally {
       setIsCreatingService(false)
     }
@@ -237,7 +232,6 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
                 variant="secondary"
                 size="md"
                 onClick={() => {
-                  console.log('Navigate to full services view')
                   if (onServiceClick) {
                     onServiceClick({ view: 'all_services' } as any)
                   }

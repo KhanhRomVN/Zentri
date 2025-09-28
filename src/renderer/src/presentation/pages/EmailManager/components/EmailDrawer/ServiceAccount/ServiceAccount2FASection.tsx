@@ -1,6 +1,8 @@
+// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccount2FASection.tsx
 import React, { useState } from 'react'
 import CustomBadge from '../../../../../../components/common/CustomBadge'
 import CustomButton from '../../../../../../components/common/CustomButton'
+import ServiceAccount2FACard from './ServiceAccount2FACard'
 import CreateServiceAccount2FAForm from './CreateServiceAccount2FAForm'
 import {
   Shield,
@@ -14,12 +16,11 @@ import {
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount, ServiceAccount2FA } from '../../../types'
-import ServiceAccount2FACard from './ServiceAccount2FACard'
 
 interface ServiceAccount2FASectionProps {
   serviceAccount: ServiceAccount
   serviceAccount2FAMethods: ServiceAccount2FA[]
-  onAdd2FA?: (data: Omit<ServiceAccount2FA, 'id'>) => Promise<void>
+  onAdd2FA: (data: Omit<ServiceAccount2FA, 'id'>) => Promise<void>
   onEdit2FA?: (method: ServiceAccount2FA) => void
   onDelete2FA?: (methodId: string) => void
   onSave2FA?: (id: string, updates: Partial<ServiceAccount2FA>) => Promise<void>
@@ -50,14 +51,11 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
   const handleCreate2FA = async (data: Omit<ServiceAccount2FA, 'id'>) => {
     try {
       setIsCreating(true)
-      console.log('Creating ServiceAccount 2FA method:', data)
-      if (onAdd2FA) {
-        await onAdd2FA(data)
-      }
+      await onAdd2FA(data)
       setShowCreateForm(false)
-      console.log('ServiceAccount 2FA method created successfully')
     } catch (error) {
       console.error('Error creating ServiceAccount 2FA method:', error)
+      throw error
     } finally {
       setIsCreating(false)
     }
@@ -65,6 +63,24 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
 
   const handleCancelCreate = () => {
     setShowCreateForm(false)
+  }
+
+  const handleEdit2FA = (method: ServiceAccount2FA) => {
+    if (onEdit2FA) {
+      onEdit2FA(method)
+    }
+  }
+
+  const handleDelete2FA = (methodId: string) => {
+    if (onDelete2FA) {
+      onDelete2FA(methodId)
+    }
+  }
+
+  const handleSave2FA = async (id: string, updates: Partial<ServiceAccount2FA>) => {
+    if (onSave2FA) {
+      await onSave2FA(id, updates)
+    }
   }
 
   // Get security status
@@ -132,9 +148,9 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
         </CustomButton>
       </div>
 
-      {/* Main Card */}
+      {/* Main Card - Reduced padding and spacing */}
       <div className="bg-card-background rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
-        {/* Header */}
+        {/* Header - Reduced padding */}
         <div className="p-4 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -197,21 +213,14 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
               {/* Methods List */}
               {has2FA ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-text-primary text-sm">Active 2FA Methods</h4>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {active2FAMethods} total
-                    </span>
-                  </div>
-
                   <div className="grid gap-3">
                     {serviceAccount2FAMethods.map((method) => (
                       <ServiceAccount2FACard
                         key={method.id}
                         method={method}
-                        onEdit={onEdit2FA}
-                        onDelete={onDelete2FA}
-                        onSave={onSave2FA}
+                        onEdit={handleEdit2FA}
+                        onDelete={handleDelete2FA}
+                        onSave={handleSave2FA}
                       />
                     ))}
                   </div>

@@ -117,10 +117,6 @@ const EmailManagerPage = () => {
 
       if (newEmail) {
         setIsCreateModalOpen(false)
-        // Optionally show success notification here
-        console.log('Email created successfully:', newEmail)
-
-        // Refresh the emails list
         await loadEmails()
       }
     } catch (error) {

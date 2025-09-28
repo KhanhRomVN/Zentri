@@ -43,20 +43,13 @@ const SettingPage = () => {
 
   const handleExportData = () => {
     // Handle export logic here
-    console.log('Exporting data...')
   }
 
   const handleImportData = () => {
     // Handle import logic here
-    console.log('Importing data...')
   }
 
-  const handleClearData = () => {
-    // Handle clear data logic here
-    if (confirm('Bạn có chắc chắn muốn xóa tất cả dữ liệu? Hành động này không thể hoàn tác.')) {
-      console.log('Clearing data...')
-    }
-  }
+  const handleClearData = () => {}
 
   return (
     <div className="relative min-h-screen bg-background p-6">
@@ -327,7 +320,6 @@ const SettingPage = () => {
             className="bg-[#52aaa5] text-white hover:bg-[#52aaa5]/90 px-8"
             onClick={() => {
               // Handle save changes
-              console.log('Saving settings...', formData)
             }}
           >
             Save Changes

@@ -24,6 +24,7 @@ import {
 } from './utils'
 import { renderFieldInput } from './MetadataForm'
 import CustomCodeEditor from '../CustomCodeEditor'
+import CustomArrayInput from '../CustomArrayInput'
 
 // Enhanced color mapping for different field types
 const getFieldTypeColor = (fieldType: string) => {
@@ -416,14 +417,59 @@ const Metadata: React.FC<MetadataProps> = ({
           </div>
         </div>
 
-        {/* Field Value - Use CustomCodeEditor for code fields */}
+        {/* Field Value - Different inputs based on field type */}
         {isCodeField ? (
           <CustomCodeEditor
             value={displayValue}
             language={codeLanguage}
-            onChange={() => {}} // Empty function since it's read-only
-            onLanguageChange={() => {}} // Empty function since it's read-only
-            disabled={true} // Make it read-only
+            onChange={
+              canModify && allowEdit && !isProtected
+                ? (newValue) => {
+                    const newMetadata = { ...metadata }
+                    newMetadata[key] = newValue
+                    onMetadataChange?.(newMetadata)
+                  }
+                : () => {} // Read-only if cannot modify
+            }
+            onLanguageChange={() => {}} // Language change disabled in display mode
+            disabled={!canModify || !allowEdit || isProtected}
+          />
+        ) : detectFieldType(value) === 'array' && Array.isArray(value) ? (
+          <CustomArrayInput
+            viewMode={true}
+            items={value.map(String)}
+            onChange={
+              canModify && allowEdit && !isProtected
+                ? (newItems) => {
+                    const newMetadata = { ...metadata }
+                    // Try to preserve original data types where possible
+                    const convertedItems = newItems.map((item) => {
+                      // Try to parse as number if original array contained numbers
+                      if (value.some((v) => typeof v === 'number') && !isNaN(Number(item))) {
+                        return Number(item)
+                      }
+                      // Try to parse as boolean if original array contained booleans
+                      if (value.some((v) => typeof v === 'boolean')) {
+                        if (item.toLowerCase() === 'true') return true
+                        if (item.toLowerCase() === 'false') return false
+                      }
+                      // Default to string
+                      return item
+                    })
+                    newMetadata[key] = convertedItems
+                    onMetadataChange?.(newMetadata)
+                  }
+                : () => {} // Read-only if cannot modify
+            }
+            disabled={!canModify || !allowEdit || isProtected}
+            placeholder="Add array item..."
+            allowDuplicates={false}
+            maxItems={50}
+            hint={
+              !canModify || !allowEdit || isProtected
+                ? 'Read-only field'
+                : 'Press Enter or click + to add items'
+            }
           />
         ) : (
           <CustomInput value={displayValue} readOnly variant="filled" size="sm" />

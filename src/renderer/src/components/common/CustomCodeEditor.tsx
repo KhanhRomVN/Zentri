@@ -235,7 +235,6 @@ const CustomCodeEditor: React.FC<CustomCodeEditorProps> = ({
 
   // Custom save command
   const saveCommand = () => {
-    console.log('Save shortcut pressed')
     return true
   }
 

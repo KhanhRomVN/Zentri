@@ -2,10 +2,11 @@ import React, { useState } from 'react'
 import CustomInput from '../CustomInput'
 import CustomButton from '../CustomButton'
 import CustomCodeEditor from '../CustomCodeEditor'
+import CustomArrayInput from '../CustomArrayInput'
 import { URLInput } from './URLInput'
 import { LocalFileInput } from './LocalFileInput'
 import { cn } from '../../../shared/lib/utils'
-import { Check, X, Plus, Calendar } from 'lucide-react'
+import { Check, X, Calendar } from 'lucide-react'
 import { MetadataFieldType, URLSubType, LocalFileSubType } from './types'
 
 // Boolean Toggle Component
@@ -47,92 +48,6 @@ export const BooleanToggle: React.FC<{
     </button>
   </div>
 )
-
-// Array Input Component
-export const ArrayInput: React.FC<{
-  items: string[]
-  onChange: (items: string[]) => void
-  disabled?: boolean
-}> = ({ items, onChange, disabled }) => {
-  const [newItem, setNewItem] = useState('')
-
-  const addItem = () => {
-    if (newItem.trim() && !items.includes(newItem.trim())) {
-      onChange([...items, newItem.trim()])
-      setNewItem('')
-    }
-  }
-
-  const removeItem = (index: number) => {
-    onChange(items.filter((_, i) => i !== index))
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addItem()
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      {/* Add new item - Full width input with square button */}
-      {!disabled && (
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <CustomInput
-              value={newItem}
-              onChange={setNewItem}
-              placeholder="Add array item..."
-              size="sm"
-              onKeyDown={handleKeyDown}
-            />
-          </div>
-          <CustomButton
-            variant="secondary"
-            size="sm"
-            onClick={addItem}
-            disabled={!newItem.trim() || items.includes(newItem.trim())}
-            className="aspect-square h-10 w-10 p-0 flex-shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-          </CustomButton>
-        </div>
-      )}
-
-      {/* Existing items - Display below input */}
-      {items.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {items.map((item, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md text-sm border border-blue-200 dark:border-blue-800"
-            >
-              <span className="font-medium">{item}</span>
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => removeItem(index)}
-                  className="ml-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-sm p-0.5 transition-colors"
-                  title="Remove item"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {items.length === 0 && !disabled && (
-        <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-2">
-          No items added yet. Enter text above and press Enter or click + to add.
-        </p>
-      )}
-    </div>
-  )
-}
 
 // DateTime Picker Component
 export const DateTimePicker: React.FC<{
@@ -241,13 +156,17 @@ export const renderFieldInput = (
 
     case 'array':
       return (
-        <ArrayInput
+        <CustomArrayInput
           items={extraProps.arrayItems || []}
           onChange={(items) => {
             setExtraProps({ ...extraProps, arrayItems: items })
             onChange(JSON.stringify(items))
           }}
           disabled={disabled}
+          placeholder="Add array item..."
+          allowDuplicates={false}
+          maxItems={50}
+          hint="Press Enter or click + to add items"
         />
       )
 

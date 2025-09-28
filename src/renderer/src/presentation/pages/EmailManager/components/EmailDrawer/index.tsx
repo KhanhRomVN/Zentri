@@ -178,12 +178,8 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
 
   const handleAdd2FA = async (data: Omit<Email2FA, 'id'>) => {
     try {
-      console.log('Adding 2FA method:', data)
-
       // Call the database service to create the 2FA method
-      const newMethod = await databaseService.createEmail2FA(data)
-
-      console.log('2FA method created:', newMethod)
+      await databaseService.createEmail2FA(data)
 
       // Refresh the 2FA methods list
       const updated2FA = await databaseService.getEmail2FAByEmailId(email!.id!)
@@ -194,23 +190,10 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     }
   }
 
-  // Handle editing 2FA method
-  const handleEdit2FA = async (method: Email2FA) => {
-    console.log('Edit 2FA method:', method)
-    // You can implement a modal or inline editing here
-  }
-
   // Handle ServiceAccount2FA operations
   const handleAddService2FA = async (data: Omit<ServiceAccount2FA, 'id'>) => {
     try {
-      console.log('Adding ServiceAccount 2FA method:', data)
-
-      // Gọi database service để tạo ServiceAccount2FA
-      const newMethod = await databaseService.createServiceAccount2FA(data)
-
-      console.log('ServiceAccount 2FA method created:', newMethod)
-
-      // Refresh danh sách ServiceAccount2FA cho service hiện tại
+      await databaseService.createServiceAccount2FA(data)
       if (selectedService) {
         const updated2FA = await databaseService.getServiceAccount2FAByServiceId(selectedService.id)
         setSelectedService2FA(updated2FA)
@@ -221,18 +204,9 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     }
   }
 
-  const handleEditService2FA = async (method: ServiceAccount2FA) => {
-    console.log('Edit ServiceAccount 2FA method:', method)
-    // Implement edit logic sau
-  }
-
   const handleDeleteService2FA = async (methodId: string) => {
     try {
-      console.log('Deleting ServiceAccount 2FA method:', methodId)
-
       await databaseService.deleteServiceAccount2FA(methodId)
-
-      // Refresh danh sách ServiceAccount2FA
       if (selectedService) {
         const updated2FA = await databaseService.getServiceAccount2FAByServiceId(selectedService.id)
         setSelectedService2FA(updated2FA)
@@ -244,11 +218,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
 
   const handleSaveService2FA = async (id: string, updates: Partial<ServiceAccount2FA>) => {
     try {
-      console.log('Saving ServiceAccount 2FA method:', id, updates)
-
       await databaseService.updateServiceAccount2FA(id, updates)
-
-      // Refresh danh sách ServiceAccount2FA
       if (selectedService) {
         const updated2FA = await databaseService.getServiceAccount2FAByServiceId(selectedService.id)
         setSelectedService2FA(updated2FA)
@@ -264,9 +234,6 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     value: string
   ): Promise<boolean> => {
     try {
-      console.log('Updating service:', serviceId, field, value)
-
-      // Tạo object updates dựa trên field
       const updates: Partial<ServiceAccount> = {}
 
       switch (field) {
@@ -311,8 +278,6 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
         const updatedServices = await databaseService.getServiceAccountsByEmailId(email.id)
         setEmailServiceAccounts(updatedServices)
       }
-
-      console.log('Service updated successfully')
       return true
     } catch (error) {
       console.error('Error updating service:', error)
@@ -323,11 +288,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
   // Handle deleting 2FA method
   const handleDelete2FA = async (methodId: string) => {
     try {
-      console.log('Deleting 2FA method:', methodId)
-
       await databaseService.deleteEmail2FA(methodId)
-
-      // Refresh the 2FA methods list
       const updated2FA = await databaseService.getEmail2FAByEmailId(email!.id!)
       setEmail2FAMethods(updated2FA)
     } catch (error) {
@@ -356,12 +317,7 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
 
   const handleDeleteSecret = async (secretId: string) => {
     try {
-      console.log('Deleting secret:', secretId)
-
-      // Cần thêm method deleteServiceAccountSecret vào DatabaseService
       await databaseService.deleteServiceAccountSecret(secretId)
-
-      // Refresh secrets list
       if (selectedService) {
         const updatedSecrets = await databaseService.getServiceAccountSecretsByServiceId(
           selectedService.id
@@ -377,20 +333,12 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
     if (!selectedService) return
 
     try {
-      console.log('Adding new secret for service:', selectedService.id)
-      console.log('Secret data to create:', secretData)
-
-      // Tạo secret mới trong database với cấu trúc secret mới
-      const newSecret = await databaseService.createServiceAccountSecret({
+      await databaseService.createServiceAccountSecret({
         service_account_id: selectedService.id,
         secret_name: secretData.secret_name,
         secret: secretData.secret || { secret_name: secretData.secret_name },
         expire_at: secretData.expire_at
       })
-
-      console.log('New secret created successfully:', newSecret)
-
-      console.log('Secret created:', newSecret)
 
       // Refresh secrets list
       const updatedSecrets = await databaseService.getServiceAccountSecretsByServiceId(
@@ -412,15 +360,9 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
 
   const handleSave2FA = async (id: string, updates: Partial<Email2FA>) => {
     try {
-      console.log('[DEBUG] handleSave2FA called with:', { id, updates })
-
       await databaseService.updateEmail2FA(id, updates)
-
-      // Refresh the 2FA methods list
       const updated2FA = await databaseService.getEmail2FAByEmailId(email!.id!)
       setEmail2FAMethods(updated2FA)
-
-      console.log('[DEBUG] 2FA updated successfully')
     } catch (error) {
       console.error('Error saving 2FA method:', error)
       throw error // Re-throw để component con có thể handle error
@@ -435,12 +377,10 @@ const EmailDrawer: React.FC<EmailDrawerProps> = ({ isOpen, onClose, email, onUpd
       setLoading(true)
 
       // Create service account in database
-      const newService = await databaseService.createServiceAccount({
+      await databaseService.createServiceAccount({
         ...serviceData,
         email_id: email.id
       })
-
-      console.log('Service account created:', newService)
 
       // Refresh service accounts list
       const updatedServices = await databaseService.getServiceAccountsByEmailId(email.id)

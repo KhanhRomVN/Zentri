@@ -1,6 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccount2FACard.tsx
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from '../../../../../../components/ui/button'
+import CustomBadge from '../../../../../../components/common/CustomBadge'
 import CustomButton from '../../../../../../components/common/CustomButton'
 import { Label } from '../../../../../../components/ui/label'
 import CustomInput from '../../../../../../components/common/CustomInput'
@@ -16,16 +17,19 @@ import {
   Smartphone,
   Mail,
   Trash2,
-  Check
+  Check,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { cn } from '../../../../../../shared/lib/utils'
 import { ServiceAccount2FA } from '../../../types'
+import CustomArrayInput from '../../../../../../components/common/CustomArrayInput'
 
 interface ServiceAccount2FACardProps {
   method: ServiceAccount2FA
   onEdit?: (method: ServiceAccount2FA) => void
   onDelete?: (methodId: string) => void
-  onSave?: (id: string, updates: Partial<ServiceAccount2FA>) => void
+  onSave?: (id: string, updates: Partial<ServiceAccount2FA>) => Promise<void>
   className?: string
   compact?: boolean
 }
@@ -37,28 +41,50 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
   className
 }) => {
   const [showSecret, setShowSecret] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // State cho inline editing
   const [appValue, setAppValue] = useState(method.app || '')
   const [secretValue, setSecretValue] = useState(
     typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
   )
+
   const formatDateForInput = (dateString: string | undefined): string => {
     if (!dateString) return ''
     try {
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return ''
-      // Format to YYYY-MM-DDTHH:MM for datetime-local input
       return date.toISOString().slice(0, 16)
     } catch {
       return ''
     }
   }
-  const [editingMetadata, setEditingMetadata] = useState(method.metadata || {})
+
+  const [editingMetadata, setEditingMetadata] = useState(() => {
+    const metadata = method.metadata || {}
+    return JSON.parse(JSON.stringify(metadata))
+  })
+
   const [expireDateValue, setExpireDateValue] = useState(formatDateForInput(method.expire_at))
+
   // State cho việc lưu
   const [savingField, setSavingField] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
+
+  useEffect(() => {
+    const metadata = method.metadata || {}
+    setEditingMetadata(JSON.parse(JSON.stringify(metadata)))
+  }, [method.metadata])
+
+  // Helper function to parse date from input
+  const parseDateFromInput = (inputValue: string): string => {
+    if (!inputValue) return ''
+    try {
+      return new Date(inputValue).toISOString()
+    } catch {
+      return ''
+    }
+  }
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -79,26 +105,35 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
   const getTwoFAMethodInfo = (type: string) => {
     const methodInfo: Record<
       string,
-      { icon: React.ElementType; label: string; color: string; description: string }
+      {
+        icon: React.ElementType
+        label: string
+        color: string
+        bgColor: string
+        description: string
+      }
     > = {
       backup_codes: {
         icon: FileText,
         label: 'Backup Codes',
         color:
           'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300',
-        description: 'Recovery codes for service account access'
+        bgColor: 'bg-gradient-to-br from-orange-500 to-orange-600',
+        description: 'Recovery codes for account access'
       },
       totp_key: {
         icon: QrCode,
         label: 'TOTP Key',
         color:
           'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300',
+        bgColor: 'bg-gradient-to-br from-green-500 to-emerald-600',
         description: 'Time-based One-Time Password secret'
       },
       app_password: {
         icon: Key,
         label: 'App Password',
         color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300',
+        bgColor: 'bg-gradient-to-br from-blue-500 to-blue-600',
         description: 'Application-specific password'
       },
       security_key: {
@@ -106,6 +141,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
         label: 'Security Key',
         color:
           'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300',
+        bgColor: 'bg-gradient-to-br from-purple-500 to-purple-600',
         description: 'Hardware security key'
       },
       recovery_email: {
@@ -113,12 +149,14 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
         label: 'Recovery Email',
         color:
           'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300',
+        bgColor: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
         description: 'Alternative email for recovery'
       },
       sms: {
         icon: Smartphone,
         label: 'SMS',
         color: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-300',
+        bgColor: 'bg-gradient-to-br from-pink-500 to-pink-600',
         description: 'SMS-based verification'
       }
     }
@@ -142,7 +180,8 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
           updates.value = value
           break
         case 'metadata':
-          updates.metadata = value
+          updates.metadata = value as Record<string, any>
+          updates.last_update = new Date().toISOString()
           break
         case 'expire_at':
           updates.expire_at = parseDateFromInput(value) || null
@@ -167,7 +206,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
     }
   }
 
-  const hasExpireDateChanged = expireDateValue !== (method.expire_at || '')
+  const hasExpireDateChanged = expireDateValue !== formatDateForInput(method.expire_at)
 
   // Check if values have changed
   const hasAppChanged = appValue !== (method.app || '')
@@ -221,55 +260,75 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
     }
   }
 
-  const handleMetadataChange = (newMetadata: Record<string, any>) => {
-    setEditingMetadata(newMetadata)
-    // Auto save khi có thay đổi
-    handleSaveField('metadata', newMetadata)
+  const handleMetadataChange = async (newMetadata: Record<string, any>) => {
+    const cleanedMetadata = Object.fromEntries(
+      Object.entries(newMetadata).filter(
+        ([_, value]) => value !== null && value !== undefined && value !== ''
+      )
+    )
+    setEditingMetadata(cleanedMetadata)
+    handleSaveField('metadata', cleanedMetadata)
   }
 
   const renderMethodValue = () => {
     if (method.method_type === 'backup_codes' && Array.isArray(method.value)) {
       return (
         <div className="space-y-3">
-          <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Backup Codes ({method.value.length} codes)
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Backup Codes ({method.value.length} codes)
+            </Label>
+            <div className="flex items-center gap-2">
+              <CustomButton
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSecret(!showSecret)}
+                icon={showSecret ? EyeOff : Eye}
+                className="text-xs"
+              >
+                {showSecret ? 'Hide' : 'Show'}
+              </CustomButton>
+            </div>
+          </div>
 
           <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-800/30">
-            {showSecret ? (
-              <div className="grid grid-cols-2 gap-2">
-                {method.value.map((code, index) => (
-                  <div
-                    key={index}
-                    className="p-2 bg-card-background rounded border text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-mono text-sm"
-                    onClick={() => copyToClipboard(code)}
-                    title="Click to copy"
-                  >
-                    {code}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <div className="text-orange-800 dark:text-orange-300 font-medium mb-2">
-                  Click to reveal backup codes
-                </div>
-                <CustomButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSecret(true)}
-                  icon={Eye}
-                >
-                  Show Codes
-                </CustomButton>
-              </div>
-            )}
+            <CustomArrayInput
+              items={showSecret ? method.value.map(String) : method.value.map(() => '••••••••')}
+              onChange={(newCodes) => {
+                if (onSave && showSecret) {
+                  // Only allow editing when codes are visible
+                  handleSaveField('value', newCodes)
+                }
+              }}
+              disabled={savingField !== null || !showSecret || !onSave}
+              viewMode={!showSecret || savingField !== null}
+              placeholder="Enter backup code..."
+              allowDuplicates={false}
+              maxItems={20}
+              minItems={1}
+              hint={
+                !showSecret
+                  ? 'Codes are hidden - click Show to edit'
+                  : onSave
+                    ? 'Click on any code to copy, or edit directly'
+                    : 'Read-only backup codes'
+              }
+            />
 
             {method.metadata && (
               <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800">
-                <div className="text-sm text-orange-700 dark:text-orange-400">
-                  Used: {method.metadata.codes_used || 0} /{' '}
-                  {method.metadata.total_codes || method.value.length}
+                <div className="text-sm text-orange-700 dark:text-orange-400 flex items-center justify-between">
+                  <span>
+                    Used: {method.metadata.codes_used || 0} /{' '}
+                    {method.metadata.total_codes || method.value.length}
+                  </span>
+                  {method.metadata.codes_used > 0 && (
+                    <span className="text-xs">
+                      Remaining:{' '}
+                      {(method.metadata.total_codes || method.value.length) -
+                        (method.metadata.codes_used || 0)}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -321,101 +380,144 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
   const MethodIcon = methodInfo.icon
 
   return (
-    <div
-      className={cn(
-        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200',
-        className
-      )}
-    >
-      <div className="p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-              <MethodIcon className="h-5 w-5 text-white" />
-            </div>
-
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1 text-text-primary">
-                {methodInfo.label}
+    <div className={cn('transition-all duration-200', className)}>
+      <div className="space-y-0">
+        {/* Header - Always Visible */}
+        <div className=" pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div
+                className={`w-10 h-10 ${methodInfo.bgColor} rounded-lg flex items-center justify-center shadow-sm flex-shrink-0`}
+              >
+                <MethodIcon className="h-4 w-4 text-white" />
               </div>
 
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {methodInfo.description}
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-text-primary font-medium">{methodInfo.label}</span>
+                  {method.app && (
+                    <CustomBadge variant="secondary" size="xs" className="text-xs">
+                      {method.app}
+                    </CustomBadge>
+                  )}
+                </div>
+
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {methodInfo.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <CustomButton
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                icon={Trash2}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-1 h-7 w-7 hover:bg-gray-100 dark:hover:bg-gray-600 ml-1"
+              >
+                {isExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                )}
+              </Button>
             </div>
           </div>
-
-          {/* Actions - Chỉ còn Delete */}
-          <div className="flex items-center gap-1">
-            <CustomButton
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              icon={Trash2}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1"
-            ></CustomButton>
-          </div>
         </div>
 
-        {/* App Field */}
-        {(method.app || appValue) && (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">App Name</Label>
-            <CustomInput
-              value={appValue}
-              onChange={setAppValue}
-              placeholder="App name"
-              variant="filled"
-              size="sm"
-              rightIcon={renderStatusIcon('app', hasAppChanged)}
-              disabled={savingField !== null && savingField !== 'app'}
-            />
+        {/* Expandable Content */}
+        {isExpanded && (
+          <div className=" space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+            {/* App Name Field (if applicable) */}
+            {method.app && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Application
+                </Label>
+                <CustomInput
+                  value={appValue}
+                  onChange={setAppValue}
+                  placeholder="App name"
+                  variant="filled"
+                  size="sm"
+                  rightIcon={renderStatusIcon('app', hasAppChanged)}
+                  disabled={savingField !== null && savingField !== 'app'}
+                />
+              </div>
+            )}
+
+            {/* Method Value */}
+            {renderMethodValue()}
+
+            {/* Dates and Status */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                <span>Last Updated: {formatDate(method.last_update)}</span>
+              </div>
+
+              {/* Expire Date Field */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Expiry Date
+                </Label>
+                <CustomInput
+                  value={expireDateValue}
+                  onChange={setExpireDateValue}
+                  placeholder="Select expiry date"
+                  variant="filled"
+                  size="sm"
+                  type="datetime-local"
+                  showTime={false}
+                  rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
+                  disabled={savingField !== null && savingField !== 'expire_at'}
+                />
+              </div>
+            </div>
+
+            {/* Metadata với inline editing */}
+            <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+              <Metadata
+                metadata={editingMetadata || {}}
+                onMetadataChange={handleMetadataChange}
+                onDelete={(key) => {
+                  const newMetadata = { ...editingMetadata }
+                  delete newMetadata[key]
+                  setEditingMetadata(newMetadata)
+                  handleSaveField('metadata', newMetadata)
+                }}
+                title="Additional Information"
+                compact={true}
+                collapsible={true}
+                defaultExpanded={false}
+                size="sm"
+                maxVisibleFields={3}
+                showDeleteButtons={true}
+                hideEmpty={true}
+                editable={true}
+                allowEmpty={true}
+                showAddButton={true}
+                allowCreate={true}
+                allowEdit={true}
+                allowDelete={true}
+                readOnly={false}
+                shouldRenderField={(_, value) => {
+                  if (value === null || value === undefined || value === '') {
+                    return false
+                  }
+                  return true
+                }}
+              />
+            </div>
           </div>
         )}
-
-        {/* Method Value */}
-        {renderMethodValue()}
-
-        {/* Dates and Status */}
-        <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
-          <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-            <span>Updated: {formatDate(method.last_update)}</span>
-          </div>
-
-          {/* Expire Date Field */}
-          <div className="space-y-2">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Expire Date:</Label>
-            <CustomInput
-              value={expireDateValue}
-              onChange={setExpireDateValue}
-              placeholder="Select expiry date"
-              variant="filled"
-              size="sm"
-              type="datetime-local"
-              showTime={false}
-              rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
-              disabled={savingField !== null && savingField !== 'expire_at'}
-            />
-          </div>
-        </div>
-
-        {/* Metadata với inline editing */}
-        <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
-          <Metadata
-            metadata={editingMetadata || {}}
-            title="Additional Information"
-            compact={true}
-            collapsible={true}
-            defaultExpanded={false}
-            size="sm"
-            maxVisibleFields={3}
-            showDeleteButtons={true}
-            onMetadataChange={handleMetadataChange}
-            showAddButton={true}
-            allowEmpty={true}
-          />
-        </div>
       </div>
     </div>
   )

@@ -51,10 +51,8 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
   const handleCreate2FA = async (data: Omit<Email2FA, 'id'>) => {
     try {
       setIsCreating(true)
-      console.log('Creating 2FA method:', data)
       await onAdd2FA(data)
       setShowCreateForm(false)
-      console.log('2FA method created successfully')
     } catch (error) {
       console.error('Error creating 2FA method:', error)
     } finally {

@@ -83,9 +83,6 @@ const PeopleManagerPage = () => {
   const handleUpdatePerson = async (id: string, updates: Partial<Person>): Promise<boolean> => {
     try {
       const success = await updatePerson(id, updates)
-      if (success && selectedPerson?.id === id) {
-        console.log('Person updated successfully:', id)
-      }
       return success
     } catch (error) {
       console.error('Error updating person:', error)
