@@ -186,8 +186,7 @@ const MotionCustomDrawer: React.FC<MotionCustomDrawerProps> = ({
           top: 0,
           right: 0,
           height: '100vh',
-          width: sizeMap[size],
-          borderLeft: '1px solid var(--border-default, #e5e7eb)'
+          width: sizeMap[size]
         }
       case 'left':
         return {
@@ -195,8 +194,7 @@ const MotionCustomDrawer: React.FC<MotionCustomDrawerProps> = ({
           top: 0,
           left: 0,
           height: '100vh',
-          width: sizeMap[size],
-          borderRight: '1px solid var(--border-default, #e5e7eb)'
+          width: sizeMap[size]
         }
       case 'top':
         return {
@@ -204,8 +202,7 @@ const MotionCustomDrawer: React.FC<MotionCustomDrawerProps> = ({
           top: 0,
           left: 0,
           right: 0,
-          height: sizeMap[size],
-          borderBottom: '1px solid var(--border-default, #e5e7eb)'
+          height: sizeMap[size]
         }
       case 'bottom':
         return {
@@ -213,8 +210,7 @@ const MotionCustomDrawer: React.FC<MotionCustomDrawerProps> = ({
           bottom: 0,
           left: 0,
           right: 0,
-          height: sizeMap[size],
-          borderTop: '1px solid var(--border-default, #e5e7eb)'
+          height: sizeMap[size]
         }
       default:
         return baseStyle
@@ -259,7 +255,7 @@ const MotionCustomDrawer: React.FC<MotionCustomDrawerProps> = ({
                 variants={headerVariants}
                 initial="hidden"
                 animate="visible"
-                className="flex-shrink-0 px-6 py-5 border-b border-border bg-drawer-background"
+                className="flex-shrink-0 px-6 py-5 bg-drawer-background"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">

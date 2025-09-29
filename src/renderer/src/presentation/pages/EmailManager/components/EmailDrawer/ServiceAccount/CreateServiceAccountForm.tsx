@@ -272,11 +272,6 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       }
     }
 
-    // Validate username or password (at least one should be provided)
-    if (!formData.password.trim()) {
-      newErrors.password = 'Password is required'
-    }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -458,17 +453,16 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
 
           {/* Password */}
           <CustomInput
-            label="Password"
+            label="Password (Optional)"
             type="password"
             value={formData.password}
             onChange={(value) => setFormData((prev) => ({ ...prev, password: value }))}
-            placeholder="Enter password"
+            placeholder="Enter password (optional)"
             variant="filled"
             leftIcon={<Key className="h-4 w-4" />}
             error={errors.password}
             disabled={loading}
             size="sm"
-            required
           />
         </div>
 

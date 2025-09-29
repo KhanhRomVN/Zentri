@@ -137,24 +137,6 @@ const CustomArrayInput: React.FC<CustomArrayInputProps> = ({
               <Plus className="h-4 w-4" />
             </CustomButton>
           </div>
-
-          {/* Status info */}
-          {maxItems > 0 && (
-            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span>
-                {items.length}/{maxItems} items
-              </span>
-              {hint && !showError && <span>{hint}</span>}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Error message */}
-      {showError && (
-        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-          <AlertCircle className="h-3 w-3" />
-          {showError}
         </div>
       )}
 

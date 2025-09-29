@@ -416,6 +416,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                 onClick={handleDelete}
                 icon={Trash2}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1"
+                children={undefined}
               />
               <Button
                 variant="ghost"

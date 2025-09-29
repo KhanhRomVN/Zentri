@@ -138,15 +138,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
   // Get selected method info
   const selectedMethod = twoFAMethodOptions.find((opt) => opt.value === formData.method_type)
 
-  useEffect(() => {
-    if (formData.method_type === 'backup_codes') {
-      formData.value
-        .split('\n')
-        .map((code) => code.trim())
-        .filter((code) => code.length > 0)
-    }
-  }, [formData.value, formData.method_type])
-
   // Auto-fill value from email data when method type changes
   useEffect(() => {
     if (selectedMethod?.autoFillFromEmail && selectedMethod.autoFillField) {
@@ -187,6 +178,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
 
   // Validate form
   const validateForm = (): boolean => {
+    console.log('[DEBUG] validateForm called with formData:', formData)
     const newErrors: Record<string, string> = {}
 
     if (!formData.method_type) {
@@ -194,8 +186,10 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
     }
 
     if (!formData.value.trim()) {
+      console.log('[DEBUG] Empty value detected for method:', formData.method_type)
       newErrors.value = 'Value is required'
     } else {
+      // Only validate non-backup_codes methods at form level
       if (formData.method_type === 'recovery_email') {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(formData.value.trim())) {
@@ -207,19 +201,9 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
           newErrors.value = 'Please enter a valid phone number'
         }
       } else if (formData.method_type === 'backup_codes') {
-        const codes = formData.value
-          .trim()
-          .split('\n')
-          .filter((code) => code.trim())
-
-        if (codes.length === 0) {
-          newErrors.value = 'Please enter at least one backup code'
-        } else {
-          const uniqueCodes = [...new Set(codes)]
-          if (uniqueCodes.length !== codes.length) {
-            newErrors.value = 'Duplicate backup codes are not allowed'
-          }
-        }
+        console.log(
+          '[DEBUG] SKIP backup_codes validation at form level - handled by CustomArrayInput'
+        )
       }
     }
 
@@ -234,13 +218,16 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
       }
     }
 
+    console.log('[DEBUG] Form validation errors:', newErrors)
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle form submission - NO MORE FORM EVENT
+  // Handle form submission
   const handleSubmit = async () => {
+    console.log('[DEBUG] handleSubmit called')
     if (!validateForm()) {
+      console.log('[DEBUG] Form validation failed, not submitting')
       return
     }
 
@@ -356,24 +343,19 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             <CustomArrayInput
               items={currentCodes}
               onChange={(newCodes) => {
-                const uniqueNewCodes = [...new Set(newCodes)]
-                if (uniqueNewCodes.length !== newCodes.length) {
-                  setErrors((prev) => ({
-                    ...prev,
-                    value: '⚠️ Duplicate backup codes detected and blocked'
-                  }))
-                  return
-                }
+                console.log('[DEBUG] CustomArrayInput onChange called with:', newCodes)
+                // Update form data with joined codes
+                const joinedValue = newCodes.join('\n')
+                console.log('[DEBUG] Setting form value to:', joinedValue)
+                setFormData((prev) => ({ ...prev, value: joinedValue }))
 
+                // Clear any form-level errors since CustomArrayInput handles its own validation
+                console.log('[DEBUG] Clearing form-level errors for backup_codes')
                 setErrors((prev) => {
                   const newErrors = { ...prev }
                   delete newErrors.value
+                  console.log('[DEBUG] Errors after clearing value error:', newErrors)
                   return newErrors
-                })
-                const joinedValue = newCodes.join('\n')
-                setFormData((prev) => {
-                  const newFormData = { ...prev, value: joinedValue }
-                  return newFormData
                 })
               }}
               placeholder="Enter backup code..."
@@ -381,8 +363,8 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
               maxItems={20}
               minItems={1}
               hint="Add backup codes one by one. Each code should be unique."
-              error={errors.value}
               disabled={loading}
+              // Don't pass error prop - let CustomArrayInput handle all validation
             />
           </div>
           <div className="flex items-center justify-between text-xs text-gray-500">
@@ -391,11 +373,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
               <span className="text-green-600 dark:text-green-400">✓ Ready to save</span>
             )}
           </div>
-          {process.env.NODE_ENV === 'development' && formData.method_type === 'backup_codes' && (
-            <div className="text-xs text-blue-600 bg-blue-50 p-1 rounded mt-1">
-              Debug: Raw value length: {formData.value.length}, Parsed codes: {currentCodes.length}
-            </div>
-          )}
         </div>
       )
     }
@@ -479,7 +456,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
         </Button>
       </div>
 
-      {/* Form Container - NO MORE <form> TAG */}
+      {/* Form Container */}
       <div className="space-y-4">
         {/* 2FA Method Selection */}
         <div className="space-y-1">
@@ -596,7 +573,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             variant="success"
             size="sm"
             onClick={handleSubmit}
-            disabled={loading || !formData.method_type || !formData.value.trim()}
+            disabled={loading || !formData.method_type || !formData.value}
             loading={loading}
             className="min-w-[140px] bg-green-600 hover:bg-green-700 text-white"
           >
