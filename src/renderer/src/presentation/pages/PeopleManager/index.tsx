@@ -5,7 +5,6 @@ import { Users, Database, X, AlertCircle } from 'lucide-react'
 import { usePeopleManager } from './hooks/usePeopleManager'
 import DatabaseModal from './components/DatabaseModal'
 import PeopleListPanel from './components/PeopleListPanel'
-import { Person } from './types'
 import CreatePeopleModal from './components/CreatePeopleModal'
 import PeopleDetailPanel from './components/PeopleDetailPanel'
 
@@ -21,6 +20,10 @@ const PeopleManagerPage = () => {
     people,
     filteredPeople,
     selectedPerson,
+    selectedPersonInfo,
+    selectedPersonIdentifications,
+    selectedPersonAddresses,
+    selectedPersonContacts,
 
     // Search and filters
     searchQuery,
@@ -31,11 +34,22 @@ const PeopleManagerPage = () => {
     // Actions
     selectPerson,
     createPerson,
-    updatePerson,
-    deletePerson,
     handleDatabaseSelected,
     closeDatabase,
-    clearError
+    clearError,
+
+    // CRUD operations
+    createPersonInfo,
+    updatePersonInfo,
+    createIdentification,
+    updateIdentification,
+    deleteIdentification,
+    createAddress,
+    updateAddress,
+    deleteAddress,
+    createContact,
+    updateContact,
+    deleteContact
   } = usePeopleManager()
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -53,40 +67,14 @@ const PeopleManagerPage = () => {
     }
   ]
 
-  const handleCreateNewPerson = () => {
+  const handleCreateNewPerson = async () => {
     setShowCreateModal(true)
-  }
-
-  const handleCreatePersonSubmit = async (personData: Omit<Person, 'id'>) => {
-    try {
-      setIsCreatingPerson(true)
-      const newPerson = await createPerson(personData)
-      if (newPerson) {
-        setShowCreateModal(false)
-        // Optionally select the newly created person
-        selectPerson(newPerson)
-      }
-    } catch (error) {
-      console.error('Error creating person:', error)
-      // Error will be handled by the usePeopleManager hook
-    } finally {
-      setIsCreatingPerson(false)
-    }
+    setIsCreatingPerson(false)
   }
 
   const handleCloseCreateModal = () => {
     if (!isCreatingPerson) {
       setShowCreateModal(false)
-    }
-  }
-
-  const handleUpdatePerson = async (id: string, updates: Partial<Person>): Promise<boolean> => {
-    try {
-      const success = await updatePerson(id, updates)
-      return success
-    } catch (error) {
-      console.error('Error updating person:', error)
-      return false
     }
   }
 
@@ -167,7 +155,24 @@ const PeopleManagerPage = () => {
             {/* Content */}
             <div className="flex-1 overflow-hidden">
               {selectedPerson ? (
-                <PeopleDetailPanel person={selectedPerson} onUpdatePerson={handleUpdatePerson} />
+                <PeopleDetailPanel
+                  person={selectedPerson}
+                  personInfo={selectedPersonInfo}
+                  identifications={selectedPersonIdentifications}
+                  addresses={selectedPersonAddresses}
+                  contacts={selectedPersonContacts}
+                  onUpdatePersonInfo={updatePersonInfo}
+                  onCreatePersonInfo={createPersonInfo}
+                  onCreateIdentification={createIdentification}
+                  onUpdateIdentification={updateIdentification}
+                  onDeleteIdentification={deleteIdentification}
+                  onCreateAddress={createAddress}
+                  onUpdateAddress={updateAddress}
+                  onDeleteAddress={deleteAddress}
+                  onCreateContact={createContact}
+                  onUpdateContact={updateContact}
+                  onDeleteContact={deleteContact}
+                />
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center space-y-4">
@@ -186,7 +191,9 @@ const PeopleManagerPage = () => {
             <CreatePeopleModal
               isOpen={showCreateModal}
               onClose={handleCloseCreateModal}
-              onSubmit={handleCreatePersonSubmit}
+              onSubmit={createPerson}
+              onCreatePersonInfo={createPersonInfo}
+              onCreateContact={createContact}
               loading={isCreatingPerson}
             />
           </div>

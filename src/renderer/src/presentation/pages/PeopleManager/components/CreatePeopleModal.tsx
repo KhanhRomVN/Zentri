@@ -5,14 +5,18 @@ import CustomInput from '../../../../components/common/CustomInput'
 import CustomCombobox from '../../../../components/common/CustomCombobox'
 import { Badge } from '../../../../components/ui/badge'
 import { User, Mail, Phone, Calendar, Users } from 'lucide-react'
-import { Person } from '../types'
-import { GENDER_OPTIONS, PRIVACY_LEVELS } from '../constants'
+import { Person, PersonInfo, Contact } from '../types'
+import { GENDER_OPTIONS } from '../constants'
 import NationalityCombobox from './NationalityCombobox'
+import { getPhoneCodeByNationality } from '../constants'
+import CustomBadge from '../../../../components/common/CustomBadge'
 
 interface CreatePeopleModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (personData: Omit<Person, 'id'>) => void
+  onSubmit: () => Promise<Person | null>
+  onCreatePersonInfo?: (data: Omit<PersonInfo, 'id'>) => Promise<PersonInfo | null>
+  onCreateContact?: (data: Omit<Contact, 'id'>) => Promise<Contact | null>
   loading?: boolean
 }
 
@@ -20,9 +24,11 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  onCreatePersonInfo,
+  onCreateContact,
   loading = false
 }) => {
-  // Form state - chỉ giữ lại các field cơ bản
+  // Form state
   const [fullName, setFullName] = useState('')
   const [preferredName, setPreferredName] = useState('')
   const [gender, setGender] = useState('')
@@ -30,6 +36,9 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
   const [nationality, setNationality] = useState('')
   const [primaryEmail, setPrimaryEmail] = useState('')
   const [primaryPhone, setPrimaryPhone] = useState('')
+
+  // Internal loading state
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form validation state
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -74,32 +83,82 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
   }
 
   // Handle form submission
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) {
       return
     }
 
-    const now = new Date().toISOString()
+    try {
+      setIsSubmitting(true)
 
-    const personData: Omit<Person, 'id'> = {
-      full_name: fullName.trim(),
-      preferred_name: preferredName.trim() || undefined,
-      gender: (gender as any) || undefined,
-      date_of_birth: dateOfBirth || undefined,
-      nationality: nationality.trim() || undefined,
-      primary_email: primaryEmail.trim() || undefined,
-      primary_phone: primaryPhone.trim() || undefined,
-      privacy_level: PRIVACY_LEVELS.PRIVATE, // Mặc định private
-      created_at: now,
-      updated_at: now
+      // Step 1: Create Person first
+      const newPerson = await onSubmit()
+
+      if (!newPerson) {
+        setErrors({ submit: 'Failed to create person' })
+        return
+      }
+
+      // Step 2: Create PersonInfo with the person_id
+      if (onCreatePersonInfo) {
+        const personInfoData: Omit<PersonInfo, 'id'> = {
+          person_id: newPerson.id,
+          full_name: fullName.trim(),
+          preferred_name: preferredName.trim() || undefined,
+          gender: (gender as any) || undefined,
+          metadata: {}
+        }
+
+        const createdPersonInfo = await onCreatePersonInfo(personInfoData)
+        if (!createdPersonInfo) {
+          console.error('Failed to create person info')
+        }
+      }
+
+      // Step 3: Create email contact if provided
+      if (primaryEmail.trim() && onCreateContact) {
+        const emailContact: Omit<Contact, 'id'> = {
+          person_id: newPerson.id,
+          contact_type: 'email',
+          contact_value: primaryEmail.trim(),
+          metadata: {}
+        }
+
+        const createdEmail = await onCreateContact(emailContact)
+        if (!createdEmail) {
+          console.error('Failed to create email contact')
+        }
+      }
+
+      // Step 4: Create phone contact if provided
+      if (primaryPhone.trim() && onCreateContact) {
+        const phoneContact: Omit<Contact, 'id'> = {
+          person_id: newPerson.id,
+          contact_type: 'phone',
+          contact_value: primaryPhone.trim(),
+          metadata: {}
+        }
+
+        const createdPhone = await onCreateContact(phoneContact)
+        if (!createdPhone) {
+          console.error('Failed to create phone contact')
+        }
+      }
+
+      // Success - reset and close
+      resetForm()
+      onClose()
+    } catch (error) {
+      console.error('Error creating person:', error)
+      setErrors({ submit: 'An error occurred while creating the person' })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    onSubmit(personData)
   }
 
   // Handle form reset when modal closes
   const handleClose = () => {
-    if (!loading) {
+    if (!loading && !isSubmitting) {
       resetForm()
       onClose()
     }
@@ -124,8 +183,8 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
       title="Create New Person"
       actionText="Create Person"
       onAction={handleSubmit}
-      actionDisabled={loading}
-      actionLoading={loading}
+      actionDisabled={loading || isSubmitting}
+      actionLoading={loading || isSubmitting}
       size="lg"
       headerActions={
         <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
@@ -135,6 +194,13 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
       }
     >
       <div className="p-6 space-y-6">
+        {/* Submit Error */}
+        {errors.submit && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+            <p className="text-sm text-red-700 dark:text-red-400">{errors.submit}</p>
+          </div>
+        )}
+
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-base font-semibold text-text-primary flex items-center gap-2">
@@ -178,7 +244,7 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
               size="sm"
             />
 
-            {/* Date of Birth - Changed from type="date" to type="datetime-local" and showTime={false} */}
+            {/* Date of Birth */}
             <CustomInput
               label="Date of Birth"
               type="datetime-local"
@@ -225,16 +291,35 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
             />
 
             {/* Primary Phone */}
-            <CustomInput
-              label="Primary Phone"
-              value={primaryPhone}
-              onChange={setPrimaryPhone}
-              placeholder="+84 xxx xxx xxx"
-              variant="filled"
-              size="sm"
-              leftIcon={<Phone className="h-3.5 w-3.5" />}
-              error={errors.primaryPhone}
-            />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Primary Phone
+              </label>
+              <div className="flex gap-2 items-start">
+                {/* Phone Code Badge */}
+                {nationality && (
+                  <div className="flex-shrink-0">
+                    <CustomBadge variant="input-filled" size="sm" className="font-semibold">
+                      {getPhoneCodeByNationality(nationality)}
+                    </CustomBadge>
+                  </div>
+                )}
+
+                {/* Phone Input */}
+                <div className="flex-1">
+                  <CustomInput
+                    value={primaryPhone}
+                    onChange={setPrimaryPhone}
+                    placeholder={nationality ? 'xxx xxx xxx' : 'Please select nationality first'}
+                    variant="filled"
+                    size="sm"
+                    leftIcon={<Phone className="h-3.5 w-3.5" />}
+                    error={errors.primaryPhone}
+                    disabled={!nationality}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

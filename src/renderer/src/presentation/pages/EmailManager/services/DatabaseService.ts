@@ -24,7 +24,7 @@ declare global {
         showSaveDialog: (options: any) => Promise<{ canceled: boolean; filePath?: string }>
         showOpenDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[] }>
         exists: (path: string) => Promise<boolean>
-        mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void> // Added for folder creation
+        createDirectory: (path: string, options?: { recursive?: boolean }) => Promise<void> // Added for folder creation
       }
       // Thêm API cho persistent storage
       storage: {
@@ -80,8 +80,7 @@ export class DatabaseService {
 
     try {
       // Create the EmailManager directory
-      await window.electronAPI.fileSystem.mkdir(folderPath, { recursive: true })
-
+      await window.electronAPI.fileSystem.createDirectory(folderPath, { recursive: true })
       // Return the full path to the database file
       return folderPath + separator + 'email_manager.db'
     } catch (error) {

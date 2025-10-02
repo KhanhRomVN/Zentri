@@ -6,6 +6,7 @@ import CustomButton from '../../../../../../components/common/CustomButton'
 import { Label } from '../../../../../../components/ui/label'
 import CustomInput from '../../../../../../components/common/CustomInput'
 import Metadata from '../../../../../../components/common/Metadata'
+import CustomOTP from '../../../../../../components/common/CustomOTP'
 import {
   Eye,
   EyeOff,
@@ -36,19 +37,19 @@ interface Email2FACardProps {
 
 const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, className }) => {
   const [showSecret, setShowSecret] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false) // Default collapsed
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // State cho inline editing
   const [appValue, setAppValue] = useState(method.app || '')
   const [secretValue, setSecretValue] = useState(
     typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
   )
+
   const formatDateForInput = (dateString: string | undefined): string => {
     if (!dateString) return ''
     try {
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return ''
-      // Format to YYYY-MM-DDTHH:MM for datetime-local input
       return date.toISOString().slice(0, 16)
     } catch {
       return ''
@@ -56,13 +57,11 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
   }
 
   const [editingMetadata, setEditingMetadata] = useState(() => {
-    // Đảm bảo metadata luôn có giá trị và được deep clone
     const metadata = method.metadata || {}
     return JSON.parse(JSON.stringify(metadata))
   })
 
   const [expireDateValue, setExpireDateValue] = useState(formatDateForInput(method.expire_at))
-  // State cho việc lưu
   const [savingField, setSavingField] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
 
@@ -71,11 +70,9 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     setEditingMetadata(JSON.parse(JSON.stringify(metadata)))
   }, [method.metadata])
 
-  // Helper function to parse date from input
   const parseDateFromInput = (inputValue: string): string => {
     if (!inputValue) return ''
     try {
-      // Input value is already in YYYY-MM-DDTHH:MM format, convert to ISO
       return new Date(inputValue).toISOString()
     } catch {
       return ''
@@ -159,7 +156,6 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     return methodInfo[type] || methodInfo.totp_key
   }
 
-  // Hàm lưu field
   const handleSaveField = async (field: string, value: any) => {
     if (!onSave) return
 
@@ -190,7 +186,6 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
       await onSave(method.id, updates)
 
       setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
-      // Reset status sau 2 giây
       setTimeout(() => {
         setSaveStatus((prev) => ({ ...prev, [field]: null }))
       }, 2000)
@@ -203,13 +198,10 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
   }
 
   const hasExpireDateChanged = expireDateValue !== formatDateForInput(method.expire_at)
-
-  // Check if values have changed
   const hasAppChanged = appValue !== (method.app || '')
   const hasSecretChanged =
     secretValue !== (typeof method.value === 'string' ? method.value : JSON.stringify(method.value))
 
-  // Hàm render icon trạng thái cho input
   const renderStatusIcon = (field: string, hasChanged: boolean) => {
     if (savingField === field) {
       return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -264,11 +256,64 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     )
 
     setEditingMetadata(cleanedMetadata)
-
     handleSaveField('metadata', cleanedMetadata)
   }
 
   const renderMethodValue = () => {
+    // TOTP Key with OTP Generator
+    if (method.method_type === 'totp_key' && typeof method.value === 'string') {
+      return (
+        <div className="space-y-3">
+          <CustomOTP
+            secret={secretValue}
+            issuer={method.app || 'Email Manager'}
+            accountName={method.metadata?.account_name || 'user@example.com'}
+            showQRCode={false}
+            onCopy={(code) => {
+              console.log('OTP code copied:', code)
+            }}
+          />
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Secret Key (Advanced)
+            </Label>
+            <CustomInput
+              value={showSecret ? secretValue : '•'.repeat(32)}
+              onChange={(value) => setSecretValue(value)}
+              variant="filled"
+              size="sm"
+              multiline={secretValue.length > 50}
+              rows={2}
+              rightIcon={
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSecret(!showSecret)}
+                    className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
+                    {showSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(secretValue)}
+                    className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  {renderStatusIcon('value', hasSecretChanged)}
+                </div>
+              }
+              disabled={savingField !== null && savingField !== 'value'}
+            />
+          </div>
+        </div>
+      )
+    }
+
+    // Backup Codes
     if (method.method_type === 'backup_codes' && Array.isArray(method.value)) {
       return (
         <div className="space-y-3">
@@ -294,7 +339,6 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
               items={showSecret ? method.value.map(String) : method.value.map(() => '••••••••')}
               onChange={(newCodes) => {
                 if (onSave && showSecret) {
-                  // Only allow editing when codes are visible
                   handleSaveField('value', newCodes)
                 }
               }}
@@ -335,7 +379,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
       )
     }
 
-    // For single string values - với inline editing
+    // Other methods (app_password, security_key, etc.)
     return (
       <div className="space-y-2">
         <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Secret Value</Label>
@@ -381,7 +425,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     <div className={cn('transition-all duration-200', className)}>
       <div className="space-y-0">
         {/* Header - Always Visible */}
-        <div className=" pb-3">
+        <div className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div
@@ -434,8 +478,8 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
 
         {/* Expandable Content */}
         {isExpanded && (
-          <div className=" space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-            {/* App Name Field (if applicable) */}
+          <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+            {/* App Name Field */}
             {method.app && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -481,7 +525,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
               </div>
             </div>
 
-            {/* Metadata với inline editing */}
+            {/* Metadata */}
             <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
               <Metadata
                 metadata={editingMetadata || {}}

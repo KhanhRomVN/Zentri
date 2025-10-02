@@ -1,7 +1,7 @@
 // src/renderer/src/presentation/pages/PeopleManager/hooks/usePeopleManager.ts
 import { useState, useCallback, useMemo } from 'react'
 import { useDatabase } from './useDatabase'
-import { Person, PersonRelationship, PersonDocument, PersonEvent } from '../types'
+import { Person } from '../types'
 
 export const usePeopleManager = () => {
   const database = useDatabase()
@@ -15,36 +15,66 @@ export const usePeopleManager = () => {
     tags: [] as string[]
   })
 
+  // Get PersonInfo for selected person
+  const selectedPersonInfo = useMemo(() => {
+    if (!selectedPerson) return null
+    return database.personInfos.find((info) => info.person_id === selectedPerson.id) || null
+  }, [selectedPerson, database.personInfos])
+
+  // Get Identifications for selected person
+  const selectedPersonIdentifications = useMemo(() => {
+    if (!selectedPerson) return []
+    return database.identifications.filter((id) => id.person_id === selectedPerson.id)
+  }, [selectedPerson, database.identifications])
+
+  // Get Addresses for selected person
+  const selectedPersonAddresses = useMemo(() => {
+    if (!selectedPerson) return []
+    return database.addresses.filter((addr) => addr.person_id === selectedPerson.id)
+  }, [selectedPerson, database.addresses])
+
+  // Get Contacts for selected person
+  const selectedPersonContacts = useMemo(() => {
+    if (!selectedPerson) return []
+    return database.contacts.filter((contact) => contact.person_id === selectedPerson.id)
+  }, [selectedPerson, database.contacts])
+
   // Filter people based on search and filters
   const filteredPeople = useMemo(() => {
     if (!database.isDatabaseReady) return []
 
     return database.people.filter((person) => {
+      const personInfo = database.personInfos.find((info) => info.person_id === person.id)
+      const personContacts = database.contacts.filter((c) => c.person_id === person.id)
+
       // Search query filter
       const matchesSearch =
-        person.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        person.preferred_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        person.primary_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        person.primary_phone?.includes(searchQuery) ||
-        person.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+        personInfo?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        personInfo?.preferred_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        personContacts.some(
+          (c) =>
+            c.contact_type === 'email' &&
+            c.contact_value.toLowerCase().includes(searchQuery.toLowerCase())
+        ) ||
+        personContacts.some(
+          (c) => c.contact_type === 'phone' && c.contact_value.includes(searchQuery)
+        )
 
       // Gender filter
       const matchesGender =
-        filters.gender.length === 0 || (person.gender && filters.gender.includes(person.gender))
+        filters.gender.length === 0 ||
+        (personInfo?.gender && filters.gender.includes(personInfo.gender))
 
-      // Nationality filter
-      const matchesNationality =
-        filters.nationality.length === 0 ||
-        (person.nationality && filters.nationality.includes(person.nationality))
-
-      // Tags filter
-      const matchesTags =
-        filters.tags.length === 0 ||
-        (person.tags && filters.tags.some((tag) => person.tags!.includes(tag)))
-
-      return matchesSearch && matchesGender && matchesNationality && matchesTags
+      return matchesSearch && matchesGender
     })
-  }, [database.people, searchQuery, filters, database.isDatabaseReady])
+  }, [
+    database.people,
+    database.personInfos,
+    database.contacts,
+    searchQuery,
+    filters,
+    database.isDatabaseReady
+  ])
 
   // Person selection
   const selectPerson = useCallback((person: Person | null) => {
@@ -69,16 +99,14 @@ export const usePeopleManager = () => {
   // Get person statistics
   const getStatistics = useCallback(() => {
     const totalPeople = database.people.length
-    const withEmail = database.people.filter((p) => p.primary_email).length
-    const withPhone = database.people.filter((p) => p.primary_phone).length
-    const withAddress = database.people.filter(
-      (p) => p.current_address && p.current_address.length > 0
-    ).length
+    const withEmail = database.contacts.filter((c) => c.contact_type === 'email').length
+    const withPhone = database.contacts.filter((c) => c.contact_type === 'phone').length
+    const withAddress = database.addresses.length
 
-    const genderStats = database.people.reduce(
-      (acc, person) => {
-        if (person.gender) {
-          acc[person.gender] = (acc[person.gender] || 0) + 1
+    const genderStats = database.personInfos.reduce(
+      (acc, personInfo) => {
+        if (personInfo.gender) {
+          acc[personInfo.gender] = (acc[personInfo.gender] || 0) + 1
         }
         return acc
       },
@@ -92,7 +120,7 @@ export const usePeopleManager = () => {
       withAddress,
       genderStats
     }
-  }, [database.people])
+  }, [database.people, database.personInfos, database.contacts, database.addresses])
 
   return {
     // Database state
@@ -102,6 +130,10 @@ export const usePeopleManager = () => {
     people: database.people,
     filteredPeople,
     selectedPerson,
+    selectedPersonInfo,
+    selectedPersonIdentifications,
+    selectedPersonAddresses,
+    selectedPersonContacts,
 
     // Search and filters
     searchQuery,

@@ -1,13 +1,17 @@
 // src/renderer/src/presentation/pages/PeopleManager/hooks/useDatabase.ts
 import { useState, useEffect, useCallback } from 'react'
 import { peopleService } from '../services/PeopleService'
-import { DatabaseInfo, Person } from '../types'
+import { DatabaseInfo, Person, PersonInfo, Contact, Address, Identification } from '../types'
 
 export interface DatabaseManagerState {
   currentDatabase: DatabaseInfo | null
   isLoading: boolean
   error: string | null
   people: Person[]
+  personInfos: PersonInfo[]
+  contacts: Contact[]
+  addresses: Address[]
+  identifications: Identification[]
   showDatabaseModal: boolean
   isInitialized: boolean
 }
@@ -18,6 +22,10 @@ export const useDatabase = () => {
     isLoading: true,
     error: null,
     people: [],
+    personInfos: [],
+    contacts: [],
+    addresses: [],
+    identifications: [],
     showDatabaseModal: false,
     isInitialized: false
   })
@@ -79,7 +87,7 @@ export const useDatabase = () => {
           currentDatabase,
           isLoading: false
         }))
-        await loadPeople()
+        await loadAllData()
       }
     } catch (error) {
       setState((prev) => ({
@@ -91,67 +99,71 @@ export const useDatabase = () => {
     }
   }, [])
 
-  const loadPeople = useCallback(async () => {
+  const loadAllData = useCallback(async () => {
     if (!isDatabaseReady && !state.currentDatabase) return
 
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }))
+
       const people = await peopleService.getAllPeople()
+
+      // Load related data for all people
+      const personInfosPromises = people.map((p) => peopleService.getPersonInfoByPersonId(p.id))
+      const contactsPromises = people.map((p) => peopleService.getContactsByPersonId(p.id))
+      const addressesPromises = people.map((p) => peopleService.getAddressesByPersonId(p.id))
+      const identificationsPromises = people.map((p) =>
+        peopleService.getIdentificationsByPersonId(p.id)
+      )
+
+      const [personInfosResults, contactsResults, addressesResults, identificationsResults] =
+        await Promise.all([
+          Promise.all(personInfosPromises),
+          Promise.all(contactsPromises),
+          Promise.all(addressesPromises),
+          Promise.all(identificationsPromises)
+        ])
+
+      const personInfos = personInfosResults.filter((info): info is PersonInfo => info !== null)
+      const contacts = contactsResults.flat()
+      const addresses = addressesResults.flat()
+      const identifications = identificationsResults.flat()
+
       setState((prev) => ({
         ...prev,
         people,
+        personInfos,
+        contacts,
+        addresses,
+        identifications,
         isLoading: false
       }))
     } catch (error) {
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to load people',
+        error: error instanceof Error ? error.message : 'Failed to load data',
         isLoading: false
       }))
     }
   }, [isDatabaseReady, state.currentDatabase])
 
-  const createPerson = useCallback(
-    async (personData: Omit<Person, 'id'>): Promise<Person | null> => {
-      if (!isDatabaseReady) return null
+  // Person CRUD
+  const createPerson = useCallback(async (): Promise<Person | null> => {
+    if (!isDatabaseReady) return null
 
-      try {
-        setState((prev) => ({ ...prev, isLoading: true, error: null }))
-        const newPerson = await peopleService.createPerson(personData)
-        await loadPeople()
-        return newPerson
-      } catch (error) {
-        setState((prev) => ({
-          ...prev,
-          error: error instanceof Error ? error.message : 'Failed to create person',
-          isLoading: false
-        }))
-        return null
-      }
-    },
-    [isDatabaseReady, loadPeople]
-  )
-
-  const updatePerson = useCallback(
-    async (id: string, updates: Partial<Person>): Promise<boolean> => {
-      if (!isDatabaseReady) return false
-
-      try {
-        setState((prev) => ({ ...prev, isLoading: true, error: null }))
-        await peopleService.updatePerson(id, updates)
-        await loadPeople()
-        return true
-      } catch (error) {
-        setState((prev) => ({
-          ...prev,
-          error: error instanceof Error ? error.message : 'Failed to update person',
-          isLoading: false
-        }))
-        return false
-      }
-    },
-    [isDatabaseReady, loadPeople]
-  )
+    try {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }))
+      const newPerson = await peopleService.createPerson()
+      await loadAllData()
+      return newPerson
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to create person',
+        isLoading: false
+      }))
+      return null
+    }
+  }, [isDatabaseReady, loadAllData])
 
   const deletePerson = useCallback(
     async (id: string): Promise<boolean> => {
@@ -160,7 +172,7 @@ export const useDatabase = () => {
       try {
         setState((prev) => ({ ...prev, isLoading: true, error: null }))
         await peopleService.deletePerson(id)
-        await loadPeople()
+        await loadAllData()
         return true
       } catch (error) {
         setState((prev) => ({
@@ -171,7 +183,220 @@ export const useDatabase = () => {
         return false
       }
     },
-    [isDatabaseReady, loadPeople]
+    [isDatabaseReady, loadAllData]
+  )
+
+  // PersonInfo CRUD
+  const createPersonInfo = useCallback(
+    async (personInfo: Omit<PersonInfo, 'id'>): Promise<PersonInfo | null> => {
+      if (!isDatabaseReady) return null
+
+      try {
+        const newPersonInfo = await peopleService.createPersonInfo(personInfo)
+        await loadAllData()
+        return newPersonInfo
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to create person info'
+        }))
+        return null
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const updatePersonInfo = useCallback(
+    async (id: string, updates: Partial<PersonInfo>): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.updatePersonInfo(id, updates)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to update person info'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  // Contact CRUD
+  const createContact = useCallback(
+    async (contact: Omit<Contact, 'id'>): Promise<Contact | null> => {
+      if (!isDatabaseReady) return null
+
+      try {
+        const newContact = await peopleService.createContact(contact)
+        await loadAllData()
+        return newContact
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to create contact'
+        }))
+        return null
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const updateContact = useCallback(
+    async (id: string, updates: Partial<Contact>): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.updateContact(id, updates)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to update contact'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const deleteContact = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.deleteContact(id)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to delete contact'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  // Address CRUD
+  const createAddress = useCallback(
+    async (address: Omit<Address, 'id'>): Promise<Address | null> => {
+      if (!isDatabaseReady) return null
+
+      try {
+        const newAddress = await peopleService.createAddress(address)
+        await loadAllData()
+        return newAddress
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to create address'
+        }))
+        return null
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const updateAddress = useCallback(
+    async (id: string, updates: Partial<Address>): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.updateAddress(id, updates)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to update address'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const deleteAddress = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.deleteAddress(id)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to delete address'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  // Identification CRUD
+  const createIdentification = useCallback(
+    async (identification: Omit<Identification, 'id'>): Promise<Identification | null> => {
+      if (!isDatabaseReady) return null
+
+      try {
+        const newIdentification = await peopleService.createIdentification(identification)
+        await loadAllData()
+        return newIdentification
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to create identification'
+        }))
+        return null
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const updateIdentification = useCallback(
+    async (id: string, updates: Partial<Identification>): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.updateIdentification(id, updates)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to update identification'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const deleteIdentification = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.deleteIdentification(id)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to delete identification'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
   )
 
   const closeDatabase = useCallback(async () => {
@@ -182,6 +407,10 @@ export const useDatabase = () => {
         isLoading: false,
         error: null,
         people: [],
+        personInfos: [],
+        contacts: [],
+        addresses: [],
+        identifications: [],
         showDatabaseModal: true,
         isInitialized: true
       })
@@ -201,6 +430,10 @@ export const useDatabase = () => {
         isLoading: false,
         error: null,
         people: [],
+        personInfos: [],
+        contacts: [],
+        addresses: [],
+        identifications: [],
         showDatabaseModal: true,
         isInitialized: true
       })
@@ -218,18 +451,28 @@ export const useDatabase = () => {
 
   useEffect(() => {
     if (isDatabaseReady && state.people.length === 0) {
-      loadPeople()
+      loadAllData()
     }
-  }, [isDatabaseReady, loadPeople, state.people.length])
+  }, [isDatabaseReady, loadAllData, state.people.length])
 
   return {
     ...state,
     isDatabaseReady,
     handleDatabaseSelected,
-    loadPeople,
+    loadAllData,
     createPerson,
-    updatePerson,
     deletePerson,
+    createPersonInfo,
+    updatePersonInfo,
+    createContact,
+    updateContact,
+    deleteContact,
+    createAddress,
+    updateAddress,
+    deleteAddress,
+    createIdentification,
+    updateIdentification,
+    deleteIdentification,
     closeDatabase,
     forgetDatabase,
     clearError

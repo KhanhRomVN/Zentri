@@ -13,27 +13,34 @@ import {
   Plus,
   SlidersHorizontal
 } from 'lucide-react'
-import { Person } from '../../types'
-import BasicInfoSection from './components/BasicInfoSection'
-import DocumentsSection from './components/DocumentsSection'
-import EventsSection from './components/EventsSection'
-import MedicalInfoSection from './components/MedicalInfoSection'
-import ContactInfoSection from './components/ContactInfoSection'
-import ProfessionalInfoSection from './components/ProfessionalInfoSection'
-import FamilyInfoSection from './components/FamilyInfoSection'
+import { Person, PersonInfo, Identification, Address, Contact } from '../../types'
 import CustomButton from '../../../../../components/common/CustomButton'
+import PersonalSection from './components/PersonalSection'
 
 interface PeopleDetailPanelProps {
   person: Person
-  onUpdatePerson?: (id: string, updates: Partial<Person>) => Promise<boolean>
+  personInfo: PersonInfo | null
+  identifications: Identification[]
+  addresses: Address[]
+  contacts: Contact[]
+  onUpdatePersonInfo?: (id: string, updates: Partial<PersonInfo>) => Promise<boolean>
+  onCreatePersonInfo?: (data: Omit<PersonInfo, 'id'>) => Promise<PersonInfo | null>
+  onCreateIdentification?: (data: Omit<Identification, 'id'>) => Promise<Identification | null>
+  onUpdateIdentification?: (id: string, updates: Partial<Identification>) => Promise<boolean>
+  onDeleteIdentification?: (id: string) => Promise<boolean>
+  onCreateAddress?: (data: Omit<Address, 'id'>) => Promise<Address | null>
+  onUpdateAddress?: (id: string, updates: Partial<Address>) => Promise<boolean>
+  onDeleteAddress?: (id: string) => Promise<boolean>
+  onCreateContact?: (data: Omit<Contact, 'id'>) => Promise<Contact | null>
+  onUpdateContact?: (id: string, updates: Partial<Contact>) => Promise<boolean>
+  onDeleteContact?: (id: string) => Promise<boolean>
 }
 
 type TabType =
-  | 'basic_info'
-  | 'contact_info'
-  | 'professional_info'
-  | 'family_info'
-  | 'medical_info'
+  | 'personal'
+  | 'professional'
+  | 'family'
+  | 'medical'
   | 'documents'
   | 'events'
   | 'legal'
@@ -49,34 +56,31 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   {
-    id: 'basic_info',
-    label: 'Basic Info',
+    id: 'personal',
+    label: 'Personal',
     icon: User,
     description: 'Personal information and contact details'
   },
   {
-    id: 'contact_info',
-    label: 'Contact',
-    icon: MapPin,
-    description: 'Contact details and addresses'
-  },
-  {
-    id: 'professional_info',
+    id: 'professional',
     label: 'Professional',
     icon: Shield,
-    description: 'Work and education information'
+    description: 'Work and education information',
+    comingSoon: true
   },
   {
-    id: 'family_info',
+    id: 'family',
     label: 'Family',
     icon: Users,
-    description: 'Family relationships and connections'
+    description: 'Family relationships and connections',
+    comingSoon: true
   },
   {
-    id: 'medical_info',
+    id: 'medical',
     label: 'Medical',
     icon: Heart,
-    description: 'Health information and medical records'
+    description: 'Health information and medical records',
+    comingSoon: true
   },
   {
     id: 'documents',
@@ -108,8 +112,25 @@ const TABS: TabConfig[] = [
   }
 ]
 
-const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({ person, onUpdatePerson }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('basic_info')
+const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({
+  person,
+  personInfo,
+  identifications,
+  addresses,
+  contacts,
+  onUpdatePersonInfo,
+  onCreatePersonInfo,
+  onCreateIdentification,
+  onUpdateIdentification,
+  onDeleteIdentification,
+  onCreateAddress,
+  onUpdateAddress,
+  onDeleteAddress,
+  onCreateContact,
+  onUpdateContact,
+  onDeleteContact
+}) => {
+  const [activeTab, setActiveTab] = useState<TabType>('personal')
 
   const handleTabClick = (tabId: TabType) => {
     const tab = TABS.find((t) => t.id === tabId)
@@ -121,53 +142,26 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({ person, onUpdateP
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'basic_info':
-        return <BasicInfoSection person={person} onUpdatePerson={onUpdatePerson} />
-
-      case 'contact_info':
-        return <ContactInfoSection person={person} onUpdatePerson={onUpdatePerson} />
-
-      case 'professional_info':
-        return <ProfessionalInfoSection person={person} onUpdatePerson={onUpdatePerson} />
-
-      case 'family_info':
-        return <FamilyInfoSection person={person} onUpdatePerson={onUpdatePerson} />
-
-      case 'medical_info':
-        return <MedicalInfoSection person={person} onUpdatePerson={onUpdatePerson} />
-
-      case 'documents':
-        return <DocumentsSection person={person} onUpdatePerson={onUpdatePerson} />
-
-      case 'events':
-        return <EventsSection person={person} onUpdatePerson={onUpdatePerson} />
-
-      case 'legal':
+      case 'personal':
         return (
-          <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-            <div className="text-center space-y-4">
-              <Shield className="h-16 w-16 mx-auto opacity-50" />
-              <div>
-                <h3 className="text-lg font-medium">Legal Information</h3>
-                <p className="text-sm mt-2">
-                  Legal documents and records management coming soon...
-                </p>
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'media':
-        return (
-          <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-            <div className="text-center space-y-4">
-              <Camera className="h-16 w-16 mx-auto opacity-50" />
-              <div>
-                <h3 className="text-lg font-medium">Media Gallery</h3>
-                <p className="text-sm mt-2">Photo and media management coming soon...</p>
-              </div>
-            </div>
-          </div>
+          <PersonalSection
+            person={person}
+            personInfo={personInfo}
+            identifications={identifications}
+            addresses={addresses}
+            contacts={contacts}
+            onUpdatePersonInfo={onUpdatePersonInfo}
+            onCreatePersonInfo={onCreatePersonInfo}
+            onCreateIdentification={onCreateIdentification}
+            onUpdateIdentification={onUpdateIdentification}
+            onDeleteIdentification={onDeleteIdentification}
+            onCreateAddress={onCreateAddress}
+            onUpdateAddress={onUpdateAddress}
+            onDeleteAddress={onDeleteAddress}
+            onCreateContact={onCreateContact}
+            onUpdateContact={onUpdateContact}
+            onDeleteContact={onDeleteContact}
+          />
         )
 
       default:
@@ -187,130 +181,87 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({ person, onUpdateP
     }
   }
 
-  const getPersonDisplayName = (person: Person) => {
-    return person.preferred_name || person.full_name
-  }
-
-  const getPersonAge = (person: Person) => {
-    if (!person.date_of_birth) return null
-    const birthDate = new Date(person.date_of_birth)
-    const today = new Date()
-    const age = today.getFullYear() - birthDate.getFullYear()
-    const monthDiff = today.getMonth() - birthDate.getMonth()
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      return age - 1
-    }
-    return age
-  }
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
+  const getPersonDisplayName = (person: Person, personInfo: PersonInfo | null) => {
+    return personInfo?.preferred_name || personInfo?.full_name || 'Unknown'
   }
 
   return (
     <div className="h-full flex flex-col bg-transparent">
-      {/* Header Section - Compact và hiện đại */}
+      {/* Header Section */}
       <div className="flex-none border-b border-gray-200 dark:border-gray-700 bg-transparent">
         <div className="px-6 py-4">
           <div className="flex items-start justify-between">
-            {/* Person Info - Compact hơn */}
+            {/* Person Info */}
             <div className="flex items-start gap-3">
-              {/* Avatar - Nhỏ hơn */}
+              {/* Avatar */}
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                {getPersonDisplayName(person).charAt(0).toUpperCase()}
+                {getPersonDisplayName(person, personInfo).charAt(0).toUpperCase()}
               </div>
 
-              {/* Basic Details - Bố cục chặt chẽ hơn */}
+              {/* Basic Details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h1 className="text-xl font-bold text-text-primary truncate">
-                    {getPersonDisplayName(person)}
+                    {getPersonDisplayName(person, personInfo)}
                   </h1>
-                  {person.preferred_name && person.preferred_name !== person.full_name && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">
-                      aka {person.full_name}
-                    </span>
-                  )}
+                  {personInfo?.preferred_name &&
+                    personInfo.preferred_name !== personInfo.full_name && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">
+                        aka {personInfo.full_name}
+                      </span>
+                    )}
                 </div>
 
                 <div className="flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400 mb-2">
-                  {getPersonAge(person) && (
-                    <span className="font-medium">Age: {getPersonAge(person)}</span>
-                  )}
-
-                  {person.date_of_birth && (
-                    <span className="font-medium">Born: {formatDate(person.date_of_birth)}</span>
-                  )}
-
-                  {person.gender && (
-                    <span className="font-medium capitalize">Gender: {person.gender}</span>
-                  )}
-
-                  {person.nationality && (
-                    <span className="font-medium">Nationality: {person.nationality}</span>
+                  {personInfo?.gender && (
+                    <span className="font-medium capitalize">Gender: {personInfo.gender}</span>
                   )}
                 </div>
 
-                {/* Contact Info - Hiển thị gọn */}
+                {/* Contact Info */}
                 <div className="flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400">
-                  {person.primary_email && (
-                    <span className="font-medium">Email: {person.primary_email}</span>
-                  )}
+                  {contacts
+                    .filter((c) => c.contact_type === 'email')
+                    .slice(0, 1)
+                    .map((c) => (
+                      <span key={c.id} className="font-medium">
+                        Email: {c.contact_value}
+                      </span>
+                    ))}
 
-                  {person.primary_phone && (
-                    <span className="font-medium">Phone: {person.primary_phone}</span>
-                  )}
+                  {contacts
+                    .filter((c) => c.contact_type === 'phone')
+                    .slice(0, 1)
+                    .map((c) => (
+                      <span key={c.id} className="font-medium">
+                        Phone: {c.contact_value}
+                      </span>
+                    ))}
                 </div>
               </div>
             </div>
 
-            {/* Privacy Level và Action Buttons */}
-            <div className="flex items-center gap-2">
-              <div
-                className={`px-2 py-1 rounded-full text-xs font-medium border ${
-                  person.privacy_level === 'public'
-                    ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
-                    : person.privacy_level === 'private'
-                      ? 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800'
-                      : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-                }`}
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Filter (Coming Soon)"
               >
-                {person.privacy_level}
-              </div>
-
-              {/* Action Buttons giống EmailManager */}
-              <div className="flex items-center gap-1">
-                <button
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Filter (Coming Soon)"
-                >
-                  <SlidersHorizontal className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                </button>
-                <CustomButton
-                  variant="primary"
-                  size="sm"
-                  icon={Plus}
-                  className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-700"
-                />
-              </div>
+                <SlidersHorizontal className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </button>
+              <CustomButton
+                variant="primary"
+                size="sm"
+                icon={Plus}
+                className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-700"
+                children={undefined}
+              />
             </div>
-          </div>
-
-          {/* Last Updated Info - Nhỏ hơn */}
-          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-4">
-            <span>Last updated: {formatDate(person.updated_at) || 'Unknown'}</span>
-            {person.last_verified && <span>Last verified: {formatDate(person.last_verified)}</span>}
           </div>
         </div>
       </div>
 
-      {/* Tab Navigation - Compact hơn */}
+      {/* Tab Navigation */}
       <div className="flex-none border-b border-gray-200 dark:border-gray-700 bg-transparent">
         <div className="px-6">
           <div className="flex space-x-6 overflow-x-auto scrollbar-hide">

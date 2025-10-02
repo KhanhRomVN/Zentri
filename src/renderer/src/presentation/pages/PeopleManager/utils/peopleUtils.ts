@@ -1,6 +1,5 @@
-// src/renderer/src/presentation/pages/PeopleManager/utils/peopleUtils.ts
-import { Person, PersonRelationship, PersonEvent } from '../types'
-import { GENDER_LABELS, MARITAL_STATUS_LABELS, BLOOD_TYPES } from '../constants'
+import { Person, PersonInfo, Event } from '../types'
+import { GENDER_LABELS } from '../constants'
 
 export const calculateAge = (dateOfBirth: string): number => {
   const today = new Date()
@@ -44,10 +43,6 @@ export const getGenderLabel = (gender: string): string => {
   return GENDER_LABELS[gender as keyof typeof GENDER_LABELS] || gender
 }
 
-export const getMaritalStatusLabel = (status: string): string => {
-  return MARITAL_STATUS_LABELS[status as keyof typeof MARITAL_STATUS_LABELS] || status
-}
-
 export const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
@@ -63,7 +58,7 @@ export const formatPhoneNumber = (phone: string): string => {
   return phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')
 }
 
-export const getUpcomingEvents = (events: PersonEvent[], daysAhead: number = 30): PersonEvent[] => {
+export const getUpcomingEvents = (events: Event[], daysAhead: number = 30): Event[] => {
   const today = new Date()
   const futureDate = new Date()
   futureDate.setDate(today.getDate() + daysAhead)
@@ -76,7 +71,7 @@ export const getUpcomingEvents = (events: PersonEvent[], daysAhead: number = 30)
     .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
 }
 
-export const getRecentEvents = (events: PersonEvent[], daysBack: number = 30): PersonEvent[] => {
+export const getRecentEvents = (events: Event[], daysBack: number = 30): Event[] => {
   const today = new Date()
   const pastDate = new Date()
   pastDate.setDate(today.getDate() - daysBack)
@@ -103,8 +98,9 @@ export const getBMICategory = (bmi: number): string => {
   return 'Obese'
 }
 
-export const sortPeople = (
+export const sortPeopleByPersonInfo = (
   people: Person[],
+  personInfos: PersonInfo[],
   sortBy: string,
   ascending: boolean = true
 ): Person[] => {
@@ -112,26 +108,21 @@ export const sortPeople = (
     let aValue: any
     let bValue: any
 
+    const aInfo = personInfos.find((info) => info.person_id === a.id)
+    const bInfo = personInfos.find((info) => info.person_id === b.id)
+
     switch (sortBy) {
       case 'name':
-        aValue = a.full_name.toLowerCase()
-        bValue = b.full_name.toLowerCase()
+        aValue = (aInfo?.full_name || '').toLowerCase()
+        bValue = (bInfo?.full_name || '').toLowerCase()
         break
-      case 'age':
-        aValue = a.date_of_birth ? calculateAge(a.date_of_birth) : 0
-        bValue = b.date_of_birth ? calculateAge(b.date_of_birth) : 0
-        break
-      case 'last_updated':
-        aValue = new Date(a.updated_at)
-        bValue = new Date(b.updated_at)
-        break
-      case 'created':
-        aValue = new Date(a.created_at)
-        bValue = new Date(b.created_at)
+      case 'gender':
+        aValue = aInfo?.gender || ''
+        bValue = bInfo?.gender || ''
         break
       default:
-        aValue = a.full_name.toLowerCase()
-        bValue = b.full_name.toLowerCase()
+        aValue = (aInfo?.full_name || '').toLowerCase()
+        bValue = (bInfo?.full_name || '').toLowerCase()
     }
 
     if (aValue < bValue) return ascending ? -1 : 1
@@ -140,82 +131,38 @@ export const sortPeople = (
   })
 }
 
-export const exportToCSV = (people: Person[]): string => {
-  const headers = ['Name', 'Email', 'Phone', 'Age', 'Gender', 'Nationality', 'Tags']
-  const rows = people.map((person) => [
-    person.full_name,
-    person.primary_email || '',
-    person.primary_phone || '',
-    person.date_of_birth ? calculateAge(person.date_of_birth).toString() : '',
-    person.gender || '',
-    person.nationality || '',
-    person.tags?.join(', ') || ''
-  ])
+export const exportToCSV = (people: Person[], personInfos: PersonInfo[]): string => {
+  const headers = ['Person ID', 'Full Name', 'Preferred Name', 'Gender']
+  const rows = people.map((person) => {
+    const info = personInfos.find((i) => i.person_id === person.id)
+    return [person.id, info?.full_name || '', info?.preferred_name || '', info?.gender || '']
+  })
 
   return [headers, ...rows].map((row) => row.map((field) => `"${field}"`).join(',')).join('\n')
 }
 
-export const generatePersonReport = (person: Person): string => {
+export const generatePersonReport = (_person: Person, personInfo: PersonInfo | null): string => {
   const report = []
 
-  report.push(`PERSON REPORT: ${person.full_name}`)
+  report.push(`PERSON REPORT: ${personInfo?.full_name || 'Unknown'}`)
   report.push('='.repeat(50))
 
-  if (person.preferred_name) {
-    report.push(`Preferred Name: ${person.preferred_name}`)
+  if (personInfo?.preferred_name) {
+    report.push(`Preferred Name: ${personInfo.preferred_name}`)
   }
 
-  if (person.date_of_birth) {
-    report.push(`Age: ${calculateAge(person.date_of_birth)} years old`)
-  }
-
-  if (person.gender) {
-    report.push(`Gender: ${getGenderLabel(person.gender)}`)
-  }
-
-  if (person.primary_email) {
-    report.push(`Email: ${person.primary_email}`)
-  }
-
-  if (person.primary_phone) {
-    report.push(`Phone: ${formatPhoneNumber(person.primary_phone)}`)
-  }
-
-  if (person.occupation) {
-    report.push(`Occupation: ${person.occupation}`)
-  }
-
-  if (person.tags && person.tags.length > 0) {
-    report.push(`Tags: ${person.tags.join(', ')}`)
+  if (personInfo?.gender) {
+    report.push(`Gender: ${getGenderLabel(personInfo.gender)}`)
   }
 
   return report.join('\n')
 }
 
-export const validatePersonData = (person: Partial<Person>): string[] => {
+export const validatePersonInfoData = (personInfo: Partial<PersonInfo>): string[] => {
   const errors: string[] = []
 
-  if (!person.full_name?.trim()) {
+  if (!personInfo.full_name?.trim()) {
     errors.push('Full name is required')
-  }
-
-  if (person.primary_email && !isValidEmail(person.primary_email)) {
-    errors.push('Invalid email address')
-  }
-
-  if (person.date_of_birth) {
-    const birthDate = new Date(person.date_of_birth)
-    if (birthDate > new Date()) {
-      errors.push('Date of birth cannot be in the future')
-    }
-  }
-
-  if (person.height && (person.height < 50 || person.height > 250)) {
-    errors.push('Height must be between 50cm and 250cm')
-  }
-
-  if (person.weight && (person.weight < 2 || person.weight > 500)) {
-    errors.push('Weight must be between 2kg and 500kg')
   }
 
   return errors

@@ -201,6 +201,20 @@ function setupDatabaseHandlers() {
     }
   })
 
+  ipcMain.handle(
+    'fs:createDirectory',
+    async (_event, dirPath: string, options?: { recursive?: boolean }) => {
+      try {
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: options?.recursive ?? true })
+        }
+      } catch (error) {
+        console.error('Error creating directory:', error)
+        throw error
+      }
+    }
+  )
+
   // SQLite handlers
   ipcMain.handle('sqlite:create', async (_event, path: string) => {
     try {

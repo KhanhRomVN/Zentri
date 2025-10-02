@@ -1,6 +1,6 @@
 // src/renderer/src/presentation/pages/PeopleManager/services/PeopleService.ts
 import { v4 as uuidv4 } from 'uuid'
-import { Person, PersonRelationship, PersonDocument, PersonEvent, DatabaseInfo } from '../types'
+import { Person, PersonInfo, Identification, Address, Contact, DatabaseInfo } from '../types'
 
 declare global {
   interface Window {
@@ -17,6 +17,7 @@ declare global {
         showSaveDialog: (options: any) => Promise<{ canceled: boolean; filePath?: string }>
         showOpenDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[] }>
         exists: (path: string) => Promise<boolean>
+        mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>
       }
       storage: {
         set: (key: string, value: any) => Promise<void>
@@ -59,30 +60,35 @@ export class PeopleService {
 
   async createNewDatabase(): Promise<string | null> {
     try {
-      const result = await window.electronAPI.fileSystem.showSaveDialog({
-        title: 'Create New People Manager Database',
-        defaultPath: 'people_manager.db',
-        filters: [
-          { name: 'Database Files', extensions: ['db', 'sqlite'] },
-          { name: 'All Files', extensions: ['*'] }
-        ]
+      // Show folder picker instead of save dialog
+      const result = await window.electronAPI.fileSystem.showOpenDialog({
+        title: 'Select Folder for People Manager Database',
+        properties: ['openDirectory', 'createDirectory']
       })
 
-      if (result.canceled || !result.filePath) {
+      if (result.canceled || result.filePaths.length === 0) {
         return null
       }
 
-      await window.electronAPI.sqlite.createDatabase(result.filePath)
+      // Build the database path: <selected_folder>/PeopleManager/people_manager.db
+      const selectedFolder = result.filePaths[0]
+      const peopleManagerFolder = `${selectedFolder}/PeopleManager`
+      const dbFilePath = `${peopleManagerFolder}/people_manager.db`
+
+      // Create PeopleManager folder if it doesn't exist
+      await window.electronAPI.fileSystem.createDirectory(peopleManagerFolder, { recursive: true })
+      // Create the database
+      await window.electronAPI.sqlite.createDatabase(dbFilePath)
       await this.initializeTables()
 
       this.currentDatabase = {
-        path: result.filePath,
-        name: this.getFileNameFromPath(result.filePath),
+        path: dbFilePath,
+        name: this.getFileNameFromPath(dbFilePath),
         lastAccess: new Date().toISOString()
       }
 
       await this.saveLastDatabase(this.currentDatabase)
-      return result.filePath
+      return dbFilePath
     } catch (error) {
       console.error('Error creating database:', error)
       throw error
@@ -105,11 +111,27 @@ export class PeopleService {
       }
 
       const filePath = result.filePaths[0]
+
+      // Validate: file must be named "people_manager.db"
+      const fileName = this.getFileNameFromPath(filePath)
+      if (fileName !== 'people_manager.db') {
+        throw new Error('Invalid database file. Must be named "people_manager.db"')
+      }
+
+      // Validate: file must be inside a folder named "PeopleManager"
+      const pathParts = filePath.split(/[\\/]/)
+      const parentFolderIndex = pathParts.length - 2
+      const parentFolder = pathParts[parentFolderIndex]
+
+      if (parentFolder !== 'PeopleManager') {
+        throw new Error('Invalid database location. File must be inside a "PeopleManager" folder')
+      }
+
       await window.electronAPI.sqlite.openDatabase(filePath)
 
       this.currentDatabase = {
         path: filePath,
-        name: this.getFileNameFromPath(filePath),
+        name: fileName,
         lastAccess: new Date().toISOString()
       }
 
@@ -182,63 +204,95 @@ export class PeopleService {
     const queries = [
       // People table
       `CREATE TABLE IF NOT EXISTS people (
+        id TEXT PRIMARY KEY
+      )`,
+
+      // PersonInfo table
+      `CREATE TABLE IF NOT EXISTS person_info (
         id TEXT PRIMARY KEY,
-        full_name TEXT NOT NULL,
+        person_id TEXT NOT NULL,
+        full_name TEXT,
         preferred_name TEXT,
         gender TEXT CHECK (gender IN ('male', 'female', 'other')),
-        date_of_birth TEXT,
-        place_of_birth TEXT,
-        nationality TEXT,
-        ethnic_origin TEXT,
-        primary_email TEXT,
-        secondary_emails TEXT,
-        primary_phone TEXT,
-        secondary_phones TEXT,
-        emergency_contact TEXT,
-        height INTEGER,
-        weight INTEGER,
-        eye_color TEXT,
-        hair_color TEXT,
-        blood_type TEXT CHECK (blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
-        distinguishing_marks TEXT,
-        identification_documents TEXT,
-        current_address TEXT,
-        occupation TEXT,
-        employer TEXT,
-        job_title TEXT,
-        work_experience TEXT,
-        education TEXT,
-        bank_accounts TEXT,
-        tax_identification_number TEXT,
-        credit_cards TEXT,
-        medical_conditions TEXT,
-        allergies TEXT,
-        medications TEXT,
-        primary_care_physician TEXT,
-        marital_status TEXT CHECK (marital_status IN ('single', 'married', 'divorced', 'widowed')),
-        spouse TEXT,
-        children TEXT,
-        parents TEXT,
-        siblings TEXT,
-        social_media_profiles TEXT,
-        website TEXT,
-        online_usernames TEXT,
-        languages TEXT,
-        skills TEXT,
-        hobbies TEXT,
-        certifications TEXT,
-        criminal_record TEXT,
-        military_service TEXT,
-        vehicles TEXT,
-        properties TEXT,
-        insurance_policies TEXT,
         metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // Identification table
+      `CREATE TABLE IF NOT EXISTS identifications (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('passport', 'national_id', 'driver_license', 'birth_certificate')),
+        number TEXT NOT NULL,
+        issuing_country TEXT,
+        issue_date TEXT,
+        expiry_date TEXT,
+        scan_url TEXT,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // Contact table
+      `CREATE TABLE IF NOT EXISTS contacts (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        contact_type TEXT NOT NULL CHECK (contact_type IN ('phone', 'email', 'fax', 'other')),
+        contact_value TEXT NOT NULL,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // Address table
+      `CREATE TABLE IF NOT EXISTS addresses (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        address_type TEXT,
+        street_address TEXT,
+        city TEXT,
+        country TEXT,
+        start_date TEXT,
+        end_date TEXT,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // SocialMedia table
+      `CREATE TABLE IF NOT EXISTS social_media (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        platform TEXT NOT NULL,
+        profile_url TEXT,
+        is_primary INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        last_verified TEXT,
-        tags TEXT,
-        notes TEXT,
-        privacy_level TEXT CHECK (privacy_level IN ('public', 'private', 'confidential')) DEFAULT 'private'
+        updated_at TEXT,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // Education table
+      `CREATE TABLE IF NOT EXISTS education (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        institution TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        is_current INTEGER DEFAULT 0,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // Employment table
+      `CREATE TABLE IF NOT EXISTS employment (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        company_name TEXT NOT NULL,
+        employment_type TEXT CHECK (employment_type IN ('full_time', 'part_time', 'contract', 'internship', 'freelance', 'self_employed')),
+        location TEXT,
+        salary REAL,
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
       )`,
 
       // Relationships table
@@ -246,53 +300,80 @@ export class PeopleService {
         id TEXT PRIMARY KEY,
         person_id TEXT NOT NULL,
         related_person_id TEXT NOT NULL,
-        relationship_type TEXT NOT NULL CHECK (relationship_type IN ('family', 'friend', 'colleague', 'business_partner', 'acquaintance', 'romantic', 'professional')),
-        specific_relationship TEXT,
+        relationship_type TEXT NOT NULL,
         start_date TEXT,
         end_date TEXT,
+        is_current INTEGER DEFAULT 1,
         notes TEXT,
         metadata TEXT,
         FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE,
         FOREIGN KEY (related_person_id) REFERENCES people (id) ON DELETE CASCADE
       )`,
 
-      // Documents table
-      `CREATE TABLE IF NOT EXISTS documents (
-        id TEXT PRIMARY KEY,
-        person_id TEXT NOT NULL,
-        document_type TEXT NOT NULL CHECK (document_type IN ('resume', 'contract', 'certificate', 'photo', 'medical_record', 'financial_document', 'legal_document', 'other')),
-        title TEXT NOT NULL,
-        file_url TEXT NOT NULL,
-        file_type TEXT,
-        file_size INTEGER,
-        upload_date TEXT DEFAULT CURRENT_TIMESTAMP,
-        description TEXT,
-        metadata TEXT,
-        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
-      )`,
-
       // Events table
       `CREATE TABLE IF NOT EXISTS events (
         id TEXT PRIMARY KEY,
         person_id TEXT NOT NULL,
-        event_type TEXT NOT NULL CHECK (event_type IN ('birthday', 'anniversary', 'meeting', 'appointment', 'milestone', 'achievement', 'travel', 'medical', 'education', 'career')),
+        event_date TEXT NOT NULL,
+        event_type TEXT NOT NULL CHECK (event_type IN ('milestone', 'achievement', 'crisis', 'celebration', 'loss', 'change', 'other')),
         title TEXT NOT NULL,
         description TEXT,
-        event_date TEXT NOT NULL,
-        event_end_date TEXT,
         location TEXT,
         participants TEXT,
+        impact_level TEXT CHECK (impact_level IN ('low', 'medium', 'high')),
+        emotional_state TEXT,
+        notes TEXT,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // Habits table
+      `CREATE TABLE IF NOT EXISTS habits (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        habit_name TEXT NOT NULL,
+        habit_type TEXT NOT NULL CHECK (habit_type IN ('health', 'productivity', 'social', 'personal', 'professional', 'other')),
+        frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly', 'irregular')),
+        frequency_count INTEGER,
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        is_active INTEGER DEFAULT 1,
+        is_positive INTEGER,
+        tracking_notes TEXT,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // ExternalDocuments table
+      `CREATE TABLE IF NOT EXISTS external_documents (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        document_type TEXT NOT NULL CHECK (document_type IN ('medical', 'legal', 'financial', 'educational', 'personal', 'other')),
+        title TEXT NOT NULL,
+        description TEXT,
+        relative_path TEXT NOT NULL,
+        file_format TEXT,
+        upload_date TEXT DEFAULT CURRENT_TIMESTAMP,
+        document_date TEXT,
+        is_archived INTEGER DEFAULT 0,
+        tags TEXT,
         metadata TEXT,
         FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
       )`,
 
       // Create indexes
-      `CREATE INDEX IF NOT EXISTS idx_people_name ON people (full_name)`,
-      `CREATE INDEX IF NOT EXISTS idx_people_email ON people (primary_email)`,
+      `CREATE INDEX IF NOT EXISTS idx_person_info_person ON person_info (person_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_identifications_person ON identifications (person_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_contacts_person ON contacts (person_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_addresses_person ON addresses (person_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_social_media_person ON social_media (person_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_education_person ON education (person_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_employment_person ON employment (person_id)`,
       `CREATE INDEX IF NOT EXISTS idx_relationships_person ON relationships (person_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_documents_person ON documents (person_id)`,
       `CREATE INDEX IF NOT EXISTS idx_events_person ON events (person_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_events_date ON events (event_date)`
+      `CREATE INDEX IF NOT EXISTS idx_events_date ON events (event_date)`,
+      `CREATE INDEX IF NOT EXISTS idx_habits_person ON habits (person_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_documents_person ON external_documents (person_id)`
     ]
 
     for (const query of queries) {
@@ -306,323 +387,282 @@ export class PeopleService {
 
   // Person CRUD operations
   async getAllPeople(): Promise<Person[]> {
-    const rows = await window.electronAPI.sqlite.getAllRows(
-      'SELECT * FROM people ORDER BY full_name'
-    )
-    return rows.map(this.mapRowToPerson)
+    const rows = await window.electronAPI.sqlite.getAllRows('SELECT * FROM people')
+    return rows.map((row) => ({ id: row.id }))
   }
 
   async getPersonById(id: string): Promise<Person | null> {
     const row = await window.electronAPI.sqlite.getOneRow('SELECT * FROM people WHERE id = ?', [id])
-    return row ? this.mapRowToPerson(row) : null
+    return row ? { id: row.id } : null
   }
 
-  async createPerson(person: Omit<Person, 'id'>): Promise<Person> {
+  async createPerson(): Promise<Person> {
     const id = uuidv4()
-    const now = new Date().toISOString()
-
-    await window.electronAPI.sqlite.runQuery(
-      `INSERT INTO people (
-      id, full_name, preferred_name, gender, date_of_birth, place_of_birth,
-      nationality, ethnic_origin, primary_email, secondary_emails, primary_phone,
-      secondary_phones, emergency_contact, height, weight, eye_color, hair_color,
-      blood_type, distinguishing_marks, identification_documents, current_address,
-      occupation, employer, job_title, work_experience, education, bank_accounts,
-      tax_identification_number, credit_cards, medical_conditions, allergies,
-      medications, primary_care_physician, marital_status, spouse, children,
-      parents, siblings, social_media_profiles, website, online_usernames,
-      languages, skills, hobbies, certifications, criminal_record, military_service,
-      vehicles, properties, insurance_policies, metadata, created_at, updated_at,
-      last_verified, tags, notes, privacy_level
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        person.full_name,
-        person.preferred_name || null,
-        person.gender || null,
-        person.date_of_birth || null,
-        person.place_of_birth || null,
-        person.nationality || null,
-        person.ethnic_origin || null,
-        person.primary_email || null,
-        JSON.stringify(person.secondary_emails || []),
-        person.primary_phone || null,
-        JSON.stringify(person.secondary_phones || []),
-        JSON.stringify(person.emergency_contact || {}),
-        person.height || null,
-        person.weight || null,
-        person.eye_color || null,
-        person.hair_color || null,
-        person.blood_type || null,
-        JSON.stringify(person.distinguishing_marks || []),
-        JSON.stringify(person.identification_documents || []),
-        JSON.stringify(person.current_address || []),
-        person.occupation || null,
-        person.employer || null,
-        person.job_title || null,
-        JSON.stringify(person.work_experience || []),
-        JSON.stringify(person.education || []),
-        JSON.stringify(person.bank_accounts || []),
-        person.tax_identification_number || null,
-        JSON.stringify(person.credit_cards || []),
-        JSON.stringify(person.medical_conditions || []),
-        JSON.stringify(person.allergies || []),
-        JSON.stringify(person.medications || []),
-        person.primary_care_physician || null,
-        person.marital_status || null,
-        JSON.stringify(person.spouse || {}),
-        JSON.stringify(person.children || []),
-        JSON.stringify(person.parents || []),
-        JSON.stringify(person.siblings || []),
-        JSON.stringify(person.social_media_profiles || []),
-        person.website || null,
-        JSON.stringify(person.online_usernames || []),
-        JSON.stringify(person.languages || []),
-        JSON.stringify(person.skills || []),
-        JSON.stringify(person.hobbies || []),
-        JSON.stringify(person.certifications || []),
-        JSON.stringify(person.criminal_record || []),
-        JSON.stringify(person.military_service || {}),
-        JSON.stringify(person.vehicles || []),
-        JSON.stringify(person.properties || []),
-        JSON.stringify(person.insurance_policies || []),
-        JSON.stringify(person.metadata || {}),
-        now, // created_at
-        now, // updated_at
-        person.last_verified || null,
-        JSON.stringify(person.tags || []),
-        person.notes || null,
-        person.privacy_level || 'private'
-      ]
-    )
-
-    return { ...person, id }
-  }
-
-  async updatePerson(id: string, updates: Partial<Person>): Promise<void> {
-    const fields = []
-    const values = []
-
-    // Add all possible fields
-    const fieldMappings = {
-      full_name: 'full_name',
-      preferred_name: 'preferred_name',
-      gender: 'gender',
-      date_of_birth: 'date_of_birth',
-      place_of_birth: 'place_of_birth',
-      nationality: 'nationality',
-      ethnic_origin: 'ethnic_origin',
-      primary_email: 'primary_email',
-      secondary_emails: 'secondary_emails',
-      primary_phone: 'primary_phone',
-      secondary_phones: 'secondary_phones',
-      emergency_contact: 'emergency_contact',
-      height: 'height',
-      weight: 'weight',
-      eye_color: 'eye_color',
-      hair_color: 'hair_color',
-      blood_type: 'blood_type',
-      distinguishing_marks: 'distinguishing_marks',
-      identification_documents: 'identification_documents',
-      current_address: 'current_address',
-      occupation: 'occupation',
-      employer: 'employer',
-      job_title: 'job_title',
-      work_experience: 'work_experience',
-      education: 'education',
-      bank_accounts: 'bank_accounts',
-      tax_identification_number: 'tax_identification_number',
-      credit_cards: 'credit_cards',
-      medical_conditions: 'medical_conditions',
-      allergies: 'allergies',
-      medications: 'medications',
-      primary_care_physician: 'primary_care_physician',
-      marital_status: 'marital_status',
-      spouse: 'spouse',
-      children: 'children',
-      parents: 'parents',
-      siblings: 'siblings',
-      social_media_profiles: 'social_media_profiles',
-      website: 'website',
-      online_usernames: 'online_usernames',
-      languages: 'languages',
-      skills: 'skills',
-      hobbies: 'hobbies',
-      certifications: 'certifications',
-      criminal_record: 'criminal_record',
-      military_service: 'military_service',
-      vehicles: 'vehicles',
-      properties: 'properties',
-      insurance_policies: 'insurance_policies',
-      metadata: 'metadata',
-      last_verified: 'last_verified',
-      tags: 'tags',
-      notes: 'notes',
-      privacy_level: 'privacy_level'
-    }
-
-    Object.entries(fieldMappings).forEach(([key, dbField]) => {
-      if (updates[key as keyof Person] !== undefined) {
-        fields.push(`${dbField} = ?`)
-        const value = updates[key as keyof Person]
-        // Stringify array and object fields
-        if (
-          Array.isArray(value) ||
-          (value && typeof value === 'object' && !(value instanceof Date))
-        ) {
-          values.push(JSON.stringify(value))
-        } else {
-          values.push(value)
-        }
-      }
-    })
-
-    if (fields.length > 0) {
-      fields.push('updated_at = ?')
-      values.push(new Date().toISOString())
-      values.push(id)
-
-      const query = `UPDATE people SET ${fields.join(', ')} WHERE id = ?`
-      await window.electronAPI.sqlite.runQuery(query, values)
-    }
+    await window.electronAPI.sqlite.runQuery('INSERT INTO people (id) VALUES (?)', [id])
+    return { id }
   }
 
   async deletePerson(id: string): Promise<void> {
     await window.electronAPI.sqlite.runQuery('DELETE FROM people WHERE id = ?', [id])
   }
 
-  // Relationship operations
-  async getRelationshipsByPersonId(personId: string): Promise<PersonRelationship[]> {
-    const rows = await window.electronAPI.sqlite.getAllRows(
-      'SELECT * FROM relationships WHERE person_id = ? OR related_person_id = ?',
-      [personId, personId]
-    )
-    return rows.map(this.mapRowToRelationship)
-  }
-
-  // Document operations
-  async getDocumentsByPersonId(personId: string): Promise<PersonDocument[]> {
-    const rows = await window.electronAPI.sqlite.getAllRows(
-      'SELECT * FROM documents WHERE person_id = ? ORDER BY upload_date DESC',
+  // PersonInfo operations
+  async getPersonInfoByPersonId(personId: string): Promise<PersonInfo | null> {
+    const row = await window.electronAPI.sqlite.getOneRow(
+      'SELECT * FROM person_info WHERE person_id = ?',
       [personId]
     )
-    return rows.map(this.mapRowToDocument)
+    return row ? this.mapRowToPersonInfo(row) : null
   }
 
-  // Event operations
-  async getEventsByPersonId(personId: string): Promise<PersonEvent[]> {
+  async createPersonInfo(personInfo: Omit<PersonInfo, 'id'>): Promise<PersonInfo> {
+    const id = uuidv4()
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO person_info (id, person_id, full_name, preferred_name, gender, metadata) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        personInfo.person_id,
+        personInfo.full_name || null,
+        personInfo.preferred_name || null,
+        personInfo.gender || null,
+        JSON.stringify(personInfo.metadata || {})
+      ]
+    )
+    return { ...personInfo, id }
+  }
+
+  async updatePersonInfo(id: string, updates: Partial<PersonInfo>): Promise<void> {
+    const fields: string[] = []
+    const values: any[] = []
+
+    if (updates.full_name !== undefined) {
+      fields.push('full_name = ?')
+      values.push(updates.full_name)
+    }
+    if (updates.preferred_name !== undefined) {
+      fields.push('preferred_name = ?')
+      values.push(updates.preferred_name)
+    }
+    if (updates.gender !== undefined) {
+      fields.push('gender = ?')
+      values.push(updates.gender)
+    }
+    if (updates.metadata !== undefined) {
+      fields.push('metadata = ?')
+      values.push(JSON.stringify(updates.metadata))
+    }
+
+    if (fields.length > 0) {
+      values.push(id)
+      await window.electronAPI.sqlite.runQuery(
+        `UPDATE person_info SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      )
+    }
+  }
+
+  // Identification operations
+  async getIdentificationsByPersonId(personId: string): Promise<Identification[]> {
     const rows = await window.electronAPI.sqlite.getAllRows(
-      'SELECT * FROM events WHERE person_id = ? ORDER BY event_date DESC',
+      'SELECT * FROM identifications WHERE person_id = ?',
       [personId]
     )
-    return rows.map(this.mapRowToEvent)
+    return rows.map(this.mapRowToIdentification)
+  }
+
+  async createIdentification(identification: Omit<Identification, 'id'>): Promise<Identification> {
+    const id = uuidv4()
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO identifications (id, person_id, type, number, issuing_country, issue_date, expiry_date, scan_url, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        identification.person_id,
+        identification.type,
+        identification.number,
+        identification.issuing_country || null,
+        identification.issue_date || null,
+        identification.expiry_date || null,
+        identification.scan_url || null,
+        JSON.stringify(identification.metadata || {})
+      ]
+    )
+    return { ...identification, id }
+  }
+
+  async updateIdentification(id: string, updates: Partial<Identification>): Promise<void> {
+    const fields: string[] = []
+    const values: any[] = []
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (key !== 'id' && key !== 'person_id' && value !== undefined) {
+        fields.push(`${key} = ?`)
+        values.push(key === 'metadata' ? JSON.stringify(value) : value)
+      }
+    })
+
+    if (fields.length > 0) {
+      values.push(id)
+      await window.electronAPI.sqlite.runQuery(
+        `UPDATE identifications SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      )
+    }
+  }
+
+  async deleteIdentification(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM identifications WHERE id = ?', [id])
+  }
+
+  // Contact operations
+  async getContactsByPersonId(personId: string): Promise<Contact[]> {
+    const rows = await window.electronAPI.sqlite.getAllRows(
+      'SELECT * FROM contacts WHERE person_id = ?',
+      [personId]
+    )
+    return rows.map(this.mapRowToContact)
+  }
+
+  async createContact(contact: Omit<Contact, 'id'>): Promise<Contact> {
+    const id = uuidv4()
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO contacts (id, person_id, contact_type, contact_value, metadata)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        id,
+        contact.person_id,
+        contact.contact_type,
+        contact.contact_value,
+        JSON.stringify(contact.metadata || {})
+      ]
+    )
+    return { ...contact, id }
+  }
+
+  async updateContact(id: string, updates: Partial<Contact>): Promise<void> {
+    const fields: string[] = []
+    const values: any[] = []
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (key !== 'id' && key !== 'person_id' && value !== undefined) {
+        fields.push(`${key} = ?`)
+        values.push(key === 'metadata' ? JSON.stringify(value) : value)
+      }
+    })
+
+    if (fields.length > 0) {
+      values.push(id)
+      await window.electronAPI.sqlite.runQuery(
+        `UPDATE contacts SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      )
+    }
+  }
+
+  async deleteContact(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM contacts WHERE id = ?', [id])
+  }
+
+  // Address operations
+  async getAddressesByPersonId(personId: string): Promise<Address[]> {
+    const rows = await window.electronAPI.sqlite.getAllRows(
+      'SELECT * FROM addresses WHERE person_id = ?',
+      [personId]
+    )
+    return rows.map(this.mapRowToAddress)
+  }
+
+  async createAddress(address: Omit<Address, 'id'>): Promise<Address> {
+    const id = uuidv4()
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO addresses (id, person_id, address_type, street_address, city, country, start_date, end_date, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        address.person_id,
+        address.address_type || null,
+        address.street_address || null,
+        address.city || null,
+        address.country || null,
+        address.start_date || null,
+        address.end_date || null,
+        JSON.stringify(address.metadata || {})
+      ]
+    )
+    return { ...address, id }
+  }
+
+  async updateAddress(id: string, updates: Partial<Address>): Promise<void> {
+    const fields: string[] = []
+    const values: any[] = []
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (key !== 'id' && key !== 'person_id' && value !== undefined) {
+        fields.push(`${key} = ?`)
+        values.push(key === 'metadata' ? JSON.stringify(value) : value)
+      }
+    })
+
+    if (fields.length > 0) {
+      values.push(id)
+      await window.electronAPI.sqlite.runQuery(
+        `UPDATE addresses SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      )
+    }
+  }
+
+  async deleteAddress(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM addresses WHERE id = ?', [id])
   }
 
   // Mapping functions
-  private mapRowToPerson(row: any): Person {
+  private mapRowToPersonInfo(row: any): PersonInfo {
     return {
       id: row.id,
+      person_id: row.person_id,
       full_name: row.full_name,
       preferred_name: row.preferred_name,
       gender: row.gender,
-      date_of_birth: row.date_of_birth,
-      place_of_birth: row.place_of_birth,
-      nationality: row.nationality,
-      ethnic_origin: row.ethnic_origin,
-      primary_email: row.primary_email,
-      secondary_emails: row.secondary_emails ? JSON.parse(row.secondary_emails) : [],
-      primary_phone: row.primary_phone,
-      secondary_phones: row.secondary_phones ? JSON.parse(row.secondary_phones) : [],
-      emergency_contact: row.emergency_contact ? JSON.parse(row.emergency_contact) : undefined,
-      height: row.height,
-      weight: row.weight,
-      eye_color: row.eye_color,
-      hair_color: row.hair_color,
-      blood_type: row.blood_type,
-      distinguishing_marks: row.distinguishing_marks ? JSON.parse(row.distinguishing_marks) : [],
-      identification_documents: row.identification_documents
-        ? JSON.parse(row.identification_documents)
-        : [],
-      current_address: row.current_address ? JSON.parse(row.current_address) : [],
-      occupation: row.occupation,
-      employer: row.employer,
-      job_title: row.job_title,
-      work_experience: row.work_experience ? JSON.parse(row.work_experience) : [],
-      education: row.education ? JSON.parse(row.education) : [],
-      bank_accounts: row.bank_accounts ? JSON.parse(row.bank_accounts) : [],
-      tax_identification_number: row.tax_identification_number,
-      credit_cards: row.credit_cards ? JSON.parse(row.credit_cards) : [],
-      medical_conditions: row.medical_conditions ? JSON.parse(row.medical_conditions) : [],
-      allergies: row.allergies ? JSON.parse(row.allergies) : [],
-      medications: row.medications ? JSON.parse(row.medications) : [],
-      primary_care_physician: row.primary_care_physician,
-      marital_status: row.marital_status,
-      spouse: row.spouse ? JSON.parse(row.spouse) : undefined,
-      children: row.children ? JSON.parse(row.children) : [],
-      parents: row.parents ? JSON.parse(row.parents) : [],
-      siblings: row.siblings ? JSON.parse(row.siblings) : [],
-      social_media_profiles: row.social_media_profiles ? JSON.parse(row.social_media_profiles) : [],
-      website: row.website,
-      online_usernames: row.online_usernames ? JSON.parse(row.online_usernames) : [],
-      languages: row.languages ? JSON.parse(row.languages) : [],
-      skills: row.skills ? JSON.parse(row.skills) : [],
-      hobbies: row.hobbies ? JSON.parse(row.hobbies) : [],
-      certifications: row.certifications ? JSON.parse(row.certifications) : [],
-      criminal_record: row.criminal_record ? JSON.parse(row.criminal_record) : [],
-      military_service: row.military_service ? JSON.parse(row.military_service) : undefined,
-      vehicles: row.vehicles ? JSON.parse(row.vehicles) : [],
-      properties: row.properties ? JSON.parse(row.properties) : [],
-      insurance_policies: row.insurance_policies ? JSON.parse(row.insurance_policies) : [],
-      metadata: row.metadata ? JSON.parse(row.metadata) : {},
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      last_verified: row.last_verified,
-      tags: row.tags ? JSON.parse(row.tags) : [],
-      notes: row.notes,
-      privacy_level: row.privacy_level
+      metadata: row.metadata ? JSON.parse(row.metadata) : {}
     }
   }
 
-  private mapRowToRelationship(row: any): PersonRelationship {
+  private mapRowToIdentification(row: any): Identification {
     return {
       id: row.id,
       person_id: row.person_id,
-      related_person_id: row.related_person_id,
-      relationship_type: row.relationship_type,
-      specific_relationship: row.specific_relationship,
+      type: row.type,
+      number: row.number,
+      issuing_country: row.issuing_country,
+      issue_date: row.issue_date,
+      expiry_date: row.expiry_date,
+      scan_url: row.scan_url,
+      metadata: row.metadata ? JSON.parse(row.metadata) : {}
+    }
+  }
+
+  private mapRowToContact(row: any): Contact {
+    return {
+      id: row.id,
+      person_id: row.person_id,
+      contact_type: row.contact_type,
+      contact_value: row.contact_value,
+      metadata: row.metadata ? JSON.parse(row.metadata) : {}
+    }
+  }
+
+  private mapRowToAddress(row: any): Address {
+    return {
+      id: row.id,
+      person_id: row.person_id,
+      address_type: row.address_type,
+      street_address: row.street_address,
+      city: row.city,
+      country: row.country,
       start_date: row.start_date,
       end_date: row.end_date,
-      notes: row.notes,
-      metadata: row.metadata ? JSON.parse(row.metadata) : {}
-    }
-  }
-
-  private mapRowToDocument(row: any): PersonDocument {
-    return {
-      id: row.id,
-      person_id: row.person_id,
-      document_type: row.document_type,
-      title: row.title,
-      file_url: row.file_url,
-      file_type: row.file_type,
-      file_size: row.file_size,
-      upload_date: row.upload_date,
-      description: row.description,
-      metadata: row.metadata ? JSON.parse(row.metadata) : {}
-    }
-  }
-
-  private mapRowToEvent(row: any): PersonEvent {
-    return {
-      id: row.id,
-      person_id: row.person_id,
-      event_type: row.event_type,
-      title: row.title,
-      description: row.description,
-      event_date: row.event_date,
-      event_end_date: row.event_end_date,
-      location: row.location,
-      participants: row.participants ? JSON.parse(row.participants) : [],
       metadata: row.metadata ? JSON.parse(row.metadata) : {}
     }
   }

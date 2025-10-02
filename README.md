@@ -25,7 +25,9 @@ I. Thông tin cá nhân
 - Mạng xã hội
 
 4. Thông tin sức khỏe
-   II. Lịch sử học vấn & công tác (ghi sự kiện quá khứ)
+
+II. Lịch sử học vấn & công tác (ghi sự kiện quá khứ)
+
 1. Học vấn và đào tạo
 
 - Trường đã học (cấp tiểu học → đại học), chuyên ngành, bằng cấp, năm tốt nghiệp
@@ -45,15 +47,16 @@ I. Thông tin cá nhân
 2. Quan hệ bạn bè
 3. Quan hệ xã hội, nghề nghiệp (xã giao)
 4. Quan hệ bậc trên
-   IV. Hoạt động & Sự kiện liên quan
-5. Lịch sử tham gia sự kiện
+
+IV. Hoạt động & Sự kiện liên quan 5. Lịch sử tham gia sự kiện
 
 - Tên sự kiện, vai trò, ngày, địa điểm
 
 2. Hành vi đáng chú ý / lặp lại
 
 - Mô tả hành vi, thời điểm, bối cảnh, bằng chứng (ảnh/video)
-  V. Sức khỏe & Tâm lý
+
+V. Sức khỏe & Tâm lý
 
 1. Tiền sử bệnh tật / hiện trạng sức khỏe
 

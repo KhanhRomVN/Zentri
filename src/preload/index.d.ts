@@ -14,6 +14,7 @@ interface API {
     showSaveDialog: (options: any) => Promise<any>
     showOpenDialog: (options: any) => Promise<any>
     exists: (path: string) => Promise<boolean>
+    createDirectory: (path: string, options?: { recursive?: boolean }) => Promise<void>
   }
   storage: {
     set: (key: string, value: any) => Promise<void>
