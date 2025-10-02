@@ -42,9 +42,10 @@ const IDENTIFICATION_TYPE_OPTIONS = [
 ]
 
 const CONTACT_TYPE_OPTIONS = [
-  { value: 'phone', label: 'Phone' },
+  { value: 'sms', label: 'Phone' },
   { value: 'email', label: 'Email' },
-  { value: 'fax', label: 'Fax' },
+  { value: 'communication', label: 'Communication' },
+  { value: 'social_media', label: 'Social Media' },
   { value: 'other', label: 'Other' }
 ]
 
@@ -259,7 +260,8 @@ const PersonalSection: React.FC<PersonalSectionProps> = ({
     const newContact = await onCreateContact({
       person_id: person.id,
       contact_type: 'email',
-      contact_value: '',
+      email_address: '',
+      is_primary: false,
       metadata: {}
     })
 
@@ -447,72 +449,101 @@ const PersonalSection: React.FC<PersonalSectionProps> = ({
             </div>
 
             <div className="space-y-2">
-              {Object.values(editingContacts).map((contact) => (
-                <div
-                  key={contact.id}
-                  className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <CustomCombobox
-                        label=""
-                        value={contact.contact_type}
-                        options={CONTACT_TYPE_OPTIONS}
-                        onChange={(value) => {
-                          setEditingContacts((prev) => ({
-                            ...prev,
-                            [contact.id]: { ...contact, contact_type: value as any }
-                          }))
-                        }}
-                        placeholder="Type..."
-                        size="sm"
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteContact(contact.id)}
-                      className="p-1 h-6 w-6 text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+              {Object.values(editingContacts).map((contact) => {
+                // Get current contact value based on type
+                const getContactValue = () => {
+                  if (contact.contact_type === 'email') return contact.email_address || ''
+                  if (contact.contact_type === 'sms') return contact.phone_number || ''
+                  return ''
+                }
 
-                  <CustomInput
-                    label=""
-                    value={contact.contact_value}
-                    onChange={(value) => {
-                      setEditingContacts((prev) => ({
-                        ...prev,
-                        [contact.id]: { ...contact, contact_value: value }
-                      }))
-                    }}
-                    placeholder="Contact value..."
-                    variant="filled"
-                    size="sm"
-                    rightIcon={
-                      <div className="flex items-center gap-0.5">
-                        {contact.contact_value && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(contact.contact_value)}
-                            className="p-0.5 h-4 w-4"
-                          >
-                            <Copy className="h-2 w-2" />
-                          </Button>
-                        )}
-                        {renderStatusIcon(
-                          `contact_${contact.id}`,
-                          JSON.stringify(contact) !==
-                            JSON.stringify(contacts.find((c) => c.id === contact.id)),
-                          () => handleSaveContact(contact.id)
-                        )}
+                const contactValue = getContactValue()
+                const contactTypeLabel =
+                  CONTACT_TYPE_OPTIONS.find((opt) => opt.value === contact.contact_type)?.label ||
+                  'Contact'
+
+                return (
+                  <div key={contact.id} className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <div className="w-32">
+                        <CustomCombobox
+                          label=""
+                          value={contact.contact_type}
+                          options={CONTACT_TYPE_OPTIONS}
+                          onChange={(value) => {
+                            setEditingContacts((prev) => ({
+                              ...prev,
+                              [contact.id]: { ...contact, contact_type: value as any }
+                            }))
+                          }}
+                          placeholder="Type..."
+                          size="sm"
+                        />
                       </div>
-                    }
-                  />
-                </div>
-              ))}
+
+                      <div className="flex-1">
+                        <CustomInput
+                          label=""
+                          value={contactValue}
+                          onChange={(value) => {
+                            setEditingContacts((prev) => {
+                              const updated = { ...contact }
+                              if (contact.contact_type === 'email') {
+                                updated.email_address = value
+                              } else if (contact.contact_type === 'sms') {
+                                updated.phone_number = value
+                              }
+                              return {
+                                ...prev,
+                                [contact.id]: updated
+                              }
+                            })
+                          }}
+                          placeholder={`Enter ${contactTypeLabel.toLowerCase()}...`}
+                          variant="filled"
+                          size="sm"
+                          leftIcon={
+                            contact.contact_type === 'email' ? (
+                              <Mail className="h-3 w-3" />
+                            ) : contact.contact_type === 'sms' ? (
+                              <Globe className="h-3 w-3" />
+                            ) : undefined
+                          }
+                          rightIcon={
+                            <div className="flex items-center gap-0.5">
+                              {contactValue && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(contactValue)}
+                                  className="p-0.5 h-4 w-4"
+                                >
+                                  <Copy className="h-2 w-2" />
+                                </Button>
+                              )}
+                              {renderStatusIcon(
+                                `contact_${contact.id}`,
+                                JSON.stringify(contact) !==
+                                  JSON.stringify(contacts.find((c) => c.id === contact.id)),
+                                () => handleSaveContact(contact.id)
+                              )}
+                            </div>
+                          }
+                        />
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteContact(contact.id)}
+                        className="p-1 h-6 w-6 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>

@@ -30,9 +30,16 @@ export const formatDate = (dateString: string, includeTime: boolean = false): st
   return date.toLocaleDateString('en-US', options)
 }
 
-export const getInitials = (fullName: string): string => {
+export const getInitials = (fullName?: string): string => {
+  // Handle undefined/null/empty string
+  if (!fullName || !fullName.trim()) {
+    return '??' // Default fallback
+  }
+
   return fullName
+    .trim()
     .split(' ')
+    .filter((name) => name.length > 0) // Filter empty strings from multiple spaces
     .map((name) => name.charAt(0))
     .join('')
     .toUpperCase()

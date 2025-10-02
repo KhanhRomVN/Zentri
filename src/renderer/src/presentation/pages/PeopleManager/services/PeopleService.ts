@@ -1,6 +1,15 @@
 // src/renderer/src/presentation/pages/PeopleManager/services/PeopleService.ts
 import { v4 as uuidv4 } from 'uuid'
-import { Person, PersonInfo, Identification, Address, Contact, DatabaseInfo } from '../types'
+import {
+  Person,
+  PersonInfo,
+  Identification,
+  Address,
+  Contact,
+  ServiceAccount,
+  Relationship,
+  DatabaseInfo
+} from '../types'
 
 declare global {
   interface Window {
@@ -17,7 +26,7 @@ declare global {
         showSaveDialog: (options: any) => Promise<{ canceled: boolean; filePath?: string }>
         showOpenDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[] }>
         exists: (path: string) => Promise<boolean>
-        mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>
+        createDirectory: (path: string, options?: { recursive?: boolean }) => Promise<void>
       }
       storage: {
         set: (key: string, value: any) => Promise<void>
@@ -60,7 +69,6 @@ export class PeopleService {
 
   async createNewDatabase(): Promise<string | null> {
     try {
-      // Show folder picker instead of save dialog
       const result = await window.electronAPI.fileSystem.showOpenDialog({
         title: 'Select Folder for People Manager Database',
         properties: ['openDirectory', 'createDirectory']
@@ -70,14 +78,11 @@ export class PeopleService {
         return null
       }
 
-      // Build the database path: <selected_folder>/PeopleManager/people_manager.db
       const selectedFolder = result.filePaths[0]
       const peopleManagerFolder = `${selectedFolder}/PeopleManager`
       const dbFilePath = `${peopleManagerFolder}/people_manager.db`
 
-      // Create PeopleManager folder if it doesn't exist
       await window.electronAPI.fileSystem.createDirectory(peopleManagerFolder, { recursive: true })
-      // Create the database
       await window.electronAPI.sqlite.createDatabase(dbFilePath)
       await this.initializeTables()
 
@@ -111,14 +116,12 @@ export class PeopleService {
       }
 
       const filePath = result.filePaths[0]
-
-      // Validate: file must be named "people_manager.db"
       const fileName = this.getFileNameFromPath(filePath)
+
       if (fileName !== 'people_manager.db') {
         throw new Error('Invalid database file. Must be named "people_manager.db"')
       }
 
-      // Validate: file must be inside a folder named "PeopleManager"
       const pathParts = filePath.split(/[\\/]/)
       const parentFolderIndex = pathParts.length - 2
       const parentFolder = pathParts[parentFolderIndex]
@@ -232,14 +235,30 @@ export class PeopleService {
         FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
       )`,
 
-      // Contact table
+      // ServiceAccounts table
+      `CREATE TABLE IF NOT EXISTS service_accounts (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        service_name TEXT NOT NULL,
+        service_type TEXT NOT NULL CHECK (service_type IN ('social_media', 'communication', 'other')),
+        service_url TEXT,
+        metadata TEXT,
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+      )`,
+
+      // Contact table (updated structure)
       `CREATE TABLE IF NOT EXISTS contacts (
         id TEXT PRIMARY KEY,
         person_id TEXT NOT NULL,
-        contact_type TEXT NOT NULL CHECK (contact_type IN ('phone', 'email', 'fax', 'other')),
-        contact_value TEXT NOT NULL,
+        contact_type TEXT NOT NULL CHECK (contact_type IN ('sms', 'email', 'communication', 'social_media', 'other')),
+        email_address TEXT,
+        phone_number TEXT,
+        service_account_id TEXT,
+        tags TEXT,
+        is_primary INTEGER DEFAULT 0,
         metadata TEXT,
-        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
+        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE,
+        FOREIGN KEY (service_account_id) REFERENCES service_accounts (id) ON DELETE SET NULL
       )`,
 
       // Address table
@@ -252,19 +271,6 @@ export class PeopleService {
         country TEXT,
         start_date TEXT,
         end_date TEXT,
-        metadata TEXT,
-        FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
-      )`,
-
-      // SocialMedia table
-      `CREATE TABLE IF NOT EXISTS social_media (
-        id TEXT PRIMARY KEY,
-        person_id TEXT NOT NULL,
-        platform TEXT NOT NULL,
-        profile_url TEXT,
-        is_primary INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT,
         metadata TEXT,
         FOREIGN KEY (person_id) REFERENCES people (id) ON DELETE CASCADE
       )`,
@@ -364,9 +370,9 @@ export class PeopleService {
       // Create indexes
       `CREATE INDEX IF NOT EXISTS idx_person_info_person ON person_info (person_id)`,
       `CREATE INDEX IF NOT EXISTS idx_identifications_person ON identifications (person_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_service_accounts_person ON service_accounts (person_id)`,
       `CREATE INDEX IF NOT EXISTS idx_contacts_person ON contacts (person_id)`,
       `CREATE INDEX IF NOT EXISTS idx_addresses_person ON addresses (person_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_social_media_person ON social_media (person_id)`,
       `CREATE INDEX IF NOT EXISTS idx_education_person ON education (person_id)`,
       `CREATE INDEX IF NOT EXISTS idx_employment_person ON employment (person_id)`,
       `CREATE INDEX IF NOT EXISTS idx_relationships_person ON relationships (person_id)`,
@@ -385,7 +391,7 @@ export class PeopleService {
     return path.split(/[\\/]/).pop() || path
   }
 
-  // Person CRUD operations
+  // ==================== PERSON CRUD ====================
   async getAllPeople(): Promise<Person[]> {
     const rows = await window.electronAPI.sqlite.getAllRows('SELECT * FROM people')
     return rows.map((row) => ({ id: row.id }))
@@ -406,7 +412,7 @@ export class PeopleService {
     await window.electronAPI.sqlite.runQuery('DELETE FROM people WHERE id = ?', [id])
   }
 
-  // PersonInfo operations
+  // ==================== PERSON INFO ====================
   async getPersonInfoByPersonId(personId: string): Promise<PersonInfo | null> {
     const row = await window.electronAPI.sqlite.getOneRow(
       'SELECT * FROM person_info WHERE person_id = ?',
@@ -462,7 +468,7 @@ export class PeopleService {
     }
   }
 
-  // Identification operations
+  // ==================== IDENTIFICATION ====================
   async getIdentificationsByPersonId(personId: string): Promise<Identification[]> {
     const rows = await window.electronAPI.sqlite.getAllRows(
       'SELECT * FROM identifications WHERE person_id = ?',
@@ -515,7 +521,7 @@ export class PeopleService {
     await window.electronAPI.sqlite.runQuery('DELETE FROM identifications WHERE id = ?', [id])
   }
 
-  // Contact operations
+  // ==================== CONTACT ====================
   async getContactsByPersonId(personId: string): Promise<Contact[]> {
     const rows = await window.electronAPI.sqlite.getAllRows(
       'SELECT * FROM contacts WHERE person_id = ?',
@@ -527,13 +533,17 @@ export class PeopleService {
   async createContact(contact: Omit<Contact, 'id'>): Promise<Contact> {
     const id = uuidv4()
     await window.electronAPI.sqlite.runQuery(
-      `INSERT INTO contacts (id, person_id, contact_type, contact_value, metadata)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO contacts (id, person_id, contact_type, email_address, phone_number, service_account_id, tags, is_primary, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         contact.person_id,
         contact.contact_type,
-        contact.contact_value,
+        contact.email_address || null,
+        contact.phone_number || null,
+        contact.service_account_id || null,
+        contact.tags || null,
+        contact.is_primary ? 1 : 0,
         JSON.stringify(contact.metadata || {})
       ]
     )
@@ -546,8 +556,13 @@ export class PeopleService {
 
     Object.entries(updates).forEach(([key, value]) => {
       if (key !== 'id' && key !== 'person_id' && value !== undefined) {
-        fields.push(`${key} = ?`)
-        values.push(key === 'metadata' ? JSON.stringify(value) : value)
+        if (key === 'is_primary') {
+          fields.push(`${key} = ?`)
+          values.push(value ? 1 : 0)
+        } else {
+          fields.push(`${key} = ?`)
+          values.push(key === 'metadata' ? JSON.stringify(value) : value)
+        }
       }
     })
 
@@ -564,7 +579,7 @@ export class PeopleService {
     await window.electronAPI.sqlite.runQuery('DELETE FROM contacts WHERE id = ?', [id])
   }
 
-  // Address operations
+  // ==================== ADDRESS ====================
   async getAddressesByPersonId(personId: string): Promise<Address[]> {
     const rows = await window.electronAPI.sqlite.getAllRows(
       'SELECT * FROM addresses WHERE person_id = ?',
@@ -617,7 +632,115 @@ export class PeopleService {
     await window.electronAPI.sqlite.runQuery('DELETE FROM addresses WHERE id = ?', [id])
   }
 
-  // Mapping functions
+  // ==================== SERVICE ACCOUNT ====================
+  async getServiceAccountsByPersonId(personId: string): Promise<ServiceAccount[]> {
+    const rows = await window.electronAPI.sqlite.getAllRows(
+      'SELECT * FROM service_accounts WHERE person_id = ?',
+      [personId]
+    )
+    return rows.map(this.mapRowToServiceAccount)
+  }
+
+  async createServiceAccount(serviceAccount: Omit<ServiceAccount, 'id'>): Promise<ServiceAccount> {
+    const id = uuidv4()
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO service_accounts (id, person_id, service_name, service_type, service_url, metadata)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        serviceAccount.person_id,
+        serviceAccount.service_name,
+        serviceAccount.service_type,
+        serviceAccount.service_url || null,
+        JSON.stringify(serviceAccount.metadata || {})
+      ]
+    )
+    return { ...serviceAccount, id }
+  }
+
+  async updateServiceAccount(id: string, updates: Partial<ServiceAccount>): Promise<void> {
+    const fields: string[] = []
+    const values: any[] = []
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (key !== 'id' && key !== 'person_id' && value !== undefined) {
+        fields.push(`${key} = ?`)
+        values.push(key === 'metadata' ? JSON.stringify(value) : value)
+      }
+    })
+
+    if (fields.length > 0) {
+      values.push(id)
+      await window.electronAPI.sqlite.runQuery(
+        `UPDATE service_accounts SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      )
+    }
+  }
+
+  async deleteServiceAccount(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM service_accounts WHERE id = ?', [id])
+  }
+
+  // ==================== RELATIONSHIP ====================
+  async getRelationshipsByPersonId(personId: string): Promise<Relationship[]> {
+    const rows = await window.electronAPI.sqlite.getAllRows(
+      'SELECT * FROM relationships WHERE person_id = ? OR related_person_id = ?',
+      [personId, personId]
+    )
+    return rows.map(this.mapRowToRelationship)
+  }
+
+  async createRelationship(relationship: Omit<Relationship, 'id'>): Promise<Relationship> {
+    const id = uuidv4()
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO relationships (id, person_id, related_person_id, relationship_type, start_date, end_date, is_current, notes, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        relationship.person_id,
+        relationship.related_person_id,
+        relationship.relationship_type,
+        relationship.start_date || null,
+        relationship.end_date || null,
+        relationship.is_current ? 1 : 0,
+        relationship.notes || null,
+        JSON.stringify(relationship.metadata || {})
+      ]
+    )
+    return { ...relationship, id }
+  }
+
+  async updateRelationship(id: string, updates: Partial<Relationship>): Promise<void> {
+    const fields: string[] = []
+    const values: any[] = []
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (key !== 'id' && key !== 'person_id' && value !== undefined) {
+        if (key === 'is_current') {
+          fields.push(`${key} = ?`)
+          values.push(value ? 1 : 0)
+        } else {
+          fields.push(`${key} = ?`)
+          values.push(key === 'metadata' ? JSON.stringify(value) : value)
+        }
+      }
+    })
+
+    if (fields.length > 0) {
+      values.push(id)
+      await window.electronAPI.sqlite.runQuery(
+        `UPDATE relationships SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      )
+    }
+  }
+
+  async deleteRelationship(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM relationships WHERE id = ?', [id])
+  }
+
+  // ==================== MAPPING FUNCTIONS ====================
   private mapRowToPersonInfo(row: any): PersonInfo {
     return {
       id: row.id,
@@ -648,7 +771,11 @@ export class PeopleService {
       id: row.id,
       person_id: row.person_id,
       contact_type: row.contact_type,
-      contact_value: row.contact_value,
+      email_address: row.email_address,
+      phone_number: row.phone_number,
+      service_account_id: row.service_account_id,
+      tags: row.tags,
+      is_primary: row.is_primary === 1,
       metadata: row.metadata ? JSON.parse(row.metadata) : {}
     }
   }
@@ -663,6 +790,31 @@ export class PeopleService {
       country: row.country,
       start_date: row.start_date,
       end_date: row.end_date,
+      metadata: row.metadata ? JSON.parse(row.metadata) : {}
+    }
+  }
+
+  private mapRowToServiceAccount(row: any): ServiceAccount {
+    return {
+      id: row.id,
+      person_id: row.person_id,
+      service_name: row.service_name,
+      service_type: row.service_type,
+      service_url: row.service_url,
+      metadata: row.metadata ? JSON.parse(row.metadata) : {}
+    }
+  }
+
+  private mapRowToRelationship(row: any): Relationship {
+    return {
+      id: row.id,
+      person_id: row.person_id,
+      related_person_id: row.related_person_id,
+      relationship_type: row.relationship_type,
+      start_date: row.start_date,
+      end_date: row.end_date,
+      is_current: row.is_current === 1,
+      notes: row.notes,
       metadata: row.metadata ? JSON.parse(row.metadata) : {}
     }
   }

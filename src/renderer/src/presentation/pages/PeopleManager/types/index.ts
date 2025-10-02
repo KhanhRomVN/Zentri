@@ -23,14 +23,24 @@ export interface Identification {
   metadata?: Record<string, any>
 }
 
-export interface SocialMedia {
+export interface Contact {
   id: string
   person_id: string
-  platform: string
-  profile_url?: string
+  contact_type: 'sms' | 'email' | 'communication' | 'social_media' | 'other'
+  email_address?: string
+  phone_number?: string
+  service_account_id?: string
+  tags?: string
   is_primary?: boolean
-  created_at: string
-  updated_at?: string
+  metadata?: Record<string, any>
+}
+
+export interface ServiceAccount {
+  id: string
+  person_id: string
+  service_name: string
+  service_url?: string
+  service_type: 'social_media' | 'communication' | 'other'
   metadata?: Record<string, any>
 }
 
@@ -131,19 +141,11 @@ export interface ExternalDocument {
   metadata?: Record<string, any>
 }
 
-export interface Contact {
-  id: string
-  person_id: string
-  contact_type: 'phone' | 'email' | 'fax' | 'other'
-  contact_value: string
-  metadata?: Record<string, any>
-}
-
-// PersonalSection.tsx(PersonInfo, Identification, Address, Contact)
-// CarrerSection.tsx(Skills, Education, Employment)
-// SocialSection.tsx(SocialMedia, Relationship)
-// LifeSection.tsx(Event, Habit, Hobbie)
-// DocumentsSection.tsx(ExternalDocument)
+// PersonalSection.tsx (PersonInfo, Identification, Address, Contact)
+// CarrerSection.tsx (Skills, Education, Employment)
+// SocialSection.tsx (ServiceAccount, Relationship)
+// LifeSection.tsx (Event, Habit, Hobbie)
+// DocumentsSection.tsx (ExternalDocument)
 
 export interface DatabaseInfo {
   path: string

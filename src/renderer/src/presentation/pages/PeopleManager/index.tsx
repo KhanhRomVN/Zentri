@@ -18,12 +18,15 @@ const PeopleManagerPage = () => {
 
     // People data
     people,
+    personInfos,
     filteredPeople,
     selectedPerson,
     selectedPersonInfo,
     selectedPersonIdentifications,
     selectedPersonAddresses,
     selectedPersonContacts,
+    selectedPersonServiceAccounts,
+    selectedPersonRelationships,
 
     // Search and filters
     searchQuery,
@@ -49,7 +52,13 @@ const PeopleManagerPage = () => {
     deleteAddress,
     createContact,
     updateContact,
-    deleteContact
+    deleteContact,
+    createServiceAccount,
+    updateServiceAccount,
+    deleteServiceAccount,
+    createRelationship,
+    updateRelationship,
+    deleteRelationship
   } = usePeopleManager()
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -161,6 +170,10 @@ const PeopleManagerPage = () => {
                   identifications={selectedPersonIdentifications}
                   addresses={selectedPersonAddresses}
                   contacts={selectedPersonContacts}
+                  serviceAccounts={selectedPersonServiceAccounts}
+                  relationships={selectedPersonRelationships}
+                  allPeople={people}
+                  allPersonInfos={personInfos}
                   onUpdatePersonInfo={updatePersonInfo}
                   onCreatePersonInfo={createPersonInfo}
                   onCreateIdentification={createIdentification}
@@ -172,6 +185,12 @@ const PeopleManagerPage = () => {
                   onCreateContact={createContact}
                   onUpdateContact={updateContact}
                   onDeleteContact={deleteContact}
+                  onCreateServiceAccount={createServiceAccount}
+                  onUpdateServiceAccount={updateServiceAccount}
+                  onDeleteServiceAccount={deleteServiceAccount}
+                  onCreateRelationship={createRelationship}
+                  onUpdateRelationship={updateRelationship}
+                  onDeleteRelationship={deleteRelationship}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center">

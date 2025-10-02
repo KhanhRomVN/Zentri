@@ -95,6 +95,14 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
       const newPerson = await onSubmit()
 
       if (!newPerson) {
+        console.error('[CreatePeopleModal] Failed to create person')
+        setErrors({ submit: 'Failed to create person. Please check the console for details.' })
+        return
+      }
+
+      console.log('[CreatePeopleModal] Person created:', newPerson)
+
+      if (!newPerson) {
         setErrors({ submit: 'Failed to create person' })
         return
       }
@@ -116,11 +124,13 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
       }
 
       // Step 3: Create email contact if provided
+      // Step 3: Create email contact if provided
       if (primaryEmail.trim() && onCreateContact) {
         const emailContact: Omit<Contact, 'id'> = {
           person_id: newPerson.id,
           contact_type: 'email',
-          contact_value: primaryEmail.trim(),
+          email_address: primaryEmail.trim(),
+          is_primary: true,
           metadata: {}
         }
 
@@ -134,8 +144,9 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
       if (primaryPhone.trim() && onCreateContact) {
         const phoneContact: Omit<Contact, 'id'> = {
           person_id: newPerson.id,
-          contact_type: 'phone',
-          contact_value: primaryPhone.trim(),
+          contact_type: 'sms',
+          phone_number: primaryPhone.trim(),
+          is_primary: true,
           metadata: {}
         }
 

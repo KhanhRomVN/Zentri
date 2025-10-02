@@ -114,19 +114,35 @@ export const useDatabase = () => {
       const identificationsPromises = people.map((p) =>
         peopleService.getIdentificationsByPersonId(p.id)
       )
+      const serviceAccountsPromises = people.map((p) =>
+        peopleService.getServiceAccountsByPersonId(p.id)
+      )
+      const relationshipsPromises = people.map((p) =>
+        peopleService.getRelationshipsByPersonId(p.id)
+      )
 
-      const [personInfosResults, contactsResults, addressesResults, identificationsResults] =
-        await Promise.all([
-          Promise.all(personInfosPromises),
-          Promise.all(contactsPromises),
-          Promise.all(addressesPromises),
-          Promise.all(identificationsPromises)
-        ])
+      const [
+        personInfosResults,
+        contactsResults,
+        addressesResults,
+        identificationsResults,
+        serviceAccountsResults,
+        relationshipsResults
+      ] = await Promise.all([
+        Promise.all(personInfosPromises),
+        Promise.all(contactsPromises),
+        Promise.all(addressesPromises),
+        Promise.all(identificationsPromises),
+        Promise.all(serviceAccountsPromises),
+        Promise.all(relationshipsPromises)
+      ])
 
       const personInfos = personInfosResults.filter((info): info is PersonInfo => info !== null)
       const contacts = contactsResults.flat()
       const addresses = addressesResults.flat()
       const identifications = identificationsResults.flat()
+      const serviceAccounts = serviceAccountsResults.flat()
+      const relationships = relationshipsResults.flat()
 
       setState((prev) => ({
         ...prev,
@@ -135,6 +151,8 @@ export const useDatabase = () => {
         contacts,
         addresses,
         identifications,
+        serviceAccounts,
+        relationships,
         isLoading: false
       }))
     } catch (error) {
@@ -145,6 +163,122 @@ export const useDatabase = () => {
       }))
     }
   }, [isDatabaseReady, state.currentDatabase])
+
+  // ServiceAccount CRUD
+  const createServiceAccount = useCallback(
+    async (serviceAccount: Omit<ServiceAccount, 'id'>): Promise<ServiceAccount | null> => {
+      if (!isDatabaseReady) return null
+
+      try {
+        const newServiceAccount = await peopleService.createServiceAccount(serviceAccount)
+        await loadAllData()
+        return newServiceAccount
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to create service account'
+        }))
+        return null
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const updateServiceAccount = useCallback(
+    async (id: string, updates: Partial<ServiceAccount>): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.updateServiceAccount(id, updates)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to update service account'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const deleteServiceAccount = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.deleteServiceAccount(id)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to delete service account'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  // Relationship CRUD
+  const createRelationship = useCallback(
+    async (relationship: Omit<Relationship, 'id'>): Promise<Relationship | null> => {
+      if (!isDatabaseReady) return null
+
+      try {
+        const newRelationship = await peopleService.createRelationship(relationship)
+        await loadAllData()
+        return newRelationship
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to create relationship'
+        }))
+        return null
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const updateRelationship = useCallback(
+    async (id: string, updates: Partial<Relationship>): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.updateRelationship(id, updates)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to update relationship'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
+
+  const deleteRelationship = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (!isDatabaseReady) return false
+
+      try {
+        await peopleService.deleteRelationship(id)
+        await loadAllData()
+        return true
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : 'Failed to delete relationship'
+        }))
+        return false
+      }
+    },
+    [isDatabaseReady, loadAllData]
+  )
 
   // Person CRUD
   const createPerson = useCallback(async (): Promise<Person | null> => {
@@ -411,6 +545,8 @@ export const useDatabase = () => {
         contacts: [],
         addresses: [],
         identifications: [],
+        serviceAccounts: [],
+        relationships: [],
         showDatabaseModal: true,
         isInitialized: true
       })
@@ -434,6 +570,8 @@ export const useDatabase = () => {
         contacts: [],
         addresses: [],
         identifications: [],
+        serviceAccounts: [],
+        relationships: [],
         showDatabaseModal: true,
         isInitialized: true
       })
@@ -473,6 +611,12 @@ export const useDatabase = () => {
     createIdentification,
     updateIdentification,
     deleteIdentification,
+    createServiceAccount,
+    updateServiceAccount,
+    deleteServiceAccount,
+    createRelationship,
+    updateRelationship,
+    deleteRelationship,
     closeDatabase,
     forgetDatabase,
     clearError

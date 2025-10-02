@@ -39,6 +39,20 @@ export const usePeopleManager = () => {
     return database.contacts.filter((contact) => contact.person_id === selectedPerson.id)
   }, [selectedPerson, database.contacts])
 
+  // Get ServiceAccounts for selected person
+  const selectedPersonServiceAccounts = useMemo(() => {
+    if (!selectedPerson) return []
+    return database.serviceAccounts.filter((sa) => sa.person_id === selectedPerson.id)
+  }, [selectedPerson, database.serviceAccounts])
+
+  // Get Relationships for selected person
+  const selectedPersonRelationships = useMemo(() => {
+    if (!selectedPerson) return []
+    return database.relationships.filter(
+      (rel) => rel.person_id === selectedPerson.id || rel.related_person_id === selectedPerson.id
+    )
+  }, [selectedPerson, database.relationships])
+
   // Filter people based on search and filters
   const filteredPeople = useMemo(() => {
     if (!database.isDatabaseReady) return []
@@ -128,12 +142,15 @@ export const usePeopleManager = () => {
 
     // People data
     people: database.people,
+    personInfos: database.personInfos,
     filteredPeople,
     selectedPerson,
     selectedPersonInfo,
     selectedPersonIdentifications,
     selectedPersonAddresses,
     selectedPersonContacts,
+    selectedPersonServiceAccounts,
+    selectedPersonRelationships,
 
     // Search and filters
     searchQuery,

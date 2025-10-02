@@ -6,16 +6,24 @@ import {
   FileText,
   Calendar,
   Users,
-  MapPin,
   Heart,
   Shield,
   Camera,
   Plus,
   SlidersHorizontal
 } from 'lucide-react'
-import { Person, PersonInfo, Identification, Address, Contact } from '../../types'
+import {
+  Person,
+  PersonInfo,
+  Identification,
+  Address,
+  Contact,
+  ServiceAccount,
+  Relationship
+} from '../../types'
 import CustomButton from '../../../../../components/common/CustomButton'
 import PersonalSection from './components/PersonalSection'
+import SocialSection from './components/SocialSection'
 
 interface PeopleDetailPanelProps {
   person: Person
@@ -23,6 +31,10 @@ interface PeopleDetailPanelProps {
   identifications: Identification[]
   addresses: Address[]
   contacts: Contact[]
+  serviceAccounts: ServiceAccount[]
+  relationships: Relationship[]
+  allPeople: Person[]
+  allPersonInfos: PersonInfo[]
   onUpdatePersonInfo?: (id: string, updates: Partial<PersonInfo>) => Promise<boolean>
   onCreatePersonInfo?: (data: Omit<PersonInfo, 'id'>) => Promise<PersonInfo | null>
   onCreateIdentification?: (data: Omit<Identification, 'id'>) => Promise<Identification | null>
@@ -34,6 +46,12 @@ interface PeopleDetailPanelProps {
   onCreateContact?: (data: Omit<Contact, 'id'>) => Promise<Contact | null>
   onUpdateContact?: (id: string, updates: Partial<Contact>) => Promise<boolean>
   onDeleteContact?: (id: string) => Promise<boolean>
+  onCreateServiceAccount?: (data: Omit<ServiceAccount, 'id'>) => Promise<ServiceAccount | null>
+  onUpdateServiceAccount?: (id: string, updates: Partial<ServiceAccount>) => Promise<boolean>
+  onDeleteServiceAccount?: (id: string) => Promise<boolean>
+  onCreateRelationship?: (data: Omit<Relationship, 'id'>) => Promise<Relationship | null>
+  onUpdateRelationship?: (id: string, updates: Partial<Relationship>) => Promise<boolean>
+  onDeleteRelationship?: (id: string) => Promise<boolean>
 }
 
 type TabType =
@@ -62,17 +80,16 @@ const TABS: TabConfig[] = [
     description: 'Personal information and contact details'
   },
   {
+    id: 'family',
+    label: 'Social',
+    icon: Users,
+    description: 'Social networks and relationships'
+  },
+  {
     id: 'professional',
     label: 'Professional',
     icon: Shield,
     description: 'Work and education information',
-    comingSoon: true
-  },
-  {
-    id: 'family',
-    label: 'Family',
-    icon: Users,
-    description: 'Family relationships and connections',
     comingSoon: true
   },
   {
@@ -118,6 +135,10 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({
   identifications,
   addresses,
   contacts,
+  serviceAccounts,
+  relationships,
+  allPeople,
+  allPersonInfos,
   onUpdatePersonInfo,
   onCreatePersonInfo,
   onCreateIdentification,
@@ -128,7 +149,13 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({
   onDeleteAddress,
   onCreateContact,
   onUpdateContact,
-  onDeleteContact
+  onDeleteContact,
+  onCreateServiceAccount,
+  onUpdateServiceAccount,
+  onDeleteServiceAccount,
+  onCreateRelationship,
+  onUpdateRelationship,
+  onDeleteRelationship
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('personal')
 
@@ -161,6 +188,23 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({
             onCreateContact={onCreateContact}
             onUpdateContact={onUpdateContact}
             onDeleteContact={onDeleteContact}
+          />
+        )
+
+      case 'family':
+        return (
+          <SocialSection
+            person={person}
+            serviceAccounts={serviceAccounts}
+            relationships={relationships}
+            allPeople={allPeople}
+            allPersonInfos={allPersonInfos}
+            onCreateServiceAccount={onCreateServiceAccount}
+            onUpdateServiceAccount={onUpdateServiceAccount}
+            onDeleteServiceAccount={onDeleteServiceAccount}
+            onCreateRelationship={onCreateRelationship}
+            onUpdateRelationship={onUpdateRelationship}
+            onDeleteRelationship={onDeleteRelationship}
           />
         )
 
@@ -216,27 +260,6 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({
                   {personInfo?.gender && (
                     <span className="font-medium capitalize">Gender: {personInfo.gender}</span>
                   )}
-                </div>
-
-                {/* Contact Info */}
-                <div className="flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400">
-                  {contacts
-                    .filter((c) => c.contact_type === 'email')
-                    .slice(0, 1)
-                    .map((c) => (
-                      <span key={c.id} className="font-medium">
-                        Email: {c.contact_value}
-                      </span>
-                    ))}
-
-                  {contacts
-                    .filter((c) => c.contact_type === 'phone')
-                    .slice(0, 1)
-                    .map((c) => (
-                      <span key={c.id} className="font-medium">
-                        Phone: {c.contact_value}
-                      </span>
-                    ))}
                 </div>
               </div>
             </div>
