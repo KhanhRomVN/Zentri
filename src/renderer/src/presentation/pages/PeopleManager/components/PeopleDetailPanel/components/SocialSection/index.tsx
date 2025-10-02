@@ -1,13 +1,10 @@
-// src/renderer/src/presentation/pages/PeopleManager/components/PeopleDetailPanel/components/SocialSection.tsx
+// src/renderer/src/presentation/pages/PeopleManager/components/PeopleDetailPanel/components/SocialSection/index.tsx
 import React, { useState } from 'react'
-import { Button } from '../../../../../../../components/ui/button'
-import CustomInput from '../../../../../../../components/common/CustomInput'
-import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
-import CustomButton from '../../../../../../../components/common/CustomButton'
-import Metadata from '../../../../../../../components/common/Metadata'
-import { Users, Globe, Plus, Check, Copy, Heart } from 'lucide-react'
 import { cn } from '../../../../../../../shared/lib/utils'
+import { Users } from 'lucide-react'
 import { Person, ServiceAccount, Relationship, PersonInfo } from '../../../../types'
+import ServiceAccountSection from './components/ServiceAccount'
+import RelationshipSection from './components/Relationship'
 
 interface SocialSectionProps {
   person: Person
@@ -23,25 +20,6 @@ interface SocialSectionProps {
   onUpdateRelationship?: (id: string, updates: Partial<Relationship>) => Promise<boolean>
   onDeleteRelationship?: (id: string) => Promise<boolean>
 }
-
-const SERVICE_TYPE_OPTIONS = [
-  { value: 'social_media', label: 'Social Media' },
-  { value: 'communication', label: 'Communication' },
-  { value: 'other', label: 'Other' }
-]
-
-const RELATIONSHIP_TYPE_OPTIONS = [
-  { value: 'parent', label: 'Parent' },
-  { value: 'child', label: 'Child' },
-  { value: 'sibling', label: 'Sibling' },
-  { value: 'spouse', label: 'Spouse' },
-  { value: 'partner', label: 'Partner' },
-  { value: 'friend', label: 'Friend' },
-  { value: 'colleague', label: 'Colleague' },
-  { value: 'mentor', label: 'Mentor' },
-  { value: 'mentee', label: 'Mentee' },
-  { value: 'other', label: 'Other' }
-]
 
 const SocialSection: React.FC<SocialSectionProps> = ({
   person,
@@ -87,22 +65,6 @@ const SocialSection: React.FC<SocialSectionProps> = ({
   const [savingField, setSavingField] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Helper to get or initialize editing data for a service account
-  const getEditingServiceAccount = (sa: ServiceAccount): ServiceAccount => {
-    if (!editingServiceAccounts[sa.id]) {
-      return sa
-    }
-    return editingServiceAccounts[sa.id]
-  }
-
-  // Helper to get or initialize editing data for a relationship
-  const getEditingRelationship = (rel: Relationship): Relationship => {
-    if (!editingRelationships[rel.id]) {
-      return rel
-    }
-    return editingRelationships[rel.id]
-  }
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -172,7 +134,8 @@ const SocialSection: React.FC<SocialSectionProps> = ({
     setEditingServiceAccounts((prev) => ({
       ...prev,
       [serviceAccount.id]: {
-        ...getEditingServiceAccount(serviceAccount),
+        ...serviceAccount,
+        ...(prev[serviceAccount.id] || {}),
         [field]: value
       }
     }))
@@ -181,9 +144,10 @@ const SocialSection: React.FC<SocialSectionProps> = ({
   const handleSaveServiceAccount = async (serviceAccount: ServiceAccount) => {
     if (!onUpdateServiceAccount) return
 
-    const editedData = getEditingServiceAccount(serviceAccount)
-    const hasChanges = JSON.stringify(serviceAccount) !== JSON.stringify(editedData)
+    const editedData = editingServiceAccounts[serviceAccount.id]
+    if (!editedData) return
 
+    const hasChanges = JSON.stringify(serviceAccount) !== JSON.stringify(editedData)
     if (!hasChanges) return
 
     try {
@@ -306,7 +270,8 @@ const SocialSection: React.FC<SocialSectionProps> = ({
     setEditingRelationships((prev) => ({
       ...prev,
       [relationship.id]: {
-        ...getEditingRelationship(relationship),
+        ...relationship,
+        ...(prev[relationship.id] || {}),
         [field]: value
       }
     }))
@@ -315,9 +280,10 @@ const SocialSection: React.FC<SocialSectionProps> = ({
   const handleSaveRelationship = async (relationship: Relationship) => {
     if (!onUpdateRelationship) return
 
-    const editedData = getEditingRelationship(relationship)
-    const hasChanges = JSON.stringify(relationship) !== JSON.stringify(editedData)
+    const editedData = editingRelationships[relationship.id]
+    if (!editedData) return
 
+    const hasChanges = JSON.stringify(relationship) !== JSON.stringify(editedData)
     if (!hasChanges) return
 
     try {
@@ -364,27 +330,13 @@ const SocialSection: React.FC<SocialSectionProps> = ({
   }
 
   // ==================== HELPER FUNCTIONS ====================
-  const getPersonDisplayName = (personId: string): string => {
-    const personInfo = allPersonInfos.find((info) => info.person_id === personId)
-    return personInfo?.preferred_name || personInfo?.full_name || 'Unknown Person'
-  }
-
-  const getPersonOptions = () => {
-    return allPeople
-      .filter((p) => p.id !== person.id)
-      .map((p) => ({
-        value: p.id,
-        label: getPersonDisplayName(p.id)
-      }))
-  }
-
   const renderStatusIcon = (field: string, hasChanged: boolean, onSave: () => void) => {
     if (savingField === field) {
       return <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
     }
 
     if (saveStatus[field] === 'success') {
-      return <Check className="h-3 w-3 text-green-600" />
+      return <div className="h-3 w-3 text-green-600">✓</div>
     }
 
     if (saveStatus[field] === 'error') {
@@ -393,15 +345,13 @@ const SocialSection: React.FC<SocialSectionProps> = ({
 
     if (hasChanged) {
       return (
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={onSave}
-          className="p-0.5 h-4 w-4 text-green-600 hover:text-green-700 hover:bg-green-50"
+          className="p-0.5 h-4 w-4 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
           disabled={savingField !== null}
         >
-          <Check className="h-2 w-2" />
-        </Button>
+          <div className="h-2 w-2">✓</div>
+        </button>
       )
     }
 
@@ -426,506 +376,46 @@ const SocialSection: React.FC<SocialSectionProps> = ({
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Service Accounts Section */}
-        <div className="bg-card-background rounded-lg border border-border-default hover:border-border-hover shadow-sm hover:shadow transition-all duration-200">
-          <div className="p-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 bg-purple-50 dark:bg-purple-900/20 rounded flex items-center justify-center">
-                  <Globe className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h5 className="text-sm font-medium text-text-primary">Service Accounts</h5>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleShowServiceAccountForm}
-                className="p-1 h-6 w-6"
-                disabled={showServiceAccountForm || savingField !== null}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              {/* Create Form */}
-              {showServiceAccountForm && (
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2 border-2 border-blue-400">
-                  <CustomInput
-                    label="Service Name"
-                    value={serviceAccountFormData.service_name}
-                    onChange={(value) =>
-                      setServiceAccountFormData((prev) => ({ ...prev, service_name: value }))
-                    }
-                    placeholder="e.g., Facebook, Instagram..."
-                    variant="filled"
-                    size="sm"
-                    required
-                  />
-
-                  <CustomCombobox
-                    label="Service Type"
-                    value={serviceAccountFormData.service_type}
-                    options={SERVICE_TYPE_OPTIONS}
-                    onChange={(value) =>
-                      setServiceAccountFormData((prev) => ({
-                        ...prev,
-                        service_type: value as any
-                      }))
-                    }
-                    placeholder="Select type..."
-                    size="sm"
-                  />
-
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <CustomInput
-                        label="Profile URL"
-                        value={serviceAccountFormData.service_url}
-                        onChange={(value) =>
-                          setServiceAccountFormData((prev) => ({ ...prev, service_url: value }))
-                        }
-                        placeholder="https://..."
-                        variant="filled"
-                        size="sm"
-                      />
-                    </div>
-                    {serviceAccountFormData.service_url && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(serviceAccountFormData.service_url)}
-                        className="p-1 h-6 w-6 mt-5"
-                        title="Copy URL"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="pt-2">
-                    <Metadata
-                      metadata={serviceAccountFormData.metadata}
-                      onMetadataChange={(newMetadata) =>
-                        setServiceAccountFormData((prev) => ({ ...prev, metadata: newMetadata }))
-                      }
-                      title="Additional Metadata"
-                      compact={true}
-                      size="sm"
-                      allowCreate={true}
-                      allowEdit={true}
-                      allowDelete={true}
-                      collapsible={true}
-                      defaultExpanded={false}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <CustomButton
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleCancelServiceAccountForm}
-                      disabled={isSubmitting}
-                    >
-                      Cancel
-                    </CustomButton>
-                    <CustomButton
-                      variant="primary"
-                      size="sm"
-                      onClick={handleCreateServiceAccount}
-                      disabled={!serviceAccountFormData.service_name.trim() || isSubmitting}
-                      loading={isSubmitting}
-                    >
-                      Create
-                    </CustomButton>
-                  </div>
-                </div>
-              )}
-
-              {/* Existing Service Accounts */}
-              {serviceAccounts.map((serviceAccount) => {
-                const editedSA = getEditingServiceAccount(serviceAccount)
-                const profileUrl = editedSA.metadata?.profile_url || editedSA.service_url || ''
-                const hasChanges = JSON.stringify(serviceAccount) !== JSON.stringify(editedSA)
-
-                return (
-                  <div
-                    key={serviceAccount.id}
-                    className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2"
-                  >
-                    <CustomInput
-                      label="Service Name"
-                      value={editedSA.service_name}
-                      onChange={(value) =>
-                        handleUpdateServiceAccountField(serviceAccount, 'service_name', value)
-                      }
-                      placeholder="e.g., Facebook, Instagram..."
-                      variant="filled"
-                      size="sm"
-                    />
-
-                    <CustomCombobox
-                      label="Service Type"
-                      value={editedSA.service_type}
-                      options={SERVICE_TYPE_OPTIONS}
-                      onChange={(value) =>
-                        handleUpdateServiceAccountField(serviceAccount, 'service_type', value)
-                      }
-                      placeholder="Select type..."
-                      size="sm"
-                    />
-
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <CustomInput
-                          label="Profile URL"
-                          value={profileUrl}
-                          onChange={(value) => {
-                            const newMetadata = { ...editedSA.metadata, profile_url: value }
-                            handleUpdateServiceAccountField(serviceAccount, 'metadata', newMetadata)
-                            handleUpdateServiceAccountField(serviceAccount, 'service_url', value)
-                          }}
-                          placeholder="https://..."
-                          variant="filled"
-                          size="sm"
-                        />
-                      </div>
-                      {profileUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(profileUrl)}
-                          className="p-1 h-6 w-6 mt-5"
-                          title="Copy URL"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="pt-2">
-                      <Metadata
-                        metadata={editedSA.metadata || {}}
-                        onMetadataChange={(newMetadata) =>
-                          handleUpdateServiceAccountField(serviceAccount, 'metadata', newMetadata)
-                        }
-                        title="Additional Metadata"
-                        compact={true}
-                        size="sm"
-                        allowCreate={true}
-                        allowEdit={true}
-                        allowDelete={true}
-                        collapsible={true}
-                        defaultExpanded={false}
-                      />
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <CustomButton
-                        variant="error"
-                        size="sm"
-                        onClick={() => handleDeleteServiceAccount(serviceAccount.id)}
-                        disabled={savingField !== null}
-                      >
-                        Delete
-                      </CustomButton>
-                      {hasChanges && (
-                        <CustomButton
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleSaveServiceAccount(serviceAccount)}
-                          disabled={savingField !== null}
-                        >
-                          {renderStatusIcon(
-                            `service_account_${serviceAccount.id}`,
-                            hasChanges,
-                            () => {}
-                          ) || 'Save'}
-                        </CustomButton>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
+        <ServiceAccountSection
+          serviceAccounts={serviceAccounts}
+          showServiceAccountForm={showServiceAccountForm}
+          serviceAccountFormData={serviceAccountFormData}
+          editingServiceAccounts={editingServiceAccounts}
+          savingField={savingField}
+          saveStatus={saveStatus}
+          isSubmitting={isSubmitting}
+          onShowForm={handleShowServiceAccountForm}
+          onCancelForm={handleCancelServiceAccountForm}
+          onFormDataChange={setServiceAccountFormData}
+          onCreate={handleCreateServiceAccount}
+          onUpdateField={handleUpdateServiceAccountField}
+          onSave={handleSaveServiceAccount}
+          onDelete={handleDeleteServiceAccount}
+          onCopyUrl={copyToClipboard}
+          renderStatusIcon={renderStatusIcon}
+        />
 
         {/* Relationships Section */}
-        <div className="bg-card-background rounded-lg border border-border-default hover:border-border-hover shadow-sm hover:shadow transition-all duration-200">
-          <div className="p-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 bg-pink-50 dark:bg-pink-900/20 rounded flex items-center justify-center">
-                  <Heart className="h-3 w-3 text-pink-600 dark:text-pink-400" />
-                </div>
-                <h5 className="text-sm font-medium text-text-primary">Relationships</h5>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleShowRelationshipForm}
-                className="p-1 h-6 w-6"
-                disabled={showRelationshipForm || savingField !== null || allPeople.length <= 1}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-
-            {allPeople.length <= 1 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No other people to create relationships with</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Create Form */}
-                {showRelationshipForm && (
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2 border-2 border-blue-400">
-                    <CustomCombobox
-                      label="Related Person"
-                      value={relationshipFormData.related_person_id}
-                      options={getPersonOptions()}
-                      onChange={(value) =>
-                        setRelationshipFormData((prev) => ({
-                          ...prev,
-                          related_person_id: value as string
-                        }))
-                      }
-                      placeholder="Select person..."
-                      size="sm"
-                      required
-                    />
-
-                    <CustomCombobox
-                      label="Relationship Type"
-                      value={relationshipFormData.relationship_type}
-                      options={RELATIONSHIP_TYPE_OPTIONS}
-                      onChange={(value) =>
-                        setRelationshipFormData((prev) => ({
-                          ...prev,
-                          relationship_type: value as string
-                        }))
-                      }
-                      placeholder="Select type..."
-                      size="sm"
-                    />
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <CustomInput
-                        label="Start Date"
-                        type="date"
-                        value={relationshipFormData.start_date}
-                        onChange={(value) =>
-                          setRelationshipFormData((prev) => ({ ...prev, start_date: value }))
-                        }
-                        variant="filled"
-                        size="sm"
-                      />
-
-                      <CustomInput
-                        label="End Date"
-                        type="date"
-                        value={relationshipFormData.end_date}
-                        onChange={(value) =>
-                          setRelationshipFormData((prev) => ({ ...prev, end_date: value }))
-                        }
-                        variant="filled"
-                        size="sm"
-                        disabled={relationshipFormData.is_current}
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="is_current_new"
-                        checked={relationshipFormData.is_current}
-                        onChange={(e) =>
-                          setRelationshipFormData((prev) => ({
-                            ...prev,
-                            is_current: e.target.checked,
-                            end_date: e.target.checked ? '' : prev.end_date
-                          }))
-                        }
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <label
-                        htmlFor="is_current_new"
-                        className="text-xs text-gray-700 dark:text-gray-300"
-                      >
-                        Current Relationship
-                      </label>
-                    </div>
-
-                    <CustomInput
-                      label="Notes"
-                      value={relationshipFormData.notes}
-                      onChange={(value) =>
-                        setRelationshipFormData((prev) => ({ ...prev, notes: value }))
-                      }
-                      placeholder="Add notes about this relationship..."
-                      variant="filled"
-                      size="sm"
-                    />
-
-                    <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <CustomButton
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleCancelRelationshipForm}
-                        disabled={isSubmitting}
-                      >
-                        Cancel
-                      </CustomButton>
-                      <CustomButton
-                        variant="primary"
-                        size="sm"
-                        onClick={handleCreateRelationship}
-                        disabled={!relationshipFormData.related_person_id || isSubmitting}
-                        loading={isSubmitting}
-                      >
-                        Create
-                      </CustomButton>
-                    </div>
-                  </div>
-                )}
-
-                {/* Existing Relationships */}
-                {relationships.map((relationship) => {
-                  const editedRel = getEditingRelationship(relationship)
-                  const hasChanges = JSON.stringify(relationship) !== JSON.stringify(editedRel)
-
-                  return (
-                    <div
-                      key={relationship.id}
-                      className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2"
-                    >
-                      <CustomCombobox
-                        label="Related Person"
-                        value={editedRel.related_person_id}
-                        options={getPersonOptions()}
-                        onChange={(value) =>
-                          handleUpdateRelationshipField(
-                            relationship,
-                            'related_person_id',
-                            value as string
-                          )
-                        }
-                        placeholder="Select person..."
-                        size="sm"
-                      />
-
-                      <CustomCombobox
-                        label="Relationship Type"
-                        value={editedRel.relationship_type}
-                        options={RELATIONSHIP_TYPE_OPTIONS}
-                        onChange={(value) =>
-                          handleUpdateRelationshipField(
-                            relationship,
-                            'relationship_type',
-                            value as string
-                          )
-                        }
-                        placeholder="Select type..."
-                        size="sm"
-                      />
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <CustomInput
-                          label="Start Date"
-                          type="date"
-                          value={editedRel.start_date || ''}
-                          onChange={(value) =>
-                            handleUpdateRelationshipField(relationship, 'start_date', value)
-                          }
-                          variant="filled"
-                          size="sm"
-                        />
-
-                        <CustomInput
-                          label="End Date"
-                          type="date"
-                          value={editedRel.end_date || ''}
-                          onChange={(value) =>
-                            handleUpdateRelationshipField(relationship, 'end_date', value)
-                          }
-                          variant="filled"
-                          size="sm"
-                          disabled={editedRel.is_current}
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id={`is_current_${relationship.id}`}
-                          checked={editedRel.is_current || false}
-                          onChange={(e) => {
-                            handleUpdateRelationshipField(
-                              relationship,
-                              'is_current',
-                              e.target.checked
-                            )
-                            if (e.target.checked) {
-                              handleUpdateRelationshipField(relationship, 'end_date', '')
-                            }
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label
-                          htmlFor={`is_current_${relationship.id}`}
-                          className="text-xs text-gray-700 dark:text-gray-300"
-                        >
-                          Current Relationship
-                        </label>
-                        {hasChanges &&
-                          renderStatusIcon(`relationship_${relationship.id}`, hasChanges, () =>
-                            handleSaveRelationship(relationship)
-                          )}
-                      </div>
-
-                      <CustomInput
-                        label="Notes"
-                        value={editedRel.notes || ''}
-                        onChange={(value) =>
-                          handleUpdateRelationshipField(relationship, 'notes', value)
-                        }
-                        placeholder="Add notes about this relationship..."
-                        variant="filled"
-                        size="sm"
-                      />
-
-                      <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <CustomButton
-                          variant="error"
-                          size="sm"
-                          onClick={() => handleDeleteRelationship(relationship.id)}
-                          disabled={savingField !== null}
-                        >
-                          Delete
-                        </CustomButton>
-                        {hasChanges && (
-                          <CustomButton
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleSaveRelationship(relationship)}
-                            disabled={savingField !== null}
-                          >
-                            {renderStatusIcon(
-                              `relationship_${relationship.id}`,
-                              hasChanges,
-                              () => {}
-                            ) || 'Save'}
-                          </CustomButton>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        <RelationshipSection
+          relationships={relationships}
+          person={person}
+          allPeople={allPeople}
+          allPersonInfos={allPersonInfos}
+          showRelationshipForm={showRelationshipForm}
+          relationshipFormData={relationshipFormData}
+          editingRelationships={editingRelationships}
+          savingField={savingField}
+          saveStatus={saveStatus}
+          isSubmitting={isSubmitting}
+          onShowForm={handleShowRelationshipForm}
+          onCancelForm={handleCancelRelationshipForm}
+          onFormDataChange={setRelationshipFormData}
+          onCreate={handleCreateRelationship}
+          onUpdateField={handleUpdateRelationshipField}
+          onSave={handleSaveRelationship}
+          onDelete={handleDeleteRelationship}
+          renderStatusIcon={renderStatusIcon}
+        />
       </div>
     </div>
   )
