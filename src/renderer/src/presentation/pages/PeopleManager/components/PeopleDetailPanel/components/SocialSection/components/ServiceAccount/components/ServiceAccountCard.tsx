@@ -37,12 +37,12 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const profileUrl =
-    editedServiceAccount.metadata?.profile_url || editedServiceAccount.service_url || ''
+  const profileUrl = editedServiceAccount.metadata?.profile_url || ''
+  const serviceUrl = editedServiceAccount.service_url || ''
 
-  const handleOpenUrl = () => {
-    if (profileUrl) {
-      window.open(profileUrl, '_blank', 'noopener,noreferrer')
+  const handleOpenUrl = (url: string) => {
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer')
     }
   }
 
@@ -59,6 +59,18 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
       .toUpperCase()
       .slice(0, 2)
   }
+
+  // Determine which URL to display and use
+  const displayUrl = profileUrl || serviceUrl
+  const displayHostname = displayUrl
+    ? (() => {
+        try {
+          return new URL(displayUrl).hostname
+        } catch {
+          return null
+        }
+      })()
+    : null
 
   return (
     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600">
@@ -82,9 +94,9 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
 
           {/* Favicon */}
           <div className="flex-shrink-0">
-            {profileUrl ? (
+            {displayUrl ? (
               <Favicon
-                url={profileUrl}
+                url={displayUrl}
                 size={32}
                 className="rounded"
                 fallbackIcon={
@@ -117,42 +129,34 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {getServiceTypeLabel()}
               </span>
-              {profileUrl &&
-                (() => {
-                  try {
-                    const hostname = new URL(profileUrl).hostname
-                    return (
-                      <>
-                        <span className="text-xs text-gray-400">•</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleOpenUrl()
-                          }}
-                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                        >
-                          <Globe className="h-3 w-3" />
-                          <span className="truncate max-w-[150px]">{hostname}</span>
-                        </button>
-                      </>
-                    )
-                  } catch {
-                    return null
-                  }
-                })()}
+              {displayHostname && (
+                <>
+                  <span className="text-xs text-gray-400">•</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleOpenUrl(displayUrl)
+                    }}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  >
+                    <Globe className="h-3 w-3" />
+                    <span className="truncate max-w-[150px]">{displayHostname}</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
           {/* Quick Actions */}
           <div className="flex-shrink-0 flex items-center gap-1">
-            {profileUrl && (
+            {displayUrl && (
               <>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onCopyUrl(profileUrl)
+                    onCopyUrl(displayUrl)
                   }}
                   className="p-1 h-7 w-7"
                   title="Copy URL"
@@ -164,7 +168,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleOpenUrl()
+                    handleOpenUrl(displayUrl)
                   }}
                   className="p-1 h-7 w-7"
                   title="Open in browser"
@@ -201,23 +205,20 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <CustomInput
-                label="Profile URL"
-                value={profileUrl}
-                onChange={(value) => {
-                  const newMetadata = { ...editedServiceAccount.metadata, profile_url: value }
-                  onUpdateField('metadata', newMetadata)
-                  onUpdateField('service_url', value)
-                }}
+                label="Service URL"
+                value={serviceUrl}
+                onChange={(value) => onUpdateField('service_url', value)}
                 placeholder="https://..."
                 variant="filled"
                 size="sm"
+                leftIcon={<Globe className="h-3 w-3" />}
               />
             </div>
-            {profileUrl && (
+            {serviceUrl && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onCopyUrl(profileUrl)}
+                onClick={() => onCopyUrl(serviceUrl)}
                 className="p-1 h-6 w-6 mt-5"
                 title="Copy URL"
               >

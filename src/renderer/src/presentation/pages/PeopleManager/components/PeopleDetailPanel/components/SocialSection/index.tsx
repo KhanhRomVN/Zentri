@@ -374,7 +374,7 @@ const SocialSection: React.FC<SocialSectionProps> = ({
       </div>
 
       {/* Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Service Accounts Section */}
         <ServiceAccountSection
           serviceAccounts={serviceAccounts}

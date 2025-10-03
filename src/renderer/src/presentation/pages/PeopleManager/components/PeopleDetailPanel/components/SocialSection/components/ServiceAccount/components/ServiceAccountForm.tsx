@@ -1,11 +1,10 @@
-// src/renderer/src/presentation/pages/PeopleManager/components/PeopleDetailPanel/components/SocialSection/components/ServiceAccount/components/ServiceAccountForm.tsx
+// ServiceAccountForm.tsx - FIXED VERSION
 import React from 'react'
-import { Button } from '../../../../../../../../../../components/ui/button'
 import CustomInput from '../../../../../../../../../../components/common/CustomInput'
 import CustomCombobox from '../../../../../../../../../../components/common/CustomCombobox'
 import CustomButton from '../../../../../../../../../../components/common/CustomButton'
 import Metadata from '../../../../../../../../../../components/common/Metadata'
-import { Copy } from 'lucide-react'
+import { Globe } from 'lucide-react'
 
 interface ServiceAccountFormData {
   service_name: string
@@ -21,7 +20,6 @@ interface ServiceAccountFormProps {
   onFormDataChange: (updates: Partial<ServiceAccountFormData>) => void
   onSubmit: () => void
   onCancel: () => void
-  onCopyUrl: (url: string) => void
 }
 
 const ServiceAccountForm: React.FC<ServiceAccountFormProps> = ({
@@ -30,11 +28,35 @@ const ServiceAccountForm: React.FC<ServiceAccountFormProps> = ({
   isSubmitting,
   onFormDataChange,
   onSubmit,
-  onCancel,
-  onCopyUrl
+  onCancel
 }) => {
   const handleFieldChange = (field: keyof ServiceAccountFormData, value: any) => {
-    onFormDataChange({ [field]: value })
+    onFormDataChange({
+      ...formData,
+      [field]: value
+    })
+  }
+
+  const isSocialMedia = formData.service_type === 'social_media'
+
+  const handleMetadataChange = (newMetadata: Record<string, any>) => {
+    // Lọc bỏ các field rỗng trước khi lưu
+    const cleanedMetadata = Object.entries(newMetadata).reduce(
+      (acc, [key, value]) => {
+        // Chỉ giữ lại nếu value không phải empty string/null/undefined
+        if (value !== '' && value !== null && value !== undefined) {
+          acc[key] = value
+        }
+        return acc
+      },
+      {} as Record<string, any>
+    )
+
+    // Chỉ update metadata, KHÔNG tự động đồng bộ sang service_url
+    onFormDataChange({
+      ...formData,
+      metadata: cleanedMetadata
+    })
   }
 
   return (
@@ -58,45 +80,43 @@ const ServiceAccountForm: React.FC<ServiceAccountFormProps> = ({
         size="sm"
       />
 
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <CustomInput
-            label="Profile URL"
-            value={formData.service_url}
-            onChange={(value) => handleFieldChange('service_url', value)}
-            placeholder="https://..."
-            variant="filled"
-            size="sm"
-          />
-        </div>
-        {formData.service_url && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onCopyUrl(formData.service_url)}
-            className="p-1 h-6 w-6 mt-5"
-            title="Copy URL"
-          >
-            <Copy className="h-3 w-3" />
-          </Button>
-        )}
-      </div>
+      <CustomInput
+        label="Service URL"
+        value={formData.service_url}
+        onChange={(value) => handleFieldChange('service_url', value)}
+        placeholder="https://..."
+        variant="filled"
+        size="sm"
+        leftIcon={<Globe className="h-3 w-3" />}
+      />
 
+      {/* ✅ Metadata - Mở rộng mặc định khi là social_media */}
+      {/* Metadata - Hiển thị profile_url khi là social_media */}
       <div className="pt-2">
         <Metadata
           metadata={formData.metadata}
-          onMetadataChange={(newMetadata) => handleFieldChange('metadata', newMetadata)}
-          title="Additional Metadata"
+          onMetadataChange={handleMetadataChange}
+          title={isSocialMedia ? 'Profile Information' : 'Additional Metadata'}
           compact={true}
           size="sm"
           allowCreate={true}
           allowEdit={true}
           allowDelete={true}
           collapsible={true}
-          defaultExpanded={false}
+          defaultExpanded={isSocialMedia}
+          placeholder={
+            isSocialMedia
+              ? {
+                  key: 'profile_url',
+                  value: 'https://... (optional)'
+                }
+              : {
+                  key: 'custom_field',
+                  value: 'value...'
+                }
+          }
         />
       </div>
-
       <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
         <CustomButton variant="secondary" size="sm" onClick={onCancel} disabled={isSubmitting}>
           Cancel
@@ -105,7 +125,7 @@ const ServiceAccountForm: React.FC<ServiceAccountFormProps> = ({
           variant="primary"
           size="sm"
           onClick={onSubmit}
-          disabled={!formData.service_name.trim() || isSubmitting}
+          disabled={!formData.service_name?.trim() || isSubmitting}
           loading={isSubmitting}
         >
           Create

@@ -229,13 +229,16 @@ function setupDatabaseHandlers() {
         db = null
       }
 
-      // Create new database
-      db = new sqlite3.Database(path, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE)
-
-      return new Promise<void>((resolve) => {
-        db!.serialize(() => {
-          // Database is ready
-          resolve()
+      // Create new database with callback to ensure it's ready
+      return new Promise<void>((resolve, reject) => {
+        db = new sqlite3.Database(path, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+          if (err) {
+            db = null
+            reject(err)
+          } else {
+            // Database is successfully created and ready
+            resolve()
+          }
         })
       })
     } catch (error) {
@@ -257,13 +260,16 @@ function setupDatabaseHandlers() {
         db = null
       }
 
-      // Open existing database
-      db = new sqlite3.Database(path, sqlite3.OPEN_READWRITE)
-
-      return new Promise<void>((resolve) => {
-        db!.serialize(() => {
-          // Database is ready
-          resolve()
+      // Open existing database with callback to ensure it's ready
+      return new Promise<void>((resolve, reject) => {
+        db = new sqlite3.Database(path, sqlite3.OPEN_READWRITE, (err) => {
+          if (err) {
+            db = null
+            reject(err)
+          } else {
+            // Database is successfully opened and ready
+            resolve()
+          }
         })
       })
     } catch (error) {
