@@ -19,6 +19,7 @@ const PeopleManagerPage = () => {
     // People data
     people,
     personInfos,
+    contacts,
     filteredPeople,
     selectedPerson,
     selectedPersonInfo,
@@ -99,6 +100,8 @@ const PeopleManagerPage = () => {
         <div className=" flex-shrink-0 h-screen overflow-hidden">
           <PeopleListPanel
             people={filteredPeople}
+            personInfos={personInfos}
+            contacts={contacts}
             selectedPerson={selectedPerson}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}

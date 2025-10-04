@@ -68,10 +68,10 @@ export const usePeopleManager = () => {
         personContacts.some(
           (c) =>
             c.contact_type === 'email' &&
-            c.contact_value.toLowerCase().includes(searchQuery.toLowerCase())
+            c.email_address?.toLowerCase().includes(searchQuery.toLowerCase())
         ) ||
         personContacts.some(
-          (c) => c.contact_type === 'phone' && c.contact_value.includes(searchQuery)
+          (c) => c.contact_type === 'sms' && c.phone_number?.includes(searchQuery)
         )
 
       // Gender filter
@@ -114,7 +114,7 @@ export const usePeopleManager = () => {
   const getStatistics = useCallback(() => {
     const totalPeople = database.people.length
     const withEmail = database.contacts.filter((c) => c.contact_type === 'email').length
-    const withPhone = database.contacts.filter((c) => c.contact_type === 'phone').length
+    const withPhone = database.contacts.filter((c) => c.contact_type === 'sms').length
     const withAddress = database.addresses.length
 
     const genderStats = database.personInfos.reduce(
@@ -143,6 +143,11 @@ export const usePeopleManager = () => {
     // People data
     people: database.people,
     personInfos: database.personInfos,
+    contacts: database.contacts,
+    addresses: database.addresses,
+    identifications: database.identifications,
+    serviceAccounts: database.serviceAccounts,
+    relationships: database.relationships,
     filteredPeople,
     selectedPerson,
     selectedPersonInfo,

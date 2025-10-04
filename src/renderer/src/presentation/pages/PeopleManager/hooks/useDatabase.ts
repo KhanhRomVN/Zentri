@@ -1,7 +1,16 @@
 // src/renderer/src/presentation/pages/PeopleManager/hooks/useDatabase.ts
 import { useState, useEffect, useCallback } from 'react'
 import { peopleService } from '../services/PeopleService'
-import { DatabaseInfo, Person, PersonInfo, Contact, Address, Identification } from '../types'
+import {
+  DatabaseInfo,
+  Person,
+  PersonInfo,
+  Contact,
+  Address,
+  Identification,
+  ServiceAccount,
+  Relationship
+} from '../types'
 
 export interface DatabaseManagerState {
   currentDatabase: DatabaseInfo | null
@@ -12,6 +21,8 @@ export interface DatabaseManagerState {
   contacts: Contact[]
   addresses: Address[]
   identifications: Identification[]
+  serviceAccounts: ServiceAccount[]
+  relationships: Relationship[]
   showDatabaseModal: boolean
   isInitialized: boolean
 }
@@ -26,6 +37,8 @@ export const useDatabase = () => {
     contacts: [],
     addresses: [],
     identifications: [],
+    serviceAccounts: [],
+    relationships: [],
     showDatabaseModal: false,
     isInitialized: false
   })

@@ -3,10 +3,12 @@ import React, { useState, useMemo } from 'react'
 import { Search, Plus, Users, SlidersHorizontal, X } from 'lucide-react'
 import CustomButton from '../../../../../components/common/CustomButton'
 import PeopleCard from './components/PeopleCard'
-import { Person } from '../../types'
+import { Person, PersonInfo, Contact } from '../../types'
 
 interface PeopleListPanelProps {
   people: Person[]
+  personInfos: PersonInfo[]
+  contacts: Contact[]
   selectedPerson: Person | null
   searchQuery: string
   onSearchChange: (query: string) => void
@@ -23,6 +25,8 @@ interface PeopleListPanelProps {
 
 const PeopleListPanel: React.FC<PeopleListPanelProps> = ({
   people,
+  personInfos,
+  contacts,
   selectedPerson,
   searchQuery,
   onSearchChange,
@@ -34,56 +38,41 @@ const PeopleListPanel: React.FC<PeopleListPanelProps> = ({
 }) => {
   const [showFilters, setShowFilters] = useState(false)
 
-  // Extract unique values for filters
-  const filterOptions = useMemo(() => {
-    const genders = Array.from(new Set(people.map((p) => p.gender).filter(Boolean))) as string[]
-    const nationalities = Array.from(
-      new Set(people.map((p) => p.nationality).filter(Boolean))
-    ) as string[]
-    const allTags = people.flatMap((p) => p.tags || [])
-    const tags = Array.from(new Set(allTags))
-
-    return { genders, nationalities, tags }
-  }, [people])
-
+  // Filter people based on search and filters
+  // Filter people based on search and filters
   // Filter people based on search and filters
   const filteredPeople = useMemo(() => {
+    // Safety check: ensure arrays exist
+    if (!people || !Array.isArray(people)) return []
+    if (!personInfos || !Array.isArray(personInfos)) return []
+    if (!contacts || !Array.isArray(contacts)) return []
+
     return people.filter((person) => {
+      const personInfo = personInfos.find((info) => info.person_id === person.id)
+      const personContacts = contacts.filter((c) => c.person_id === person.id)
+
       // Search query filter
       const matchesSearch =
         searchQuery === '' ||
-        person.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        person.preferred_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        person.primary_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        person.primary_phone?.includes(searchQuery) ||
-        person.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+        personInfo?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        personInfo?.preferred_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        personContacts.some(
+          (c) =>
+            c.contact_type === 'email' &&
+            c.email_address?.toLowerCase().includes(searchQuery.toLowerCase())
+        ) ||
+        personContacts.some(
+          (c) => c.contact_type === 'sms' && c.phone_number?.includes(searchQuery)
+        )
 
       // Gender filter
       const matchesGender =
-        filters.gender.length === 0 || (person.gender && filters.gender.includes(person.gender))
+        filters.gender.length === 0 ||
+        (personInfo?.gender && filters.gender.includes(personInfo.gender))
 
-      // Nationality filter
-      const matchesNationality =
-        filters.nationality.length === 0 ||
-        (person.nationality && filters.nationality.includes(person.nationality))
-
-      // Tags filter
-      const matchesTags =
-        filters.tags.length === 0 ||
-        (person.tags && filters.tags.some((tag) => person.tags!.includes(tag)))
-
-      return matchesSearch && matchesGender && matchesNationality && matchesTags
+      return matchesSearch && matchesGender
     })
-  }, [people, searchQuery, filters])
-
-  const handleFilterToggle = (type: 'gender' | 'nationality' | 'tags', value: string) => {
-    const currentFilters = filters[type]
-    const newFilters = currentFilters.includes(value)
-      ? currentFilters.filter((f) => f !== value)
-      : [...currentFilters, value]
-
-    onFiltersChange({ ...filters, [type]: newFilters })
-  }
+  }, [people, personInfos, contacts, searchQuery, filters])
 
   const clearAllFilters = () => {
     onFiltersChange({ gender: [], nationality: [], tags: [] })
@@ -200,14 +189,21 @@ const PeopleListPanel: React.FC<PeopleListPanelProps> = ({
           </div>
         ) : (
           <div className="p-3 space-y-2 border-b border-border-default">
-            {filteredPeople.map((person) => (
-              <PeopleCard
-                key={person.id}
-                person={person}
-                isSelected={selectedPerson?.id === person.id}
-                onClick={() => onSelectPerson(person)}
-              />
-            ))}
+            {filteredPeople.map((person) => {
+              const personInfo = personInfos?.find((info) => info.person_id === person.id) || null
+              const personContacts = contacts?.filter((c) => c.person_id === person.id) || []
+
+              return (
+                <PeopleCard
+                  key={person.id}
+                  person={person}
+                  personInfo={personInfo}
+                  contacts={personContacts}
+                  isSelected={selectedPerson?.id === person.id}
+                  onClick={() => onSelectPerson(person)}
+                />
+              )
+            })}
           </div>
         )}
       </div>
