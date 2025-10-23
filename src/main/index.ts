@@ -249,7 +249,7 @@ function setupDatabaseHandlers() {
 
   ipcMain.handle('sqlite:open', async (_event, path: string) => {
     try {
-      // Close existing database if open
+      // Đóng database cũ nếu có
       if (db) {
         await new Promise<void>((resolve, reject) => {
           db!.close((err) => {
@@ -260,15 +260,18 @@ function setupDatabaseHandlers() {
         db = null
       }
 
-      // Open existing database with callback to ensure it's ready
+      // Đợi một chút sau khi đóng
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      // Mở database mới
       return new Promise<void>((resolve, reject) => {
         db = new sqlite3.Database(path, sqlite3.OPEN_READWRITE, (err) => {
           if (err) {
             db = null
             reject(err)
           } else {
-            // Database is successfully opened and ready
-            resolve()
+            // Đợi thêm để đảm bảo database sẵn sàng
+            setTimeout(() => resolve(), 50)
           }
         })
       })

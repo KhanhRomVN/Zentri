@@ -48,7 +48,21 @@ export class DatabaseService {
       if (lastDatabase) {
         const exists = await window.electronAPI.fileSystem.exists(lastDatabase.path)
         if (exists) {
+          // Đảm bảo database được mở hoàn toàn trước khi tiếp tục
           await window.electronAPI.sqlite.openDatabase(lastDatabase.path)
+
+          // Đợi một chút để đảm bảo connection ổn định
+          await new Promise((resolve) => setTimeout(resolve, 100))
+
+          // Kiểm tra xem database có thực sự hoạt động không
+          try {
+            await window.electronAPI.sqlite.getOneRow('SELECT 1 as test')
+          } catch (testError) {
+            console.error('Database connection test failed:', testError)
+            await this.clearLastDatabase()
+            return false
+          }
+
           this.currentDatabase = {
             ...lastDatabase,
             lastAccess: new Date().toISOString()
@@ -56,7 +70,6 @@ export class DatabaseService {
           await this.saveLastDatabase(this.currentDatabase)
           return true
         } else {
-          // File không tồn tại, xóa khỏi storage
           await this.clearLastDatabase()
         }
       }

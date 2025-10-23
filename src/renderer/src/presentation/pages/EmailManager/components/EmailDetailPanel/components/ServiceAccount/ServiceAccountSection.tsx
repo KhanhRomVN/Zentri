@@ -1,9 +1,9 @@
 // src/renderer/src/presentation/pages/EmailManager/components/ServiceAccountSection.tsx
 import React, { useState, useEffect } from 'react'
-import { Button } from '../../../../../../components/ui/button'
-import CustomInput from '../../../../../../components/common/CustomInput'
-import CustomCombobox from '../../../../../../components/common/CustomCombobox'
-import Metadata from '../../../../../../components/common/Metadata'
+import { Button } from '../../../../../../../components/ui/button'
+import CustomInput from '../../../../../../../components/common/CustomInput'
+import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
+import Metadata from '../../../../../../../components/common/Metadata'
 import {
   Copy,
   Check,
@@ -16,9 +16,9 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
-import { cn } from '../../../../../../shared/lib/utils'
-import { ServiceAccount } from '../../../types'
-import { Favicon } from '../../../../../../shared/utils/faviconUtils'
+import { cn } from '../../../../../../../shared/lib/utils'
+import { ServiceAccount } from '../../../../types'
+import { Favicon } from '../../../../../../../shared/utils/faviconUtils'
 
 interface ServiceAccountSectionProps {
   serviceAccount: ServiceAccount

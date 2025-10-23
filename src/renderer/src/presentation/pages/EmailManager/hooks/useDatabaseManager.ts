@@ -36,11 +36,14 @@ export const useDatabaseManager = () => {
           error: null
         }))
 
-        // Thử khởi tạo với database cuối cùng đã sử dụng
         const hasExistingDatabase = await databaseService.initialize()
 
         if (hasExistingDatabase) {
           const currentDatabase = databaseService.getCurrentDatabase()
+
+          // Đợi thêm để đảm bảo database hoàn toàn sẵn sàng
+          await new Promise((resolve) => setTimeout(resolve, 200))
+
           setState((prev) => ({
             ...prev,
             currentDatabase,
@@ -48,8 +51,18 @@ export const useDatabaseManager = () => {
             isInitialized: true,
             isLoading: false
           }))
+
+          // Load emails sau khi state đã update
+          try {
+            const emails = await databaseService.getAllEmails()
+            setState((prev) => ({
+              ...prev,
+              emails
+            }))
+          } catch (emailError) {
+            console.error('Failed to load initial emails:', emailError)
+          }
         } else {
-          // Không có database trước đó, hiển thị modal
           setState((prev) => ({
             ...prev,
             showDatabaseModal: true,
@@ -277,13 +290,6 @@ export const useDatabaseManager = () => {
   const clearError = useCallback(() => {
     setState((prev) => ({ ...prev, error: null }))
   }, [])
-
-  // Load emails when database becomes ready
-  useEffect(() => {
-    if (isDatabaseReady && state.emails.length === 0) {
-      loadEmails()
-    }
-  }, [isDatabaseReady, loadEmails, state.emails.length])
 
   return {
     // State

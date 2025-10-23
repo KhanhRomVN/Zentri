@@ -1,7 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccountSecretSection.tsx
 import React, { useState } from 'react'
-import CustomBadge from '../../../../../../components/common/CustomBadge'
-import CustomButton from '../../../../../../components/common/CustomButton'
+import CustomBadge from '../../../../../../../components/common/CustomBadge'
+import CustomButton from '../../../../../../../components/common/CustomButton'
 import ServiceAccountSecretForm from './ServiceAccountSecretForm'
 import ServiceAccountSecretCard from './ServiceAccountSecretCard'
 import {
@@ -14,8 +14,8 @@ import {
   Database,
   Shield
 } from 'lucide-react'
-import { cn } from '../../../../../../shared/lib/utils'
-import { ServiceAccount, ServiceAccountSecret } from '../../../types'
+import { cn } from '../../../../../../../shared/lib/utils'
+import { ServiceAccount, ServiceAccountSecret } from '../../../../types'
 
 interface ServiceAccountSecretSectionProps {
   serviceAccount: ServiceAccount

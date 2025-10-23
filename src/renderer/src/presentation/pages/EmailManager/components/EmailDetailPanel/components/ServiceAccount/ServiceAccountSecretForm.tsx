@@ -1,10 +1,10 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccountSecretForm.tsx
 
 import React, { useState, useCallback, useMemo } from 'react'
-import CustomButton from '../../../../../../components/common/CustomButton'
-import CustomInput from '../../../../../../components/common/CustomInput'
+import CustomButton from '../../../../../../../components/common/CustomButton'
+import CustomInput from '../../../../../../../components/common/CustomInput'
 import { Key, AlertCircle, Plus, Calendar, X, Save, Trash2 } from 'lucide-react'
-import { ServiceAccount, ServiceAccountSecret } from '../../../types'
+import { ServiceAccount, ServiceAccountSecret } from '../../../../types'
 
 interface ServiceAccountSecretFormProps {
   serviceAccount: ServiceAccount

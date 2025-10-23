@@ -1,7 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/Email2FASection.tsx
 import React, { useState } from 'react'
-import CustomBadge from '../../../../../../components/common/CustomBadge'
-import CustomButton from '../../../../../../components/common/CustomButton'
+import CustomBadge from '../../../../../../../components/common/CustomBadge'
+import CustomButton from '../../../../../../../components/common/CustomButton'
 import Email2FACard from './Email2FACard'
 import CreateEmail2FAForm from './CreateEmail2FAForm'
 import {
@@ -14,8 +14,8 @@ import {
   Users,
   Lock
 } from 'lucide-react'
-import { cn } from '../../../../../../shared/lib/utils'
-import { Email, Email2FA } from '../../../types'
+import { cn } from '../../../../../../../shared/lib/utils'
+import { Email, Email2FA } from '../../../../types'
 
 interface Email2FASectionProps {
   email: Email

@@ -1,13 +1,13 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/AccountService/CreateAccountServiceForm.tsx
 import React, { useState, useEffect } from 'react'
-import CustomButton from '../../../../../../components/common/CustomButton'
-import CustomInput from '../../../../../../components/common/CustomInput'
-import CustomCombobox from '../../../../../../components/common/CustomCombobox'
+import CustomButton from '../../../../../../../components/common/CustomButton'
+import CustomInput from '../../../../../../../components/common/CustomInput'
+import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
 import { Globe, User, Key, Link, Plus, X, AlertCircle, Shield, Activity } from 'lucide-react'
-import { cn } from '../../../../../../shared/lib/utils'
-import { ServiceAccount, Email } from '../../../types'
-import Metadata from '../../../../../../components/common/Metadata'
-import { Button } from '../../../../../../components/ui/button'
+import { cn } from '../../../../../../../shared/lib/utils'
+import { ServiceAccount, Email } from '../../../../types'
+import Metadata from '../../../../../../../components/common/Metadata'
+import { Button } from '../../../../../../../components/ui/button'
 
 interface CreateAccountServiceFormProps {
   email: Email

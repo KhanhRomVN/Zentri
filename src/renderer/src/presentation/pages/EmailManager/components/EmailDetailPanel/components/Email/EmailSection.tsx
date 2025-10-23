@@ -1,12 +1,12 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/EmailSection.tsx
 import React, { useState } from 'react'
-import { Button } from '../../../../../../components/ui/button'
-import CustomInput from '../../../../../../components/common/CustomInput'
-import CustomTag from '../../../../../../components/common/CustomTag'
-import Metadata from '../../../../../../components/common/Metadata'
+import { Button } from '../../../../../../../components/ui/button'
+import CustomInput from '../../../../../../../components/common/CustomInput'
+import CustomTag from '../../../../../../../components/common/CustomTag'
+import Metadata from '../../../../../../../components/common/Metadata'
 import { Eye, EyeOff, Copy, Phone, Check, Mail, User, MapPin, Tag, FileText } from 'lucide-react'
-import { cn } from '../../../../../../shared/lib/utils'
-import { Email, ServiceAccount } from '../../../types'
+import { cn } from '../../../../../../../shared/lib/utils'
+import { Email, ServiceAccount } from '../../../../types'
 
 interface EmailSectionProps {
   email: Email
@@ -221,9 +221,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             Account Information
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-            Personal details and authentication for {email.email_address}
-          </p>
         </div>
       </div>
 

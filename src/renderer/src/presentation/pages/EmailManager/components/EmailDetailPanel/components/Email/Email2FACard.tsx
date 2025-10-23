@@ -1,12 +1,12 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/Email2FACard.tsx
 import React, { useEffect, useState } from 'react'
-import { Button } from '../../../../../../components/ui/button'
-import CustomBadge from '../../../../../../components/common/CustomBadge'
-import CustomButton from '../../../../../../components/common/CustomButton'
-import { Label } from '../../../../../../components/ui/label'
-import CustomInput from '../../../../../../components/common/CustomInput'
-import Metadata from '../../../../../../components/common/Metadata'
-import CustomOTP from '../../../../../../components/common/CustomOTP'
+import { Button } from '../../../../../../../components/ui/button'
+import CustomBadge from '../../../../../../../components/common/CustomBadge'
+import CustomButton from '../../../../../../../components/common/CustomButton'
+import { Label } from '../../../../../../../components/ui/label'
+import CustomInput from '../../../../../../../components/common/CustomInput'
+import Metadata from '../../../../../../../components/common/Metadata'
+import CustomOTP from '../../../../../../../components/common/CustomOTP'
 import {
   Eye,
   EyeOff,
@@ -22,9 +22,9 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
-import { cn } from '../../../../../../shared/lib/utils'
-import { Email2FA } from '../../../types'
-import CustomArrayInput from '../../../../../../components/common/CustomArrayInput'
+import { cn } from '../../../../../../../shared/lib/utils'
+import { Email2FA } from '../../../../types'
+import CustomArrayInput from '../../../../../../../components/common/CustomArrayInput'
 
 interface Email2FACardProps {
   method: Email2FA

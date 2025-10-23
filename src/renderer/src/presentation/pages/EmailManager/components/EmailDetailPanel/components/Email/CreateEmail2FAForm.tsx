@@ -1,9 +1,9 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/CreateServiceAccount2FAForm.tsx
+// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/CreateEmail2FAForm.tsx
 import React, { useState, useEffect } from 'react'
-import CustomButton from '../../../../../../components/common/CustomButton'
-import CustomInput from '../../../../../../components/common/CustomInput'
-import CustomTextArea from '../../../../../../components/common/CustomTextArea'
-import CustomCombobox from '../../../../../../components/common/CustomCombobox'
+import CustomButton from '../../../../../../../components/common/CustomButton'
+import CustomInput from '../../../../../../../components/common/CustomInput'
+import CustomTextArea from '../../../../../../../components/common/CustomTextArea'
+import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
 import {
   Shield,
   QrCode,
@@ -14,26 +14,25 @@ import {
   Plus,
   X,
   AlertCircle,
-  Calendar,
-  Globe
+  Calendar
 } from 'lucide-react'
-import { cn } from '../../../../../../shared/lib/utils'
-import { ServiceAccount2FA, ServiceAccount } from '../../../types'
-import Metadata from '../../../../../../components/common/Metadata'
-import { Button } from '../../../../../../components/ui/button'
-import CustomArrayInput from '../../../../../../components/common/CustomArrayInput'
+import { cn } from '../../../../../../../shared/lib/utils'
+import { Email2FA, Email } from '../../../../types'
+import Metadata from '../../../../../../../components/common/Metadata'
+import { Button } from '../../../../../../../components/ui/button'
+import CustomArrayInput from '../../../../../../../components/common/CustomArrayInput'
 import { Label } from '@radix-ui/react-label'
 
-interface CreateServiceAccount2FAFormProps {
-  serviceAccount: ServiceAccount
-  existingMethods: ServiceAccount2FA[]
-  onSubmit: (data: Omit<ServiceAccount2FA, 'id'>) => Promise<void>
+interface CreateEmail2FAFormProps {
+  email: Email
+  existingMethods: Email2FA[]
+  onSubmit: (data: Omit<Email2FA, 'id'>) => Promise<void>
   onCancel: () => void
   loading?: boolean
   className?: string
 }
 
-// 2FA Method options for Service Accounts
+// 2FA Method options
 const twoFAMethodOptions = [
   {
     value: 'totp_key',
@@ -43,18 +42,18 @@ const twoFAMethodOptions = [
     placeholder: 'Enter TOTP secret key...',
     inputType: 'text',
     showAppName: false,
-    autoFillFromService: false,
+    autoFillFromEmail: false,
     unique: true
   },
   {
     value: 'backup_codes',
     label: 'Backup Codes',
     icon: FileText,
-    description: 'Recovery codes for service account access',
+    description: 'Recovery codes for account access',
     placeholder: 'Enter backup codes (one per line)...',
     inputType: 'textarea',
     showAppName: false,
-    autoFillFromService: false,
+    autoFillFromEmail: false,
     unique: true
   },
   {
@@ -65,7 +64,7 @@ const twoFAMethodOptions = [
     placeholder: 'Enter app password...',
     inputType: 'password',
     showAppName: true,
-    autoFillFromService: false,
+    autoFillFromEmail: false,
     unique: false
   },
   {
@@ -76,7 +75,7 @@ const twoFAMethodOptions = [
     placeholder: 'Enter security key ID...',
     inputType: 'text',
     showAppName: false,
-    autoFillFromService: false,
+    autoFillFromEmail: false,
     unique: false
   },
   {
@@ -87,7 +86,8 @@ const twoFAMethodOptions = [
     placeholder: 'Enter recovery email address...',
     inputType: 'email',
     showAppName: false,
-    autoFillFromService: false,
+    autoFillFromEmail: true,
+    autoFillField: 'recovery_email',
     unique: true
   },
   {
@@ -98,13 +98,14 @@ const twoFAMethodOptions = [
     placeholder: 'Enter phone number (+84 xxx xxx xxx)...',
     inputType: 'tel',
     showAppName: false,
-    autoFillFromService: false,
+    autoFillFromEmail: true,
+    autoFillField: 'phone_numbers',
     unique: true
   }
 ]
 
-const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = ({
-  serviceAccount,
+const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
+  email,
   existingMethods = [],
   onSubmit,
   onCancel,
@@ -127,24 +128,41 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Filter available methods based on uniqueness and existing methods
+  // Lọc các method options để loại bỏ các method unique đã tồn tại
   const availableMethodOptions = twoFAMethodOptions.filter((method) => {
     if (!method.unique) return true
+
     return !existingMethods.some((existing) => existing.method_type === method.value)
   })
 
   // Get selected method info
   const selectedMethod = twoFAMethodOptions.find((opt) => opt.value === formData.method_type)
 
-  // Auto-fill app name when method type changes for app_password
+  // Auto-fill value from email data when method type changes
   useEffect(() => {
-    if (selectedMethod?.showAppName && !formData.app && formData.method_type === 'app_password') {
+    if (selectedMethod?.autoFillFromEmail && selectedMethod.autoFillField) {
+      const emailValue = email[selectedMethod.autoFillField as keyof Email]
+      if (emailValue) {
+        let valueToFill = ''
+
+        if (selectedMethod.autoFillField === 'phone_numbers' && Array.isArray(emailValue)) {
+          valueToFill = emailValue.length > 0 ? emailValue[0] : ''
+        } else {
+          valueToFill = String(emailValue)
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          value: valueToFill
+        }))
+      }
+    } else {
       setFormData((prev) => ({
         ...prev,
-        app: serviceAccount.service_name
+        value: ''
       }))
     }
-  }, [formData.method_type, serviceAccount.service_name, selectedMethod, formData.app])
+  }, [formData.method_type, email, selectedMethod])
 
   // Handle method type change
   const handleMethodTypeChange = (value: string | string[]) => {
@@ -153,7 +171,6 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
       ...prev,
       method_type: methodValue,
       app: '',
-      value: '',
       metadata: {}
     }))
     setErrors({})
@@ -161,6 +178,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
 
   // Validate form
   const validateForm = (): boolean => {
+    console.log('[DEBUG] validateForm called with formData:', formData)
     const newErrors: Record<string, string> = {}
 
     if (!formData.method_type) {
@@ -168,9 +186,10 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
     }
 
     if (!formData.value.trim()) {
+      console.log('[DEBUG] Empty value detected for method:', formData.method_type)
       newErrors.value = 'Value is required'
     } else {
-      // Validate based on method type
+      // Only validate non-backup_codes methods at form level
       if (formData.method_type === 'recovery_email') {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(formData.value.trim())) {
@@ -182,22 +201,16 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
           newErrors.value = 'Please enter a valid phone number'
         }
       } else if (formData.method_type === 'backup_codes') {
-        const codes = formData.value
-          .trim()
-          .split('\n')
-          .filter((code) => code.trim())
-        if (codes.length === 0) {
-          newErrors.value = 'Please enter at least one backup code'
-        }
+        console.log(
+          '[DEBUG] SKIP backup_codes validation at form level - handled by CustomArrayInput'
+        )
       }
     }
 
-    // Validate app name for methods that require it
     if (formData.method_type === 'app_password' && !formData.app.trim()) {
       newErrors.app = 'App name is required for app passwords'
     }
 
-    // Validate expiry date if provided
     if (formData.expire_at) {
       const expiryDate = new Date(formData.expire_at)
       if (expiryDate <= new Date()) {
@@ -205,31 +218,30 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
       }
     }
 
+    console.log('[DEBUG] Form validation errors:', newErrors)
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) return
+  const handleSubmit = async () => {
+    console.log('[DEBUG] handleSubmit called')
+    if (!validateForm()) {
+      console.log('[DEBUG] Form validation failed, not submitting')
+      return
+    }
 
     try {
-      // Prepare value based on method type
       let processedValue: string | string[]
       if (formData.method_type === 'backup_codes') {
-        processedValue = formData.value
-          .trim()
-          .split('\n')
-          .map((code) => code.trim())
-          .filter((code) => code)
+        const rawCodes = formData.value.trim().split('\n')
+        processedValue = rawCodes.map((code) => code.trim()).filter((code) => code)
       } else {
         processedValue = formData.value.trim()
       }
 
-      const serviceAccount2FAData: Omit<ServiceAccount2FA, 'id'> = {
-        service_account_id: serviceAccount.id!,
+      const email2FAData: Omit<Email2FA, 'id'> = {
+        email_id: email.id!,
         method_type: formData.method_type as any,
         app: formData.app.trim() || undefined,
         value: processedValue,
@@ -244,10 +256,10 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
         }
       }
 
-      await onSubmit(serviceAccount2FAData)
+      await onSubmit(email2FAData)
     } catch (error) {
-      console.error('Error creating service account 2FA method:', error)
-      throw error
+      console.error('[DEBUG] Error in handleSubmit:', error)
+      console.error('Error creating 2FA method:', error)
     }
   }
 
@@ -304,8 +316,11 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
       size: 'sm' as const
     }
 
+    const isAutoFilled =
+      selectedMethod.autoFillFromEmail &&
+      email[selectedMethod.autoFillField as keyof Email] !== undefined
+
     if (selectedMethod.inputType === 'textarea' && formData.method_type === 'backup_codes') {
-      // Parse current value into array
       const currentCodes = formData.value
         .split('\n')
         .map((code) => code.trim())
@@ -313,6 +328,14 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
 
       return (
         <div className="space-y-2">
+          {isAutoFilled && (
+            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-700 rounded-lg p-2">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                💡 Value auto-filled from email {selectedMethod.autoFillField}
+              </p>
+            </div>
+          )}
+
           <div className="space-y-1">
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {getValueLabel()}
@@ -320,57 +343,85 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
             <CustomArrayInput
               items={currentCodes}
               onChange={(newCodes) => {
+                console.log('[DEBUG] CustomArrayInput onChange called with:', newCodes)
                 // Update form data with joined codes
                 const joinedValue = newCodes.join('\n')
+                console.log('[DEBUG] Setting form value to:', joinedValue)
                 setFormData((prev) => ({ ...prev, value: joinedValue }))
+
+                // Clear any form-level errors since CustomArrayInput handles its own validation
+                console.log('[DEBUG] Clearing form-level errors for backup_codes')
+                setErrors((prev) => {
+                  const newErrors = { ...prev }
+                  delete newErrors.value
+                  console.log('[DEBUG] Errors after clearing value error:', newErrors)
+                  return newErrors
+                })
               }}
               placeholder="Enter backup code..."
               allowDuplicates={false}
               maxItems={20}
               minItems={1}
               hint="Add backup codes one by one. Each code should be unique."
-              error={errors.value}
               disabled={loading}
+              // Don't pass error prop - let CustomArrayInput handle all validation
             />
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>{currentCodes.length} codes added</span>
-              {currentCodes.length > 0 && (
-                <span className="text-green-600 dark:text-green-400">✓ Ready to save</span>
-              )}
-            </div>
+          </div>
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{currentCodes.length} codes added</span>
+            {currentCodes.length > 0 && (
+              <span className="text-green-600 dark:text-green-400">✓ Ready to save</span>
+            )}
           </div>
         </div>
       )
     }
 
-    // Fallback to textarea for other textarea inputs
     if (selectedMethod.inputType === 'textarea') {
       return (
-        <CustomTextArea
-          label={getValueLabel()}
-          value={formData.value}
-          onChange={(value) => setFormData((prev) => ({ ...prev, value }))}
-          placeholder={selectedMethod.placeholder}
-          hint="Enter one item per line"
-          rows={5}
-          maxLength={2000}
-          showCharCount
-          {...commonProps}
-        />
+        <div className="space-y-2">
+          {isAutoFilled && (
+            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-700 rounded-lg p-2">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                💡 Value auto-filled from email {selectedMethod.autoFillField}
+              </p>
+            </div>
+          )}
+          <CustomTextArea
+            label={getValueLabel()}
+            value={formData.value}
+            onChange={(value) => setFormData((prev) => ({ ...prev, value }))}
+            placeholder={selectedMethod.placeholder}
+            hint="Enter one item per line"
+            rows={5}
+            maxLength={2000}
+            showCharCount
+            {...commonProps}
+          />
+        </div>
       )
     }
 
     return (
-      <CustomInput
-        label={getValueLabel()}
-        type={selectedMethod.inputType}
-        value={formData.value}
-        onChange={(value) => setFormData((prev) => ({ ...prev, value }))}
-        placeholder={selectedMethod.placeholder}
-        variant="filled"
-        leftIcon={<selectedMethod.icon className="h-4 w-4" />}
-        {...commonProps}
-      />
+      <div className="space-y-2">
+        {isAutoFilled && (
+          <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-700 rounded-lg p-2">
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              💡 Value auto-filled from email {selectedMethod.autoFillField}
+            </p>
+          </div>
+        )}
+        <CustomInput
+          label={getValueLabel()}
+          type={selectedMethod.inputType}
+          value={formData.value}
+          onChange={(value) => setFormData((prev) => ({ ...prev, value }))}
+          placeholder={selectedMethod.placeholder}
+          variant="filled"
+          leftIcon={<selectedMethod.icon className="h-4 w-4" />}
+          {...commonProps}
+        />
+      </div>
     )
   }
 
@@ -388,11 +439,9 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
             <Plus className="h-3 w-3 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <h4 className="text-base font-bold text-text-primary">
-              Add 2FA Method for {serviceAccount.service_name}
-            </h4>
+            <h4 className="text-base font-bold text-text-primary">Add 2FA Method</h4>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Configure a new two-factor authentication method for this service account
+              Configure a new two-factor authentication method for {email.email_address}
             </p>
           </div>
         </div>
@@ -402,29 +451,13 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
           onClick={handleCancel}
           disabled={loading}
           className="p-1 h-6 w-6"
-          type="button"
         >
           <X className="h-3 w-3" />
         </Button>
       </div>
 
-      {/* Service Account Info */}
-      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <div>
-            <div className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              {serviceAccount.service_name}
-            </div>
-            <div className="text-xs text-blue-700 dark:text-blue-200">
-              {serviceAccount.service_type} • {serviceAccount.service_url || 'No URL provided'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Form Container */}
+      <div className="space-y-4">
         {/* 2FA Method Selection */}
         <div className="space-y-1">
           <CustomCombobox
@@ -457,9 +490,9 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
               </div>
               <p className="text-xs text-blue-700 dark:text-blue-200">
                 {selectedMethod.description}
-                {selectedMethod.showAppName && (
+                {selectedMethod.autoFillFromEmail && (
                   <span className="block mt-1 text-blue-600 dark:text-blue-400">
-                    • App name will auto-fill from service name
+                    • Will auto-fill from email {selectedMethod.autoFillField} if available
                   </span>
                 )}
               </p>
@@ -467,7 +500,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
           )}
         </div>
 
-        {/* App Name (for App Password) */}
+        {/* App Name (Optional) */}
         {selectedMethod?.showAppName && (
           <CustomInput
             label="App Name"
@@ -506,7 +539,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
 
         {/* Metadata Form */}
         {formData.method_type && (
-          <div onClick={(e) => e.preventDefault()}>
+          <div>
             <Metadata
               metadata={formData.metadata}
               onMetadataChange={(newMetadata) =>
@@ -533,24 +566,23 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
             onClick={handleCancel}
             disabled={loading}
             className="min-w-[80px]"
-            type="button"
           >
             Cancel
           </CustomButton>
           <CustomButton
             variant="success"
             size="sm"
-            type="submit"
-            disabled={loading || !formData.method_type || !formData.value.trim()}
+            onClick={handleSubmit}
+            disabled={loading || !formData.method_type || !formData.value}
             loading={loading}
             className="min-w-[140px] bg-green-600 hover:bg-green-700 text-white"
           >
             Add 2FA Method
           </CustomButton>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
 
-export default CreateServiceAccount2FAForm
+export default CreateEmail2FAForm
