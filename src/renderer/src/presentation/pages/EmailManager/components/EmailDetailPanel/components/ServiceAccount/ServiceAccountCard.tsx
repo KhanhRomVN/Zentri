@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '../../../../../../../components/ui/button'
+import { useFaviconColor } from '../../../../../../../hooks/useFaviconColor'
 import CustomInput from '../../../../../../../components/common/CustomInput'
 import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
 import Metadata from '../../../../../../../components/common/Metadata'
@@ -88,6 +89,26 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
   const [password, setPassword] = useState(service.password || '')
   const [note, setNote] = useState(service.note || '')
   const [metadata, setMetadata] = useState(service.metadata || {})
+
+  // Extract dominant color from favicon
+  const {
+    color: faviconColor,
+    isLoading: colorLoading,
+    error: colorError
+  } = useFaviconColor(service.service_url, {
+    enabled: true,
+    fallbackColor: 'var(--primary)'
+  })
+
+  // Debug log
+  useEffect(() => {
+    console.log('[ServiceCard]', service.service_name, {
+      url: service.service_url,
+      color: faviconColor,
+      loading: colorLoading,
+      error: colorError
+    })
+  }, [service.service_name, service.service_url, faviconColor, colorLoading, colorError])
 
   // State để theo dõi trạng thái loading và feedback
   const [savingField, setSavingField] = useState<string | null>(null)
@@ -285,14 +306,8 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
     >
       {/* Status Indicator */}
       <div
-        className={cn(
-          'absolute top-0 left-0 w-1 h-full',
-          service.status === 'active'
-            ? 'bg-emerald-500'
-            : service.status === 'suspended'
-              ? 'bg-red-500'
-              : 'bg-gray-400'
-        )}
+        className="absolute top-0 left-0 w-1 h-full transition-colors duration-300"
+        style={{ backgroundColor: faviconColor }}
       />
 
       {/* Collapsed View */}
@@ -378,7 +393,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               variant="ghost"
               size="sm"
               onClick={handleView}
-              className="p-0.5 h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors "
+              className="p-0.5 h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors"
               title="View service details"
             >
               <ChevronRight className="h-3 w-3" />

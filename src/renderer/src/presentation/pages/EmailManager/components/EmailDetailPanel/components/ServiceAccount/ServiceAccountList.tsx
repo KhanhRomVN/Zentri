@@ -122,6 +122,25 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
 
   return (
     <div className={cn('space-y-6', className)}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="pl-2">
+          <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
+            <Globe className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            Service Accounts
+          </h3>
+        </div>
+        <CustomButton
+          size="sm"
+          variant="primary"
+          icon={Plus}
+          onClick={handleAddService}
+          className="shadow-sm px-3 py-1.5 text-xs"
+        >
+          Add Service
+        </CustomButton>
+      </div>
+
       {/* Create Service Form - Thêm form ở đây */}
       {showCreateForm && email && (
         <CreateServiceAccountForm
@@ -267,6 +286,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
                   key={service.id}
                   service={service}
                   onServiceClick={showViewDetailsButton ? onServiceClick : undefined}
+                  onServiceView={onServiceClick} // Thêm dòng này
                   onServiceUpdate={onServiceUpdate}
                   defaultExpanded={false}
                 />
@@ -303,6 +323,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
                       key={service.id}
                       service={service}
                       onServiceClick={showViewDetailsButton ? onServiceClick : undefined}
+                      onServiceView={onServiceClick} // Thêm dòng này
                       onServiceUpdate={onServiceUpdate}
                       defaultExpanded={false}
                     />
@@ -318,6 +339,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
                       key={service.id}
                       service={service}
                       onServiceClick={showViewDetailsButton ? onServiceClick : undefined}
+                      onServiceView={onServiceClick} // Thêm dòng này
                       onServiceUpdate={onServiceUpdate}
                       defaultExpanded={false}
                     />

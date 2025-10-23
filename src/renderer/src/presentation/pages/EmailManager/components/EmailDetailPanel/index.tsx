@@ -46,33 +46,57 @@ interface EmailDetailPanelProps {
   onBackToList?: () => void
 }
 
-type TabType = 'overview' | 'services' | 'security'
+type TabType = 'overview' | 'services' | 'security' | 'service_security' | 'service_secret'
 
 interface TabConfig {
   id: TabType
   label: string
   icon: React.ComponentType<{ className?: string }>
   description: string
+  color: string
+  activeColor: string
 }
 
 const TABS: TabConfig[] = [
   {
     id: 'overview',
-    label: 'Overview',
+    label: 'Email Information',
     icon: User,
-    description: 'Personal information and contact details'
+    description: 'Personal information and contact details',
+    color: 'text-blue-600 dark:text-blue-400',
+    activeColor: 'border-blue-600 dark:border-blue-400'
+  },
+  {
+    id: 'security',
+    label: 'Email Security',
+    icon: Shield,
+    description: 'Two-factor authentication and security settings',
+    color: 'text-green-600 dark:text-green-400',
+    activeColor: 'border-green-600 dark:border-green-400'
   },
   {
     id: 'services',
     label: 'Services',
     icon: Globe,
-    description: 'Connected service accounts'
+    description: 'Connected service accounts',
+    color: 'text-purple-600 dark:text-purple-400',
+    activeColor: 'border-purple-600 dark:border-purple-400'
   },
   {
-    id: 'security',
-    label: 'Security',
+    id: 'service_security',
+    label: 'Service Security',
     icon: Shield,
-    description: 'Two-factor authentication and security settings'
+    description: 'Service account two-factor authentication',
+    color: 'text-orange-600 dark:text-orange-400',
+    activeColor: 'border-orange-600 dark:border-orange-400'
+  },
+  {
+    id: 'service_secret',
+    label: 'Service Secret',
+    icon: Key,
+    description: 'Service account secrets and credentials',
+    color: 'text-pink-600 dark:text-pink-400',
+    activeColor: 'border-pink-600 dark:border-pink-400'
   }
 ]
 
@@ -110,6 +134,14 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
     if (onTabChange) {
       onTabChange(tab)
     }
+
+    // Reset selectedServiceAccount khi chuyển sang bất kỳ tab nào không phải service detail tabs
+    // hoặc khi click vào tab "services" để quay về list
+    if (tab === 'overview' || tab === 'security' || tab === 'services') {
+      if (onBackToList) {
+        onBackToList()
+      }
+    }
   }
 
   const getEmailInitials = (emailAddress: string): string => {
@@ -117,7 +149,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   }
 
   const renderTabContent = () => {
-    // Service Detail View
+    // Service Detail View - Hiển thị theo tab
     if (selectedServiceAccount) {
       const serviceSecrets = serviceAccountSecrets.filter(
         (secret) => secret.service_account_id === selectedServiceAccount.id
@@ -126,32 +158,53 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
         (method) => method.service_account_id === selectedServiceAccount.id
       )
 
-      return (
-        <div className="p-6 space-y-6">
-          <ServiceAccountSection
-            serviceAccount={selectedServiceAccount}
-            onServiceUpdate={onServiceUpdate}
-          />
+      switch (activeTab) {
+        case 'services':
+          return (
+            <div className="p-6 space-y-6">
+              <ServiceAccountSection
+                serviceAccount={selectedServiceAccount}
+                onServiceUpdate={onServiceUpdate}
+              />
+            </div>
+          )
 
-          <ServiceAccount2FASection
-            serviceAccount={selectedServiceAccount}
-            serviceAccount2FAMethods={service2FAMethods}
-            onAdd2FA={onAddServiceAccount2FA || (async () => {})}
-            onDelete2FA={onDeleteServiceAccount2FA}
-            onSave2FA={onUpdateServiceAccount2FA}
-          />
+        case 'service_security':
+          return (
+            <div className="p-6 space-y-6">
+              <ServiceAccount2FASection
+                serviceAccount={selectedServiceAccount}
+                serviceAccount2FAMethods={service2FAMethods}
+                onAdd2FA={onAddServiceAccount2FA || (async () => {})}
+                onDelete2FA={onDeleteServiceAccount2FA}
+                onSave2FA={onUpdateServiceAccount2FA}
+              />
+            </div>
+          )
 
-          <ServiceAccountSecretSection
-            serviceAccount={selectedServiceAccount}
-            secrets={serviceSecrets}
-            onAddSecret={onAddServiceAccountSecret}
-            onDeleteSecret={onDeleteServiceAccountSecret}
-          />
-        </div>
-      )
+        case 'service_secret':
+          return (
+            <div className="p-6 space-y-6">
+              <ServiceAccountSecretSection
+                serviceAccount={selectedServiceAccount}
+                secrets={serviceSecrets}
+                onAddSecret={onAddServiceAccountSecret}
+                onDeleteSecret={onDeleteServiceAccountSecret}
+              />
+            </div>
+          )
+
+        default:
+          // Nếu đang xem service detail nhưng tab không phải service-related,
+          // reset về danh sách services
+          if (onBackToList) {
+            onBackToList()
+          }
+          return null
+      }
     }
 
-    // Tab Views
+    // Tab Views - Khi không xem service detail
     switch (activeTab) {
       case 'overview':
         return (
@@ -265,40 +318,44 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
         </div>
       </div>
 
-      {/* Tab Navigation - Only show if not viewing service detail */}
-      {!selectedServiceAccount && (
-        <div className="flex-none border-b border-gray-200 dark:border-gray-700 bg-transparent">
-          <div className="px-6">
-            <div className="flex space-x-6 overflow-x-auto scrollbar-hide">
-              {TABS.map((tab) => {
-                const Icon = tab.icon
-                const isActive = activeTab === tab.id
+      {/* Tab Navigation - Always show */}
+      <div className="flex-none border-b border-gray-200 dark:border-gray-700 bg-transparent">
+        <div className="px-6">
+          <div className="flex space-x-6 overflow-x-auto scrollbar-hide">
+            {TABS.map((tab) => {
+              const Icon = tab.icon
+              const isActive = activeTab === tab.id
 
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    className={`
-                      group relative flex items-center gap-2 py-3 px-1 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2
-                      ${
-                        isActive
-                          ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 border-transparent hover:border-gray-300 dark:hover:border-gray-600'
-                      }
-                    `}
-                    title={tab.description}
-                  >
-                    <Icon
-                      className={`h-4 w-4 ${isActive ? 'text-blue-600 dark:text-blue-400' : ''}`}
-                    />
-                    <span>{tab.label}</span>
-                  </button>
-                )
-              })}
-            </div>
+              // Chỉ hiển thị tab service_security và service_secret khi đang xem ServiceAccount
+              const shouldShowTab =
+                tab.id === 'service_security' || tab.id === 'service_secret'
+                  ? selectedServiceAccount !== null
+                  : true
+
+              if (!shouldShowTab) return null
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`
+        group relative flex items-center gap-2 py-3 px-1 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2
+        ${
+          isActive
+            ? `${tab.color} ${tab.activeColor}`
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+        }
+      `}
+                  title={tab.description}
+                >
+                  <Icon className={`h-4 w-4 ${isActive ? tab.color : ''}`} />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto">

@@ -247,7 +247,17 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
 
   return (
     <div className={cn('space-y-6', className)}>
-      <div className="">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="pl-2">
+          <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
+            <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            Email Information
+          </h3>
+        </div>
+      </div>
+
+      <div className="p-4">
         {/* Full Name - Full Width Row */}
         <div className="grid grid-cols-1 gap-3 mb-4">
           <CustomInput
