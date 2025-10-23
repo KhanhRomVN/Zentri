@@ -37,7 +37,7 @@ interface Email2FACardProps {
 
 const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, className }) => {
   const [showSecret, setShowSecret] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true)
 
   // State cho inline editing
   const [appValue, setAppValue] = useState(method.app || '')
@@ -427,7 +427,10 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
         {/* Header - Always Visible */}
         <div className="pb-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div
+              className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
               <div
                 className={`w-10 h-10 ${methodInfo.bgColor} rounded-lg flex items-center justify-center shadow-sm flex-shrink-0`}
               >

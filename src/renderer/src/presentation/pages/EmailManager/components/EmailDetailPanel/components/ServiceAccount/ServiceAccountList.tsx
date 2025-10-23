@@ -12,6 +12,8 @@ interface ServiceAccountListProps {
   services: ServiceAccount[]
   emailAddress?: string
   email?: Email
+  showCreateForm?: boolean
+  onToggleCreateForm?: (show: boolean) => void
   onServiceAdd?: (service: Omit<ServiceAccount, 'id' | 'email_id'>) => void
   onServiceEdit?: (service: ServiceAccount) => void
   onServiceDelete?: (serviceId: string) => void
@@ -26,6 +28,8 @@ interface ServiceAccountListProps {
 const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
   services,
   email,
+  showCreateForm = false,
+  onToggleCreateForm,
   onServiceAdd,
   onServiceClick,
   onServiceUpdate,
@@ -38,8 +42,6 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [showFilterPanel, setShowFilterPanel] = useState(false)
 
-  // Thêm state để quản lý form
-  const [showCreateForm, setShowCreateForm] = useState(false)
   const [isCreatingService, setIsCreatingService] = useState(false)
 
   // Get unique service types and statuses for filters
@@ -74,7 +76,9 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
 
   // Sửa handleAddService để hiển thị form
   const handleAddService = () => {
-    setShowCreateForm(true)
+    if (onToggleCreateForm) {
+      onToggleCreateForm(true)
+    }
   }
 
   // Thêm handler để tạo service
@@ -84,7 +88,9 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
       if (onServiceAdd) {
         await onServiceAdd(serviceData)
       }
-      setShowCreateForm(false)
+      if (onToggleCreateForm) {
+        onToggleCreateForm(false)
+      }
     } catch (error) {
       console.error('Error creating service account:', error)
     } finally {
@@ -94,7 +100,9 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
 
   // Handler để hủy tạo service
   const handleCancelCreate = () => {
-    setShowCreateForm(false)
+    if (onToggleCreateForm) {
+      onToggleCreateForm(false)
+    }
   }
 
   // Filter handlers
@@ -142,7 +150,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
               variant="primary"
               size="md"
               onClick={handleAddService}
-              className=" bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+              className="px-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
               title="Add Service"
             >
               <Plus className="h-5 w-5" />

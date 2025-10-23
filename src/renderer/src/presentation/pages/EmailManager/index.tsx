@@ -37,6 +37,12 @@ const EmailManagerPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreatingEmail, setIsCreatingEmail] = useState(false)
 
+  // Track active tab cho từng email
+  const [emailActiveTabs, setEmailActiveTabs] = useState<Record<string, string>>({})
+
+  // Track trạng thái CreateServiceAccountForm cho từng email
+  const [showCreateFormByEmail, setShowCreateFormByEmail] = useState<Record<string, boolean>>({})
+
   // Related data for selected email
   const [email2FAMethods, setEmail2FAMethods] = useState<Email2FA[]>([])
   const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([])
@@ -217,9 +223,25 @@ const EmailManagerPage = () => {
       const serviceData = { ...data, email_id: selectedEmail.id }
       await databaseService.createServiceAccount(serviceData)
       await loadEmailRelatedData(selectedEmail.id)
+
+      // Đóng form sau khi tạo thành công
+      setShowCreateFormByEmail((prev) => ({
+        ...prev,
+        [selectedEmail.id!]: false
+      }))
     } catch (error) {
       console.error('Failed to add service account:', error)
       throw error
+    }
+  }
+
+  // Toggle create service form
+  const handleToggleCreateServiceForm = (show: boolean) => {
+    if (selectedEmail?.id) {
+      setShowCreateFormByEmail((prev) => ({
+        ...prev,
+        [selectedEmail.id!]: show
+      }))
     }
   }
 
@@ -405,6 +427,17 @@ const EmailManagerPage = () => {
                   serviceAccount2FAMethods={serviceAccount2FAMethods}
                   serviceAccountSecrets={serviceAccountSecrets}
                   selectedServiceAccount={selectedServiceAccount}
+                  activeTab={emailActiveTabs[selectedEmail.id || ''] || 'overview'}
+                  onTabChange={(tab) => {
+                    if (selectedEmail.id) {
+                      setEmailActiveTabs((prev) => ({
+                        ...prev,
+                        [selectedEmail.id!]: tab
+                      }))
+                    }
+                  }}
+                  showCreateServiceForm={showCreateFormByEmail[selectedEmail.id || ''] || false}
+                  onToggleCreateServiceForm={handleToggleCreateServiceForm}
                   onUpdateEmail={updateEmail}
                   onAdd2FA={handleAddEmail2FA}
                   onUpdate2FA={handleUpdateEmail2FA}

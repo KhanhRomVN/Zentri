@@ -1,13 +1,14 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/AccountService/CreateAccountServiceForm.tsx
-import React, { useState, useEffect } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import CustomButton from '../../../../../../../components/common/CustomButton'
 import CustomInput from '../../../../../../../components/common/CustomInput'
 import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
-import { Globe, User, Key, Link, Plus, X, AlertCircle, Shield, Activity } from 'lucide-react'
+import { User, Key, Link, Plus, X, AlertCircle, Shield, Activity } from 'lucide-react'
 import { cn } from '../../../../../../../shared/lib/utils'
 import { ServiceAccount, Email } from '../../../../types'
 import Metadata from '../../../../../../../components/common/Metadata'
 import { Button } from '../../../../../../../components/ui/button'
+import { SERVICE_TEMPLATES, ServiceTemplate } from '../../../../constants/serviceTemplates'
 
 interface CreateAccountServiceFormProps {
   email: Email
@@ -181,43 +182,90 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Reset form khi email thay đổi
+  useEffect(() => {
+    setFormData({
+      service_name: '',
+      service_type: '',
+      service_url: '',
+      status: 'active',
+      name: '',
+      username: '',
+      password: '',
+      note: '',
+      metadata: {}
+    })
+    setErrors({})
+  }, [email.id])
+
+  // Merge service templates với existing services
+  const availableServices = useMemo(() => {
+    // Map để loại bỏ duplicate dựa trên service_name (case-insensitive)
+    const serviceMap = new Map<
+      string,
+      { value: string; label: string; template: ServiceTemplate }
+    >()
+
+    // Thêm templates trước (ưu tiên template)
+    SERVICE_TEMPLATES.forEach((template) => {
+      const key = template.service_name.toLowerCase()
+      serviceMap.set(key, {
+        value: template.service_name,
+        label: template.service_name,
+        template
+      })
+    })
+
+    // Thêm existing services (chỉ thêm nếu chưa có trong templates)
+    existingServices.forEach((service) => {
+      const key = service.service_name.toLowerCase()
+      if (!serviceMap.has(key)) {
+        serviceMap.set(key, {
+          value: service.service_name,
+          label: service.service_name,
+          template: {
+            service_name: service.service_name,
+            service_type: service.service_type,
+            service_url: service.service_url
+          } as ServiceTemplate
+        })
+      }
+    })
+
+    // Convert Map thành array và sort theo alphabet
+    return Array.from(serviceMap.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }, [existingServices])
+
+  // Handle service name change - auto-fill type & URL from template
+  const handleServiceNameChange = (value: string | string[]) => {
+    const serviceName = Array.isArray(value) ? value[0] : value
+
+    // Tìm template matching với service name
+    const matchedService = availableServices.find(
+      (s) => s.value.toLowerCase() === serviceName.toLowerCase()
+    )
+
+    if (matchedService?.template) {
+      // Auto-fill từ template
+      setFormData((prev) => ({
+        ...prev,
+        service_name: serviceName,
+        service_type: matchedService.template.service_type,
+        service_url: matchedService.template.service_url || ''
+      }))
+    } else {
+      // Service mới - chỉ set name
+      setFormData((prev) => ({
+        ...prev,
+        service_name: serviceName
+      }))
+    }
+
+    setErrors({})
+  }
+
   // Get selected service type info
   const selectedServiceType = serviceTypeOptions.find((opt) => opt.value === formData.service_type)
-
-  // Auto-generate service URL when service name changes
-  useEffect(() => {
-    if (formData.service_name && !formData.service_url) {
-      // Simple logic to suggest URL based on service name
-      const serviceName = formData.service_name.toLowerCase()
-      let suggestedUrl = ''
-
-      // Common service URL patterns
-      if (serviceName.includes('github')) {
-        suggestedUrl = 'https://github.com'
-      } else if (serviceName.includes('google')) {
-        suggestedUrl = 'https://accounts.google.com'
-      } else if (serviceName.includes('facebook')) {
-        suggestedUrl = 'https://facebook.com'
-      } else if (serviceName.includes('twitter')) {
-        suggestedUrl = 'https://twitter.com'
-      } else if (serviceName.includes('linkedin')) {
-        suggestedUrl = 'https://linkedin.com'
-      } else if (serviceName.includes('instagram')) {
-        suggestedUrl = 'https://instagram.com'
-      } else if (serviceName.includes('netflix')) {
-        suggestedUrl = 'https://netflix.com'
-      } else if (serviceName.includes('spotify')) {
-        suggestedUrl = 'https://spotify.com'
-      }
-
-      if (suggestedUrl) {
-        setFormData((prev) => ({
-          ...prev,
-          service_url: suggestedUrl
-        }))
-      }
-    }
-  }, [formData.service_name, formData.service_url])
 
   // Handle service type change
   const handleServiceTypeChange = (value: string | string[]) => {
@@ -358,19 +406,32 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Service Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Service Name */}
-          <CustomInput
-            label="Service Name"
-            value={formData.service_name}
-            onChange={(value) => setFormData((prev) => ({ ...prev, service_name: value }))}
-            placeholder="e.g., GitHub, Google, Facebook"
-            variant="filled"
-            leftIcon={<Globe className="h-4 w-4" />}
-            error={errors.service_name}
-            required
-            disabled={loading}
-            size="sm"
-          />
+          {/* Service Name - Combobox */}
+          <div className="space-y-1">
+            <CustomCombobox
+              label="Service Name"
+              value={formData.service_name}
+              options={availableServices.map((s) => ({ value: s.value, label: s.label }))}
+              onChange={handleServiceNameChange}
+              placeholder="Select or create service..."
+              searchable={true}
+              creatable={true}
+              size="sm"
+              required
+            />
+            {errors.service_name && (
+              <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.service_name}
+              </p>
+            )}
+            {formData.service_name &&
+              availableServices.find((s) => s.value === formData.service_name) && (
+                <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                  ℹ️ Auto-filled from template
+                </p>
+              )}
+          </div>
 
           {/* Service Type */}
           <div className="space-y-1">

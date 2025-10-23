@@ -24,6 +24,10 @@ interface EmailDetailPanelProps {
   serviceAccount2FAMethods: ServiceAccount2FA[]
   serviceAccountSecrets: ServiceAccountSecret[]
   selectedServiceAccount: ServiceAccount | null
+  activeTab?: TabType
+  onTabChange?: (tab: TabType) => void
+  showCreateServiceForm?: boolean
+  onToggleCreateServiceForm?: (show: boolean) => void
   onUpdateEmail?: (id: string, updates: Partial<Email>) => Promise<boolean>
   onAdd2FA?: (data: Omit<Email2FA, 'id'>) => Promise<void>
   onUpdate2FA?: (id: string, updates: Partial<Email2FA>) => Promise<void>
@@ -77,6 +81,10 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   serviceAccount2FAMethods,
   serviceAccountSecrets,
   selectedServiceAccount,
+  activeTab: externalActiveTab = 'overview',
+  onTabChange,
+  showCreateServiceForm = false,
+  onToggleCreateServiceForm,
   onUpdateEmail,
   onAdd2FA,
   onUpdate2FA,
@@ -92,7 +100,13 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   onDeleteServiceAccountSecret,
   onBackToList
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const activeTab = externalActiveTab
+
+  const handleTabChange = (tab: TabType) => {
+    if (onTabChange) {
+      onTabChange(tab)
+    }
+  }
 
   const getEmailInitials = (emailAddress: string): string => {
     return emailAddress.charAt(0).toUpperCase()
@@ -149,6 +163,8 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
               services={serviceAccounts}
               email={email}
               emailAddress={email.email_address}
+              showCreateForm={showCreateServiceForm}
+              onToggleCreateForm={onToggleCreateServiceForm}
               onServiceAdd={onServiceAdd}
               onServiceClick={onServiceClick}
               onServiceUpdate={onServiceUpdate}
@@ -159,7 +175,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
 
       case 'security':
         return (
-          <div className="p-6 space-y-6">
+          <div className="space-y-6">
             <Email2FASection
               email={email}
               email2FAMethods={email2FAMethods}
@@ -257,7 +273,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`
                       group relative flex items-center gap-2 py-3 px-1 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2
                       ${
