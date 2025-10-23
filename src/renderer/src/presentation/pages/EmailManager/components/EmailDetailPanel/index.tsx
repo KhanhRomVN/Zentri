@@ -28,6 +28,8 @@ interface EmailDetailPanelProps {
   onTabChange?: (tab: TabType) => void
   showCreateServiceForm?: boolean
   onToggleCreateServiceForm?: (show: boolean) => void
+  serviceFormDraft?: any
+  onServiceFormDraftChange?: (draftData: any) => void
   onUpdateEmail?: (id: string, updates: Partial<Email>) => Promise<boolean>
   onAdd2FA?: (data: Omit<Email2FA, 'id'>) => Promise<void>
   onUpdate2FA?: (id: string, updates: Partial<Email2FA>) => Promise<void>
@@ -83,8 +85,10 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   selectedServiceAccount,
   activeTab: externalActiveTab = 'overview',
   onTabChange,
-  showCreateServiceForm = false,
   onToggleCreateServiceForm,
+  showCreateServiceForm = false,
+  serviceFormDraft,
+  onServiceFormDraftChange,
   onUpdateEmail,
   onAdd2FA,
   onUpdate2FA,

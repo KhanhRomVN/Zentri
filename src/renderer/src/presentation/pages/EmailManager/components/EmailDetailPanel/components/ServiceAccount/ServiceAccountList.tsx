@@ -12,8 +12,10 @@ interface ServiceAccountListProps {
   services: ServiceAccount[]
   emailAddress?: string
   email?: Email
-  showCreateForm?: boolean
   onToggleCreateForm?: (show: boolean) => void
+  showCreateForm?: boolean
+  formDraft?: any
+  onFormDraftChange?: (draftData: any) => void
   onServiceAdd?: (service: Omit<ServiceAccount, 'id' | 'email_id'>) => void
   onServiceEdit?: (service: ServiceAccount) => void
   onServiceDelete?: (serviceId: string) => void
@@ -30,6 +32,8 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
   email,
   showCreateForm = false,
   onToggleCreateForm,
+  formDraft,
+  onFormDraftChange,
   onServiceAdd,
   onServiceClick,
   onServiceUpdate,
@@ -80,7 +84,6 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
       onToggleCreateForm(true)
     }
   }
-
   // Thêm handler để tạo service
   const handleCreateService = async (serviceData: Omit<ServiceAccount, 'id' | 'email_id'>) => {
     try {
@@ -91,6 +94,10 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
       if (onToggleCreateForm) {
         onToggleCreateForm(false)
       }
+      // Xóa draft data sau khi tạo thành công
+      if (onFormDraftChange) {
+        onFormDraftChange(null)
+      }
     } catch (error) {
       console.error('Error creating service account:', error)
     } finally {
@@ -98,16 +105,12 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
     }
   }
 
-  // Handler để hủy tạo service
   const handleCancelCreate = () => {
     if (onToggleCreateForm) {
       onToggleCreateForm(false)
     }
-  }
-
-  // Filter handlers
-  const handleToggleFilter = () => {
-    setShowFilterPanel(!showFilterPanel)
+    // KHÔNG xóa draft data khi cancel, để giữ lại khi quay lại form
+    // Draft data sẽ bị xóa khi submit thành công hoặc khi chuyển email khác
   }
 
   const handleClearFilters = () => {
@@ -125,8 +128,10 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
           email={email}
           existingServices={services}
           onSubmit={handleCreateService}
-          onCancel={handleCancelCreate}
           loading={isCreatingService}
+          onCancel={handleCancelCreate}
+          initialData={formDraft}
+          onDataChange={onFormDraftChange}
         />
       )}
 

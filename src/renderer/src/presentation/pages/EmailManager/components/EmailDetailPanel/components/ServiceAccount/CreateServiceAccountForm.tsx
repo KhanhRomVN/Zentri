@@ -17,6 +17,8 @@ interface CreateAccountServiceFormProps {
   onCancel: () => void
   loading?: boolean
   className?: string
+  initialData?: any
+  onDataChange?: (data: any) => void
 }
 
 // Service type options
@@ -154,8 +156,10 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
   email,
   existingServices = [],
   onSubmit,
-  onCancel,
   loading = false,
+  onCancel,
+  initialData,
+  onDataChange,
   className
 }) => {
   const [formData, setFormData] = useState<{
@@ -168,23 +172,12 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
     password: string
     note: string
     metadata: Record<string, any>
-  }>({
-    service_name: '',
-    service_type: '',
-    service_url: '',
-    status: 'active',
-    name: '',
-    username: '',
-    password: '',
-    note: '',
-    metadata: {}
-  })
-
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  // Reset form khi email thay đổi
-  useEffect(() => {
-    setFormData({
+  }>(() => {
+    // Khôi phục draft data nếu có
+    if (initialData) {
+      return initialData
+    }
+    return {
       service_name: '',
       service_type: '',
       service_url: '',
@@ -194,19 +187,77 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       password: '',
       note: '',
       metadata: {}
-    })
+    }
+  })
+
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Thay thế useEffect tại dòng 184-192
+  useEffect(() => {
+    // Restore draft data nếu có, ngược lại reset form
+    if (initialData) {
+      setFormData(initialData)
+    } else {
+      setFormData({
+        service_name: '',
+        service_type: '',
+        service_url: '',
+        status: 'active',
+        name: '',
+        username: '',
+        password: '',
+        note: '',
+        metadata: {}
+      })
+    }
     setErrors({})
-  }, [email.id])
+  }, [email.id, initialData])
+
+  // Reset form chỉ khi email thực sự thay đổi và không có draft data
+  useEffect(() => {
+    // Nếu có initialData (draft data), khôi phục từ draft
+    if (initialData) {
+      setFormData(initialData)
+    } else {
+      // Chỉ reset form nếu thực sự cần (khi email thay đổi và không có draft)
+      setFormData({
+        service_name: '',
+        service_type: '',
+        service_url: '',
+        status: 'active',
+        name: '',
+        username: '',
+        password: '',
+        note: '',
+        metadata: {}
+      })
+    }
+    setErrors({})
+  }, [email.id, initialData]) // Thêm initialData vào dependency
+
+  // Đồng bộ form data với draft data khi initialData thay đổi
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData)
+    }
+  }, [initialData])
+
+  // Auto-save draft data khi form thay đổi
+  useEffect(() => {
+    if (onDataChange) {
+      onDataChange(formData)
+    }
+  }, [formData, onDataChange])
 
   // Merge service templates với existing services
   const availableServices = useMemo(() => {
-    // Map để loại bỏ duplicate dựa trên service_name (case-insensitive)
+    // Map để lưu trữ services, key là service_name lowercase
     const serviceMap = new Map<
       string,
       { value: string; label: string; template: ServiceTemplate }
     >()
 
-    // Thêm templates trước (ưu tiên template)
+    // Thêm templates trước
     SERVICE_TEMPLATES.forEach((template) => {
       const key = template.service_name.toLowerCase()
       serviceMap.set(key, {
@@ -216,20 +267,19 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       })
     })
 
-    // Thêm existing services (chỉ thêm nếu chưa có trong templates)
+    // Thêm existing services - LUÔN thêm tất cả services
+    // Nếu trùng tên với template thì sẽ ghi đè (ưu tiên service thực tế)
     existingServices.forEach((service) => {
       const key = service.service_name.toLowerCase()
-      if (!serviceMap.has(key)) {
-        serviceMap.set(key, {
-          value: service.service_name,
-          label: service.service_name,
-          template: {
-            service_name: service.service_name,
-            service_type: service.service_type,
-            service_url: service.service_url
-          } as ServiceTemplate
-        })
-      }
+      serviceMap.set(key, {
+        value: service.service_name,
+        label: service.service_name,
+        template: {
+          service_name: service.service_name,
+          service_type: service.service_type,
+          service_url: service.service_url
+        } as ServiceTemplate
+      })
     })
 
     // Convert Map thành array và sort theo alphabet
@@ -347,7 +397,28 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
         }
       }
 
-      await onSubmit(serviceData)
+      const newService = await onSubmit(serviceData)
+
+      // Chỉ reset form sau khi submit thành công
+      if (newService) {
+        setFormData({
+          service_name: '',
+          service_type: '',
+          service_url: '',
+          status: 'active',
+          name: '',
+          username: '',
+          password: '',
+          note: '',
+          metadata: {}
+        })
+        setErrors({})
+
+        // Thông báo cho parent biết để xóa draft data
+        if (onDataChange) {
+          onDataChange(null)
+        }
+      }
     } catch (error) {
       console.error('Error creating service account:', error)
     }

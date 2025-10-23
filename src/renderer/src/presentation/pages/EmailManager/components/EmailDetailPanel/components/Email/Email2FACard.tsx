@@ -441,7 +441,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-text-primary font-medium">{methodInfo.label}</span>
                   {method.app && (
-                    <CustomBadge variant="secondary" size="xs" className="text-xs">
+                    <CustomBadge variant="secondary" size="sm" className="text-xs">
                       {method.app}
                     </CustomBadge>
                   )}

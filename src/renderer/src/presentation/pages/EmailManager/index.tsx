@@ -43,12 +43,29 @@ const EmailManagerPage = () => {
   // Track trạng thái CreateServiceAccountForm cho từng email
   const [showCreateFormByEmail, setShowCreateFormByEmail] = useState<Record<string, boolean>>({})
 
+  // Track draft data cho CreateServiceAccountForm của từng email
+  const [serviceFormDraftByEmail, setServiceFormDraftByEmail] = useState<Record<string, any>>({})
+
   // Related data for selected email
   const [email2FAMethods, setEmail2FAMethods] = useState<Email2FA[]>([])
   const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([])
   const [selectedServiceAccount, setSelectedServiceAccount] = useState<ServiceAccount | null>(null)
   const [serviceAccount2FAMethods, setServiceAccount2FAMethods] = useState<ServiceAccount2FA[]>([])
   const [serviceAccountSecrets, setServiceAccountSecrets] = useState<ServiceAccountSecret[]>([])
+
+  useEffect(() => {
+    if (selectedEmail?.id) {
+      // Giữ lại draft data cho email hiện tại
+      // Không cần làm gì ở đây vì draft data được quản lý theo email id
+    }
+  }, [selectedEmail?.id])
+
+  useEffect(() => {
+    return () => {
+      // Cleanup: xóa tất cả draft data khi component unmount
+      setServiceFormDraftByEmail({})
+    }
+  }, [])
 
   // Filters state
   const [filters, setFilters] = useState({
@@ -216,7 +233,6 @@ const EmailManagerPage = () => {
     }
   }
 
-  // CRUD operations for Service Accounts
   const handleAddServiceAccount = async (data: Omit<ServiceAccount, 'id' | 'email_id'>) => {
     if (!isDatabaseReady || !selectedEmail?.id) return
     try {
@@ -224,11 +240,18 @@ const EmailManagerPage = () => {
       await databaseService.createServiceAccount(serviceData)
       await loadEmailRelatedData(selectedEmail.id)
 
-      // Đóng form sau khi tạo thành công
+      // Đóng form và xóa draft sau khi tạo thành công
       setShowCreateFormByEmail((prev) => ({
         ...prev,
         [selectedEmail.id!]: false
       }))
+
+      // Xóa draft data sau khi submit thành công
+      setServiceFormDraftByEmail((prev) => {
+        const newDrafts = { ...prev }
+        delete newDrafts[selectedEmail.id!]
+        return newDrafts
+      })
     } catch (error) {
       console.error('Failed to add service account:', error)
       throw error
@@ -242,7 +265,24 @@ const EmailManagerPage = () => {
         ...prev,
         [selectedEmail.id!]: show
       }))
+
+      // Nếu đóng form, xóa draft data
+      if (!show) {
+        setServiceFormDraftByEmail((prev) => {
+          const newDrafts = { ...prev }
+          delete newDrafts[selectedEmail.id!]
+          return newDrafts
+        })
+      }
     }
+  }
+
+  // Handler để lưu draft data khi form thay đổi
+  const handleServiceFormDraftChange = (emailId: string, draftData: any) => {
+    setServiceFormDraftByEmail((prev) => ({
+      ...prev,
+      [emailId]: draftData
+    }))
   }
 
   const handleUpdateServiceAccount = async (
@@ -438,6 +478,12 @@ const EmailManagerPage = () => {
                   }}
                   showCreateServiceForm={showCreateFormByEmail[selectedEmail.id || ''] || false}
                   onToggleCreateServiceForm={handleToggleCreateServiceForm}
+                  serviceFormDraft={serviceFormDraftByEmail[selectedEmail.id || '']}
+                  onServiceFormDraftChange={(draftData) => {
+                    if (selectedEmail.id) {
+                      handleServiceFormDraftChange(selectedEmail.id, draftData)
+                    }
+                  }}
                   onUpdateEmail={updateEmail}
                   onAdd2FA={handleAddEmail2FA}
                   onUpdate2FA={handleUpdateEmail2FA}
