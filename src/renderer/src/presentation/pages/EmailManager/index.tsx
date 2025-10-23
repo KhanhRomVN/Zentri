@@ -6,6 +6,7 @@ import DatabaseModal from './components/DatabaseModal'
 import CreateEmailModal from './components/CreateEmailModal'
 import EmailListPanel from './components/EmailListPanel'
 import EmailDetailPanel from './components/EmailDetailPanel'
+import TableManagerDrawer from './components/TableManagerDrawer'
 import { useDatabaseManager } from './hooks/useDatabaseManager'
 import { Email, Email2FA, ServiceAccount, ServiceAccount2FA, ServiceAccountSecret } from './types'
 import { databaseService } from './services/DatabaseService'
@@ -36,6 +37,7 @@ const EmailManagerPage = () => {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreatingEmail, setIsCreatingEmail] = useState(false)
+  const [showTableManager, setShowTableManager] = useState(false)
 
   // Track active tab cho từng email
   const [emailActiveTabs, setEmailActiveTabs] = useState<Record<string, string>>({})
@@ -400,6 +402,7 @@ const EmailManagerPage = () => {
             onSearchChange={setSearchQuery}
             onSelectEmail={handleSelectEmail}
             onCreateNewEmail={handleCreateNewEmail}
+            onShowTableManager={() => setShowTableManager(true)}
             filters={filters}
             onFiltersChange={setFilters}
             isLoading={isLoading}
@@ -523,6 +526,17 @@ const EmailManagerPage = () => {
         onClose={handleCloseCreateModal}
         onSubmit={handleCreateEmail}
         loading={isCreatingEmail}
+      />
+
+      {/* Table Manager Drawer */}
+      <TableManagerDrawer
+        isOpen={showTableManager}
+        onClose={() => setShowTableManager(false)}
+        emails={emails}
+        serviceAccounts={serviceAccounts}
+        email2FAMethods={email2FAMethods}
+        serviceAccount2FAMethods={serviceAccount2FAMethods}
+        serviceAccountSecrets={serviceAccountSecrets}
       />
     </div>
   )

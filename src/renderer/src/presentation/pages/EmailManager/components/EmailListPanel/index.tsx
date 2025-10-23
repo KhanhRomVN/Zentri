@@ -1,6 +1,6 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailListPanel/index.tsx
 import React, { useState, useMemo } from 'react'
-import { Search, Plus, Mail, SlidersHorizontal, X } from 'lucide-react'
+import { Search, Plus, Mail, SlidersHorizontal, X, Table } from 'lucide-react'
 import CustomButton from '../../../../../components/common/CustomButton'
 import EmailCard from './components/EmailCard'
 import { Email, ServiceAccount, Email2FA } from '../../types'
@@ -14,6 +14,7 @@ interface EmailListPanelProps {
   onSearchChange: (query: string) => void
   onSelectEmail: (email: Email) => void
   onCreateNewEmail: () => void
+  onShowTableManager: () => void
   filters: {
     provider: string[]
     tags: string[]
@@ -31,6 +32,7 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
   onSearchChange,
   onSelectEmail,
   onCreateNewEmail,
+  onShowTableManager,
   filters,
   onFiltersChange,
   isLoading = false
@@ -105,6 +107,13 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
               title="Filter (Coming Soon)"
             >
               <SlidersHorizontal className="h-4 w-4 text-text-secondary" />
+            </button>
+            <button
+              onClick={onShowTableManager}
+              className="p-2 hover:bg-sidebar-itemHover rounded-lg transition-colors"
+              title="Manage Tables"
+            >
+              <Table className="h-4 w-4 text-text-secondary" />
             </button>
             <button
               onClick={onCreateNewEmail}
