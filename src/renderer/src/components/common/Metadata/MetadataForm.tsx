@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React from 'react'
 import CustomInput from '../CustomInput'
 import CustomButton from '../CustomButton'
 import CustomCodeEditor from '../CustomCodeEditor'
-import CustomArrayInput from '../CustomArrayInput'
+import CustomTag from '../CustomTag'
 import { URLInput } from './URLInput'
 import { LocalFileInput } from './LocalFileInput'
 import { cn } from '../../../shared/lib/utils'
@@ -156,17 +156,16 @@ export const renderFieldInput = (
 
     case 'array':
       return (
-        <CustomArrayInput
-          items={extraProps.arrayItems || []}
-          onChange={(items) => {
+        <CustomTag
+          tags={extraProps.arrayItems || []}
+          onTagsChange={(items) => {
             setExtraProps({ ...extraProps, arrayItems: items })
             onChange(JSON.stringify(items))
           }}
           disabled={disabled}
           placeholder="Add array item..."
-          allowDuplicates={false}
-          maxItems={50}
-          hint="Press Enter or click + to add items"
+          allowDuplicates={true}
+          maxTags={50}
         />
       )
 

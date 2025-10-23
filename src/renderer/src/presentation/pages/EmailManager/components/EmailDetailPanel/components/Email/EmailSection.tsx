@@ -1,5 +1,5 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/EmailSection.tsx
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from '../../../../../../../components/ui/button'
 import CustomInput from '../../../../../../../components/common/CustomInput'
 import CustomTag from '../../../../../../../components/common/CustomTag'
@@ -18,7 +18,6 @@ interface EmailSectionProps {
 
 const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateEmail }) => {
   const [showPassword, setShowPassword] = useState(false)
-  // Editable fields - khởi tạo từ email prop
   const [phoneNumbers, setPhoneNumbers] = useState(email.phone_numbers || '')
   const [recoveryEmail, setRecoveryEmail] = useState(email.recovery_email || '')
   const [password, setPassword] = useState(email.pasword || '')
@@ -30,15 +29,39 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
 
   // Metadata với các trường hệ thống không thể xóa
   const [metadata, setMetadata] = useState<Record<string, any>>(() => {
-    // Chỉ giữ lại created_at và last_password_change từ metadata gốc
-    const baseMetadata = email.metadata ? { ...email.metadata } : {}
-    // Đảm bảo các trường hệ thống luôn tồn tại
-    return {
-      created_at: baseMetadata.created_at || new Date().toISOString(),
-      last_password_change: baseMetadata.last_password_change || new Date().toISOString(),
-      ...baseMetadata
+    // Tạo deep copy để tránh reference issue
+    const baseMetadata = email.metadata ? JSON.parse(JSON.stringify(email.metadata)) : {}
+
+    // Chỉ set default values nếu chưa tồn tại
+    if (!baseMetadata.created_at) {
+      baseMetadata.created_at = email.metadata?.created_at || new Date().toISOString()
     }
+    if (!baseMetadata.last_password_change) {
+      baseMetadata.last_password_change =
+        email.metadata?.last_password_change ||
+        email.last_password_change ||
+        new Date().toISOString()
+    }
+
+    return baseMetadata
   })
+
+  // Reset metadata khi email thay đổi
+  useEffect(() => {
+    const baseMetadata = email.metadata ? JSON.parse(JSON.stringify(email.metadata)) : {}
+
+    if (!baseMetadata.created_at) {
+      baseMetadata.created_at = email.metadata?.created_at || new Date().toISOString()
+    }
+    if (!baseMetadata.last_password_change) {
+      baseMetadata.last_password_change =
+        email.metadata?.last_password_change ||
+        email.last_password_change ||
+        new Date().toISOString()
+    }
+
+    setMetadata(baseMetadata)
+  }, [email.id, email.metadata, email.last_password_change]) // Dependency array
 
   // State để theo dõi trạng thái loading và feedback
   const [savingField, setSavingField] = useState<string | null>(null)
@@ -140,24 +163,34 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
   }
 
   const handleMetadataChange = (newMetadata: Record<string, any>) => {
+    // Deep clone để tránh mutation
+    const clonedNewMetadata = JSON.parse(JSON.stringify(newMetadata))
+
     // Loại bỏ các trường có giá trị null, undefined hoặc empty string
     const cleanedMetadata = Object.fromEntries(
-      Object.entries(newMetadata).filter(
+      Object.entries(clonedNewMetadata).filter(
         ([_, value]) => value !== null && value !== undefined && value !== ''
       )
     )
 
-    // Đảm bảo các trường hệ thống không bị xóa
+    // Bảo vệ các trường hệ thống - sử dụng giá trị từ email gốc
     const finalMetadata = {
-      created_at: metadata.created_at || new Date().toISOString(),
-      last_password_change: metadata.last_password_change || new Date().toISOString(),
+      created_at: email.metadata?.created_at || metadata.created_at || new Date().toISOString(),
+      last_password_change:
+        email.metadata?.last_password_change ||
+        metadata.last_password_change ||
+        email.last_password_change ||
+        new Date().toISOString(),
       ...cleanedMetadata
     }
 
     setMetadata(finalMetadata)
 
     // Chỉ lưu nếu có thay đổi thực sự
-    if (JSON.stringify(finalMetadata) !== JSON.stringify(email.metadata || {})) {
+    const currentMetadataStr = JSON.stringify(email.metadata || {})
+    const newMetadataStr = JSON.stringify(finalMetadata)
+
+    if (currentMetadataStr !== newMetadataStr) {
       handleSaveField('metadata', finalMetadata)
     }
   }
@@ -214,275 +247,262 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
 
   return (
     <div className={cn('space-y-6', className)}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="pl-2">
-          <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
-            <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            Account Information
-          </h3>
+      <div className="">
+        {/* Full Name - Full Width Row */}
+        <div className="grid grid-cols-1 gap-3 mb-4">
+          <CustomInput
+            label="Full Name"
+            value={name}
+            onChange={setName}
+            placeholder="Enter full name..."
+            variant="filled"
+            size="sm"
+            leftIcon={<User className="h-3 w-3" />}
+            rightIcon={renderStatusIcon('name', hasNameChanged)}
+            disabled={savingField !== null && savingField !== 'name'}
+          />
         </div>
-      </div>
 
-      {/* Main Account Information Section - Consolidated */}
-      <div className="bg-card-background rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
-        <div className="p-4">
-          {/* Full Name - Full Width Row */}
-          <div className="grid grid-cols-1 gap-3 mb-4">
-            <CustomInput
-              label="Full Name"
-              value={name}
-              onChange={setName}
-              placeholder="Enter full name..."
-              variant="filled"
-              size="sm"
-              leftIcon={<User className="h-3 w-3" />}
-              rightIcon={renderStatusIcon('name', hasNameChanged)}
-              disabled={savingField !== null && savingField !== 'name'}
-            />
-          </div>
+        {/* Age and Phone Numbers - Same Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+          <CustomInput
+            label="Age"
+            type="number"
+            value={age}
+            onChange={setAge}
+            placeholder="Age..."
+            variant="filled"
+            size="sm"
+            rightIcon={renderStatusIcon('age', hasAgeChanged)}
+            disabled={savingField !== null && savingField !== 'age'}
+          />
 
-          {/* Age and Phone Numbers - Same Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-            <CustomInput
-              label="Age"
-              type="number"
-              value={age}
-              onChange={setAge}
-              placeholder="Age..."
-              variant="filled"
-              size="sm"
-              rightIcon={renderStatusIcon('age', hasAgeChanged)}
-              disabled={savingField !== null && savingField !== 'age'}
-            />
-
-            <CustomInput
-              label="Phone Numbers"
-              value={phoneNumbers}
-              onChange={setPhoneNumbers}
-              placeholder="+84 xxx xxx xxx"
-              variant="filled"
-              size="sm"
-              leftIcon={<Phone className="h-3 w-3" />}
-              rightIcon={
-                <div className="flex items-center gap-0.5">
-                  {phoneNumbers && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(phoneNumbers)}
-                      className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      disabled={savingField !== null}
-                    >
-                      <Copy className="h-2.5 w-2.5" />
-                    </Button>
-                  )}
-                  {renderStatusIcon('phone_numbers', hasPhoneChanged)}
-                </div>
-              }
-              disabled={savingField !== null && savingField !== 'phone_numbers'}
-            />
-          </div>
-
-          {/* Address - Full Width Row */}
-          <div className="grid grid-cols-1 gap-3 mb-4">
-            <CustomInput
-              label="Address"
-              value={address}
-              onChange={setAddress}
-              placeholder="Enter address..."
-              variant="filled"
-              size="sm"
-              leftIcon={<MapPin className="h-3 w-3" />}
-              rightIcon={
-                <div className="flex items-center gap-0.5">
-                  {address && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(address)}
-                      className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      disabled={savingField !== null}
-                    >
-                      <Copy className="h-2.5 w-2.5" />
-                    </Button>
-                  )}
-                  {renderStatusIcon('address', hasAddressChanged)}
-                </div>
-              }
-              disabled={savingField !== null && savingField !== 'address'}
-            />
-          </div>
-
-          {/* Email Address - Full Width Row */}
-          <div className="grid grid-cols-1 gap-3 mb-4">
-            <CustomInput
-              label="Email Address"
-              value={email.email_address}
-              readOnly
-              variant="filled"
-              size="sm"
-              leftIcon={<Mail className="h-3 w-3" />}
-              rightIcon={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(email.email_address)}
-                  className="p-0.5 h-5 w-5 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  disabled={savingField !== null}
-                >
-                  <Copy className="h-2.5 w-2.5" />
-                </Button>
-              }
-            />
-          </div>
-
-          {/* Recovery Email - Full Width Row */}
-          <div className="grid grid-cols-1 gap-3 mb-4">
-            <CustomInput
-              label="Recovery Email"
-              value={recoveryEmail}
-              onChange={setRecoveryEmail}
-              placeholder="Enter recovery email..."
-              variant="filled"
-              size="sm"
-              leftIcon={<Mail className="h-3 w-3" />}
-              rightIcon={
-                <div className="flex items-center gap-0.5">
-                  {recoveryEmail && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(recoveryEmail)}
-                      className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      disabled={savingField !== null}
-                    >
-                      <Copy className="h-2.5 w-2.5" />
-                    </Button>
-                  )}
-                  {renderStatusIcon('recovery_email', hasRecoveryEmailChanged)}
-                </div>
-              }
-              disabled={savingField !== null && savingField !== 'recovery_email'}
-            />
-          </div>
-
-          {/* Password - Full Width Row */}
-          <div className="grid grid-cols-1 gap-3 mb-4">
-            <CustomInput
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={setPassword}
-              variant="filled"
-              size="sm"
-              rightIcon={
-                <div className="flex items-center gap-0.5">
+          <CustomInput
+            label="Phone Numbers"
+            value={phoneNumbers}
+            onChange={setPhoneNumbers}
+            placeholder="+84 xxx xxx xxx"
+            variant="filled"
+            size="sm"
+            leftIcon={<Phone className="h-3 w-3" />}
+            rightIcon={
+              <div className="flex items-center gap-0.5">
+                {phoneNumbers && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    disabled={savingField !== null}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-2.5 w-2.5" />
-                    ) : (
-                      <Eye className="h-2.5 w-2.5" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(password)}
+                    onClick={() => copyToClipboard(phoneNumbers)}
                     className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
                     disabled={savingField !== null}
                   >
                     <Copy className="h-2.5 w-2.5" />
                   </Button>
-                  {renderStatusIcon('password', hasPasswordChanged)}
-                </div>
-              }
-              disabled={savingField !== null && savingField !== 'password'}
-            />
-          </div>
-
-          {/* Note Section - Full Width Row */}
-          <div className="grid grid-cols-1 gap-3 mb-4">
-            <CustomInput
-              label="Notes"
-              value={note}
-              onChange={setNote}
-              placeholder="Add notes about this email account..."
-              variant="filled"
-              size="sm"
-              leftIcon={<FileText className="h-3 w-3" />}
-              rightIcon={renderStatusIcon('note', hasNoteChanged)}
-              disabled={savingField !== null && savingField !== 'note'}
-              rows={3}
-              showCharCount={true}
-              maxLength={500}
-            />
-          </div>
-
-          {/* Tags Section - Full Width Row */}
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 bg-purple-50 dark:bg-purple-900/20 rounded-md flex items-center justify-center">
-                <Tag className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                )}
+                {renderStatusIcon('phone_numbers', hasPhoneChanged)}
               </div>
-              <h5 className="text-sm font-semibold text-text-primary">Tags</h5>
-            </div>
+            }
+            disabled={savingField !== null && savingField !== 'phone_numbers'}
+          />
+        </div>
 
-            <CustomTag
-              tags={editedTags}
-              onTagsChange={(newTags) => {
-                handleTagsChange(newTags)
-                // Tự động lưu tags khi có thay đổi
-                handleSaveField('tags', newTags)
-              }}
-              placeholder="Enter tag name..."
-              allowDuplicates={false}
-              className="mb-2"
-              disabled={savingField !== null}
-            />
+        {/* Address - Full Width Row */}
+        <div className="grid grid-cols-1 gap-3 mb-4">
+          <CustomInput
+            label="Address"
+            value={address}
+            onChange={setAddress}
+            placeholder="Enter address..."
+            variant="filled"
+            size="sm"
+            leftIcon={<MapPin className="h-3 w-3" />}
+            rightIcon={
+              <div className="flex items-center gap-0.5">
+                {address && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(address)}
+                    className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    disabled={savingField !== null}
+                  >
+                    <Copy className="h-2.5 w-2.5" />
+                  </Button>
+                )}
+                {renderStatusIcon('address', hasAddressChanged)}
+              </div>
+            }
+            disabled={savingField !== null && savingField !== 'address'}
+          />
+        </div>
+
+        {/* Email Address - Full Width Row */}
+        <div className="grid grid-cols-1 gap-3 mb-4">
+          <CustomInput
+            label="Email Address"
+            value={email.email_address}
+            readOnly
+            variant="filled"
+            size="sm"
+            leftIcon={<Mail className="h-3 w-3" />}
+            rightIcon={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyToClipboard(email.email_address)}
+                className="p-0.5 h-5 w-5 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                disabled={savingField !== null}
+              >
+                <Copy className="h-2.5 w-2.5" />
+              </Button>
+            }
+          />
+        </div>
+
+        {/* Recovery Email - Full Width Row */}
+        <div className="grid grid-cols-1 gap-3 mb-4">
+          <CustomInput
+            label="Recovery Email"
+            value={recoveryEmail}
+            onChange={setRecoveryEmail}
+            placeholder="Enter recovery email..."
+            variant="filled"
+            size="sm"
+            leftIcon={<Mail className="h-3 w-3" />}
+            rightIcon={
+              <div className="flex items-center gap-0.5">
+                {recoveryEmail && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(recoveryEmail)}
+                    className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    disabled={savingField !== null}
+                  >
+                    <Copy className="h-2.5 w-2.5" />
+                  </Button>
+                )}
+                {renderStatusIcon('recovery_email', hasRecoveryEmailChanged)}
+              </div>
+            }
+            disabled={savingField !== null && savingField !== 'recovery_email'}
+          />
+        </div>
+
+        {/* Password - Full Width Row */}
+        <div className="grid grid-cols-1 gap-3 mb-4">
+          <CustomInput
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={setPassword}
+            variant="filled"
+            size="sm"
+            rightIcon={
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  disabled={savingField !== null}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-2.5 w-2.5" />
+                  ) : (
+                    <Eye className="h-2.5 w-2.5" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(password)}
+                  className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  disabled={savingField !== null}
+                >
+                  <Copy className="h-2.5 w-2.5" />
+                </Button>
+                {renderStatusIcon('password', hasPasswordChanged)}
+              </div>
+            }
+            disabled={savingField !== null && savingField !== 'password'}
+          />
+        </div>
+
+        {/* Note Section - Full Width Row */}
+        <div className="grid grid-cols-1 gap-3 mb-4">
+          <CustomInput
+            label="Notes"
+            value={note}
+            onChange={setNote}
+            placeholder="Add notes about this email account..."
+            variant="filled"
+            size="sm"
+            leftIcon={<FileText className="h-3 w-3" />}
+            rightIcon={renderStatusIcon('note', hasNoteChanged)}
+            disabled={savingField !== null && savingField !== 'note'}
+            rows={3}
+            showCharCount={true}
+            maxLength={500}
+          />
+        </div>
+
+        {/* Tags Section - Full Width Row */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 bg-purple-50 dark:bg-purple-900/20 rounded-md flex items-center justify-center">
+              <Tag className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h5 className="text-sm font-semibold text-text-primary">Tags</h5>
           </div>
 
-          {/* Metadata với các trường hệ thống */}
-          <div className="pt-4">
-            <div className="space-y-4">
-              <Metadata
-                metadata={metadata}
-                onMetadataChange={handleMetadataChange}
-                onDelete={(key) => {
-                  // Ngăn chặn xóa các trường hệ thống
-                  if (key === 'created_at' || key === 'last_password_change') {
-                    return
-                  }
-                  const newMetadata = { ...metadata }
-                  delete newMetadata[key]
-                  setMetadata(newMetadata)
-                  handleSaveField('metadata', newMetadata)
-                }}
-                title="Metadata"
-                compact={true}
-                collapsible={true}
-                defaultExpanded={false}
-                editable={true}
-                showDeleteButtons={true}
-                hideEmpty={true}
-                maxVisibleFields={10}
-                protectedFields={['created_at', 'last_password_change']}
-                emailAddress={email.email_address} // THÊM DÒNG NÀY
-                shouldRenderField={(_, value) => {
-                  // Không hiển thị các trường có giá trị null/undefined/empty
-                  if (value === null || value === undefined || value === '') {
-                    return false
-                  }
-                  return true
-                }}
-              />
-            </div>
+          <CustomTag
+            tags={editedTags}
+            onTagsChange={(newTags) => {
+              handleTagsChange(newTags)
+              // Tự động lưu tags khi có thay đổi
+              handleSaveField('tags', newTags)
+            }}
+            placeholder="Enter tag name..."
+            allowDuplicates={false}
+            className="mb-2"
+            disabled={savingField !== null}
+          />
+        </div>
+
+        {/* Metadata với các trường hệ thống */}
+        <div className="pt-4">
+          <div className="space-y-4">
+            <Metadata
+              metadata={metadata}
+              onMetadataChange={handleMetadataChange}
+              onDelete={(key) => {
+                // Ngăn chặn xóa các trường hệ thống
+                if (key === 'created_at' || key === 'last_password_change') {
+                  return
+                }
+                const newMetadata = { ...metadata }
+                delete newMetadata[key]
+                setMetadata(newMetadata)
+                handleSaveField('metadata', newMetadata)
+              }}
+              title="Metadata"
+              compact={true}
+              collapsible={true}
+              defaultExpanded={true}
+              editable={true}
+              showDeleteButtons={true}
+              hideEmpty={true}
+              maxVisibleFields={10}
+              protectedFields={['created_at', 'last_password_change']}
+              emailAddress={email.email_address} // THÊM DÒNG NÀY
+              shouldRenderField={(_, value) => {
+                // Không hiển thị các trường có giá trị null/undefined/empty
+                if (value === null || value === undefined || value === '') {
+                  return false
+                }
+                return true
+              }}
+            />
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import CustomInput from '../CustomInput'
 import CustomCombobox from '../CustomCombobox'
 import CustomButton from '../CustomButton'
-import { Database, Copy, Trash2, ChevronDown, ChevronUp, Plus, Edit2 } from 'lucide-react'
+import { Database, Copy, Trash2, Plus, Edit2 } from 'lucide-react'
 import { cn } from '../../../shared/lib/utils'
 
 // Import types and utilities
@@ -24,7 +24,7 @@ import {
 } from './utils'
 import { renderFieldInput } from './MetadataForm'
 import CustomCodeEditor from '../CustomCodeEditor'
-import CustomArrayInput from '../CustomArrayInput'
+import CustomTag from '../CustomTag'
 
 // Enhanced color mapping for different field types
 const getFieldTypeColor = (fieldType: string) => {
@@ -63,7 +63,7 @@ const Metadata: React.FC<MetadataProps> = ({
   showDeleteButtons = true
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
-  const [showAll, setShowAll] = useState(false)
+  const [showAll] = useState(false)
   const [editingField, setEditingField] = useState<EditingField | null>(null)
   const [editingExistingField, setEditingExistingField] = useState<EditingExistingField | null>(
     null
@@ -90,8 +90,6 @@ const Metadata: React.FC<MetadataProps> = ({
   }
 
   const visibleEntries = maxVisibleFields && !showAll ? entries.slice(0, maxVisibleFields) : entries
-  const hasMoreFields = maxVisibleFields && entries.length > maxVisibleFields
-
   const currentSize = SIZE_CLASSES[size]
 
   // Start creating new field
@@ -435,15 +433,14 @@ const Metadata: React.FC<MetadataProps> = ({
             disabled={!canModify || !allowEdit || isProtected}
           />
         ) : detectFieldType(value) === 'array' && Array.isArray(value) ? (
-          <CustomArrayInput
-            viewMode={true}
-            items={value.map(String)}
-            onChange={
+          <CustomTag
+            tags={value.map(String)}
+            onTagsChange={
               canModify && allowEdit && !isProtected
-                ? (newItems) => {
+                ? (newTags: string[]) => {
                     const newMetadata = { ...metadata }
                     // Try to preserve original data types where possible
-                    const convertedItems = newItems.map((item) => {
+                    const convertedItems = newTags.map((item: string) => {
                       // Try to parse as number if original array contained numbers
                       if (value.some((v) => typeof v === 'number') && !isNaN(Number(item))) {
                         return Number(item)
@@ -462,14 +459,9 @@ const Metadata: React.FC<MetadataProps> = ({
                 : () => {} // Read-only if cannot modify
             }
             disabled={!canModify || !allowEdit || isProtected}
-            placeholder="Add array item..."
-            allowDuplicates={false}
-            maxItems={50}
-            hint={
-              !canModify || !allowEdit || isProtected
-                ? 'Read-only field'
-                : 'Press Enter or click + to add items'
-            }
+            placeholder="Add item..."
+            allowDuplicates={true}
+            maxTags={50}
           />
         ) : (
           <CustomInput value={displayValue} readOnly variant="filled" size="sm" />
@@ -560,7 +552,14 @@ const Metadata: React.FC<MetadataProps> = ({
 
   const headerContent = (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
+      <button
+        onClick={collapsible ? () => setIsExpanded(!isExpanded) : undefined}
+        className={cn(
+          'flex items-center gap-2 flex-1',
+          collapsible && 'hover:opacity-70 transition-opacity cursor-pointer'
+        )}
+        disabled={!collapsible}
+      >
         <div
           className={cn(
             'bg-indigo-50 dark:bg-indigo-900/20 rounded-lg flex items-center justify-center',
@@ -575,26 +574,20 @@ const Metadata: React.FC<MetadataProps> = ({
             ({entries.length} field{entries.length !== 1 ? 's' : ''})
           </span>
         )}
-      </div>
+      </button>
 
       <div className="flex items-center gap-2">
         {canModify && allowCreate && !editingField && !editingExistingField && (
-          <button
+          <CustomButton
+            variant="ghost"
+            size="sm"
+            icon={Plus}
             onClick={startCreateField}
-            className="p-1 h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
             title="Add new field"
+            className="!w-auto"
           >
-            <Plus className="h-3 w-3" />
-          </button>
-        )}
-
-        {collapsible && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1 h-6 w-6 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-          >
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
+            Create
+          </CustomButton>
         )}
       </div>
     </div>
@@ -606,27 +599,6 @@ const Metadata: React.FC<MetadataProps> = ({
 
       <div className="space-y-3">
         {visibleEntries.map(([key, value]) => renderField(key, value))}
-
-        {hasMoreFields && !editingField && !editingExistingField && (
-          <div className="text-center pt-2">
-            <button
-              onClick={() => setShowAll(!showAll)}
-              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-1 rounded text-sm transition-colors"
-            >
-              {showAll ? (
-                <>
-                  <ChevronUp className="h-4 w-4 mr-1 inline" />
-                  Show Less
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-4 w-4 mr-1 inline" />
-                  Show {entries.length - maxVisibleFields!} More Fields
-                </>
-              )}
-            </button>
-          </div>
-        )}
       </div>
     </>
   )

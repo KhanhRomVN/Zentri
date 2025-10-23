@@ -7,10 +7,8 @@ import {
   ExternalLink,
   User,
   ChevronRight,
-  ChevronDown,
   Globe,
   Shield,
-  Eye,
   Copy,
   Key,
   Link,
@@ -77,6 +75,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
   showNestedServices = false,
   nestedServices = []
 }) => {
+  // State expand/collapse độc lập cho mỗi card
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   // Editable fields - khởi tạo từ service prop
@@ -379,23 +378,10 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               variant="ghost"
               size="sm"
               onClick={handleView}
-              className="p-0.5 h-5 w-5 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="p-0.5 h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors "
               title="View service details"
             >
-              <Eye className="h-3 w-3" />
-            </Button>
-
-            {/* Expand/Collapse Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-0.5 h-5 w-5 text-gray-400 hover:text-gray-600"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-3 w-3 transition-transform" />
-              ) : (
-                <ChevronRight className="h-3 w-3 transition-transform" />
-              )}
+              <ChevronRight className="h-3 w-3" />
             </Button>
           </div>
         </div>
@@ -406,14 +392,6 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
         <div className="px-3 pb-3 space-y-4 animate-in slide-in-from-top-2 duration-300">
           {/* Divider */}
           <div className="border-t border-gray-100 dark:border-gray-700 ml-2" />
-
-          {/* Header */}
-          <div className="flex items-center justify-between ml-2">
-            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Service Details
-            </div>
-          </div>
-
           {/* Service Information Section */}
           <div className="space-y-3 ml-2">
             {/* Service Name */}
@@ -610,7 +588,6 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               rightIcon={renderStatusIcon('note', hasNoteChanged, note)}
             />
           </div>
-
           {/* Metadata Section */}
           <div className="ml-2">
             <Metadata
@@ -629,7 +606,6 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               showDeleteButtons={true}
             />
           </div>
-
           {/* Nested Services List */}
           {showNestedServices && nestedServices && nestedServices.length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 ml-2">
