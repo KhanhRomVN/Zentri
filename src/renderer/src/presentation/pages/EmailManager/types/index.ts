@@ -104,3 +104,23 @@ export interface EmailManagerState {
   isLoading: boolean
   error: string | null
 }
+
+export interface SavedTable {
+  id: string
+  name: string
+  query: string
+  columns: string[]
+  data: any[]
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface QueryHistory {
+  id: string
+  savedTableId?: string // Optional - NULL nếu query độc lập
+  prompt: string
+  query: string
+  rowCount: number
+  columnCount: number
+  createdAt: string
+}

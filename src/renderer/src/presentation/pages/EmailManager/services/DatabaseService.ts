@@ -6,7 +6,9 @@ import {
   ServiceAccount,
   ServiceAccount2FA,
   ServiceAccountSecret,
-  DatabaseInfo
+  DatabaseInfo,
+  QueryHistory,
+  SavedTable
 } from '../types'
 
 declare global {
@@ -62,6 +64,9 @@ export class DatabaseService {
             await this.clearLastDatabase()
             return false
           }
+
+          // Kiểm tra và tạo các table còn thiếu
+          await this.ensureTablesExist()
 
           this.currentDatabase = {
             ...lastDatabase,
@@ -160,6 +165,9 @@ export class DatabaseService {
 
       const filePath = result.filePaths[0]
       await window.electronAPI.sqlite.openDatabase(filePath)
+
+      // Kiểm tra và tạo các table còn thiếu
+      await this.ensureTablesExist()
 
       // Extract project name from the path structure
       const projectName = this.getProjectNameFromDatabasePath(filePath)
@@ -326,13 +334,38 @@ export class DatabaseService {
         FOREIGN KEY (service_account_id) REFERENCES service_accounts (id) ON DELETE CASCADE
       )`,
 
+      // Saved tables table - lưu trữ các bảng thống kê đã tạo
+      `CREATE TABLE IF NOT EXISTS saved_tables (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        query TEXT NOT NULL,
+        columns TEXT NOT NULL, -- JSON array
+        data TEXT NOT NULL, -- JSON array of objects
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      // Query history table - lưu lịch sử các query đã thực thi
+      `CREATE TABLE IF NOT EXISTS query_history (
+        id TEXT PRIMARY KEY,
+        saved_table_id TEXT, -- NULL nếu là query độc lập, NOT NULL nếu thuộc về saved_table
+        prompt TEXT NOT NULL,
+        query TEXT NOT NULL,
+        row_count INTEGER DEFAULT 0,
+        column_count INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (saved_table_id) REFERENCES saved_tables (id) ON DELETE CASCADE
+      )`,
+
       // Create indexes for better performance
       `CREATE INDEX IF NOT EXISTS idx_emails_provider ON emails (email_provider)`,
       `CREATE INDEX IF NOT EXISTS idx_email_2fa_email_id ON email_2fa (email_id)`,
       `CREATE INDEX IF NOT EXISTS idx_service_accounts_email_id ON service_accounts (email_id)`,
       `CREATE INDEX IF NOT EXISTS idx_service_accounts_type ON service_accounts (service_type)`,
       `CREATE INDEX IF NOT EXISTS idx_service_account_2fa_service_id ON service_account_2fa (service_account_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_service_account_secrets_service_id ON service_account_secrets (service_account_id)`
+      `CREATE INDEX IF NOT EXISTS idx_service_account_secrets_service_id ON service_account_secrets (service_account_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_query_history_table_id ON query_history (saved_table_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_saved_tables_created_at ON saved_tables (created_at DESC)`
     ]
 
     for (const query of queries) {
@@ -875,17 +908,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
     ])
   }
 
-  async migrateDatabaseTables(): Promise<void> {
-    try {
-      await this.migrateEmailsTable()
-    } catch (error) {
-      console.error('[MIGRATION ERROR]', error)
-      throw new Error(
-        `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      )
-    }
-  }
-
   private async migrateEmailsTable(): Promise<void> {
     try {
       const tableInfo = await window.electronAPI.sqlite.getAllRows('PRAGMA table_info(emails)')
@@ -950,6 +972,235 @@ id, service_account_id, secret, expire_at, created_at, updated_at
     } catch (error) {
       console.error('[MIGRATION] Error migrating emails table:', error)
       throw error
+    }
+  }
+
+  // ============================================================
+  // SAVED TABLES CRUD OPERATIONS
+  // ============================================================
+
+  async getAllSavedTables(): Promise<SavedTable[]> {
+    const rows = await window.electronAPI.sqlite.getAllRows(
+      'SELECT * FROM saved_tables ORDER BY created_at DESC'
+    )
+    return rows.map(this.mapRowToSavedTable)
+  }
+
+  async getSavedTableById(id: string): Promise<SavedTable | null> {
+    const row = await window.electronAPI.sqlite.getOneRow(
+      'SELECT * FROM saved_tables WHERE id = ?',
+      [id]
+    )
+    return row ? this.mapRowToSavedTable(row) : null
+  }
+
+  async createSavedTable(tableData: Omit<SavedTable, 'id'>): Promise<SavedTable> {
+    const id = uuidv4()
+    const now = new Date().toISOString()
+
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO saved_tables (
+        id, name, query, columns, data, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        tableData.name,
+        tableData.query,
+        JSON.stringify(tableData.columns),
+        JSON.stringify(tableData.data),
+        now,
+        now
+      ]
+    )
+
+    return {
+      ...tableData,
+      id,
+      createdAt: now,
+      updatedAt: now
+    }
+  }
+
+  async updateSavedTable(id: string, updates: Partial<SavedTable>): Promise<void> {
+    const fields = []
+    const values = []
+
+    if (updates.name !== undefined) {
+      fields.push('name = ?')
+      values.push(updates.name)
+    }
+    if (updates.query !== undefined) {
+      fields.push('query = ?')
+      values.push(updates.query)
+    }
+    if (updates.columns !== undefined) {
+      fields.push('columns = ?')
+      values.push(JSON.stringify(updates.columns))
+    }
+    if (updates.data !== undefined) {
+      fields.push('data = ?')
+      values.push(JSON.stringify(updates.data))
+    }
+
+    if (fields.length > 0) {
+      fields.push('updated_at = ?')
+      values.push(new Date().toISOString())
+      values.push(id)
+
+      const query = `UPDATE saved_tables SET ${fields.join(', ')} WHERE id = ?`
+      await window.electronAPI.sqlite.runQuery(query, values)
+    }
+  }
+
+  async deleteSavedTable(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM saved_tables WHERE id = ?', [id])
+  }
+
+  private mapRowToSavedTable(row: any): SavedTable {
+    return {
+      id: row.id,
+      name: row.name,
+      query: row.query,
+      columns: JSON.parse(row.columns),
+      data: JSON.parse(row.data),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }
+  }
+
+  // ============================================================
+  // QUERY HISTORY CRUD OPERATIONS
+  // ============================================================
+
+  async getAllQueryHistory(savedTableId?: string): Promise<QueryHistory[]> {
+    let query = 'SELECT * FROM query_history'
+    const params: any[] = []
+
+    if (savedTableId) {
+      query += ' WHERE saved_table_id = ?'
+      params.push(savedTableId)
+    }
+
+    query += ' ORDER BY created_at DESC'
+
+    const rows = await window.electronAPI.sqlite.getAllRows(query, params)
+    return rows.map(this.mapRowToQueryHistory)
+  }
+
+  async createQueryHistory(historyData: Omit<QueryHistory, 'id'>): Promise<QueryHistory> {
+    const id = uuidv4()
+    const now = new Date().toISOString()
+
+    await window.electronAPI.sqlite.runQuery(
+      `INSERT INTO query_history (
+        id, saved_table_id, prompt, query, row_count, column_count, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        historyData.savedTableId || null,
+        historyData.prompt,
+        historyData.query,
+        historyData.rowCount,
+        historyData.columnCount,
+        now
+      ]
+    )
+
+    return {
+      ...historyData,
+      id,
+      createdAt: now
+    }
+  }
+
+  async deleteQueryHistory(id: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM query_history WHERE id = ?', [id])
+  }
+
+  async deleteQueryHistoryByTableId(savedTableId: string): Promise<void> {
+    await window.electronAPI.sqlite.runQuery('DELETE FROM query_history WHERE saved_table_id = ?', [
+      savedTableId
+    ])
+  }
+
+  private mapRowToQueryHistory(row: any): QueryHistory {
+    return {
+      id: row.id,
+      savedTableId: row.saved_table_id,
+      prompt: row.prompt,
+      query: row.query,
+      rowCount: row.row_count,
+      columnCount: row.column_count,
+      createdAt: row.created_at
+    }
+  }
+
+  // Kiểm tra và tạo các table còn thiếu
+  async ensureTablesExist(): Promise<void> {
+    try {
+      console.log('[DatabaseService] Checking tables existence...')
+
+      // Lấy danh sách các table hiện có
+      const existingTables = await window.electronAPI.sqlite.getAllRows(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+      )
+      const tableNames = existingTables.map((row: any) => row.name)
+
+      console.log('[DatabaseService] Existing tables:', tableNames)
+
+      // Danh sách các table cần có
+      const requiredTables = [
+        'emails',
+        'email_2fa',
+        'service_accounts',
+        'service_account_2fa',
+        'service_account_secrets',
+        'saved_tables',
+        'query_history'
+      ]
+
+      // Kiểm tra table nào còn thiếu
+      const missingTables = requiredTables.filter((table) => !tableNames.includes(table))
+
+      if (missingTables.length > 0) {
+        console.log('[DatabaseService] Missing tables:', missingTables)
+        console.log('[DatabaseService] Creating missing tables...')
+
+        // Tạo lại tất cả các table (initializeTables sẽ dùng IF NOT EXISTS)
+        await this.initializeTables()
+
+        console.log('[DatabaseService] Missing tables created successfully')
+      } else {
+        console.log('[DatabaseService] All required tables exist')
+      }
+
+      // Kiểm tra và migrate các table cũ nếu cần
+      await this.checkAndMigrateTables()
+    } catch (error) {
+      console.error('[DatabaseService] Error ensuring tables exist:', error)
+      throw new Error(
+        `Failed to ensure tables exist: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    }
+  }
+
+  // Kiểm tra và migrate các table cũ
+  private async checkAndMigrateTables(): Promise<void> {
+    try {
+      // Kiểm tra emails table có column 'category' hay không (cần migrate)
+      const emailsTableInfo = await window.electronAPI.sqlite.getAllRows(
+        'PRAGMA table_info(emails)'
+      )
+      const hasCategory = emailsTableInfo.some((col: any) => col.name === 'category')
+
+      if (hasCategory) {
+        console.log('[DatabaseService] Detected old schema, migrating emails table...')
+        await this.migrateEmailsTable()
+        console.log('[DatabaseService] Migration completed')
+      }
+    } catch (error) {
+      console.error('[DatabaseService] Error checking migration:', error)
+      // Không throw error ở đây vì có thể table chưa tồn tại
     }
   }
 }

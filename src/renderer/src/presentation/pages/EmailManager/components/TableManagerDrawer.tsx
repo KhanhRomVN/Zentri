@@ -1,20 +1,11 @@
 // src/renderer/src/presentation/pages/EmailManager/components/TableManagerDrawer/index.tsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import CustomDrawer from '../../../../components/common/CustomDrawer'
 import CustomButton from '../../../../components/common/CustomButton'
-import { Plus, Trash2, Eye, FileSpreadsheet } from 'lucide-react'
-import CreateTableDrawer from './CreateTableDrawer'
-
-interface SavedTable {
-  id: string
-  name: string
-  emailId: string
-  emailAddress: string
-  category: 'service' | 'security'
-  subcategory: string // 'secret', '2fa', 'service_account'
-  field?: string // Specific field like 'api_key'
-  createdAt: string
-}
+import { Plus, Trash2, Eye, FileSpreadsheet, Edit } from 'lucide-react'
+import TableDrawer from './TableDrawer'
+import { databaseService } from '../services/DatabaseService'
+import { SavedTable } from '../types'
 
 interface TableManagerDrawerProps {
   isOpen: boolean
@@ -38,20 +29,68 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
   const [savedTables, setSavedTables] = useState<SavedTable[]>([])
   const [showCreateDrawer, setShowCreateDrawer] = useState(false)
   const [viewingTable, setViewingTable] = useState<SavedTable | null>(null)
+  const [editingTable, setEditingTable] = useState<SavedTable | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleCreateTable = (tableConfig: Omit<SavedTable, 'id' | 'createdAt'>) => {
-    const newTable: SavedTable = {
-      ...tableConfig,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString()
+  // Load saved tables từ database khi drawer mở
+  useEffect(() => {
+    if (isOpen) {
+      loadSavedTables()
     }
-    setSavedTables([...savedTables, newTable])
-    setShowCreateDrawer(false)
+  }, [isOpen])
+
+  const loadSavedTables = async () => {
+    try {
+      setIsLoading(true)
+      const tables = await databaseService.getAllSavedTables()
+      setSavedTables(tables)
+    } catch (error) {
+      console.error('Failed to load saved tables:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleDeleteTable = (id: string) => {
+  const handleSaveTable = async (tableConfig: any, isEdit: boolean, tableId?: string) => {
+    try {
+      if (isEdit && tableId) {
+        // Update existing table
+        await databaseService.updateSavedTable(tableId, {
+          name: tableConfig.name,
+          query: tableConfig.query,
+          columns: tableConfig.columns,
+          data: tableConfig.data
+        })
+      } else {
+        // Create new table
+        await databaseService.createSavedTable({
+          name: tableConfig.name,
+          query: tableConfig.query,
+          columns: tableConfig.columns,
+          data: tableConfig.data,
+          createdAt: tableConfig.createdAt
+        })
+      }
+
+      // Reload tables
+      await loadSavedTables()
+      setShowCreateDrawer(false)
+      setEditingTable(null)
+    } catch (error) {
+      console.error('Failed to save table:', error)
+      alert('Không thể lưu bảng. Vui lòng thử lại.')
+    }
+  }
+
+  const handleDeleteTable = async (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa bảng này?')) {
-      setSavedTables(savedTables.filter((t) => t.id !== id))
+      try {
+        await databaseService.deleteSavedTable(id)
+        await loadSavedTables()
+      } catch (error) {
+        console.error('Failed to delete table:', error)
+        alert('Không thể xóa bảng. Vui lòng thử lại.')
+      }
     }
   }
 
@@ -69,18 +108,6 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
     })
   }
 
-  const getCategoryLabel = (category: string, subcategory: string) => {
-    if (category === 'service') {
-      if (subcategory === 'secret') return 'Service Secret'
-      if (subcategory === '2fa') return 'Service 2FA'
-      return 'Service Account'
-    }
-    if (category === 'security') {
-      return 'Email Security (2FA)'
-    }
-    return category
-  }
-
   return (
     <>
       <CustomDrawer
@@ -88,7 +115,7 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
         onClose={onClose}
         title="Quản lý Bảng Thống Kê"
         position="right"
-        size="medium"
+        size="lg"
       >
         <div className="h-full flex flex-col">
           {/* Header Actions */}
@@ -106,7 +133,14 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
 
           {/* Tables List */}
           <div className="flex-1 overflow-y-auto p-4">
-            {savedTables.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-sm text-text-secondary">Đang tải bảng...</p>
+                </div>
+              </div>
+            ) : savedTables.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mb-4">
                   <FileSpreadsheet className="h-8 w-8 text-gray-400" />
@@ -140,16 +174,24 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
                         </h4>
                         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                           <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded">
-                            {getCategoryLabel(table.category, table.subcategory)}
+                            {table.columns.length} cột
                           </span>
-                          {table.field && (
-                            <span className="px-2 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded">
-                              {table.field}
-                            </span>
-                          )}
+                          <span className="px-2 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded">
+                            {table.data.length} dòng
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingTable(table)
+                            setShowCreateDrawer(true)
+                          }}
+                          className="p-1.5 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+                          title="Chỉnh sửa"
+                        >
+                          <Edit className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </button>
                         <button
                           onClick={() => handleViewTable(table)}
                           className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
@@ -169,8 +211,10 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
 
                     <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">Email:</span>
-                        <span className="truncate">{table.emailAddress}</span>
+                        <span className="font-medium">Query:</span>
+                        <span className="truncate font-mono">
+                          {table.query.substring(0, 60)}...
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">Tạo lúc:</span>
@@ -186,15 +230,19 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
       </CustomDrawer>
 
       {/* Create Table Drawer */}
-      <CreateTableDrawer
+      <TableDrawer
         isOpen={showCreateDrawer}
-        onClose={() => setShowCreateDrawer(false)}
-        onSubmit={handleCreateTable}
+        onClose={() => {
+          setShowCreateDrawer(false)
+          setEditingTable(null)
+        }}
+        onSubmit={handleSaveTable}
         emails={emails}
         serviceAccounts={serviceAccounts}
         email2FAMethods={email2FAMethods}
         serviceAccount2FAMethods={serviceAccount2FAMethods}
         serviceAccountSecrets={serviceAccountSecrets}
+        editingTable={editingTable}
       />
 
       {/* View Table Drawer */}
@@ -204,7 +252,7 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
           onClose={() => setViewingTable(null)}
           title={viewingTable.name}
           position="right"
-          size="large"
+          size="xl"
         >
           <div className="p-4">
             <p className="text-gray-500 dark:text-gray-400">

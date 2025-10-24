@@ -4,16 +4,19 @@ import QueryBuilderPanel from './components/QueryBuilderPanel'
 import TablePreviewPanel from './components/TablePreviewPanel'
 import { Database, X, RefreshCw, Play } from 'lucide-react'
 import { geminiService } from '../../../../../services/GeminiService'
+import { databaseService } from '../../services/DatabaseService'
+import { SavedTable } from '../../types'
 
-interface CreateTableDrawerProps {
+interface TableDrawerProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (config: any) => void
+  onSubmit: (config: any, isEdit: boolean, tableId?: string) => void
   emails: any[]
   serviceAccounts: any[]
   email2FAMethods: any[]
   serviceAccount2FAMethods: any[]
   serviceAccountSecrets: any[]
+  editingTable?: SavedTable | null
 }
 
 // Database schema for AI context
@@ -46,7 +49,7 @@ interface QueryHistoryItem {
   columnCount: number
 }
 
-const CreateTableDrawer: React.FC<CreateTableDrawerProps> = ({ isOpen, onClose, onSubmit }) => {
+const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, editingTable }) => {
   const [tableName, setTableName] = useState('')
   const [promptInput, setPromptInput] = useState('')
   const [sqlQuery, setSqlQuery] = useState('')
@@ -68,6 +71,55 @@ const CreateTableDrawer: React.FC<CreateTableDrawerProps> = ({ isOpen, onClose, 
     prompt: string
     query: string
   } | null>(null)
+
+  // Load query history từ database khi component mount
+  useEffect(() => {
+    const loadQueryHistory = async () => {
+      if (!isOpen) return
+
+      try {
+        const history = await databaseService.getAllQueryHistory()
+        // Convert từ QueryHistory type sang QueryHistoryItem type
+        const convertedHistory = history.map((h) => ({
+          id: h.id,
+          prompt: h.prompt,
+          query: h.query,
+          timestamp: h.createdAt,
+          rowCount: h.rowCount,
+          columnCount: h.columnCount
+        }))
+        setQueryHistory(convertedHistory)
+      } catch (error) {
+        console.error('Failed to load query history:', error)
+      }
+    }
+
+    loadQueryHistory()
+  }, [isOpen])
+
+  // Pre-fill data when editing
+  useEffect(() => {
+    if (editingTable) {
+      setTableName(editingTable.name)
+      setSqlQuery(editingTable.query)
+      setTableData(editingTable.data)
+      setTableColumns(editingTable.columns)
+
+      // Tạo history item từ table đang edit
+      const historyItem: QueryHistoryItem = {
+        id: `history_${editingTable.id}`,
+        prompt: '(Restored from saved table)',
+        query: editingTable.query,
+        timestamp: editingTable.createdAt,
+        rowCount: editingTable.data.length,
+        columnCount: editingTable.columns.length
+      }
+      setQueryHistory([historyItem])
+    } else {
+      // Reset khi không edit
+      handleReset()
+    }
+  }, [editingTable, isOpen])
 
   // Generate SQL query from prompt using Gemini API
   const handleGenerateQuery = async () => {
@@ -145,18 +197,31 @@ Now generate the query:
       const currentPrompt = promptInput
 
       // Đợi useEffect execute query xong rồi mới add vào history
-      setTimeout(() => {
-        setQueryHistory((prev) => [
-          ...prev,
-          {
-            id: `history_${Date.now()}`,
+      setTimeout(async () => {
+        const historyItem = {
+          id: `history_${Date.now()}`,
+          prompt: currentPrompt,
+          query: cleanQuery,
+          timestamp: new Date().toISOString(),
+          rowCount: 0, // Sẽ được update bởi useEffect
+          columnCount: 0
+        }
+
+        setQueryHistory((prev) => [...prev, historyItem])
+
+        // Lưu vào database (không cần await vì đây là background operation)
+        try {
+          await databaseService.createQueryHistory({
             prompt: currentPrompt,
             query: cleanQuery,
-            timestamp: new Date().toISOString(),
-            rowCount: 0, // Sẽ được update bởi useEffect
-            columnCount: 0
-          }
-        ])
+            rowCount: 0,
+            columnCount: 0,
+            createdAt: historyItem.timestamp
+          })
+        } catch (error) {
+          console.error('Failed to save query history:', error)
+        }
+
         // Clear prompt sau khi đã lưu vào history
         setPromptInput('')
       }, 1000) // Đợi 1s để query execute xong
@@ -293,13 +358,16 @@ Now generate the query:
     }
 
     const config = {
+      id: editingTable?.id || `table_${Date.now()}`,
       name: tableName.trim(),
       query: sqlQuery.trim(),
       columns: tableColumns,
-      data: tableData
+      data: tableData,
+      createdAt: editingTable?.createdAt || new Date().toISOString(),
+      updatedAt: editingTable ? new Date().toISOString() : undefined
     }
 
-    onSubmit(config)
+    onSubmit(config, !!editingTable, editingTable?.id)
     handleReset()
   }
 
@@ -342,7 +410,7 @@ Now generate the query:
         <div className="flex items-center gap-3">
           <Database className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold text-text-primary">
-            AI Query Builder - Tạo Bảng Mới
+            {editingTable ? 'Chỉnh Sửa Bảng' : 'AI Query Builder - Tạo Bảng Mới'}
           </h2>
         </div>
 
@@ -357,7 +425,7 @@ Now generate the query:
             disabled={!canSubmit}
             icon={Play}
           >
-            Tạo Bảng
+            {editingTable ? 'Cập Nhật Bảng' : 'Tạo Bảng'}
           </CustomButton>
           <button
             onClick={handleClose}
@@ -405,4 +473,4 @@ Now generate the query:
   )
 }
 
-export default CreateTableDrawer
+export default TableDrawer
