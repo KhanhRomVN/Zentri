@@ -327,6 +327,7 @@ export class DatabaseService {
       `CREATE TABLE IF NOT EXISTS service_account_secrets (
         id TEXT PRIMARY KEY,
         service_account_id TEXT NOT NULL,
+        secret_name TEXT,
         secret TEXT NOT NULL,
         expire_at TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -522,6 +523,13 @@ export class DatabaseService {
     const rows = await window.electronAPI.sqlite.getAllRows(
       'SELECT * FROM service_accounts WHERE email_id = ? ORDER BY service_name',
       [emailId]
+    )
+    return rows.map(this.mapRowToServiceAccount)
+  }
+
+  async getAllServiceAccounts(): Promise<ServiceAccount[]> {
+    const rows = await window.electronAPI.sqlite.getAllRows(
+      'SELECT * FROM service_accounts ORDER BY service_name'
     )
     return rows.map(this.mapRowToServiceAccount)
   }
@@ -1212,6 +1220,9 @@ id, service_account_id, secret, expire_at, created_at, updated_at
 
       // Migration: Add selected_fields to saved_tables
       await this.migrateSavedTablesSchema()
+
+      // Migration: Add secret_name to service_account_secrets
+      await this.migrateServiceAccountSecretsSchema()
     } catch (error) {
       console.error('[DatabaseService] Error checking migration:', error)
       // Không throw error ở đây vì có thể table chưa tồn tại
@@ -1235,6 +1246,36 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       }
     } catch (error) {
       console.error('[Migration] Error adding selected_fields column:', error)
+    }
+  }
+
+  // Migration: Add secret_name column to service_account_secrets
+  private async migrateServiceAccountSecretsSchema(): Promise<void> {
+    try {
+      const tableInfo = await window.electronAPI.sqlite.getAllRows(
+        'PRAGMA table_info(service_account_secrets)'
+      )
+      const hasSecretName = tableInfo.some((col: any) => col.name === 'secret_name')
+
+      if (!hasSecretName) {
+        console.log('[Migration] Adding secret_name column to service_account_secrets...')
+
+        // 1. Thêm column secret_name
+        await window.electronAPI.sqlite.runQuery(
+          'ALTER TABLE service_account_secrets ADD COLUMN secret_name TEXT'
+        )
+
+        // 2. Migrate dữ liệu cũ: extract secret_name từ JSON vào column mới
+        await window.electronAPI.sqlite.runQuery(`
+        UPDATE service_account_secrets 
+        SET secret_name = json_extract(secret, '$.secret_name')
+        WHERE secret_name IS NULL
+      `)
+
+        console.log('[Migration] secret_name column added and data migrated successfully')
+      }
+    } catch (error) {
+      console.error('[Migration] Error adding secret_name column:', error)
     }
   }
 }

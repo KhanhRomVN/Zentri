@@ -67,9 +67,186 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   const [queryHistory, setQueryHistory] = useState<QueryHistoryItem[]>([])
   const [previewHistoryItem, setPreviewHistoryItem] = useState<QueryHistoryItem | null>(null)
 
-  // Database Schema Drawer state - THÊM MỚI
+  // Database Schema Drawer state
   const [showSchemaDrawer, setShowSchemaDrawer] = useState(false)
   const [selectedFields, setSelectedFields] = useState<string[]>([])
+
+  const [selectClause, setSelectClause] = useState('')
+  const [fromClause, setFromClause] = useState('')
+  const [whereClause, setWhereClause] = useState('')
+
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false)
+
+  // Sync selectedFields → selectClause và auto-generate FROM clause
+  useEffect(() => {
+    if (selectedFields.length > 0) {
+      const newSelectClause = selectedFields.join(', ')
+      setSelectClause(newSelectClause)
+
+      // Auto-generate FROM clause
+      const newFromClause = generateFromClause(selectedFields)
+      setFromClause(newFromClause)
+
+      rebuildFullQuery(newSelectClause, newFromClause, whereClause)
+    } else if (selectedFields.length === 0 && selectClause) {
+      // Nếu bỏ chọn tất cả fields → reset về *
+      setSelectClause('*')
+      setFromClause('')
+      rebuildFullQuery('*', '', whereClause)
+    }
+  }, [selectedFields])
+
+  // Parse SQL query thành SELECT, FROM và WHERE/JOIN/ORDER BY
+  const parseSQLQuery = (query: string): { select: string; from: string; where: string } => {
+    const trimmedQuery = query.trim()
+    const upperQuery = trimmedQuery.toUpperCase()
+
+    if (!upperQuery.startsWith('SELECT')) {
+      return { select: '', from: '', where: query }
+    }
+
+    // Tìm vị trí của FROM
+    const fromIndex = upperQuery.indexOf(' FROM ')
+    if (fromIndex === -1) {
+      return {
+        select: trimmedQuery.substring(6).trim(),
+        from: '',
+        where: ''
+      }
+    }
+
+    const selectPart = trimmedQuery.substring(6, fromIndex).trim()
+
+    // Tìm vị trí của WHERE
+    const whereIndex = upperQuery.indexOf(' WHERE ', fromIndex)
+    const joinIndex = upperQuery.indexOf(' JOIN ', fromIndex)
+    const orderIndex = upperQuery.indexOf(' ORDER BY ', fromIndex)
+
+    // Tìm index nhỏ nhất (WHERE/JOIN/ORDER BY xuất hiện đầu tiên)
+    const breakpoints = [whereIndex, joinIndex, orderIndex].filter((i) => i !== -1)
+    const firstBreakpoint = breakpoints.length > 0 ? Math.min(...breakpoints) : -1
+
+    if (firstBreakpoint === -1) {
+      // Chỉ có FROM, không có WHERE/JOIN/ORDER BY
+      return {
+        select: selectPart,
+        from: trimmedQuery.substring(fromIndex).trim(),
+        where: ''
+      }
+    }
+
+    const fromPart = trimmedQuery.substring(fromIndex, firstBreakpoint).trim()
+    const wherePart = trimmedQuery.substring(firstBreakpoint).trim()
+
+    return { select: selectPart, from: fromPart, where: wherePart }
+  }
+
+  // Extract fields từ SELECT clause (format: table.column)
+  const extractFieldsFromSelect = (selectClause: string): string[] => {
+    if (!selectClause || selectClause.trim() === '*') return []
+
+    const fields: string[] = []
+    const parts = selectClause.split(',').map((p) => p.trim())
+
+    for (const part of parts) {
+      // Chỉ chấp nhận format: table.column
+      const match = part.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)$/)
+      if (match) {
+        fields.push(part)
+      }
+    }
+
+    return fields
+  }
+
+  // Generate FROM clause từ selected fields (auto-detect tables và JOINs)
+  const generateFromClause = (fields: string[]): string => {
+    if (fields.length === 0) return ''
+
+    // Extract unique tables từ selected fields
+    const tables = new Set<string>()
+    fields.forEach((field) => {
+      const [table] = field.split('.')
+      if (table) tables.add(table)
+    })
+
+    const tableList = Array.from(tables)
+
+    if (tableList.length === 0) return ''
+    if (tableList.length === 1) {
+      return `FROM ${tableList[0]}`
+    }
+
+    // Multiple tables → need JOINs
+    // Join logic theo cấu trúc database:
+    // emails <- email_2fa
+    // emails <- service_accounts <- service_account_2fa
+    // emails <- service_accounts <- service_account_secrets
+
+    const mainTable = 'emails'
+    let fromClause = `FROM ${mainTable}`
+
+    if (tableList.includes('email_2fa')) {
+      fromClause += `\nJOIN email_2fa ON emails.id = email_2fa.email_id`
+    }
+
+    if (tableList.includes('service_accounts')) {
+      fromClause += `\nJOIN service_accounts ON emails.id = service_accounts.email_id`
+
+      if (tableList.includes('service_account_2fa')) {
+        fromClause += `\nJOIN service_account_2fa ON service_accounts.id = service_account_2fa.service_account_id`
+      }
+
+      if (tableList.includes('service_account_secrets')) {
+        fromClause += `\nJOIN service_account_secrets ON service_accounts.id = service_account_secrets.service_account_id`
+      }
+    }
+
+    return fromClause
+  }
+
+  // Rebuild full SQL query từ 3 phần
+  const rebuildFullQuery = (select: string, from: string, where: string) => {
+    if (!select.trim() && !from.trim() && !where.trim()) {
+      setSqlQuery('')
+      return
+    }
+
+    let fullQuery = ''
+    if (select.trim()) {
+      fullQuery = `SELECT ${select.trim()}`
+    }
+
+    if (from.trim()) {
+      fullQuery += fullQuery ? `\n${from.trim()}` : from.trim()
+    }
+
+    if (where.trim()) {
+      fullQuery += fullQuery ? `\n${where.trim()}` : where.trim()
+    }
+
+    setSqlQuery(fullQuery)
+  }
+
+  // Handler: Khi user thay đổi SELECT clause thủ công
+  const handleSelectClauseChange = (value: string) => {
+    setSelectClause(value)
+
+    // Extract fields và sync với selectedFields
+    const fields = extractFieldsFromSelect(value)
+    setSelectedFields(fields)
+
+    // Rebuild full query
+    rebuildFullQuery(value, fromClause, whereClause)
+  }
+
+  // Handler: Khi user thay đổi WHERE/JOIN/ORDER BY
+  const handleWhereClauseChange = (value: string) => {
+    setWhereClause(value)
+
+    // Rebuild full query
+    rebuildFullQuery(selectClause, fromClause, value)
+  }
 
   // Backup current state when previewing history
   const [currentStateBackup, setCurrentStateBackup] = useState<{
@@ -106,10 +283,18 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   useEffect(() => {
     if (editingTable) {
       setTableName(editingTable.name)
+
+      // ✅ Parse query thành 3 phần trước khi set
+      const parsed = parseSQLQuery(editingTable.query)
+      setSelectClause(parsed.select)
+      setFromClause(parsed.from)
+      setWhereClause(parsed.where)
       setSqlQuery(editingTable.query)
+
       setTableData(editingTable.data)
       setTableColumns(editingTable.columns)
-      // FIXED: Load selected fields từ editingTable
+
+      // Load selected fields từ editingTable
       const savedSelectedFields = editingTable.selectedFields || []
       console.log('[DEBUG] Loading saved selected fields:', savedSelectedFields)
       setSelectedFields(savedSelectedFields)
@@ -131,7 +316,6 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   }, [editingTable, isOpen])
 
   // Generate SQL query from prompt using Gemini API
-  // Generate SQL query from prompt using Gemini API
   const handleGenerateQuery = async () => {
     if (!promptInput.trim()) {
       setGenerateError('Vui lòng nhập mô tả yêu cầu')
@@ -142,36 +326,71 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
       setIsGenerating(true)
       setGenerateError('')
 
-      // Build field context từ selected fields - THÊM MỚI
+      // Build field context từ selected fields
       let fieldContext = ''
       if (selectedFields.length > 0) {
         fieldContext = `\n\nUSER SELECTED FIELDS (prioritize these in SELECT):\n${selectedFields.map((f) => `- ${f}`).join('\n')}`
       }
 
-      const prompt = `
-You are a SQL expert. Generate a SQLite SELECT query based on the following schema and requirements.
+      // Kiểm tra xem có SELECT clause chưa
+      const hasSelectClause = selectClause.trim().length > 0
+
+      let serviceNamesContext = ''
+      try {
+        const allServices = await databaseService.getAllServiceAccounts()
+        const uniqueServices = [...new Set(allServices.map((s) => s.service_name))]
+        if (uniqueServices.length > 0) {
+          serviceNamesContext = `\n\nAVAILABLE SERVICE NAMES IN DATABASE (use LIKE '%keyword%' for fuzzy matching):\n${uniqueServices.map((s) => `- ${s}`).join('\n')}`
+        }
+      } catch (e) {
+        console.warn('Could not load service names for context')
+      }
+
+      // Nếu đã có SELECT clause, chỉ generate phần WHERE/JOIN/ORDER BY (FROM đã auto-generate)
+      const prompt = hasSelectClause
+        ? `
+You are a SQL expert. The user has already selected these fields and tables:
+
+SELECTED FIELDS (DO NOT MODIFY):
+${selectClause}
+
+FROM CLAUSE (ALREADY GENERATED - DO NOT MODIFY):
+${fromClause}
 
 DATABASE SCHEMA:
 ${DATABASE_SCHEMA}
-${fieldContext}
+${serviceNamesContext}
 
 USER REQUIREMENT:
 ${promptInput}
 
-CRITICAL RULES:
-1. Return ONLY the raw SQL SELECT statement
-2. NO markdown code blocks (no \`\`\`sql or \`\`\`sqlite)
-3. NO explanations or comments
-4. Must be valid SQLite syntax
-5. Can use JOINs between tables
-6. Use json_extract() for JSON fields: json_extract(metadata, '$.key')
-7. Use json_array_length() to check array size
-${selectedFields.length > 0 ? '8. Try to SELECT only the user-selected fields if possible' : ''}
+IMPORTANT INSTRUCTIONS:
+1. Generate ONLY the "WHERE / ORDER BY / GROUP BY / HAVING" part
+2. DO NOT generate SELECT or FROM clauses
+3. Your response should start with "WHERE" keyword (or be empty if no filter needed)
+4. Use fuzzy matching with LIKE '%keyword%' for service names
+5. Use LOWER() for case-insensitive matching
 
-Example output format:
-SELECT * FROM emails WHERE email_provider = 'gmail';
+EXAMPLE OUTPUT:
+WHERE LOWER(service_accounts.service_name) LIKE '%google cloud%'
+ORDER BY emails.email_address
+`
+        : `
+You are a SQL expert. Generate a complete SQLite SELECT query based on the following schema and requirements.
 
-Now generate the query:
+DATABASE SCHEMA:
+${DATABASE_SCHEMA}
+${fieldContext}
+${serviceNamesContext}
+
+USER REQUIREMENT:
+${promptInput}
+
+FUZZY MATCHING RULES:
+1. For service names, use LIKE '%keyword%' for partial matching
+2. Example: "google cloud" should match "Google AI Cloud", "Google Cloud Console"
+3. Use LOWER() for case-insensitive matching
+4. Combine multiple LIKE conditions with OR when appropriate
 `
 
       console.log('[DEBUG] Prompt length:', prompt.length)
@@ -203,12 +422,36 @@ Now generate the query:
       console.log('[DEBUG] Original text:', result.text)
       console.log('[DEBUG] Cleaned query:', cleanQuery)
 
-      // Validate query starts with SELECT
-      if (!cleanQuery.toUpperCase().startsWith('SELECT')) {
-        throw new Error('Generated query is invalid - must start with SELECT')
-      }
+      // Nếu đã có SELECT clause, chỉ lấy phần WHERE trở đi
+      if (hasSelectClause) {
+        // Validate response (có thể rỗng hoặc bắt đầu với WHERE/ORDER BY)
+        const upperClean = cleanQuery.toUpperCase().trim()
+        if (
+          upperClean &&
+          !upperClean.startsWith('WHERE') &&
+          !upperClean.startsWith('ORDER') &&
+          !upperClean.startsWith('GROUP') &&
+          !upperClean.startsWith('HAVING')
+        ) {
+          console.warn('Generated query may be invalid - expected WHERE/ORDER BY/GROUP BY/HAVING')
+        }
 
-      setSqlQuery(cleanQuery)
+        // Update WHERE clause (không động vào SELECT và FROM)
+        setWhereClause(cleanQuery)
+        setSqlQuery(`SELECT ${selectClause}\n${fromClause}\n${cleanQuery}`.trim())
+      } else {
+        // Validate full query starts with SELECT
+        if (!cleanQuery.toUpperCase().startsWith('SELECT')) {
+          throw new Error('Generated query is invalid - must start with SELECT')
+        }
+
+        // Parse và set cả 3 phần
+        const parsed = parseSQLQuery(cleanQuery)
+        setSelectClause(parsed.select)
+        setFromClause(parsed.from)
+        setWhereClause(parsed.where)
+        setSqlQuery(cleanQuery)
+      }
 
       // Save to history sau khi query được execute thành công (sẽ trigger useEffect)
       // Lưu prompt hiện tại để add vào history sau khi execute
@@ -364,6 +607,9 @@ Now generate the query:
     setPreviewHistoryItem(null)
     setCurrentStateBackup(null)
     setSelectedFields([])
+    setSelectClause('')
+    setFromClause('')
+    setWhereClause('')
   }
 
   const handleClose = () => {
@@ -432,7 +678,6 @@ Now generate the query:
   return (
     <div className="fixed inset-0 z-50 bg-background">
       {/* Header */}
-      {/* Header */}
       <div className="h-14 border-b border-border-default flex items-center justify-between px-4 bg-card-background">
         <div className="flex items-center gap-3">
           <Database className="h-5 w-5 text-primary" />
@@ -449,6 +694,15 @@ Now generate the query:
             icon={Database}
           >
             Schema ({selectedFields.length})
+          </CustomButton>
+
+          <CustomButton
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowHistoryDrawer(true)}
+            icon={History}
+          >
+            History ({queryHistory.length})
           </CustomButton>
 
           <CustomButton variant="secondary" size="sm" onClick={handleReset} icon={RefreshCw}>
@@ -479,6 +733,11 @@ Now generate the query:
           setTableName={setTableName}
           promptInput={promptInput}
           setPromptInput={setPromptInput}
+          selectClause={selectClause}
+          setSelectClause={handleSelectClauseChange}
+          fromClause={fromClause}
+          whereClause={whereClause}
+          setWhereClause={handleWhereClauseChange}
           sqlQuery={sqlQuery}
           setSqlQuery={setSqlQuery}
           isGenerating={isGenerating}
@@ -508,7 +767,7 @@ Now generate the query:
           />
         </div>
       </div>
-      {/* Database Schema Drawer - THÊM MỚI */}
+      {/* Database Schema Drawer */}
       <DatabaseSchemaDrawer
         isOpen={showSchemaDrawer}
         onClose={() => setShowSchemaDrawer(false)}
