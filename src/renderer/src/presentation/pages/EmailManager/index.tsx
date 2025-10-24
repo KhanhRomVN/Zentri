@@ -48,6 +48,9 @@ const EmailManagerPage = () => {
   // Track draft data cho CreateServiceAccountForm của từng email
   const [serviceFormDraftByEmail, setServiceFormDraftByEmail] = useState<Record<string, any>>({})
 
+  // Track việc đang load editing table để tránh auto-rebuild xóa mất whereClause
+  const [isLoadingEditingTable, setIsLoadingEditingTable] = useState(false)
+
   // Related data for selected email
   const [email2FAMethods, setEmail2FAMethods] = useState<Email2FA[]>([])
   const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([])

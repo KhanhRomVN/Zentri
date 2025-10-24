@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import CustomButton from '../../../../../components/common/CustomButton'
 import QueryBuilderPanel from './components/QueryBuilderPanel'
 import TablePreviewPanel from './components/TablePreviewPanel'
@@ -62,10 +62,12 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   const [tableData, setTableData] = useState<any[]>([])
   const [tableColumns, setTableColumns] = useState<string[]>([])
   const [queryError, setQueryError] = useState('')
-  const [isExecuting, setIsExecuting] = useState(false)
 
   // History state
   const [queryHistory, setQueryHistory] = useState<QueryHistoryItem[]>([])
+
+  // Track việc đang load editing table để tránh auto-rebuild xóa mất whereClause
+  const [isLoadingEditingTable, setIsLoadingEditingTable] = useState(false)
   const [previewHistoryItem, setPreviewHistoryItem] = useState<QueryHistoryItem | null>(null)
   const [isRunningQuery, setIsRunningQuery] = useState(false) // NEW: Loading state cho Run Query
 
@@ -101,46 +103,63 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   // Parse SQL query thành SELECT, FROM và WHERE/JOIN/ORDER BY
   const parseSQLQuery = (query: string): { select: string; from: string; where: string } => {
     const trimmedQuery = query.trim()
-    const upperQuery = trimmedQuery.toUpperCase()
+    // Chuẩn hóa: thay thế newline thành space để tìm kiếm dễ hơn
+    const normalizedQuery = trimmedQuery.replace(/\s+/g, ' ')
+    const upperQuery = normalizedQuery.toUpperCase()
 
     if (!upperQuery.startsWith('SELECT')) {
       return { select: '', from: '', where: query }
     }
 
-    // Tìm vị trí của FROM
-    const fromIndex = upperQuery.indexOf(' FROM ')
-    if (fromIndex === -1) {
+    // Tìm vị trí của FROM (dùng regex để tìm FROM với boundary)
+    const fromMatch = upperQuery.match(/\sFROM\s/)
+    if (!fromMatch || fromMatch.index === undefined) {
       return {
-        select: trimmedQuery.substring(6).trim(),
+        select: normalizedQuery.substring(6).trim(),
         from: '',
         where: ''
       }
     }
 
-    const selectPart = trimmedQuery.substring(6, fromIndex).trim()
+    const fromIndex = fromMatch.index
+    const selectPart = normalizedQuery.substring(6, fromIndex).trim()
 
-    // Tìm vị trí của WHERE
-    const whereIndex = upperQuery.indexOf(' WHERE ', fromIndex)
-    const joinIndex = upperQuery.indexOf(' JOIN ', fromIndex)
-    const orderIndex = upperQuery.indexOf(' ORDER BY ', fromIndex)
+    // Tìm vị trí của WHERE/ORDER BY/GROUP BY/HAVING (bất kỳ từ khóa nào xuất hiện sau FROM)
+    const whereMatch = upperQuery.match(/\sWHERE\s/)
+    const orderMatch = upperQuery.match(/\sORDER\s+BY\s/)
+    const groupMatch = upperQuery.match(/\sGROUP\s+BY\s/)
+    const havingMatch = upperQuery.match(/\sHAVING\s/)
 
-    // Tìm index nhỏ nhất (WHERE/JOIN/ORDER BY xuất hiện đầu tiên)
-    const breakpoints = [whereIndex, joinIndex, orderIndex].filter((i) => i !== -1)
-    const firstBreakpoint = breakpoints.length > 0 ? Math.min(...breakpoints) : -1
+    // Tìm index nhỏ nhất (keyword xuất hiện đầu tiên sau FROM)
+    const breakpoints = [
+      whereMatch?.index,
+      orderMatch?.index,
+      groupMatch?.index,
+      havingMatch?.index
+    ].filter((i): i is number => i !== undefined && i > fromIndex)
 
-    if (firstBreakpoint === -1) {
-      // Chỉ có FROM, không có WHERE/JOIN/ORDER BY
+    if (breakpoints.length === 0) {
+      // Chỉ có FROM, không có WHERE/ORDER BY/etc
       return {
         select: selectPart,
-        from: trimmedQuery.substring(fromIndex).trim(),
+        from: normalizedQuery.substring(fromIndex).trim(),
         where: ''
       }
     }
 
-    const fromPart = trimmedQuery.substring(fromIndex, firstBreakpoint).trim()
-    const wherePart = trimmedQuery.substring(firstBreakpoint).trim()
+    const firstBreakpoint = Math.min(...breakpoints)
+    const fromPart = normalizedQuery.substring(fromIndex, firstBreakpoint).trim()
+    const wherePart = normalizedQuery.substring(firstBreakpoint).trim()
 
-    return { select: selectPart, from: fromPart, where: wherePart }
+    // Khôi phục format gốc của wherePart từ trimmedQuery
+    // Tìm vị trí tương đối trong query gốc
+    const whereStartInOriginal = trimmedQuery
+      .toUpperCase()
+      .indexOf(wherePart.substring(0, 20).toUpperCase())
+    const wherePartOriginal =
+      whereStartInOriginal !== -1 ? trimmedQuery.substring(whereStartInOriginal).trim() : wherePart
+
+    return { select: selectPart, from: fromPart, where: wherePartOriginal }
   }
 
   // Extract fields từ SELECT clause (format: table.column)
@@ -208,8 +227,15 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   }
 
   // Rebuild full SQL query từ 3 phần
+  // Rebuild full SQL query từ 3 phần
   const rebuildFullQuery = (select: string, from: string, where: string) => {
+    console.log('[DEBUG RebuildQuery] ========== REBUILD QUERY ==========')
+    console.log('[DEBUG RebuildQuery] Input SELECT:', select)
+    console.log('[DEBUG RebuildQuery] Input FROM:', from)
+    console.log('[DEBUG RebuildQuery] Input WHERE:', where)
+
     if (!select.trim() && !from.trim() && !where.trim()) {
+      console.log('[DEBUG RebuildQuery] All parts empty, setting sqlQuery to empty')
       setSqlQuery('')
       return
     }
@@ -217,17 +243,22 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
     let fullQuery = ''
     if (select.trim()) {
       fullQuery = `SELECT ${select.trim()}`
+      console.log('[DEBUG RebuildQuery] Added SELECT, current query:', fullQuery)
     }
 
     if (from.trim()) {
       fullQuery += fullQuery ? `\n${from.trim()}` : from.trim()
+      console.log('[DEBUG RebuildQuery] Added FROM, current query:', fullQuery)
     }
 
     if (where.trim()) {
       fullQuery += fullQuery ? `\n${where.trim()}` : where.trim()
+      console.log('[DEBUG RebuildQuery] Added WHERE, current query:', fullQuery)
     }
 
+    console.log('[DEBUG RebuildQuery] Final fullQuery:', fullQuery)
     setSqlQuery(fullQuery)
+    console.log('[DEBUG RebuildQuery] ====================================')
   }
 
   // Handler: Khi user thay đổi SELECT clause thủ công
@@ -281,40 +312,127 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
     loadQueryHistory()
   }, [isOpen])
 
+  // Auto-rebuild full SQL query khi 3 phần thay đổi
+  // KHÔNG rebuild nếu đang trong quá trình load editing table
+  useEffect(() => {
+    // Skip rebuild nếu đang load editing table
+    if (isLoadingEditingTable) {
+      console.log('[DEBUG AutoRebuild] Skip rebuild - đang load editing table')
+      return
+    }
+
+    console.log('[DEBUG AutoRebuild] ========== AUTO REBUILD TRIGGERED ==========')
+    console.log('[DEBUG AutoRebuild] selectClause:', selectClause)
+    console.log('[DEBUG AutoRebuild] fromClause:', fromClause)
+    console.log('[DEBUG AutoRebuild] whereClause:', whereClause)
+
+    rebuildFullQuery(selectClause, fromClause, whereClause)
+
+    console.log('[DEBUG AutoRebuild] rebuildFullQuery() called')
+    console.log('[DEBUG AutoRebuild] ========================================')
+  }, [selectClause, fromClause, whereClause])
+
   // Pre-fill data when editing
   useEffect(() => {
-    if (editingTable) {
-      setTableName(editingTable.name)
+    const loadEditingTable = async () => {
+      if (editingTable) {
+        console.log('[DEBUG EditTable] ========== START LOADING EDITING TABLE ==========')
+        console.log('[DEBUG EditTable] editingTable:', editingTable)
+        console.log('[DEBUG EditTable] editingTable.query:', editingTable.query)
+        console.log('[DEBUG EditTable] editingTable.selectedFields:', editingTable.selectedFields)
 
-      // ✅ Parse query thành 3 phần trước khi set
-      const parsed = parseSQLQuery(editingTable.query)
-      setSelectClause(parsed.select)
-      setFromClause(parsed.from)
-      setWhereClause(parsed.where)
-      setSqlQuery(editingTable.query)
+        // Set flag để prevent auto-rebuild xóa mất data
+        setIsLoadingEditingTable(true)
 
-      setTableData(editingTable.data)
-      setTableColumns(editingTable.columns)
+        setTableName(editingTable.name)
 
-      // Load selected fields từ editingTable
-      const savedSelectedFields = editingTable.selectedFields || []
-      console.log('[DEBUG] Loading saved selected fields:', savedSelectedFields)
-      setSelectedFields(savedSelectedFields)
+        // Load selected fields từ editingTable
+        const savedSelectedFields = editingTable.selectedFields || []
+        console.log('[DEBUG EditTable] savedSelectedFields:', savedSelectedFields)
+        setSelectedFields(savedSelectedFields)
 
-      // Tạo history item từ table đang edit
-      const historyItem: QueryHistoryItem = {
-        id: `history_${editingTable.id}`,
-        prompt: '(Restored from saved table)',
-        query: editingTable.query,
-        timestamp: editingTable.createdAt,
-        rowCount: editingTable.data.length,
-        columnCount: editingTable.columns.length
+        setTableData(editingTable.data)
+        setTableColumns(editingTable.columns)
+
+        // ✅ Load history từ database
+        try {
+          console.log('[DEBUG EditTable] Loading history from database...')
+          // THAY ĐỔI: Filter history theo saved_table_id
+          const history = await databaseService.getAllQueryHistory(editingTable.id)
+          console.log('[DEBUG EditTable] Raw history from database (filtered by table):', history)
+          console.log('[DEBUG EditTable] Table ID:', editingTable.id)
+
+          const convertedHistory = history.map((h) => ({
+            id: h.id,
+            prompt: h.prompt,
+            query: h.query,
+            timestamp: h.createdAt,
+            rowCount: h.rowCount,
+            columnCount: h.columnCount
+          }))
+          console.log('[DEBUG EditTable] Converted history:', convertedHistory)
+          console.log('[DEBUG EditTable] History count:', convertedHistory.length)
+
+          setQueryHistory(convertedHistory)
+
+          // ✅ Lấy query mới nhất từ history (hoặc fallback về editingTable.query)
+          const latestQuery =
+            convertedHistory.length > 0
+              ? convertedHistory[convertedHistory.length - 1].query
+              : editingTable.query
+
+          console.log('[DEBUG EditTable] Latest query selected:', latestQuery)
+          console.log(
+            '[DEBUG EditTable] Query source:',
+            convertedHistory.length > 0 ? 'FROM HISTORY' : 'FROM EDITING TABLE'
+          )
+
+          // Parse query mới nhất thành 3 phần
+          console.log('[DEBUG EditTable] Parsing query into 3 parts...')
+          const parsed = parseSQLQuery(latestQuery)
+          console.log('[DEBUG EditTable] Parsed result:', parsed)
+          console.log('[DEBUG EditTable] - SELECT:', parsed.select)
+          console.log('[DEBUG EditTable] - FROM:', parsed.from)
+          console.log('[DEBUG EditTable] - WHERE:', parsed.where)
+
+          // Set cả 3 phần từ query mới nhất
+          console.log('[DEBUG EditTable] Setting state for 3 parts...')
+          setSelectClause(parsed.select)
+          setFromClause(parsed.from)
+          setWhereClause(parsed.where)
+          console.log('[DEBUG EditTable] State updated successfully')
+
+          // Clear loading flag sau khi set xong data
+          setTimeout(() => {
+            setIsLoadingEditingTable(false)
+            console.log('[DEBUG EditTable] Loading finished, current sqlQuery:', sqlQuery)
+            console.log('[DEBUG EditTable] Current queryHistory length:', queryHistory.length)
+          }, 100)
+        } catch (error) {
+          console.error('[DEBUG EditTable] ERROR loading history:', error)
+
+          // Fallback: parse từ editingTable.query nếu load history thất bại
+          console.log('[DEBUG EditTable] FALLBACK: Using editingTable.query')
+          const parsed = parseSQLQuery(editingTable.query)
+          console.log('[DEBUG EditTable] FALLBACK Parsed result:', parsed)
+
+          setSelectClause(parsed.select)
+          setFromClause(parsed.from)
+          setWhereClause(parsed.where)
+
+          // Clear loading flag sau khi set xong data (fallback case)
+          setTimeout(() => setIsLoadingEditingTable(false), 100)
+        }
+
+        console.log('[DEBUG EditTable] ========== END LOADING EDITING TABLE ==========')
+      } else {
+        console.log('[DEBUG EditTable] No editingTable, calling handleReset()')
+        // Reset khi không edit
+        handleReset()
       }
-      setQueryHistory([historyItem])
-    } else {
-      // Reset khi không edit
-      handleReset()
     }
+
+    loadEditingTable()
   }, [editingTable, isOpen])
 
   // Generate SQL query from prompt using Gemini API
@@ -467,69 +585,52 @@ FUZZY MATCHING RULES:
     }
   }
 
-  // Execute SQL query and update table preview
-  useEffect(() => {
-    const executeQuery = async () => {
-      if (!sqlQuery.trim()) {
-        setTableData([])
-        setTableColumns([])
-        setQueryError('')
-        return
-      }
-
-      try {
-        setIsExecuting(true)
-        setQueryError('')
-
-        // Execute query using Electron SQLite API
-        const rows = await window.electronAPI.sqlite.getAllRows(sqlQuery)
-
-        if (rows.length === 0) {
-          setTableData([])
-          setTableColumns([])
-          setQueryError('Query không trả về kết quả nào')
-          return
-        }
-
-        // Extract columns from first row
-        const columns = Object.keys(rows[0])
-        setTableColumns(columns)
-        setTableData(rows)
-      } catch (error) {
-        console.error('Error executing query:', error)
-
-        let errorMessage = 'Lỗi khi thực thi query'
-        if (error instanceof Error) {
-          errorMessage = error.message
-
-          if (errorMessage.includes('syntax error')) {
-            errorMessage +=
-              '\n\nGợi ý: SQL query có thể chứa ký tự không hợp lệ. Hãy kiểm tra lại hoặc chỉnh sửa thủ công.'
-          }
-        }
-
-        setQueryError(errorMessage)
-        setTableData([])
-        setTableColumns([])
-      } finally {
-        setIsExecuting(false)
-      }
-    }
-
-    // Debounce query execution
-    const timeoutId = setTimeout(executeQuery, 500)
-    return () => clearTimeout(timeoutId)
-  }, [sqlQuery])
-
   // Handle preview history item
   // NEW: Check xem query hiện tại có khác với query mới nhất trong history không
-  const canRunQuery = (() => {
-    if (!sqlQuery.trim()) return false
-    if (queryHistory.length === 0) return true
+  // Sử dụng useMemo để tính toán lại mỗi khi sqlQuery hoặc queryHistory thay đổi
+  const canRunQuery = useMemo(() => {
+    // Case 1: Query rỗng → không thể run
+    if (!sqlQuery.trim()) {
+      console.log('[DEBUG CanRunQuery] Query rỗng → cannot run')
+      return false
+    }
 
+    // Case 2: Không có history → có thể run
+    if (queryHistory.length === 0) {
+      console.log('[DEBUG CanRunQuery] Không có history → can run')
+      return true
+    }
+
+    // Case 3: So sánh với query mới nhất trong history
     const latestQuery = queryHistory[queryHistory.length - 1].query
-    return sqlQuery.trim() !== latestQuery.trim()
-  })()
+
+    // Normalize cả 2 query: loại bỏ tất cả whitespace, newline để so sánh chính xác
+    const normalizeQuery = (query: string) => {
+      return query
+        .trim()
+        .replace(/\s+/g, ' ') // Replace multiple spaces/newlines thành 1 space
+        .replace(/\s*([(),])\s*/g, '$1') // Remove spaces around punctuation
+        .toLowerCase() // Case-insensitive
+    }
+
+    const currentQueryNormalized = normalizeQuery(sqlQuery)
+    const latestQueryNormalized = normalizeQuery(latestQuery)
+
+    const isDifferent = currentQueryNormalized !== latestQueryNormalized
+
+    console.log('[DEBUG CanRunQuery] ========== COMPARING QUERIES ==========')
+    console.log('[DEBUG CanRunQuery] Current query length:', sqlQuery.length)
+    console.log('[DEBUG CanRunQuery] Latest query length:', latestQuery.length)
+    console.log(
+      '[DEBUG CanRunQuery] Current (normalized):',
+      currentQueryNormalized.substring(0, 150)
+    )
+    console.log('[DEBUG CanRunQuery] Latest (normalized):', latestQueryNormalized.substring(0, 150))
+    console.log('[DEBUG CanRunQuery] Is different?', isDifferent)
+    console.log('[DEBUG CanRunQuery] =======================================')
+
+    return isDifferent
+  }, [sqlQuery, queryHistory])
 
   // NEW: Handler cho button Run Query
   const handleRunQuery = async () => {
@@ -601,7 +702,7 @@ FUZZY MATCHING RULES:
 
   // Handle preview history item
   const handlePreviewHistory = (item: QueryHistoryItem) => {
-    // Backup current state
+    // Backup current state (cần backup cả 3 phần)
     setCurrentStateBackup({
       prompt: promptInput,
       query: sqlQuery
@@ -610,7 +711,17 @@ FUZZY MATCHING RULES:
     // Set preview mode
     setPreviewHistoryItem(item)
     setPromptInput(item.prompt)
+
+    // ✅ Parse query thành 3 phần và set riêng biệt
+    const parsed = parseSQLQuery(item.query)
+    setSelectClause(parsed.select)
+    setFromClause(parsed.from)
+    setWhereClause(parsed.where)
     setSqlQuery(item.query)
+
+    // Extract fields từ SELECT clause để sync với selectedFields
+    const fields = extractFieldsFromSelect(parsed.select)
+    setSelectedFields(fields)
   }
 
   // Handle confirm restore
@@ -623,7 +734,17 @@ FUZZY MATCHING RULES:
   const handleCancelRestore = () => {
     if (currentStateBackup) {
       setPromptInput(currentStateBackup.prompt)
+
+      // ✅ Parse query backup thành 3 phần
+      const parsed = parseSQLQuery(currentStateBackup.query)
+      setSelectClause(parsed.select)
+      setFromClause(parsed.from)
+      setWhereClause(parsed.where)
       setSqlQuery(currentStateBackup.query)
+
+      // Extract fields và sync với selectedFields
+      const fields = extractFieldsFromSelect(parsed.select)
+      setSelectedFields(fields)
     }
     setPreviewHistoryItem(null)
     setCurrentStateBackup(null)
@@ -776,7 +897,7 @@ FUZZY MATCHING RULES:
           setSqlQuery={setSqlQuery}
           isGenerating={isGenerating}
           generateError={generateError}
-          isExecuting={isExecuting}
+          isExecuting={isRunningQuery}
           queryError={queryError}
           tableData={tableData}
           tableColumns={tableColumns}
@@ -797,7 +918,7 @@ FUZZY MATCHING RULES:
             tableData={tableData}
             tableColumns={tableColumns}
             tableName={tableName}
-            isExecuting={isExecuting}
+            isExecuting={isRunningQuery}
             onExport={handleExport}
             onCopyTable={handleCopyTable}
             selectedFields={selectedFields}
