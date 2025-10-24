@@ -10,7 +10,7 @@ import {
   History,
   Check,
   X,
-  Clock
+  Play
 } from 'lucide-react'
 
 interface QueryHistoryItem {
@@ -41,6 +41,9 @@ interface QueryBuilderPanelProps {
   tableData: any[]
   tableColumns: string[]
   onGenerateQuery: () => void
+  onRunQuery: () => void // NEW: Handler cho button Run Query
+  isRunningQuery: boolean // NEW: Loading state cho Run Query
+  canRunQuery: boolean // NEW: Check xem có thể run query không (disable button)
   queryHistory: QueryHistoryItem[]
   previewHistoryItem: QueryHistoryItem | null
   onPreviewHistory: (item: QueryHistoryItem) => void
@@ -63,17 +66,13 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
   isExecuting,
   queryError,
   onGenerateQuery,
-  queryHistory,
+  onRunQuery,
+  isRunningQuery,
+  canRunQuery,
   previewHistoryItem,
-  onPreviewHistory,
   onConfirmRestore,
   onCancelRestore
 }) => {
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-  }
-
   return (
     <div className="w-[450px] flex-shrink-0 border-r border-border-default bg-card-background overflow-y-auto">
       <div className="p-4 space-y-6">
@@ -187,9 +186,7 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
 
           {/* SELECT Clause */}
           <div>
-            <label className="text-xs font-medium text-text-secondary mb-1 block">
-              SELECT (chỉ nhận từ Schema Drawer - không thể sửa thủ công)
-            </label>
+            <label className="text-xs font-medium text-text-secondary mb-1 block">SELECT</label>
             <CustomInput
               value={selectClause}
               onChange={setSelectClause}
@@ -203,17 +200,11 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
               className="font-mono text-sm bg-gray-100 dark:bg-gray-800"
               disabled={true}
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              💡 Tip: Chọn fields từ Schema Drawer bên trái hoặc nhập thủ công (dùng dấu phẩy để
-              tách)
-            </p>
           </div>
 
           {/* FROM Clause - Auto-generated */}
           <div>
-            <label className="text-xs font-medium text-text-secondary mb-1 block">
-              FROM (auto-generated từ Schema Drawer - không thể sửa)
-            </label>
+            <label className="text-xs font-medium text-text-secondary mb-1 block">FROM</label>
             <CustomInput
               value={fromClause}
               onChange={() => {}} // No-op
@@ -227,15 +218,12 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
               className="font-mono text-sm bg-gray-100 dark:bg-gray-800"
               disabled={true}
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              💡 Tip: FROM clause được tự động tạo dựa trên tables của các fields đã chọn
-            </p>
           </div>
 
           {/* WHERE / ORDER BY Clause */}
           <div className="relative">
             <label className="text-xs font-medium text-text-secondary mb-1 block">
-              WHERE / ORDER BY / GROUP BY (có thể edit hoặc tạo từ AI)
+              WHERE / ORDER BY / GROUP BY
             </label>
             <CustomInput
               value={whereClause}
@@ -267,52 +255,32 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
           )}
         </div>
 
-        {/* Query History */}
-        {queryHistory.length > 0 && (
-          <div className="space-y-3 pt-4 border-t border-border-default">
-            <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-              <History className="h-4 w-4 text-orange-600" />
-              <span>Lịch Sử Query ({queryHistory.length})</span>
-            </div>
+        {/* NEW: Run Query Button */}
+        <div className="space-y-3">
+          <CustomButton
+            variant="primary"
+            size="md"
+            onClick={onRunQuery}
+            disabled={!canRunQuery || isRunningQuery || !!previewHistoryItem}
+            loading={isRunningQuery}
+            icon={Play}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            {isRunningQuery ? 'Đang chạy query...' : 'Run Query & Save to History'}
+          </CustomButton>
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {queryHistory.map((item, index) => (
-                <button
-                  key={item.id}
-                  onClick={() => !previewHistoryItem && onPreviewHistory(item)}
-                  disabled={!!previewHistoryItem}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    previewHistoryItem?.id === item.id
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-                  } ${previewHistoryItem && previewHistoryItem.id !== item.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex-shrink-0">
-                        #{queryHistory.length - index}
-                      </span>
-                      <span className="text-xs text-gray-600 dark:text-gray-300 truncate">
-                        {item.prompt}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                      <Clock className="h-3 w-3" />
-                      {formatTimestamp(item.timestamp)}
-                    </div>
-                  </div>
-                  <div className="text-xs font-mono text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-2 rounded border border-gray-200 dark:border-gray-600 line-clamp-2">
-                    {item.query}
-                  </div>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span>📊 {item.rowCount} rows</span>
-                    <span>📋 {item.columnCount} cols</span>
-                  </div>
-                </button>
-              ))}
+          {!canRunQuery && !previewHistoryItem && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  Query hiện tại giống với query mới nhất trong history. Thay đổi query để có thể
+                  chạy lại.
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

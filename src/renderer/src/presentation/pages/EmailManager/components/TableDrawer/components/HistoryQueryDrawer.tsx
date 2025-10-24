@@ -131,8 +131,14 @@ const HistoryQueryDrawer: React.FC<HistoryQueryDrawerProps> = ({
   })
 
   return (
-    <CustomDrawer isOpen={isOpen} onClose={onClose} title="Lịch Sử Query" position="right">
-      <div className="h-full flex flex-col">
+    <CustomDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Lịch Sử Query"
+      position="right"
+      size="md"
+    >
+      <div className="h-full flex flex-col bg-gray-50/50 dark:bg-gray-900/50">
         {/* Header Info & Search */}
         <div className="flex-none p-4 border-b border-border-default space-y-3">
           <div className="flex items-center gap-2">
@@ -293,32 +299,6 @@ const HistoryQueryDrawer: React.FC<HistoryQueryDrawerProps> = ({
             </div>
           )}
         </div>
-
-        {/* Footer Stats */}
-        {queryHistory.length > 0 && (
-          <div className="flex-none p-4 border-t border-border-default">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Tổng Query</p>
-                <p className="text-lg font-bold text-text-primary">{queryHistory.length}</p>
-              </div>
-              <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Tổng Rows</p>
-                <p className="text-lg font-bold text-text-primary">
-                  {queryHistory.reduce((sum, item) => sum + item.rowCount, 0)}
-                </p>
-              </div>
-              <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Avg Rows</p>
-                <p className="text-lg font-bold text-text-primary">
-                  {Math.round(
-                    queryHistory.reduce((sum, item) => sum + item.rowCount, 0) / queryHistory.length
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </CustomDrawer>
   )

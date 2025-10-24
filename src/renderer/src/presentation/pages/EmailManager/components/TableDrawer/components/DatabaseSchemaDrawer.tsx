@@ -347,8 +347,14 @@ const DatabaseSchemaDrawer: React.FC<DatabaseSchemaDrawerProps> = ({
   }
 
   return (
-    <CustomDrawer isOpen={isOpen} onClose={onClose} title="Database Schema" position="left">
-      <div className="h-full flex flex-col">
+    <CustomDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Database Schema"
+      position="left"
+      size="md"
+    >
+      <div className="h-full flex flex-col bg-gray-50/50 dark:bg-gray-900/50">
         {/* Header Actions */}
         <div className="flex-none p-4 border-b border-border-default space-y-3">
           <div className="flex items-center gap-2">

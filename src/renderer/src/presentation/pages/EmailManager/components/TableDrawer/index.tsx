@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react'
 import CustomButton from '../../../../../components/common/CustomButton'
 import QueryBuilderPanel from './components/QueryBuilderPanel'
 import TablePreviewPanel from './components/TablePreviewPanel'
-import { Database, X, RefreshCw, Play } from 'lucide-react'
+import { Database, X, RefreshCw, Play, History } from 'lucide-react'
 import { geminiService } from '../../../../../services/GeminiService'
 import { databaseService } from '../../services/DatabaseService'
 import { SavedTable } from '../../types'
 import DatabaseSchemaDrawer from './components/DatabaseSchemaDrawer'
+import HistoryQueryDrawer from './components/HistoryQueryDrawer'
 
 interface TableDrawerProps {
   isOpen: boolean
@@ -66,6 +67,7 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   // History state
   const [queryHistory, setQueryHistory] = useState<QueryHistoryItem[]>([])
   const [previewHistoryItem, setPreviewHistoryItem] = useState<QueryHistoryItem | null>(null)
+  const [isRunningQuery, setIsRunningQuery] = useState(false) // NEW: Loading state cho Run Query
 
   // Database Schema Drawer state
   const [showSchemaDrawer, setShowSchemaDrawer] = useState(false)
@@ -453,39 +455,8 @@ FUZZY MATCHING RULES:
         setSqlQuery(cleanQuery)
       }
 
-      // Save to history sau khi query được execute thành công (sẽ trigger useEffect)
-      // Lưu prompt hiện tại để add vào history sau khi execute
-      const currentPrompt = promptInput
-
-      // Đợi useEffect execute query xong rồi mới add vào history
-      setTimeout(async () => {
-        const historyItem = {
-          id: `history_${Date.now()}`,
-          prompt: currentPrompt,
-          query: cleanQuery,
-          timestamp: new Date().toISOString(),
-          rowCount: 0, // Sẽ được update bởi useEffect
-          columnCount: 0
-        }
-
-        setQueryHistory((prev) => [...prev, historyItem])
-
-        // Lưu vào database (không cần await vì đây là background operation)
-        try {
-          await databaseService.createQueryHistory({
-            prompt: currentPrompt,
-            query: cleanQuery,
-            rowCount: 0,
-            columnCount: 0,
-            createdAt: historyItem.timestamp
-          })
-        } catch (error) {
-          console.error('Failed to save query history:', error)
-        }
-
-        // Clear prompt sau khi đã lưu vào history
-        setPromptInput('')
-      }, 1000) // Đợi 1s để query execute xong
+      // Clear prompt sau khi generate xong
+      setPromptInput('')
     } catch (error) {
       console.error('Error generating query:', error)
       setGenerateError(
@@ -524,21 +495,6 @@ FUZZY MATCHING RULES:
         const columns = Object.keys(rows[0])
         setTableColumns(columns)
         setTableData(rows)
-
-        // Update history item với rowCount và columnCount
-        setQueryHistory((prev) => {
-          const lastItem = prev[prev.length - 1]
-          if (lastItem && lastItem.rowCount === 0 && lastItem.columnCount === 0) {
-            const updated = [...prev]
-            updated[updated.length - 1] = {
-              ...lastItem,
-              rowCount: rows.length,
-              columnCount: columns.length
-            }
-            return updated
-          }
-          return prev
-        })
       } catch (error) {
         console.error('Error executing query:', error)
 
@@ -564,6 +520,84 @@ FUZZY MATCHING RULES:
     const timeoutId = setTimeout(executeQuery, 500)
     return () => clearTimeout(timeoutId)
   }, [sqlQuery])
+
+  // Handle preview history item
+  // NEW: Check xem query hiện tại có khác với query mới nhất trong history không
+  const canRunQuery = (() => {
+    if (!sqlQuery.trim()) return false
+    if (queryHistory.length === 0) return true
+
+    const latestQuery = queryHistory[queryHistory.length - 1].query
+    return sqlQuery.trim() !== latestQuery.trim()
+  })()
+
+  // NEW: Handler cho button Run Query
+  const handleRunQuery = async () => {
+    if (!sqlQuery.trim() || !canRunQuery) return
+
+    try {
+      setIsRunningQuery(true)
+
+      // Execute query để lấy results
+      const rows = await window.electronAPI.sqlite.getAllRows(sqlQuery)
+
+      if (rows.length === 0) {
+        setQueryError('Query không trả về kết quả nào')
+        return
+      }
+
+      const columns = Object.keys(rows[0])
+
+      // Tạo history item
+      const historyItem: QueryHistoryItem = {
+        id: `history_${Date.now()}`,
+        prompt: promptInput || '(Manual query execution)',
+        query: sqlQuery.trim(),
+        timestamp: new Date().toISOString(),
+        rowCount: rows.length,
+        columnCount: columns.length
+      }
+
+      // Add vào history state
+      setQueryHistory((prev) => [...prev, historyItem])
+
+      // Lưu vào database
+      try {
+        await databaseService.createQueryHistory({
+          prompt: historyItem.prompt,
+          query: historyItem.query,
+          rowCount: historyItem.rowCount,
+          columnCount: historyItem.columnCount,
+          createdAt: historyItem.timestamp
+        })
+      } catch (error) {
+        console.error('Failed to save query history:', error)
+      }
+
+      // Update table data (query đã execute trong try block trên)
+      setTableColumns(columns)
+      setTableData(rows)
+      setQueryError('')
+    } catch (error) {
+      console.error('Error running query:', error)
+
+      let errorMessage = 'Lỗi khi thực thi query'
+      if (error instanceof Error) {
+        errorMessage = error.message
+
+        if (errorMessage.includes('syntax error')) {
+          errorMessage +=
+            '\n\nGợi ý: SQL query có thể chứa ký tự không hợp lệ. Hãy kiểm tra lại hoặc chỉnh sửa thủ công.'
+        }
+      }
+
+      setQueryError(errorMessage)
+      setTableData([])
+      setTableColumns([])
+    } finally {
+      setIsRunningQuery(false)
+    }
+  }
 
   // Handle preview history item
   const handlePreviewHistory = (item: QueryHistoryItem) => {
@@ -747,6 +781,9 @@ FUZZY MATCHING RULES:
           tableData={tableData}
           tableColumns={tableColumns}
           onGenerateQuery={handleGenerateQuery}
+          onRunQuery={handleRunQuery}
+          isRunningQuery={isRunningQuery}
+          canRunQuery={canRunQuery}
           queryHistory={queryHistory}
           previewHistoryItem={previewHistoryItem}
           onPreviewHistory={handlePreviewHistory}
@@ -773,6 +810,14 @@ FUZZY MATCHING RULES:
         onClose={() => setShowSchemaDrawer(false)}
         selectedFields={selectedFields}
         onFieldsChange={setSelectedFields}
+      />
+
+      {/* History Query Drawer */}
+      <HistoryQueryDrawer
+        isOpen={showHistoryDrawer}
+        onClose={() => setShowHistoryDrawer(false)}
+        queryHistory={queryHistory}
+        onPreviewHistory={handlePreviewHistory}
       />
     </div>
   )
