@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import CustomButton from '../../../../../../components/common/CustomButton'
+import CustomTable from '../../../../../../components/common/CustomTable'
 import { TableIcon, Download, Copy, Loader2 } from 'lucide-react'
+import { ColumnDef } from '@tanstack/react-table'
 
 interface TablePreviewPanelProps {
   tableData: any[]
@@ -18,10 +20,57 @@ const TablePreviewPanel: React.FC<TablePreviewPanelProps> = ({
   onExport,
   onCopyTable
 }) => {
+  // Tạo columns definition cho CustomTable
+  const columns = useMemo<ColumnDef<any>[]>(() => {
+    if (tableColumns.length === 0) return []
+
+    return [
+      // Cột số thứ tự
+      {
+        id: 'index',
+        header: '#',
+        cell: ({ row }) => <div className="text-text-secondary font-medium">{row.index + 1}</div>,
+        size: 60
+      },
+      // Các cột dữ liệu
+      ...tableColumns.map((col) => ({
+        accessorKey: col,
+        header: col.toUpperCase(),
+        cell: ({ getValue }: any) => {
+          const value = getValue()
+          return <div>{value !== null && value !== undefined ? String(value) : '-'}</div>
+        }
+      }))
+    ]
+  }, [tableColumns])
+
+  // Custom empty message
+  const emptyMessage = (
+    <div className="text-center space-y-3">
+      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mx-auto">
+        {isExecuting ? (
+          <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+        ) : (
+          <TableIcon className="h-8 w-8 text-gray-400" />
+        )}
+      </div>
+      <div>
+        <p className="text-lg font-medium text-text-primary">
+          {isExecuting ? 'Đang thực thi query...' : 'No Data'}
+        </p>
+        <p className="text-sm text-text-secondary mt-1">
+          {isExecuting
+            ? 'Vui lòng đợi trong giây lát'
+            : 'Nhập yêu cầu và tạo SQL query để xem dữ liệu'}
+        </p>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="flex-1 flex flex-col bg-background overflow-hidden">
+    <div className="h-full flex flex-col bg-background">
       {/* Table Toolbar */}
-      <div className="h-12 border-b border-border-default bg-card-background flex items-center justify-between px-4">
+      <div className="h-12 flex-shrink-0 border-b border-border-default bg-card-background flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <TableIcon className="h-4 w-4 text-text-secondary" />
           <span className="text-sm font-medium text-text-primary">
@@ -42,68 +91,18 @@ const TablePreviewPanel: React.FC<TablePreviewPanelProps> = ({
       </div>
 
       {/* Table Content */}
-      <div className="flex-1 overflow-hidden p-4">
-        {tableData.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center space-y-3">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mx-auto">
-                {isExecuting ? (
-                  <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
-                ) : (
-                  <TableIcon className="h-8 w-8 text-gray-400" />
-                )}
-              </div>
-              <div>
-                <p className="text-lg font-medium text-text-primary">
-                  {isExecuting ? 'Đang thực thi query...' : 'No Data'}
-                </p>
-                <p className="text-sm text-text-secondary mt-1">
-                  {isExecuting
-                    ? 'Vui lòng đợi trong giây lát'
-                    : 'Nhập yêu cầu và tạo SQL query để xem dữ liệu'}
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-card-background rounded-lg border border-border-default max-h-[calc(100vh-12rem)] overflow-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-border-default">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider w-12">
-                    #
-                  </th>
-                  {tableColumns.map((col, idx) => (
-                    <th
-                      key={idx}
-                      className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider min-w-[150px]"
-                    >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-default">
-                {tableData.map((row, rowIdx) => (
-                  <tr
-                    key={rowIdx}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  >
-                    <td className="px-4 py-3 text-sm text-text-secondary">{rowIdx + 1}</td>
-                    {tableColumns.map((col, colIdx) => (
-                      <td
-                        key={colIdx}
-                        className="px-4 py-3 text-sm text-text-primary whitespace-nowrap min-w-[150px]"
-                      >
-                        {row[col] !== null && row[col] !== undefined ? String(row[col]) : '-'}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="flex-1 min-h-0 p-4">
+        <CustomTable
+          data={tableData}
+          columns={columns}
+          loading={isExecuting}
+          emptyMessage={emptyMessage}
+          showHeaderWhenEmpty={true}
+          showFooterWhenEmpty={false}
+          emptyStateHeight="h-full"
+          showScrollbar={true}
+          size="md"
+        />
       </div>
     </div>
   )

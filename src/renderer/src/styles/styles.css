@@ -157,3 +157,30 @@
 .card-background {
   background-color: rgba(0, 0, 0, var(--card-opacity)) !important;
 }
+
+
+/* Show scrollbar for specific components */
+.show-scrollbar {
+  -ms-overflow-style: auto !important; /* IE and Edge */
+  scrollbar-width: thin !important; /* Firefox */
+}
+
+.show-scrollbar::-webkit-scrollbar {
+  display: block !important; /* Chrome, Safari, Opera */
+  width: 8px;
+  height: 8px;
+}
+
+.show-scrollbar::-webkit-scrollbar-track {
+  background: var(--background);
+  border-radius: 4px;
+}
+
+.show-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.show-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}

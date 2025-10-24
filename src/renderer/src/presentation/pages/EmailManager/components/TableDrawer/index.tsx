@@ -436,7 +436,7 @@ Now generate the query:
         </div>
       </div>
 
-      <div className="h-[calc(100vh-3.5rem)] flex">
+      <div className="h-[calc(100vh-3.5rem)] flex overflow-hidden">
         {/* LEFT PANEL - AI Query Builder */}
         <QueryBuilderPanel
           tableName={tableName}
@@ -460,14 +460,16 @@ Now generate the query:
         />
 
         {/* RIGHT PANEL - Table Preview */}
-        <TablePreviewPanel
-          tableData={tableData}
-          tableColumns={tableColumns}
-          tableName={tableName}
-          isExecuting={isExecuting}
-          onExport={handleExport}
-          onCopyTable={handleCopyTable}
-        />
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <TablePreviewPanel
+            tableData={tableData}
+            tableColumns={tableColumns}
+            tableName={tableName}
+            isExecuting={isExecuting}
+            onExport={handleExport}
+            onCopyTable={handleCopyTable}
+          />
+        </div>
       </div>
     </div>
   )

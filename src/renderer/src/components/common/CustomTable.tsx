@@ -22,6 +22,8 @@ export interface CustomTableProps<T extends RowData> {
   showHeaderWhenEmpty?: boolean
   showFooterWhenEmpty?: boolean
   emptyStateHeight?: string // Custom height cho empty state
+  showScrollbar?: boolean // Enable scrollbar cho table
+  size?: 'sm' | 'md' | 'lg' // Kích thước table (padding/spacing)
 }
 
 const CustomTable = <T extends RowData>({
@@ -35,11 +37,37 @@ const CustomTable = <T extends RowData>({
   emptyMessage,
   showHeaderWhenEmpty = true, // Mặc định hiển thị header
   showFooterWhenEmpty = true, // Mặc định hiển thị footer
-  emptyStateHeight = 'h-96' // Mặc định height cho empty state
+  emptyStateHeight = 'h-96', // Mặc định height cho empty state
+  showScrollbar = false, // Mặc định không hiển thị scrollbar
+  size = 'md' // Mặc định size medium
 }: CustomTableProps<T>) => {
   const pageCount = totalCount !== undefined ? Math.ceil((totalCount || 1) / pageSize) : 1
   const hasData = data.length > 0
   const isEmpty = !loading && !hasData
+
+  // Size classes mapping
+  const sizeClasses = {
+    sm: {
+      headerPadding: 'px-3 py-2',
+      cellPadding: 'px-3 py-2',
+      fontSize: 'text-xs',
+      headerFontSize: 'text-xs'
+    },
+    md: {
+      headerPadding: 'px-4 py-3',
+      cellPadding: 'px-4 py-3',
+      fontSize: 'text-sm',
+      headerFontSize: 'text-sm'
+    },
+    lg: {
+      headerPadding: 'px-6 py-4',
+      cellPadding: 'px-6 py-4',
+      fontSize: 'text-base',
+      headerFontSize: 'text-sm'
+    }
+  }
+
+  const currentSize = sizeClasses[size]
 
   const table = useReactTable<T>({
     data,
@@ -68,15 +96,15 @@ const CustomTable = <T extends RowData>({
       <div className="h-full flex flex-col rounded-xl border border-border-default shadow-sm overflow-hidden">
         {/* Header - Hiển thị khi showHeaderWhenEmpty = true */}
         {showHeaderWhenEmpty && (
-          <div className="flex-shrink-0 bg-card-background border-b border-border-default">
-            <table className="w-full">
+          <div className="flex-shrink-0 bg-card-background border-b border-border-default overflow-x-auto">
+            <table className="min-w-full w-auto">
               <thead>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="px-6 py-4 text-left text-sm font-semibold text-text-primary whitespace-nowrap"
+                        className={`${currentSize.headerPadding} text-left ${currentSize.headerFontSize} font-semibold text-text-primary whitespace-nowrap`}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                       </th>
@@ -165,17 +193,19 @@ const CustomTable = <T extends RowData>({
 
   // Normal table với data
   return (
-    <div className="h-full flex flex-col rounded-xl border border-border-default shadow-sm overflow-hidden">
-      {/* Table Header */}
-      <div className="flex-shrink-0 bg-card-background border-b border-border-default">
-        <table className="w-full">
-          <thead>
+    <div
+      className={`h-full flex flex-col rounded-xl border border-border-default shadow-sm overflow-hidden ${showScrollbar ? 'show-scrollbar' : ''}`}
+    >
+      {/* Table Container - Scrollable */}
+      <div className={`flex-1 overflow-auto min-h-0 ${showScrollbar ? 'show-scrollbar' : ''}`}>
+        <table className="min-w-full w-auto border-collapse">
+          <thead className="bg-card-background border-b border-border-default sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-6 py-4 text-left text-sm font-semibold text-text-primary whitespace-nowrap"
+                    className={`${currentSize.headerPadding} text-left ${currentSize.headerFontSize} font-semibold text-text-primary whitespace-nowrap bg-card-background`}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
@@ -183,20 +213,17 @@ const CustomTable = <T extends RowData>({
               </tr>
             ))}
           </thead>
-        </table>
-      </div>
-
-      {/* Table Body - Scrollable */}
-      <div className="flex-1 overflow-auto min-h-0">
-        <table className="w-full">
-          <tbody className="divide-y divide-border-default">
+          <tbody className="divide-y divide-border-default bg-background">
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
                 className="hover:bg-card-background/30 transition-colors duration-150"
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-6 py-4 text-text-primary">
+                  <td
+                    key={cell.id}
+                    className={`${currentSize.cellPadding} ${currentSize.fontSize} text-text-primary whitespace-nowrap`}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
