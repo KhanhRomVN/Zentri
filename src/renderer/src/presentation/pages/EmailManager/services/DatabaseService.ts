@@ -341,6 +341,7 @@ export class DatabaseService {
         query TEXT NOT NULL,
         columns TEXT NOT NULL, -- JSON array
         data TEXT NOT NULL, -- JSON array of objects
+        selected_fields TEXT, -- JSON array - NEW: lưu các field đã chọn từ schema
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -1000,14 +1001,15 @@ id, service_account_id, secret, expire_at, created_at, updated_at
 
     await window.electronAPI.sqlite.runQuery(
       `INSERT INTO saved_tables (
-        id, name, query, columns, data, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        id, name, query, columns, data, selected_fields, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         tableData.name,
         tableData.query,
         JSON.stringify(tableData.columns),
         JSON.stringify(tableData.data),
+        JSON.stringify(tableData.selectedFields || []),
         now,
         now
       ]
@@ -1041,6 +1043,12 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       fields.push('data = ?')
       values.push(JSON.stringify(updates.data))
     }
+    if (updates.selectedFields !== undefined) {
+      fields.push('selected_fields = ?')
+      values.push(JSON.stringify(updates.selectedFields))
+      // DEBUG: Log để kiểm tra
+      console.log('[DEBUG] Updating selected_fields:', updates.selectedFields)
+    }
 
     if (fields.length > 0) {
       fields.push('updated_at = ?')
@@ -1048,6 +1056,8 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       values.push(id)
 
       const query = `UPDATE saved_tables SET ${fields.join(', ')} WHERE id = ?`
+      console.log('[DEBUG] Update query:', query)
+      console.log('[DEBUG] Update values:', values)
       await window.electronAPI.sqlite.runQuery(query, values)
     }
   }
@@ -1063,6 +1073,7 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       query: row.query,
       columns: JSON.parse(row.columns),
       data: JSON.parse(row.data),
+      selectedFields: row.selected_fields ? JSON.parse(row.selected_fields) : [],
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }
@@ -1198,9 +1209,32 @@ id, service_account_id, secret, expire_at, created_at, updated_at
         await this.migrateEmailsTable()
         console.log('[DatabaseService] Migration completed')
       }
+
+      // Migration: Add selected_fields to saved_tables
+      await this.migrateSavedTablesSchema()
     } catch (error) {
       console.error('[DatabaseService] Error checking migration:', error)
       // Không throw error ở đây vì có thể table chưa tồn tại
+    }
+  }
+
+  // Migration: Add selected_fields column to saved_tables
+  private async migrateSavedTablesSchema(): Promise<void> {
+    try {
+      const tableInfo = await window.electronAPI.sqlite.getAllRows(
+        'PRAGMA table_info(saved_tables)'
+      )
+      const hasSelectedFields = tableInfo.some((col: any) => col.name === 'selected_fields')
+
+      if (!hasSelectedFields) {
+        console.log('[Migration] Adding selected_fields column to saved_tables...')
+        await window.electronAPI.sqlite.runQuery(
+          'ALTER TABLE saved_tables ADD COLUMN selected_fields TEXT'
+        )
+        console.log('[Migration] selected_fields column added successfully')
+      }
+    } catch (error) {
+      console.error('[Migration] Error adding selected_fields column:', error)
     }
   }
 }

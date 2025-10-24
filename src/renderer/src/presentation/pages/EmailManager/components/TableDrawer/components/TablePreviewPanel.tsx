@@ -11,6 +11,7 @@ interface TablePreviewPanelProps {
   isExecuting: boolean
   onExport: () => void
   onCopyTable: () => void
+  selectedFields?: string[]
 }
 
 const TablePreviewPanel: React.FC<TablePreviewPanelProps> = ({
@@ -18,11 +19,27 @@ const TablePreviewPanel: React.FC<TablePreviewPanelProps> = ({
   tableColumns,
   isExecuting,
   onExport,
-  onCopyTable
+  onCopyTable,
+  selectedFields = []
 }) => {
+  // Tạo columns definition cho CustomTable
   // Tạo columns definition cho CustomTable
   const columns = useMemo<ColumnDef<any>[]>(() => {
     if (tableColumns.length === 0) return []
+
+    // Filter columns based on selected fields - THÊM MỚI
+    let visibleColumns = tableColumns
+    if (selectedFields.length > 0) {
+      // Chỉ hiển thị columns có trong selected fields
+      // Format của selectedFields: "table.field"
+      const selectedFieldNames = selectedFields.map((f) => f.split('.')[1])
+      visibleColumns = tableColumns.filter((col) => selectedFieldNames.includes(col))
+    }
+
+    // Nếu không có column nào visible, fallback về tất cả
+    if (visibleColumns.length === 0) {
+      visibleColumns = tableColumns
+    }
 
     return [
       // Cột số thứ tự
@@ -33,7 +50,7 @@ const TablePreviewPanel: React.FC<TablePreviewPanelProps> = ({
         size: 60
       },
       // Các cột dữ liệu
-      ...tableColumns.map((col) => ({
+      ...visibleColumns.map((col) => ({
         accessorKey: col,
         header: col.toUpperCase(),
         cell: ({ getValue }: any) => {
@@ -42,7 +59,7 @@ const TablePreviewPanel: React.FC<TablePreviewPanelProps> = ({
         }
       }))
     ]
-  }, [tableColumns])
+  }, [tableColumns, selectedFields])
 
   // Custom empty message
   const emptyMessage = (

@@ -53,29 +53,37 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
 
   const handleSaveTable = async (tableConfig: any, isEdit: boolean, tableId?: string) => {
     try {
+      let savedTable: SavedTable
+
       if (isEdit && tableId) {
         // Update existing table
         await databaseService.updateSavedTable(tableId, {
           name: tableConfig.name,
           query: tableConfig.query,
           columns: tableConfig.columns,
-          data: tableConfig.data
+          data: tableConfig.data,
+          selectedFields: tableConfig.selectedFields
         })
+        // Lấy lại table đã update để set vào editingTable
+        savedTable = (await databaseService.getSavedTableById(tableId))!
       } else {
         // Create new table
-        await databaseService.createSavedTable({
+        savedTable = await databaseService.createSavedTable({
           name: tableConfig.name,
           query: tableConfig.query,
           columns: tableConfig.columns,
           data: tableConfig.data,
+          selectedFields: tableConfig.selectedFields,
           createdAt: tableConfig.createdAt
         })
       }
 
       // Reload tables
       await loadSavedTables()
-      setShowCreateDrawer(false)
-      setEditingTable(null)
+
+      // Chuyển sang chế độ edit với table vừa tạo/update
+      setEditingTable(savedTable)
+      // Không đóng drawer
     } catch (error) {
       console.error('Failed to save table:', error)
       alert('Không thể lưu bảng. Vui lòng thử lại.')

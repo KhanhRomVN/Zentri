@@ -6,6 +6,7 @@ import { Database, X, RefreshCw, Play } from 'lucide-react'
 import { geminiService } from '../../../../../services/GeminiService'
 import { databaseService } from '../../services/DatabaseService'
 import { SavedTable } from '../../types'
+import DatabaseSchemaDrawer from './components/DatabaseSchemaDrawer'
 
 interface TableDrawerProps {
   isOpen: boolean
@@ -66,6 +67,10 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   const [queryHistory, setQueryHistory] = useState<QueryHistoryItem[]>([])
   const [previewHistoryItem, setPreviewHistoryItem] = useState<QueryHistoryItem | null>(null)
 
+  // Database Schema Drawer state - THÊM MỚI
+  const [showSchemaDrawer, setShowSchemaDrawer] = useState(false)
+  const [selectedFields, setSelectedFields] = useState<string[]>([])
+
   // Backup current state when previewing history
   const [currentStateBackup, setCurrentStateBackup] = useState<{
     prompt: string
@@ -104,6 +109,10 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
       setSqlQuery(editingTable.query)
       setTableData(editingTable.data)
       setTableColumns(editingTable.columns)
+      // FIXED: Load selected fields từ editingTable
+      const savedSelectedFields = editingTable.selectedFields || []
+      console.log('[DEBUG] Loading saved selected fields:', savedSelectedFields)
+      setSelectedFields(savedSelectedFields)
 
       // Tạo history item từ table đang edit
       const historyItem: QueryHistoryItem = {
@@ -122,6 +131,7 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
   }, [editingTable, isOpen])
 
   // Generate SQL query from prompt using Gemini API
+  // Generate SQL query from prompt using Gemini API
   const handleGenerateQuery = async () => {
     if (!promptInput.trim()) {
       setGenerateError('Vui lòng nhập mô tả yêu cầu')
@@ -132,11 +142,18 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
       setIsGenerating(true)
       setGenerateError('')
 
+      // Build field context từ selected fields - THÊM MỚI
+      let fieldContext = ''
+      if (selectedFields.length > 0) {
+        fieldContext = `\n\nUSER SELECTED FIELDS (prioritize these in SELECT):\n${selectedFields.map((f) => `- ${f}`).join('\n')}`
+      }
+
       const prompt = `
 You are a SQL expert. Generate a SQLite SELECT query based on the following schema and requirements.
 
 DATABASE SCHEMA:
 ${DATABASE_SCHEMA}
+${fieldContext}
 
 USER REQUIREMENT:
 ${promptInput}
@@ -149,6 +166,7 @@ CRITICAL RULES:
 5. Can use JOINs between tables
 6. Use json_extract() for JSON fields: json_extract(metadata, '$.key')
 7. Use json_array_length() to check array size
+${selectedFields.length > 0 ? '8. Try to SELECT only the user-selected fields if possible' : ''}
 
 Example output format:
 SELECT * FROM emails WHERE email_provider = 'gmail';
@@ -345,6 +363,7 @@ Now generate the query:
     setQueryHistory([])
     setPreviewHistoryItem(null)
     setCurrentStateBackup(null)
+    setSelectedFields([])
   }
 
   const handleClose = () => {
@@ -363,12 +382,19 @@ Now generate the query:
       query: sqlQuery.trim(),
       columns: tableColumns,
       data: tableData,
+      selectedFields: selectedFields,
       createdAt: editingTable?.createdAt || new Date().toISOString(),
       updatedAt: editingTable ? new Date().toISOString() : undefined
     }
 
+    // DEBUG: Log để kiểm tra selected fields có được lưu không
+    console.log('[DEBUG] Submitting table config:', {
+      selectedFieldsCount: selectedFields.length,
+      selectedFields: selectedFields
+    })
+
     onSubmit(config, !!editingTable, editingTable?.id)
-    handleReset()
+    // Không gọi handleReset() nữa - giữ nguyên state
   }
 
   const handleExport = () => {
@@ -406,15 +432,25 @@ Now generate the query:
   return (
     <div className="fixed inset-0 z-50 bg-background">
       {/* Header */}
+      {/* Header */}
       <div className="h-14 border-b border-border-default flex items-center justify-between px-4 bg-card-background">
         <div className="flex items-center gap-3">
           <Database className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold text-text-primary">
-            {editingTable ? 'Chỉnh Sửa Bảng' : 'AI Query Builder - Tạo Bảng Mới'}
+            {editingTable ? 'Edit Table' : 'AI Query Builder - Create New Table'}
           </h2>
         </div>
 
         <div className="flex items-center gap-2">
+          <CustomButton
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowSchemaDrawer(true)}
+            icon={Database}
+          >
+            Schema ({selectedFields.length})
+          </CustomButton>
+
           <CustomButton variant="secondary" size="sm" onClick={handleReset} icon={RefreshCw}>
             Reset
           </CustomButton>
@@ -425,7 +461,7 @@ Now generate the query:
             disabled={!canSubmit}
             icon={Play}
           >
-            {editingTable ? 'Cập Nhật Bảng' : 'Tạo Bảng'}
+            {editingTable ? 'Update Table' : 'Create Table'}
           </CustomButton>
           <button
             onClick={handleClose}
@@ -468,9 +504,17 @@ Now generate the query:
             isExecuting={isExecuting}
             onExport={handleExport}
             onCopyTable={handleCopyTable}
+            selectedFields={selectedFields}
           />
         </div>
       </div>
+      {/* Database Schema Drawer - THÊM MỚI */}
+      <DatabaseSchemaDrawer
+        isOpen={showSchemaDrawer}
+        onClose={() => setShowSchemaDrawer(false)}
+        selectedFields={selectedFields}
+        onFieldsChange={setSelectedFields}
+      />
     </div>
   )
 }

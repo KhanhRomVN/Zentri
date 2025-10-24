@@ -114,7 +114,7 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
             <TableIcon className="h-4 w-4 text-blue-600" />
-            <span>1. Tên Bảng</span>
+            <span>Table Name</span>
           </div>
           <CustomTextArea
             value={tableName}
@@ -137,7 +137,7 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
           <CustomTextArea
             value={promptInput}
             onChange={setPromptInput}
-            placeholder='Ví dụ: "Tạo bảng liệt kê các email có service là Google AI Cloud và có lưu Secret là API Key"'
+            placeholder='For example: "Create a list of emails whose service is Google AI Cloud and whose Secret is saved as API Key"'
             rows={4}
             maxLength={1000}
             showCharCount
@@ -153,7 +153,7 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
             icon={Sparkles}
             className="w-full bg-purple-600 hover:bg-purple-700"
           >
-            {isGenerating ? 'Đang tạo Query...' : 'Tạo SQL Query bằng AI'}
+            {isGenerating ? 'Creating Query...' : 'Create SQL Query with AI'}
           </CustomButton>
 
           {generateError && (
@@ -170,7 +170,7 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
             <Code className="h-4 w-4 text-green-600" />
-            <span>3. SQL Query (Có thể chỉnh sửa)</span>
+            <span>3. SQL Query (Editable)</span>
           </div>
 
           <div className="relative">
@@ -208,9 +208,9 @@ const QueryBuilderPanel: React.FC<QueryBuilderPanelProps> = ({
               Query Status:
             </div>
             <div className="space-y-1 text-sm text-blue-700 dark:text-blue-300">
-              <div>• {tableData.length} dòng dữ liệu</div>
+              <div>• {tableData.length} row</div>
               <div>• {tableColumns.length} cột</div>
-              {isExecuting && <div>• Đang thực thi query...</div>}
+              {isExecuting && <div>• Executing query...</div>}
             </div>
           </div>
         )}

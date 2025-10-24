@@ -111,6 +111,7 @@ export interface SavedTable {
   query: string
   columns: string[]
   data: any[]
+  selectedFields?: string[] // NEW: lưu các field đã chọn
   createdAt: string
   updatedAt?: string
 }
