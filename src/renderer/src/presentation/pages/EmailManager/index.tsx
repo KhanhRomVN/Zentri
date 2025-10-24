@@ -54,9 +54,31 @@ const EmailManagerPage = () => {
   // Related data for selected email
   const [email2FAMethods, setEmail2FAMethods] = useState<Email2FA[]>([])
   const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([])
+  const [allServiceAccounts, setAllServiceAccounts] = useState<ServiceAccount[]>([])
   const [selectedServiceAccount, setSelectedServiceAccount] = useState<ServiceAccount | null>(null)
   const [serviceAccount2FAMethods, setServiceAccount2FAMethods] = useState<ServiceAccount2FA[]>([])
   const [serviceAccountSecrets, setServiceAccountSecrets] = useState<ServiceAccountSecret[]>([])
+
+  useEffect(() => {
+    const loadAllServices = async () => {
+      if (!isDatabaseReady) return
+
+      try {
+        const allServices = await databaseService.getAllServiceAccounts()
+        setAllServiceAccounts(allServices)
+        console.log('[DEBUG] All services loaded on init:', allServices)
+      } catch (error) {
+        console.error('Failed to load all services:', error)
+      }
+    }
+
+    loadAllServices()
+  }, [isDatabaseReady])
+
+  // Thêm useEffect để log
+  useEffect(() => {
+    console.log('[DEBUG] allServiceAccounts updated:', allServiceAccounts)
+  }, [allServiceAccounts])
 
   useEffect(() => {
     if (selectedEmail?.id) {
@@ -115,18 +137,24 @@ const EmailManagerPage = () => {
   }, [emails, searchQuery, filters, isDatabaseReady])
 
   // Load related data for selected email
+  // Load related data for selected email
   const loadEmailRelatedData = useCallback(
     async (emailId: string) => {
       if (!isDatabaseReady) return
 
       try {
-        const [email2FA, services] = await Promise.all([
+        const [email2FA, services, allServices] = await Promise.all([
           databaseService.getEmail2FAByEmailId(emailId),
-          databaseService.getServiceAccountsByEmailId(emailId)
+          databaseService.getServiceAccountsByEmailId(emailId),
+          databaseService.getAllServiceAccounts()
         ])
 
         setEmail2FAMethods(email2FA)
         setServiceAccounts(services)
+        setAllServiceAccounts(allServices) // ← Đã có nhưng cần kiểm tra
+
+        // Debug log - có thể xóa sau khi fix
+        console.log('[DEBUG] loadEmailRelatedData - allServices loaded:', allServices)
       } catch (error) {
         console.error('Failed to load email related data:', error)
       }
@@ -472,6 +500,7 @@ const EmailManagerPage = () => {
                   serviceAccounts={serviceAccounts}
                   serviceAccount2FAMethods={serviceAccount2FAMethods}
                   serviceAccountSecrets={serviceAccountSecrets}
+                  allServiceAccounts={allServiceAccounts}
                   selectedServiceAccount={selectedServiceAccount}
                   activeTab={emailActiveTabs[selectedEmail.id || ''] || 'overview'}
                   onTabChange={(tab) => {

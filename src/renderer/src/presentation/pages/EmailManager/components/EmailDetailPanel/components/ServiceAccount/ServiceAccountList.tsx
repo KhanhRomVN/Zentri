@@ -12,6 +12,7 @@ interface ServiceAccountListProps {
   services: ServiceAccount[]
   emailAddress?: string
   email?: Email
+  allServices: ServiceAccount[]
   onToggleCreateForm?: (show: boolean) => void
   showCreateForm?: boolean
   formDraft?: any
@@ -29,6 +30,7 @@ interface ServiceAccountListProps {
 
 const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
   services,
+  allServices,
   email,
   showCreateForm = false,
   onToggleCreateForm,
@@ -146,6 +148,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
         <CreateServiceAccountForm
           email={email}
           existingServices={services}
+          allServices={allServices}
           onSubmit={handleCreateService}
           loading={isCreatingService}
           onCancel={handleCancelCreate}

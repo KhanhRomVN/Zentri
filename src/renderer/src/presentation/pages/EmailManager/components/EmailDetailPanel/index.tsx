@@ -24,6 +24,7 @@ interface EmailDetailPanelProps {
   serviceAccount2FAMethods: ServiceAccount2FA[]
   serviceAccountSecrets: ServiceAccountSecret[]
   selectedServiceAccount: ServiceAccount | null
+  allServiceAccounts: ServiceAccount[]
   activeTab?: TabType
   onTabChange?: (tab: TabType) => void
   showCreateServiceForm?: boolean
@@ -112,6 +113,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   onToggleCreateServiceForm,
   showCreateServiceForm = false,
   serviceFormDraft,
+  allServiceAccounts,
   onServiceFormDraftChange,
   onUpdateEmail,
   onAdd2FA,
@@ -219,6 +221,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
             <ServiceAccountList
               services={serviceAccounts}
               email={email}
+              allServices={allServiceAccounts}
               emailAddress={email.email_address}
               showCreateForm={showCreateServiceForm}
               onToggleCreateForm={onToggleCreateServiceForm}

@@ -13,6 +13,7 @@ import { SERVICE_TEMPLATES, ServiceTemplate } from '../../../../constants/servic
 interface CreateAccountServiceFormProps {
   email: Email
   existingServices: ServiceAccount[] // Để check trùng lặp service name
+  allServices?: ServiceAccount[]
   onSubmit: (data: Omit<ServiceAccount, 'id' | 'email_id'>) => Promise<void>
   onCancel: () => void
   loading?: boolean
@@ -157,6 +158,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
   existingServices = [],
   onSubmit,
   loading = false,
+  allServices = [],
   onCancel,
   initialData,
   onDataChange,
@@ -251,13 +253,11 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
 
   // Merge service templates với existing services
   const availableServices = useMemo(() => {
-    // Map để lưu trữ services, key là service_name lowercase
     const serviceMap = new Map<
       string,
       { value: string; label: string; template: ServiceTemplate }
     >()
 
-    // Thêm templates trước
     SERVICE_TEMPLATES.forEach((template) => {
       const key = template.service_name.toLowerCase()
       serviceMap.set(key, {
@@ -267,9 +267,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       })
     })
 
-    // Thêm existing services - LUÔN thêm tất cả services
-    // Nếu trùng tên với template thì sẽ ghi đè (ưu tiên service thực tế)
-    existingServices.forEach((service) => {
+    allServices.forEach((service) => {
       const key = service.service_name.toLowerCase()
       serviceMap.set(key, {
         value: service.service_name,
@@ -282,9 +280,15 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       })
     })
 
-    // Convert Map thành array và sort theo alphabet
-    return Array.from(serviceMap.values()).sort((a, b) => a.label.localeCompare(b.label))
-  }, [existingServices])
+    const result = Array.from(serviceMap.values()).sort((a, b) => a.label.localeCompare(b.label))
+
+    // Debug log - có thể xóa sau khi fix
+    console.log('[DEBUG] availableServices:', result)
+    console.log('[DEBUG] allServices:', allServices)
+    console.log('[DEBUG] SERVICE_TEMPLATES:', SERVICE_TEMPLATES)
+
+    return result
+  }, [allServices])
 
   // Handle service name change - auto-fill type & URL from template
   const handleServiceNameChange = (value: string | string[]) => {
@@ -482,7 +486,10 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
             <CustomCombobox
               label="Service Name"
               value={formData.service_name}
-              options={availableServices.map((s) => ({ value: s.value, label: s.label }))}
+              options={availableServices.map((s) => {
+                // Debug log - có thể xóa sau khi fix
+                return { value: s.value, label: s.label }
+              })}
               onChange={handleServiceNameChange}
               placeholder="Select or create service..."
               searchable={true}
