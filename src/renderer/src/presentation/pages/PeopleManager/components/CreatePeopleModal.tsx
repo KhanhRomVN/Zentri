@@ -100,8 +100,6 @@ const CreatePeopleModal: React.FC<CreatePeopleModalProps> = ({
         return
       }
 
-      console.log('[CreatePeopleModal] Person created:', newPerson)
-
       if (!newPerson) {
         setErrors({ submit: 'Failed to create person' })
         return

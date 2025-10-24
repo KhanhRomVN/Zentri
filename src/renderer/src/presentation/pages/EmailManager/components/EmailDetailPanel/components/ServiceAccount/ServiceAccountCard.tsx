@@ -91,24 +91,10 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
   const [metadata, setMetadata] = useState(service.metadata || {})
 
   // Extract dominant color from favicon
-  const {
-    color: faviconColor,
-    isLoading: colorLoading,
-    error: colorError
-  } = useFaviconColor(service.service_url, {
+  const { color: faviconColor } = useFaviconColor(service.service_url, {
     enabled: true,
     fallbackColor: 'var(--primary)'
   })
-
-  // Debug log
-  useEffect(() => {
-    console.log('[ServiceCard]', service.service_name, {
-      url: service.service_url,
-      color: faviconColor,
-      loading: colorLoading,
-      error: colorError
-    })
-  }, [service.service_name, service.service_url, faviconColor, colorLoading, colorError])
 
   // State để theo dõi trạng thái loading và feedback
   const [savingField, setSavingField] = useState<string | null>(null)

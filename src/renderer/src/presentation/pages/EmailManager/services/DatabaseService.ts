@@ -1054,8 +1054,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
     if (updates.selectedFields !== undefined) {
       fields.push('selected_fields = ?')
       values.push(JSON.stringify(updates.selectedFields))
-      // DEBUG: Log để kiểm tra
-      console.log('[DEBUG] Updating selected_fields:', updates.selectedFields)
     }
 
     if (fields.length > 0) {
@@ -1064,8 +1062,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       values.push(id)
 
       const query = `UPDATE saved_tables SET ${fields.join(', ')} WHERE id = ?`
-      console.log('[DEBUG] Update query:', query)
-      console.log('[DEBUG] Update values:', values)
       await window.electronAPI.sqlite.runQuery(query, values)
     }
   }
@@ -1157,15 +1153,11 @@ id, service_account_id, secret, expire_at, created_at, updated_at
   // Kiểm tra và tạo các table còn thiếu
   async ensureTablesExist(): Promise<void> {
     try {
-      console.log('[DatabaseService] Checking tables existence...')
-
       // Lấy danh sách các table hiện có
       const existingTables = await window.electronAPI.sqlite.getAllRows(
         "SELECT name FROM sqlite_master WHERE type='table'"
       )
       const tableNames = existingTables.map((row: any) => row.name)
-
-      console.log('[DatabaseService] Existing tables:', tableNames)
 
       // Danh sách các table cần có
       const requiredTables = [
@@ -1182,15 +1174,8 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       const missingTables = requiredTables.filter((table) => !tableNames.includes(table))
 
       if (missingTables.length > 0) {
-        console.log('[DatabaseService] Missing tables:', missingTables)
-        console.log('[DatabaseService] Creating missing tables...')
-
         // Tạo lại tất cả các table (initializeTables sẽ dùng IF NOT EXISTS)
         await this.initializeTables()
-
-        console.log('[DatabaseService] Missing tables created successfully')
-      } else {
-        console.log('[DatabaseService] All required tables exist')
       }
 
       // Kiểm tra và migrate các table cũ nếu cần
@@ -1213,9 +1198,7 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       const hasCategory = emailsTableInfo.some((col: any) => col.name === 'category')
 
       if (hasCategory) {
-        console.log('[DatabaseService] Detected old schema, migrating emails table...')
         await this.migrateEmailsTable()
-        console.log('[DatabaseService] Migration completed')
       }
 
       // Migration: Add selected_fields to saved_tables
@@ -1225,7 +1208,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       await this.migrateServiceAccountSecretsSchema()
     } catch (error) {
       console.error('[DatabaseService] Error checking migration:', error)
-      // Không throw error ở đây vì có thể table chưa tồn tại
     }
   }
 
@@ -1238,11 +1220,9 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       const hasSelectedFields = tableInfo.some((col: any) => col.name === 'selected_fields')
 
       if (!hasSelectedFields) {
-        console.log('[Migration] Adding selected_fields column to saved_tables...')
         await window.electronAPI.sqlite.runQuery(
           'ALTER TABLE saved_tables ADD COLUMN selected_fields TEXT'
         )
-        console.log('[Migration] selected_fields column added successfully')
       }
     } catch (error) {
       console.error('[Migration] Error adding selected_fields column:', error)
@@ -1258,8 +1238,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       const hasSecretName = tableInfo.some((col: any) => col.name === 'secret_name')
 
       if (!hasSecretName) {
-        console.log('[Migration] Adding secret_name column to service_account_secrets...')
-
         // 1. Thêm column secret_name
         await window.electronAPI.sqlite.runQuery(
           'ALTER TABLE service_account_secrets ADD COLUMN secret_name TEXT'
@@ -1271,8 +1249,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
         SET secret_name = json_extract(secret, '$.secret_name')
         WHERE secret_name IS NULL
       `)
-
-        console.log('[Migration] secret_name column added and data migrated successfully')
       }
     } catch (error) {
       console.error('[Migration] Error adding secret_name column:', error)

@@ -178,7 +178,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
 
   // Validate form
   const validateForm = (): boolean => {
-    console.log('[DEBUG] validateForm called with formData:', formData)
     const newErrors: Record<string, string> = {}
 
     if (!formData.method_type) {
@@ -186,7 +185,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
     }
 
     if (!formData.value.trim()) {
-      console.log('[DEBUG] Empty value detected for method:', formData.method_type)
       newErrors.value = 'Value is required'
     } else {
       // Only validate non-backup_codes methods at form level
@@ -200,10 +198,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
         if (!phoneRegex.test(formData.value.trim())) {
           newErrors.value = 'Please enter a valid phone number'
         }
-      } else if (formData.method_type === 'backup_codes') {
-        console.log(
-          '[DEBUG] SKIP backup_codes validation at form level - handled by CustomArrayInput'
-        )
       }
     }
 
@@ -218,16 +212,13 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
       }
     }
 
-    console.log('[DEBUG] Form validation errors:', newErrors)
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   // Handle form submission
   const handleSubmit = async () => {
-    console.log('[DEBUG] handleSubmit called')
     if (!validateForm()) {
-      console.log('[DEBUG] Form validation failed, not submitting')
       return
     }
 
@@ -343,18 +334,13 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             <CustomArrayInput
               items={currentCodes}
               onChange={(newCodes) => {
-                console.log('[DEBUG] CustomArrayInput onChange called with:', newCodes)
-                // Update form data with joined codes
                 const joinedValue = newCodes.join('\n')
-                console.log('[DEBUG] Setting form value to:', joinedValue)
                 setFormData((prev) => ({ ...prev, value: joinedValue }))
 
                 // Clear any form-level errors since CustomArrayInput handles its own validation
-                console.log('[DEBUG] Clearing form-level errors for backup_codes')
                 setErrors((prev) => {
                   const newErrors = { ...prev }
                   delete newErrors.value
-                  console.log('[DEBUG] Errors after clearing value error:', newErrors)
                   return newErrors
                 })
               }}

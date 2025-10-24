@@ -269,9 +269,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
             issuer={method.app || 'Email Manager'}
             accountName={method.metadata?.account_name || 'user@example.com'}
             showQRCode={false}
-            onCopy={(code) => {
-              console.log('OTP code copied:', code)
-            }}
+            onCopy={() => {}}
           />
 
           <div className="space-y-2">

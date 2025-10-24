@@ -107,8 +107,6 @@ const extractDominantColor = (img: HTMLImageElement): string => {
 const loadImageWithFallback = async (urls: string[]): Promise<HTMLImageElement> => {
   for (const url of urls) {
     try {
-      console.log('[FaviconColor] Trying URL:', url)
-
       const img = new Image()
       img.crossOrigin = 'anonymous'
 
@@ -131,10 +129,8 @@ const loadImageWithFallback = async (urls: string[]): Promise<HTMLImageElement> 
       img.src = url
       const loadedImg = await loadPromise
 
-      console.log('[FaviconColor] Successfully loaded from:', url)
       return loadedImg
     } catch (err) {
-      console.log('[FaviconColor] Failed:', url, err)
       continue
     }
   }
@@ -161,7 +157,6 @@ export const useFaviconColor = (
     // Kiểm tra cache trước
     const cachedColor = colorCache.get(serviceUrl)
     if (cachedColor) {
-      console.log('[FaviconColor] Using cached color for:', serviceUrl)
       setColor(cachedColor)
       return
     }
@@ -186,8 +181,6 @@ export const useFaviconColor = (
 
         // Extract dominant color
         const hexColor = extractDominantColor(img)
-
-        console.log('[FaviconColor] Extracted color:', hexColor, 'for', serviceUrl)
 
         // Lưu vào cache
         colorCache.set(serviceUrl, hexColor)
