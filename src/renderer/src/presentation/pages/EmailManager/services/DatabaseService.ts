@@ -535,6 +535,13 @@ export class DatabaseService {
     return rows.map(this.mapRowToServiceAccount)
   }
 
+  async getAllServiceAccountSecrets(): Promise<ServiceAccountSecret[]> {
+    const rows = await window.electronAPI.sqlite.getAllRows(
+      'SELECT * FROM service_account_secrets ORDER BY created_at DESC'
+    )
+    return rows.map(this.mapRowToServiceAccountSecret)
+  }
+
   // Service Account 2FA operations
   async getServiceAccount2FAByServiceId(serviceAccountId: string): Promise<ServiceAccount2FA[]> {
     const rows = await window.electronAPI.sqlite.getAllRows(

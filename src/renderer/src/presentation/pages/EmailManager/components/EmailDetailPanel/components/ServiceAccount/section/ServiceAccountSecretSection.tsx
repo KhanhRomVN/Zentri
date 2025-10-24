@@ -1,9 +1,9 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccountSecretSection.tsx
 import React, { useState } from 'react'
-import CustomBadge from '../../../../../../../components/common/CustomBadge'
-import CustomButton from '../../../../../../../components/common/CustomButton'
-import ServiceAccountSecretForm from './ServiceAccountSecretForm'
-import ServiceAccountSecretCard from './ServiceAccountSecretCard'
+import CustomBadge from '../../../../../../../../components/common/CustomBadge'
+import CustomButton from '../../../../../../../../components/common/CustomButton'
+import CreateServiceAccountSecretForm from '../form/CreateServiceAccountSecretForm'
+import ServiceAccountSecretCard from '../card/ServiceAccountSecretCard'
 import {
   Key,
   CheckCircle,
@@ -14,12 +14,13 @@ import {
   Database,
   Shield
 } from 'lucide-react'
-import { cn } from '../../../../../../../shared/lib/utils'
-import { ServiceAccount, ServiceAccountSecret } from '../../../../types'
+import { cn } from '../../../../../../../../shared/lib/utils'
+import { ServiceAccount, ServiceAccountSecret } from '../../../../../types'
 
 interface ServiceAccountSecretSectionProps {
   serviceAccount: ServiceAccount
   secrets: ServiceAccountSecret[]
+  allServiceAccountSecrets?: ServiceAccountSecret[] // Thêm prop mới
   onAddSecret?: (secretData: Omit<ServiceAccountSecret, 'id'>) => Promise<void>
   onSecretChange?: (secretId: string, secret: ServiceAccountSecret) => void
   onDeleteSecret?: (secretId: string) => void
@@ -31,6 +32,7 @@ interface ServiceAccountSecretSectionProps {
 const ServiceAccountSecretSection: React.FC<ServiceAccountSecretSectionProps> = ({
   serviceAccount,
   secrets = [],
+  allServiceAccountSecrets = [],
   onAddSecret,
   onSecretChange,
   onDeleteSecret,
@@ -202,8 +204,9 @@ const ServiceAccountSecretSection: React.FC<ServiceAccountSecretSectionProps> = 
 
               {/* Create Form */}
               {showCreateForm && (
-                <ServiceAccountSecretForm
+                <CreateServiceAccountSecretForm
                   serviceAccount={serviceAccount}
+                  allServiceAccountSecrets={allServiceAccountSecrets}
                   onAddSecret={handleSecretCreated}
                   onCancel={handleCancelCreate}
                   loading={loading}

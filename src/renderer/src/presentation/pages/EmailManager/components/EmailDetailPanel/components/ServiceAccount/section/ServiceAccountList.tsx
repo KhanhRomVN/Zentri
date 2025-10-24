@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
-import { Button } from '../../../../../../../components/ui/button'
+import { Button } from '../../../../../../../../components/ui/button'
 import { Plus, Globe, Filter, X, Search } from 'lucide-react'
-import { cn } from '../../../../../../../shared/lib/utils'
-import { ServiceAccount, Email } from '../../../../types'
-import ServiceAccountCard from './ServiceAccountCard'
-import CreateServiceAccountForm from './CreateServiceAccountForm'
-import CustomButton from '../../../../../../../components/common/CustomButton'
-import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
+import { cn } from '../../../../../../../../shared/lib/utils'
+import { ServiceAccount, Email } from '../../../../../types'
+import ServiceAccountCard from '../card/ServiceAccountCard'
+import CreateServiceAccountForm from '../form/CreateServiceAccountForm'
+import CustomButton from '../../../../../../../../components/common/CustomButton'
+import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
 
 interface ServiceAccountListProps {
   services: ServiceAccount[]
@@ -46,7 +46,7 @@ const ServiceAccountList: React.FC<ServiceAccountListProps> = ({
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<string>('')
-  const [showFilterPanel, setShowFilterPanel] = useState(false)
+  const [showFilterPanel] = useState(false)
 
   const [isCreatingService, setIsCreatingService] = useState(false)
 

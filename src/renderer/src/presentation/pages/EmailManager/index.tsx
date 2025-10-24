@@ -55,24 +55,32 @@ const EmailManagerPage = () => {
   const [email2FAMethods, setEmail2FAMethods] = useState<Email2FA[]>([])
   const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([])
   const [allServiceAccounts, setAllServiceAccounts] = useState<ServiceAccount[]>([])
+  const [allServiceAccountSecrets, setAllServiceAccountSecrets] = useState<ServiceAccountSecret[]>(
+    []
+  )
   const [selectedServiceAccount, setSelectedServiceAccount] = useState<ServiceAccount | null>(null)
   const [serviceAccount2FAMethods, setServiceAccount2FAMethods] = useState<ServiceAccount2FA[]>([])
   const [serviceAccountSecrets, setServiceAccountSecrets] = useState<ServiceAccountSecret[]>([])
 
   useEffect(() => {
-    const loadAllServices = async () => {
+    const loadAllServicesAndSecrets = async () => {
       if (!isDatabaseReady) return
 
       try {
-        const allServices = await databaseService.getAllServiceAccounts()
+        const [allServices, allSecrets] = await Promise.all([
+          databaseService.getAllServiceAccounts(),
+          databaseService.getAllServiceAccountSecrets()
+        ])
         setAllServiceAccounts(allServices)
+        setAllServiceAccountSecrets(allSecrets)
         console.log('[DEBUG] All services loaded on init:', allServices)
+        console.log('[DEBUG] All secrets loaded on init:', allSecrets)
       } catch (error) {
-        console.error('Failed to load all services:', error)
+        console.error('Failed to load all services and secrets:', error)
       }
     }
 
-    loadAllServices()
+    loadAllServicesAndSecrets()
   }, [isDatabaseReady])
 
   // Thêm useEffect để log

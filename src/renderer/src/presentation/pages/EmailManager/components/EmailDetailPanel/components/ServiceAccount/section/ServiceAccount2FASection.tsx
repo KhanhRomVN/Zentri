@@ -1,9 +1,9 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccount2FASection.tsx
 import React, { useState } from 'react'
-import CustomBadge from '../../../../../../../components/common/CustomBadge'
-import CustomButton from '../../../../../../../components/common/CustomButton'
-import ServiceAccount2FACard from './ServiceAccount2FACard'
-import CreateServiceAccount2FAForm from './CreateServiceAccount2FAForm'
+import CustomBadge from '../../../../../../../../components/common/CustomBadge'
+import CustomButton from '../../../../../../../../components/common/CustomButton'
+import ServiceAccount2FACard from '../card/ServiceAccount2FACard'
+import CreateServiceAccount2FAForm from '../form/CreateServiceAccount2FAForm'
 import {
   Shield,
   CheckCircle,
@@ -14,8 +14,8 @@ import {
   Users,
   Lock
 } from 'lucide-react'
-import { cn } from '../../../../../../../shared/lib/utils'
-import { ServiceAccount, ServiceAccount2FA } from '../../../../types'
+import { cn } from '../../../../../../../../shared/lib/utils'
+import { ServiceAccount, ServiceAccount2FA } from '../../../../../types'
 
 interface ServiceAccount2FASectionProps {
   serviceAccount: ServiceAccount

@@ -1,7 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDetailPanel/index.tsx
-import React, { useState } from 'react'
+import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Globe, Shield, Key, Database, SlidersHorizontal, Plus, User } from 'lucide-react'
+import { Globe, Shield, Key, SlidersHorizontal, Plus, User } from 'lucide-react'
 import {
   Email,
   Email2FA,
@@ -12,10 +12,10 @@ import {
 import CustomButton from '../../../../../components/common/CustomButton'
 import EmailSection from './components/Email/EmailSection'
 import Email2FASection from './components/Email/Email2FASection'
-import ServiceAccountList from './components/ServiceAccount/ServiceAccountList'
-import ServiceAccountSection from './components/ServiceAccount/ServiceAccountSection'
-import ServiceAccount2FASection from './components/ServiceAccount/ServiceAccount2FASection'
-import ServiceAccountSecretSection from './components/ServiceAccount/ServiceAccountSecretSection'
+import ServiceAccountList from './components/ServiceAccount/section/ServiceAccountList'
+import ServiceAccountSection from './components/ServiceAccount/section/ServiceAccountSection'
+import ServiceAccount2FASection from './components/ServiceAccount/section/ServiceAccount2FASection'
+import ServiceAccountSecretSection from './components/ServiceAccount/section/ServiceAccountSecretSection'
 
 interface EmailDetailPanelProps {
   email: Email
@@ -24,6 +24,7 @@ interface EmailDetailPanelProps {
   serviceAccount2FAMethods: ServiceAccount2FA[]
   serviceAccountSecrets: ServiceAccountSecret[]
   selectedServiceAccount: ServiceAccount | null
+  allServiceAccountSecrets: ServiceAccountSecret[]
   allServiceAccounts: ServiceAccount[]
   activeTab?: TabType
   onTabChange?: (tab: TabType) => void
@@ -107,14 +108,13 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   serviceAccounts,
   serviceAccount2FAMethods,
   serviceAccountSecrets,
+  allServiceAccountSecrets,
   selectedServiceAccount,
   activeTab: externalActiveTab = 'overview',
   onTabChange,
   onToggleCreateServiceForm,
   showCreateServiceForm = false,
-  serviceFormDraft,
   allServiceAccounts,
-  onServiceFormDraftChange,
   onUpdateEmail,
   onAdd2FA,
   onUpdate2FA,
@@ -126,7 +126,6 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   onUpdateServiceAccount2FA,
   onDeleteServiceAccount2FA,
   onAddServiceAccountSecret,
-  onUpdateServiceAccountSecret,
   onDeleteServiceAccountSecret,
   onBackToList
 }) => {
@@ -190,6 +189,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
               <ServiceAccountSecretSection
                 serviceAccount={selectedServiceAccount}
                 secrets={serviceSecrets}
+                allServiceAccountSecrets={allServiceAccountSecrets}
                 onAddSecret={onAddServiceAccountSecret}
                 onDeleteSecret={onDeleteServiceAccountSecret}
               />

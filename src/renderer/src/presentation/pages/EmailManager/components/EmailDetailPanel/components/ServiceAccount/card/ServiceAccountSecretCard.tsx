@@ -1,9 +1,9 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccountSecretCard.tsx
 import React, { useState } from 'react'
-import { Button } from '../../../../../../../components/ui/button'
-import CustomButton from '../../../../../../../components/common/CustomButton'
-import { Label } from '../../../../../../../components/ui/label'
-import CustomInput from '../../../../../../../components/common/CustomInput'
+import { Button } from '../../../../../../../../components/ui/button'
+import CustomButton from '../../../../../../../../components/common/CustomButton'
+import { Label } from '../../../../../../../../components/ui/label'
+import CustomInput from '../../../../../../../../components/common/CustomInput'
 import {
   Eye,
   EyeOff,
@@ -16,8 +16,8 @@ import {
   Save,
   Edit2
 } from 'lucide-react'
-import { cn } from '../../../../../../../shared/lib/utils'
-import { ServiceAccountSecret } from '../../../../types'
+import { cn } from '../../../../../../../../shared/lib/utils'
+import { ServiceAccountSecret } from '../../../../../types'
 
 interface ServiceAccountSecretCardProps {
   secret: ServiceAccountSecret

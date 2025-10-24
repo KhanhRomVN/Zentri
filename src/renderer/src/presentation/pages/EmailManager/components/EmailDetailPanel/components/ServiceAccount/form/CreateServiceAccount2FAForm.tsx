@@ -1,9 +1,9 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/CreateServiceAccount2FAForm.tsx
 import React, { useState, useEffect } from 'react'
-import CustomButton from '../../../../../../../components/common/CustomButton'
-import CustomInput from '../../../../../../../components/common/CustomInput'
-import CustomTextArea from '../../../../../../../components/common/CustomTextArea'
-import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
+import CustomButton from '../../../../../../../../components/common/CustomButton'
+import CustomInput from '../../../../../../../../components/common/CustomInput'
+import CustomTextArea from '../../../../../../../../components/common/CustomTextArea'
+import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
 import {
   Shield,
   QrCode,
@@ -17,11 +17,11 @@ import {
   Calendar,
   Globe
 } from 'lucide-react'
-import { cn } from '../../../../../../../shared/lib/utils'
-import { ServiceAccount2FA, ServiceAccount } from '../../../../types'
-import Metadata from '../../../../../../../components/common/Metadata'
-import { Button } from '../../../../../../../components/ui/button'
-import CustomArrayInput from '../../../../../../../components/common/CustomArrayInput'
+import { cn } from '../../../../../../../../shared/lib/utils'
+import { ServiceAccount2FA, ServiceAccount } from '../../../../../types'
+import Metadata from '../../../../../../../../components/common/Metadata'
+import { Button } from '../../../../../../../../components/ui/button'
+import CustomArrayInput from '../../../../../../../../components/common/CustomArrayInput'
 import { Label } from '@radix-ui/react-label'
 
 interface CreateServiceAccount2FAFormProps {

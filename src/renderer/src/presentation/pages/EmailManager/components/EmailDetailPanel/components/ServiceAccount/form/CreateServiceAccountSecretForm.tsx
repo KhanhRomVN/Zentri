@@ -1,13 +1,14 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccountSecretForm.tsx
+// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/CreateServiceAccountSecretForm.tsx
 
 import React, { useState, useCallback, useMemo } from 'react'
-import CustomButton from '../../../../../../../components/common/CustomButton'
-import CustomInput from '../../../../../../../components/common/CustomInput'
+import CustomButton from '../../../../../../../../components/common/CustomButton'
+import CustomInput from '../../../../../../../../components/common/CustomInput'
 import { Key, AlertCircle, Plus, Calendar, X, Save, Trash2 } from 'lucide-react'
-import { ServiceAccount, ServiceAccountSecret } from '../../../../types'
+import { ServiceAccount, ServiceAccountSecret } from '../../../../../types'
 
-interface ServiceAccountSecretFormProps {
+interface CreateServiceAccountSecretFormProps {
   serviceAccount: ServiceAccount
+  allServiceAccountSecrets?: ServiceAccountSecret[]
   onAddSecret?: (secretData: Omit<ServiceAccountSecret, 'id'>) => Promise<void>
   onCancel?: () => void
   loading?: boolean
@@ -19,7 +20,7 @@ interface SecretField {
   value: string
 }
 
-const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
+const CreateServiceAccountSecretForm: React.FC<CreateServiceAccountSecretFormProps> = ({
   serviceAccount,
   onAddSecret,
   onCancel,
@@ -218,7 +219,7 @@ const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
           </h5>
         </div>
 
-        {/* Add New Field Form - giống như CreateServiceAccount2FAForm */}
+        {/* Add New Field Form */}
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 space-y-3">
           <div className="flex items-center gap-2 mb-2">
             <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -351,4 +352,4 @@ const ServiceAccountSecretForm: React.FC<ServiceAccountSecretFormProps> = ({
   )
 }
 
-export default ServiceAccountSecretForm
+export default CreateServiceAccountSecretForm

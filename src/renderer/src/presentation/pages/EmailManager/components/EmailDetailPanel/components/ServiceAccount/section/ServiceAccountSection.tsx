@@ -1,39 +1,32 @@
+// src/renderer/src/presentation/pages/EmailManager/components/ServiceAccountSection.tsx
 import React, { useState, useEffect } from 'react'
-import { Button } from '../../../../../../../components/ui/button'
-import { useFaviconColor } from '../../../../../../../hooks/useFaviconColor'
-import CustomInput from '../../../../../../../components/common/CustomInput'
-import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
-import Metadata from '../../../../../../../components/common/Metadata'
+import { Button } from '../../../../../../../../components/ui/button'
+import CustomInput from '../../../../../../../../components/common/CustomInput'
+import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
+import Metadata from '../../../../../../../../components/common/Metadata'
 import {
-  ExternalLink,
-  User,
-  ChevronRight,
-  Globe,
-  Shield,
   Copy,
-  Key,
+  Check,
+  User,
+  Globe,
   Link,
-  Database,
-  Check
+  Key,
+  ExternalLink,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
-import { cn } from '../../../../../../../shared/lib/utils'
-import { ServiceAccount, ServiceAccount2FA, ServiceAccountSecret } from '../../../../types'
-import { Favicon } from '../../../../../../../shared/utils/faviconUtils'
+import { cn } from '../../../../../../../../shared/lib/utils'
+import { ServiceAccount } from '../../../../../types'
+import { Favicon } from '../../../../../../../../shared/utils/faviconUtils'
 
-interface ServiceAccountCardProps {
-  service: ServiceAccount
-  onServiceClick?: (service: ServiceAccount) => void
-  onServiceView?: (service: ServiceAccount) => void
+interface ServiceAccountSectionProps {
+  serviceAccount: ServiceAccount
   onServiceUpdate?: (serviceId: string, field: string, value: string) => Promise<boolean>
-  serviceSecrets?: ServiceAccountSecret[]
-  service2FA?: ServiceAccount2FA[]
   className?: string
-  defaultExpanded?: boolean
-  showNestedServices?: boolean
-  nestedServices?: ServiceAccount[]
 }
 
-// Service type options for the dropdown
+// Service type options
 const serviceTypeOptions = [
   { value: 'social_media', label: 'Social Media' },
   { value: 'communication', label: 'Communication' },
@@ -57,105 +50,71 @@ const serviceTypeOptions = [
   { value: 'other', label: 'Other' }
 ]
 
-// Status options for the dropdown
+// Status options
 const statusOptions = [
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' },
   { value: 'suspended', label: 'Suspended' }
 ]
 
-const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
-  service,
-  onServiceClick,
-  onServiceView,
+const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
+  serviceAccount,
   onServiceUpdate,
-  serviceSecrets = [],
-  service2FA = [],
-  className,
-  defaultExpanded = false,
-  showNestedServices = false,
-  nestedServices = []
+  className
 }) => {
-  // State expand/collapse độc lập cho mỗi card
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  // Form state
+  const [serviceName, setServiceName] = useState(serviceAccount.service_name || '')
+  const [serviceType, setServiceType] = useState(serviceAccount.service_type || '')
+  const [serviceUrl, setServiceUrl] = useState(serviceAccount.service_url || '')
+  const [status, setStatus] = useState(serviceAccount.status || 'active')
+  const [username, setUsername] = useState(serviceAccount.username || '')
+  const [name, setName] = useState(serviceAccount.name || '')
+  const [password, setPassword] = useState(serviceAccount.password || '')
+  const [note, setNote] = useState(serviceAccount.note || '')
+  const [metadata, setMetadata] = useState(serviceAccount.metadata || {})
 
-  // Editable fields - khởi tạo từ service prop
-  const [serviceName, setServiceName] = useState(service.service_name)
-  const [serviceType, setServiceType] = useState(service.service_type)
-  const [serviceUrl, setServiceUrl] = useState(service.service_url || '')
-  const [status, setStatus] = useState(service.status || 'active')
-  const [username, setUsername] = useState(service.username || '')
-  const [name, setName] = useState(service.name || '')
-  const [password, setPassword] = useState(service.password || '')
-  const [note, setNote] = useState(service.note || '')
-  const [metadata, setMetadata] = useState(service.metadata || {})
-
-  // Extract dominant color from favicon
-  const { color: faviconColor } = useFaviconColor(service.service_url, {
-    enabled: true,
-    fallbackColor: 'var(--primary)'
-  })
-
-  // State để theo dõi trạng thái loading và feedback
+  // UI state
+  const [isExpanded, setIsExpanded] = useState(true)
   const [savingField, setSavingField] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
 
-  // Reset edited data khi service prop thay đổi
+  // Reset form khi serviceAccount thay đổi
   useEffect(() => {
-    setServiceName(service.service_name)
-    setServiceType(service.service_type)
-    setServiceUrl(service.service_url || '')
-    setStatus(service.status || 'active')
-    setUsername(service.username || '')
-    setName(service.name || '')
-    setPassword(service.password || '')
-    setNote(service.note || '')
-    setMetadata(service.metadata || {})
+    setServiceName(serviceAccount.service_name || '')
+    setServiceType(serviceAccount.service_type || '')
+    setServiceUrl(serviceAccount.service_url || '')
+    setStatus(serviceAccount.status || 'active')
+    setUsername(serviceAccount.username || '')
+    setName(serviceAccount.name || '')
+    setPassword(serviceAccount.password || '')
+    setNote(serviceAccount.note || '')
+    setMetadata(serviceAccount.metadata || {})
     setSaveStatus({})
-  }, [service])
+  }, [serviceAccount])
 
-  // Get service type label
-  const getServiceTypeLabel = (type: string) => {
-    const option = serviceTypeOptions.find((opt) => opt.value === type)
-    return option ? option.label : type.replace(/_/g, ' ')
-  }
+  // Kiểm tra thay đổi
+  const hasServiceNameChanged = serviceName !== (serviceAccount.service_name || '')
+  const hasServiceTypeChanged = serviceType !== (serviceAccount.service_type || '')
+  const hasServiceUrlChanged = serviceUrl !== (serviceAccount.service_url || '')
+  const hasStatusChanged = status !== (serviceAccount.status || 'active')
+  const hasUsernameChanged = username !== (serviceAccount.username || '')
+  const hasNameChanged = name !== (serviceAccount.name || '')
+  const hasPasswordChanged = password !== (serviceAccount.password || '')
+  const hasNoteChanged = note !== (serviceAccount.note || '')
 
-  // Get stats for collapsed view
-  const getServiceStats = () => {
-    return {
-      hasPassword: !!service.password,
-      secretsCount: serviceSecrets.length,
-      twoFACount: service2FA.length
-    }
-  }
-
-  const stats = getServiceStats()
-
-  // Check if values have changed
-  const hasServiceNameChanged = serviceName !== service.service_name
-  const hasServiceTypeChanged = serviceType !== service.service_type
-  const hasServiceUrlChanged = serviceUrl !== (service.service_url || '')
-  const hasUsernameChanged = username !== (service.username || '')
-  const hasNameChanged = name !== (service.name || '')
-  const hasPasswordChanged = password !== (service.password || '')
-  const hasNoteChanged = note !== (service.note || '')
-
-  // Hàm xử lý lưu field
+  // Hàm lưu field
   const handleSaveField = async (field: string, value: string) => {
-    if (!service.id || !onServiceUpdate) {
+    if (!serviceAccount.id || !onServiceUpdate) {
       console.error('Missing service ID or update function')
       return
     }
 
     try {
       setSavingField(field)
-
-      // Gọi hàm update từ parent
-      const success = await onServiceUpdate(service.id, field, value)
+      const success = await onServiceUpdate(serviceAccount.id, field, value)
 
       if (success) {
         setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
-        // Reset status sau 2 giây
         setTimeout(() => {
           setSaveStatus((prev) => ({ ...prev, [field]: null }))
         }, 2000)
@@ -170,7 +129,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
     }
   }
 
-  // Hàm render icon trạng thái cho input
+  // Render status icon
   const renderStatusIcon = (field: string, hasChanged: boolean, currentValue: string) => {
     if (savingField === field) {
       return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -181,7 +140,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
     }
 
     if (saveStatus[field] === 'error') {
-      return <div className="text-red-600">!</div>
+      return <AlertCircle className="h-4 w-4 text-red-600" />
     }
 
     if (hasChanged) {
@@ -189,50 +148,27 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => handleSaveField(field, currentValue)}
+          onClick={(e) => {
+            e.stopPropagation()
+            handleSaveField(field, currentValue)
+          }}
           className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
           disabled={savingField !== null}
         >
-          <Check className="h-2.5 w-2.5" />
+          <Check className="h-3 w-3" />
         </Button>
       )
     }
 
-    return undefined
+    return null
   }
 
-  // Handle card click - toggle expand/collapse
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't expand if clicking on buttons or inputs
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input'))
-      return
-    setIsExpanded(!isExpanded)
-  }
-
-  const handleExternalLink = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (service.service_url) {
-      window.open(service.service_url, '_blank')
-    }
-  }
-
-  const handleView = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (onServiceView) {
-      onServiceView(service)
-    } else if (onServiceClick) {
-      onServiceClick(service)
-    }
-  }
-
-  const copyToClipboard = (text: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(text)
-  }
-
-  const handleNestedServiceClick = (nestedService: ServiceAccount) => {
-    if (onServiceClick) {
-      onServiceClick(nestedService)
+  // Copy to clipboard
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch (err) {
+      console.error('Failed to copy:', err)
     }
   }
 
@@ -248,55 +184,44 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
   }
 
   // Handle metadata change
-  const handleMetadataChange = async (newMetadata: Record<string, any>) => {
+  const handleMetadataChange = (newMetadata: Record<string, any>) => {
     setMetadata(newMetadata)
-
-    // Lưu metadata vào database
-    if (service.id && onServiceUpdate) {
-      try {
-        setSavingField('metadata')
-        const success = await onServiceUpdate(service.id, 'metadata', JSON.stringify(newMetadata))
-
-        if (success) {
-          setSaveStatus((prev) => ({ ...prev, metadata: 'success' }))
-          // Reset status sau 2 giây
-          setTimeout(() => {
-            setSaveStatus((prev) => ({ ...prev, metadata: null }))
-          }, 2000)
-        } else {
-          setSaveStatus((prev) => ({ ...prev, metadata: 'error' }))
-        }
-      } catch (error) {
-        console.error('Error saving metadata:', error)
-        setSaveStatus((prev) => ({ ...prev, metadata: 'error' }))
-      } finally {
-        setSavingField(null)
-      }
-    }
   }
 
-  const handleMetadataDelete = async (key: string) => {
-    const newMetadata = { ...metadata }
-    delete newMetadata[key]
+  // Get service type label
+  const getServiceTypeLabel = (type: string) => {
+    const option = serviceTypeOptions.find((opt) => opt.value === type)
+    return option ? option.label : type.replace(/_/g, ' ')
+  }
 
-    await handleMetadataChange(newMetadata)
+  // Handle external link
+  const handleExternalLink = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (serviceUrl) {
+      window.open(serviceUrl, '_blank')
+    }
   }
 
   return (
     <div
       className={cn(
-        'group relative bg-card-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600',
+        'group relative bg-card-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden',
         className
       )}
-      onClick={handleCardClick}
     >
       {/* Status Indicator */}
       <div
-        className="absolute top-0 left-0 w-1 h-full transition-colors duration-300"
-        style={{ backgroundColor: faviconColor }}
+        className={cn(
+          'absolute top-0 left-0 w-1 h-full',
+          status === 'active'
+            ? 'bg-emerald-500'
+            : status === 'suspended'
+              ? 'bg-red-500'
+              : 'bg-gray-400'
+        )}
       />
 
-      {/* Collapsed View */}
+      {/* Header */}
       <div className="p-3 transition-all duration-200">
         <div className="flex items-center justify-between">
           {/* Left Section - Favicon + Service Info */}
@@ -304,7 +229,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
             {/* Service Favicon */}
             <div className="relative flex-shrink-0">
               <Favicon
-                url={service.service_url}
+                url={serviceUrl}
                 size={24}
                 className="rounded"
                 fallbackIcon={<Globe className="h-4 w-4 text-gray-600" />}
@@ -313,9 +238,9 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               <div
                 className={cn(
                   'absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800',
-                  service.status === 'active'
+                  status === 'active'
                     ? 'bg-emerald-500'
-                    : service.status === 'suspended'
+                    : status === 'suspended'
                       ? 'bg-red-500'
                       : 'bg-gray-400'
                 )}
@@ -325,10 +250,8 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
             {/* Service Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-semibold text-text-primary truncate">
-                  {service.service_name}
-                </h3>
-                {service.service_url && (
+                <h3 className="text-sm font-semibold text-text-primary truncate">{serviceName}</h3>
+                {serviceUrl && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -342,57 +265,40 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               </div>
 
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {getServiceTypeLabel(service.service_type)} • {service.status || 'unknown'}
+                {getServiceTypeLabel(serviceType)} • {status || 'unknown'}
               </div>
             </div>
           </div>
 
-          {/* Right Section - Stats + Actions + Expand Button */}
-          <div className="flex items-center gap-2">
-            {/* Service Stats */}
-            <div className="flex items-center gap-1">
-              {stats.hasPassword && (
-                <div className="flex items-center justify-center w-5 h-5 bg-amber-100 dark:bg-amber-900/20 rounded">
-                  <Key className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" />
-                </div>
-              )}
-              {stats.secretsCount > 0 && (
-                <div className="flex items-center justify-center w-5 h-5 bg-purple-100 dark:bg-purple-900/20 rounded">
-                  <Database className="h-2.5 w-2.5 text-purple-600 dark:text-purple-400" />
-                  <span className="text-xs font-bold text-purple-700 dark:text-purple-300 ml-0.5">
-                    {stats.secretsCount}
-                  </span>
-                </div>
-              )}
-              {stats.twoFACount > 0 && (
-                <div className="flex items-center justify-center w-5 h-5 bg-green-100 dark:bg-green-900/20 rounded">
-                  <Shield className="h-2.5 w-2.5 text-green-600 dark:text-green-400" />
-                  <span className="text-xs font-bold text-green-700 dark:text-green-300 ml-0.5">
-                    {stats.twoFACount}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* View Details Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleView}
-              className="p-0.5 h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors"
-              title="View service details"
-            >
-              <ChevronRight className="h-3 w-3" />
-            </Button>
-          </div>
+          {/* Expand/Collapse Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-0.5 h-5 w-5 text-gray-400 hover:text-gray-600"
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-3 w-3 transition-transform" />
+            ) : (
+              <ChevronDown className="h-3 w-3 transition-transform" />
+            )}
+          </Button>
         </div>
       </div>
 
-      {/* Expanded View */}
+      {/* Expanded Content */}
       {isExpanded && (
         <div className="px-3 pb-3 space-y-4 animate-in slide-in-from-top-2 duration-300">
           {/* Divider */}
           <div className="border-t border-gray-100 dark:border-gray-700 ml-2" />
+
+          {/* Header */}
+          <div className="flex items-center justify-between ml-2">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Service Account Details
+            </div>
+          </div>
+
           {/* Service Information Section */}
           <div className="space-y-3 ml-2">
             {/* Service Name */}
@@ -412,7 +318,10 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => copyToClipboard(serviceName, e)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        copyToClipboard(serviceName)
+                      }}
                       className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
                       disabled={savingField !== null}
                     >
@@ -460,6 +369,19 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
                   placeholder="Select status..."
                   size="sm"
                 />
+                {hasStatusChanged && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSaveField('status', status)}
+                      className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      disabled={savingField !== null}
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -493,7 +415,10 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => copyToClipboard(serviceUrl, e)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          copyToClipboard(serviceUrl)
+                        }}
                         className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
                         disabled={savingField !== null}
                       >
@@ -522,7 +447,10 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => copyToClipboard(username, e)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        copyToClipboard(username)
+                      }}
                       className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
                       disabled={savingField !== null}
                     >
@@ -550,7 +478,10 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => copyToClipboard(name, e)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        copyToClipboard(name)
+                      }}
                       className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
                       disabled={savingField !== null}
                     >
@@ -589,12 +520,12 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               rightIcon={renderStatusIcon('note', hasNoteChanged, note)}
             />
           </div>
+
           {/* Metadata Section */}
           <div className="ml-2">
             <Metadata
               metadata={metadata}
               onMetadataChange={handleMetadataChange}
-              onDelete={handleMetadataDelete}
               title="Service Metadata"
               compact={true}
               size="sm"
@@ -607,33 +538,10 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               showDeleteButtons={true}
             />
           </div>
-          {/* Nested Services List */}
-          {showNestedServices && nestedServices && nestedServices.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 ml-2">
-              <div className="mb-3">
-                <h4 className="text-sm font-semibold text-text-primary">
-                  Related Services ({nestedServices.length})
-                </h4>
-              </div>
-              <div className="space-y-2">
-                {nestedServices.map((nestedService) => (
-                  <ServiceAccountCard
-                    key={nestedService.id}
-                    service={nestedService}
-                    onServiceClick={handleNestedServiceClick}
-                    onServiceView={onServiceView}
-                    onServiceUpdate={onServiceUpdate}
-                    className="ml-4 border-l-2 border-blue-200 dark:border-blue-700"
-                    defaultExpanded={false}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
   )
 }
 
-export default ServiceAccountCard
+export default ServiceAccountSection
