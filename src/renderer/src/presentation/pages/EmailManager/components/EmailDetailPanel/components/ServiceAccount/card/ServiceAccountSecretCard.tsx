@@ -1,9 +1,8 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccountSecretCard.tsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '../../../../../../../../components/ui/button'
 import CustomBadge from '../../../../../../../../components/common/CustomBadge'
 import CustomButton from '../../../../../../../../components/common/CustomButton'
-import { Label } from '../../../../../../../../components/ui/label'
 import CustomInput from '../../../../../../../../components/common/CustomInput'
 import {
   Eye,
@@ -11,7 +10,6 @@ import {
   Copy,
   Key,
   Trash2,
-  Check,
   Calendar,
   AlertTriangle,
   Edit2,
@@ -60,6 +58,24 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
     return fields
   })
 
+  // ✅ Sync secretName khi secret.secret_name thay đổi
+  useEffect(() => {
+    setSecretName(secret.secret_name || '')
+  }, [secret.secret_name])
+
+  // ✅ Sync editingFields khi secret.secret thay đổi
+  useEffect(() => {
+    const fields: Record<string, string> = {}
+    if (secret.secret && typeof secret.secret === 'object') {
+      Object.entries(secret.secret).forEach(([key, value]) => {
+        if (key !== 'secret_name') {
+          fields[key] = String(value)
+        }
+      })
+    }
+    setEditingFields(fields)
+  }, [secret.secret])
+
   const formatDateForInput = (dateString: string | undefined): string => {
     if (!dateString) return ''
     try {
@@ -72,16 +88,44 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
   }
 
   const [expireDateValue, setExpireDateValue] = useState(formatDateForInput(secret.expire_at))
-  const [savingField, setSavingField] = useState<string | null>(null)
-  const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
 
-  const hasSecretNameChanged = secretName !== (secret.secret_name || '')
-  const hasExpireDateChanged = expireDateValue !== formatDateForInput(secret.expire_at)
-  const hasFieldsChanged = Object.entries(editingFields).some(([key, value]) => {
-    const originalValue =
-      secret.secret && typeof secret.secret === 'object' ? String(secret.secret[key] || '') : ''
-    return value !== originalValue
-  })
+  // Track changes state - sử dụng cho CustomInput props
+  const [savingField, setSavingField] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState<{ [key: string]: boolean }>({})
+
+  // ✅ Reset saveSuccess khi component mount
+  useEffect(() => {
+    console.log('[ServiceAccountSecretCard] Component mounted, resetting saveSuccess')
+    setSaveSuccess({})
+  }, [])
+
+  // ✅ Reset saveSuccess khi secret thay đổi
+  useEffect(() => {
+    console.log(
+      '[ServiceAccountSecretCard] Secret changed, resetting saveSuccess. Secret ID:',
+      secret.id
+    )
+    setSaveSuccess({})
+  }, [secret.id])
+
+  // ✅ Log saveSuccess changes
+  useEffect(() => {
+    console.log('[ServiceAccountSecretCard] saveSuccess state changed:', saveSuccess)
+  }, [saveSuccess])
+
+  // Initial values for tracking
+  const initialExpireDate = formatDateForInput(secret.expire_at)
+  const initialFields = (() => {
+    const fields: Record<string, string> = {}
+    if (secret.secret && typeof secret.secret === 'object') {
+      Object.entries(secret.secret).forEach(([key, value]) => {
+        if (key !== 'secret_name') {
+          fields[key] = String(value)
+        }
+      })
+    }
+    return fields
+  })()
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -100,22 +144,27 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
     }
   }
 
-  const handleSaveField = async (field: string) => {
-    if (!onSecretChange) return
+  const handleSaveField = async (field: string, value: string) => {
+    if (!onSecretChange) {
+      return
+    }
 
     try {
       setSavingField(field)
+      // Reset save success state trước khi save
+      setSaveSuccess((prev) => ({ ...prev, [field]: false }))
+
       const updatedSecret: ServiceAccountSecret = { ...secret }
 
       switch (field) {
         case 'secret_name':
-          updatedSecret.secret_name = secretName
+          updatedSecret.secret_name = value
           if (updatedSecret.secret && typeof updatedSecret.secret === 'object') {
-            updatedSecret.secret.secret_name = secretName
+            updatedSecret.secret.secret_name = value
           }
           break
         case 'expire_at':
-          updatedSecret.expire_at = parseDateFromInput(expireDateValue) || undefined
+          updatedSecret.expire_at = parseDateFromInput(value) || undefined
           break
         case 'fields':
           updatedSecret.secret = {
@@ -124,19 +173,24 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
           }
           break
         default:
-          console.warn(`Unknown field: ${field}`)
+          console.warn(`[DEBUG] Unknown field: ${field}`)
           return
       }
 
       await onSecretChange(secret.id, updatedSecret)
 
-      setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
+      // Set success state
+      setSaveSuccess((prev) => ({ ...prev, [field]: true }))
+
+      // Reset success state sau 2 giây
       setTimeout(() => {
-        setSaveStatus((prev) => ({ ...prev, [field]: null }))
+        setSaveSuccess((prev) => ({ ...prev, [field]: false }))
       }, 2000)
     } catch (error) {
-      console.error(`Error saving ${field}:`, error)
-      setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
+      console.error(`[ERROR ServiceAccountSecretCard] Error saving ${field}:`, error)
+      console.error('[ERROR] Error stack:', error instanceof Error ? error.stack : 'No stack')
+      setSaveSuccess((prev) => ({ ...prev, [field]: false }))
+      alert(`Error saving ${field}. Please try again.`)
     } finally {
       setSavingField(null)
     }
@@ -219,46 +273,11 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
       await onSecretChange(secret.id, updatedSecret)
 
       setEditingSecretField(null)
-      setSaveStatus((prev) => ({ ...prev, secret_field_edit: 'success' }))
-      setTimeout(() => {
-        setSaveStatus((prev) => ({ ...prev, secret_field_edit: null }))
-      }, 2000)
     } catch (error) {
       console.error('Error saving secret field:', error)
-      setSaveStatus((prev) => ({ ...prev, secret_field_edit: 'error' }))
     } finally {
       setSavingField(null)
     }
-  }
-
-  const renderStatusIcon = (field: string, hasChanged: boolean) => {
-    if (savingField === field) {
-      return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-    }
-
-    if (saveStatus[field] === 'success') {
-      return <Check className="h-4 w-4 text-green-600" />
-    }
-
-    if (saveStatus[field] === 'error') {
-      return <div className="text-red-600">!</div>
-    }
-
-    if (hasChanged) {
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleSaveField(field)}
-          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
-          disabled={savingField !== null}
-        >
-          <Check className="h-2.5 w-2.5" />
-        </Button>
-      )
-    }
-
-    return undefined
   }
 
   const isExpired = secret.expire_at && new Date(secret.expire_at) < new Date()
@@ -365,16 +384,20 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
           <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 p-4">
             {/* Secret Name */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Secret Name
-              </Label>
               <CustomInput
+                label="Secret Name"
                 value={secretName}
                 onChange={setSecretName}
                 placeholder="Enter secret name"
                 variant="filled"
                 size="sm"
-                rightIcon={renderStatusIcon('secret_name', hasSecretNameChanged)}
+                trackChanges={true}
+                initialValue={secret.secret_name || ''}
+                onSave={async (value) => {
+                  await handleSaveField('secret_name', value)
+                }}
+                isSaving={savingField === 'secret_name'}
+                saveSuccess={saveSuccess['secret_name'] || false}
                 disabled={savingField !== null && savingField !== 'secret_name'}
               />
             </div>
@@ -382,28 +405,15 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
             {/* Secret Fields */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Secret Fields
-                </Label>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowSecrets(!showSecrets)}
-                    className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
-                  >
-                    {showSecrets ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleAddField}
-                    className="p-1 h-6 w-6 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                  {hasFieldsChanged && renderStatusIcon('fields', true)}
-                </div>
+                <label className="text-sm font-medium text-text-primary">Secret</label>
+                <CustomButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAddField}
+                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 !w-auto px-3 shrink-0"
+                >
+                  Create
+                </CustomButton>
               </div>
 
               <div className="space-y-3">
@@ -475,10 +485,8 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
 
                   return (
                     <div key={fieldName} className="space-y-2">
-                      <Label className="text-xs text-gray-500 dark:text-gray-400">
-                        {fieldName}
-                      </Label>
                       <CustomInput
+                        label={fieldName}
                         value={showSecrets ? fieldValue : '•'.repeat(24)}
                         onChange={(value) => {
                           setEditingFields((prev) => ({ ...prev, [fieldName]: value }))
@@ -486,8 +494,34 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
                         placeholder={`${fieldName} value`}
                         variant="filled"
                         size="sm"
-                        rightIcon={
-                          <div className="flex items-center gap-1">
+                        trackChanges={true}
+                        initialValue={initialFields[fieldName] || ''}
+                        onSave={async () => {
+                          const updatedSecret: ServiceAccountSecret = {
+                            ...secret,
+                            secret: {
+                              secret_name: secretName,
+                              ...editingFields
+                            }
+                          }
+                          await onSecretChange?.(secret.id, updatedSecret)
+                        }}
+                        isSaving={savingField === 'fields'}
+                        saveSuccess={saveSuccess['fields'] || false}
+                        additionalActions={
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowSecrets(!showSecrets)}
+                              className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
+                            >
+                              {showSecrets ? (
+                                <EyeOff className="h-3 w-3" />
+                              ) : (
+                                <Eye className="h-3 w-3" />
+                              )}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -512,7 +546,7 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
-                          </div>
+                          </>
                         }
                         disabled={savingField !== null && savingField !== 'fields'}
                       />
@@ -541,10 +575,8 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
 
             {/* Expiry Date */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Expiry Date
-              </Label>
               <CustomInput
+                label="Expiry Date"
                 value={expireDateValue}
                 onChange={setExpireDateValue}
                 placeholder="Select expiry date"
@@ -552,7 +584,11 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
                 size="sm"
                 type="datetime-local"
                 leftIcon={<Calendar className="h-4 w-4" />}
-                rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
+                trackChanges={true}
+                initialValue={initialExpireDate}
+                onSave={(value) => handleSaveField('expire_at', value)}
+                isSaving={savingField === 'expire_at'}
+                saveSuccess={saveSuccess['expire_at'] || false}
                 disabled={savingField !== null && savingField !== 'expire_at'}
               />
             </div>

@@ -4,7 +4,7 @@ import { Button } from '../../../../../../../components/ui/button'
 import CustomInput from '../../../../../../../components/common/CustomInput'
 import CustomTag from '../../../../../../../components/common/CustomTag'
 import Metadata from '../../../../../../../components/common/Metadata'
-import { Eye, EyeOff, Copy, Phone, Check, Mail, User, MapPin, Tag, FileText } from 'lucide-react'
+import { Eye, EyeOff, Copy, Phone, Mail, User, MapPin, Tag, FileText } from 'lucide-react'
 import { cn } from '../../../../../../../shared/lib/utils'
 import { Email, ServiceAccount } from '../../../../types'
 
@@ -129,10 +129,38 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
           return
       }
 
-      // Gọi hàm update từ parent
       const success = await onUpdateEmail(email.id, updates)
 
       if (success) {
+        // ✅ Reset state local về giá trị vừa lưu để hasChanged = false ngay lập tức
+        switch (field) {
+          case 'name':
+            setName(value as string)
+            break
+
+          case 'age':
+            setAge(value ? (typeof value === 'number' ? value.toString() : (value as string)) : '')
+            break
+          case 'address':
+            setAddress(value as string)
+            break
+          case 'phone_numbers':
+            setPhoneNumbers(value as string)
+            break
+          case 'recovery_email':
+            setRecoveryEmail(value as string)
+            break
+          case 'password':
+            setPassword(value as string)
+            break
+          case 'note':
+            setNote(value as string)
+            break
+          case 'tags':
+            setEditedTags(value as string[])
+            break
+        }
+
         setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
         // Reset status sau 2 giây
         setTimeout(() => {
@@ -148,15 +176,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
       setSavingField(null)
     }
   }
-
-  // Check if values have changed
-  const hasNameChanged = name !== (email.name || '')
-  const hasAgeChanged = age !== (email.age?.toString() || '')
-  const hasAddressChanged = address !== (email.address || '')
-  const hasPhoneChanged = phoneNumbers !== (email.phone_numbers || '')
-  const hasRecoveryEmailChanged = recoveryEmail !== (email.recovery_email || '')
-  const hasPasswordChanged = password !== (email.pasword || '')
-  const hasNoteChanged = note !== (email.note || '')
 
   const handleTagsChange = (newTags: string[]) => {
     setEditedTags(newTags)
@@ -195,56 +214,6 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
     }
   }
 
-  // Hàm render icon trạng thái cho input
-  const renderStatusIcon = (field: string, hasChanged: boolean) => {
-    if (savingField === field) {
-      return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-    }
-
-    if (saveStatus[field] === 'success') {
-      return <Check className="h-4 w-4 text-green-600" />
-    }
-
-    if (saveStatus[field] === 'error') {
-      return <div className="text-red-600">!</div>
-    }
-
-    if (hasChanged) {
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            handleSaveField(
-              field,
-              field === 'age'
-                ? parseInt(age) || 0
-                : field === 'tags'
-                  ? editedTags
-                  : field === 'name'
-                    ? name
-                    : field === 'address'
-                      ? address
-                      : field === 'phone_numbers'
-                        ? phoneNumbers
-                        : field === 'recovery_email'
-                          ? recoveryEmail
-                          : field === 'note'
-                            ? note
-                            : password
-            )
-          }
-          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
-          disabled={savingField !== null}
-        >
-          <Check className="h-2.5 w-2.5" />
-        </Button>
-      )
-    }
-
-    return undefined
-  }
-
   return (
     <div className={cn('space-y-6', className)}>
       {/* Header */}
@@ -271,7 +240,13 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             variant="filled"
             size="sm"
             leftIcon={<User className="h-3 w-3" />}
-            rightIcon={renderStatusIcon('name', hasNameChanged)}
+            trackChanges={true}
+            initialValue={email.name || ''}
+            onSave={async (newValue) => {
+              await handleSaveField('name', newValue)
+            }}
+            isSaving={savingField === 'name'}
+            saveSuccess={saveStatus['name'] === 'success'}
             disabled={savingField !== null && savingField !== 'name'}
           />
         </div>
@@ -286,7 +261,13 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             placeholder="Age..."
             variant="filled"
             size="sm"
-            rightIcon={renderStatusIcon('age', hasAgeChanged)}
+            trackChanges={true}
+            initialValue={email.age?.toString() || ''}
+            onSave={async (newValue) => {
+              await handleSaveField('age', parseInt(newValue) || 0)
+            }}
+            isSaving={savingField === 'age'}
+            saveSuccess={saveStatus['age'] === 'success'}
             disabled={savingField !== null && savingField !== 'age'}
           />
 
@@ -298,23 +279,27 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             variant="filled"
             size="sm"
             leftIcon={<Phone className="h-3 w-3" />}
-            rightIcon={
-              <div className="flex items-center gap-0.5">
-                {phoneNumbers && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(phoneNumbers)}
-                    className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    disabled={savingField !== null}
-                  >
-                    <Copy className="h-2.5 w-2.5" />
-                  </Button>
-                )}
-                {renderStatusIcon('phone_numbers', hasPhoneChanged)}
-              </div>
-            }
+            trackChanges={true}
+            initialValue={email.phone_numbers || ''}
+            onSave={async (newValue) => {
+              await handleSaveField('phone_numbers', newValue)
+            }}
+            isSaving={savingField === 'phone_numbers'}
+            saveSuccess={saveStatus['phone_numbers'] === 'success'}
             disabled={savingField !== null && savingField !== 'phone_numbers'}
+            actions={
+              phoneNumbers ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(phoneNumbers)}
+                  className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  disabled={savingField !== null}
+                >
+                  <Copy className="h-2.5 w-2.5" />
+                </Button>
+              ) : undefined
+            }
           />
         </div>
 
@@ -328,23 +313,27 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             variant="filled"
             size="sm"
             leftIcon={<MapPin className="h-3 w-3" />}
-            rightIcon={
-              <div className="flex items-center gap-0.5">
-                {address && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(address)}
-                    className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    disabled={savingField !== null}
-                  >
-                    <Copy className="h-2.5 w-2.5" />
-                  </Button>
-                )}
-                {renderStatusIcon('address', hasAddressChanged)}
-              </div>
-            }
+            trackChanges={true}
+            initialValue={email.address || ''}
+            onSave={async (newValue) => {
+              await handleSaveField('address', newValue)
+            }}
+            isSaving={savingField === 'address'}
+            saveSuccess={saveStatus['address'] === 'success'}
             disabled={savingField !== null && savingField !== 'address'}
+            actions={
+              address ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(address)}
+                  className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  disabled={savingField !== null}
+                >
+                  <Copy className="h-2.5 w-2.5" />
+                </Button>
+              ) : undefined
+            }
           />
         </div>
 
@@ -381,23 +370,27 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             variant="filled"
             size="sm"
             leftIcon={<Mail className="h-3 w-3" />}
-            rightIcon={
-              <div className="flex items-center gap-0.5">
-                {recoveryEmail && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(recoveryEmail)}
-                    className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    disabled={savingField !== null}
-                  >
-                    <Copy className="h-2.5 w-2.5" />
-                  </Button>
-                )}
-                {renderStatusIcon('recovery_email', hasRecoveryEmailChanged)}
-              </div>
-            }
+            trackChanges={true}
+            initialValue={email.recovery_email || ''}
+            onSave={async (newValue) => {
+              await handleSaveField('recovery_email', newValue)
+            }}
+            isSaving={savingField === 'recovery_email'}
+            saveSuccess={saveStatus['recovery_email'] === 'success'}
             disabled={savingField !== null && savingField !== 'recovery_email'}
+            actions={
+              recoveryEmail ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(recoveryEmail)}
+                  className="p-0.5 h-5 w-5 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  disabled={savingField !== null}
+                >
+                  <Copy className="h-2.5 w-2.5" />
+                </Button>
+              ) : undefined
+            }
           />
         </div>
 
@@ -410,8 +403,16 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             onChange={setPassword}
             variant="filled"
             size="sm"
-            rightIcon={
-              <div className="flex items-center gap-0.5">
+            trackChanges={true}
+            initialValue={email.pasword || ''}
+            onSave={async (newValue) => {
+              await handleSaveField('password', newValue)
+            }}
+            isSaving={savingField === 'password'}
+            saveSuccess={saveStatus['password'] === 'success'}
+            disabled={savingField !== null && savingField !== 'password'}
+            actions={
+              <>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -434,10 +435,8 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
                 >
                   <Copy className="h-2.5 w-2.5" />
                 </Button>
-                {renderStatusIcon('password', hasPasswordChanged)}
-              </div>
+              </>
             }
-            disabled={savingField !== null && savingField !== 'password'}
           />
         </div>
 
@@ -451,7 +450,13 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             variant="filled"
             size="sm"
             leftIcon={<FileText className="h-3 w-3" />}
-            rightIcon={renderStatusIcon('note', hasNoteChanged)}
+            trackChanges={true}
+            initialValue={email.note || ''}
+            onSave={async (newValue) => {
+              await handleSaveField('note', newValue)
+            }}
+            isSaving={savingField === 'note'}
+            saveSuccess={saveStatus['note'] === 'success'}
             disabled={savingField !== null && savingField !== 'note'}
             rows={3}
             showCharCount={true}
@@ -478,6 +483,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             placeholder="Enter tag name..."
             allowDuplicates={false}
             className="mb-2"
+            size="sm"
             disabled={savingField !== null}
           />
         </div>

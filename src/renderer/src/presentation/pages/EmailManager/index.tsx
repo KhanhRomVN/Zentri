@@ -72,8 +72,6 @@ const EmailManagerPage = () => {
         ])
         setAllServiceAccounts(allServices)
         setAllServiceAccountSecrets(allSecrets)
-        console.log('[DEBUG] All services loaded on init:', allServices)
-        console.log('[DEBUG] All secrets loaded on init:', allSecrets)
       } catch (error) {
         console.error('Failed to load all services and secrets:', error)
       }
@@ -195,10 +193,7 @@ const EmailManagerPage = () => {
 
         setEmail2FAMethods(email2FA)
         setServiceAccounts(services)
-        setAllServiceAccounts(allServices) // ← Đã có nhưng cần kiểm tra
-
-        // Debug log - có thể xóa sau khi fix
-        console.log('[DEBUG] loadEmailRelatedData - allServices loaded:', allServices)
+        setAllServiceAccounts(allServices)
       } catch (error) {
         console.error('Failed to load email related data:', error)
       }
@@ -379,10 +374,22 @@ const EmailManagerPage = () => {
     }
   }
 
-  const handleServiceAccountClick = (service: ServiceAccount) => {
+  const handleServiceAccountClick = (
+    service: ServiceAccount,
+    targetTab?: 'service_security' | 'service_secret'
+  ) => {
     setSelectedServiceAccount(service)
     if (service.id) {
       loadServiceAccountRelatedData(service.id)
+    }
+
+    // Chuyển đến tab được chỉ định, hoặc mặc định là 'services'
+    if (selectedEmail?.id) {
+      const newTab = targetTab || 'services'
+      setEmailActiveTabs((prev) => ({
+        ...prev,
+        [selectedEmail.id!]: newTab
+      }))
     }
   }
 
@@ -562,7 +569,15 @@ const EmailManagerPage = () => {
                       handleServiceFormDraftChange(selectedEmail.id, draftData)
                     }
                   }}
-                  onUpdateEmail={updateEmail}
+                  onUpdateEmail={async (id: string, updates: Partial<Email>) => {
+                    const success = await updateEmail(id, updates)
+
+                    if (success && selectedEmail?.id === id) {
+                      setSelectedEmail((prev) => (prev ? { ...prev, ...updates } : null))
+                    }
+
+                    return success
+                  }}
                   onAdd2FA={handleAddEmail2FA}
                   onUpdate2FA={handleUpdateEmail2FA}
                   onDelete2FA={handleDeleteEmail2FA}

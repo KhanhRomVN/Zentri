@@ -36,7 +36,10 @@ interface EmailDetailPanelProps {
   onUpdate2FA?: (id: string, updates: Partial<Email2FA>) => Promise<void>
   onDelete2FA?: (id: string) => void
   onServiceAdd?: (service: Omit<ServiceAccount, 'id' | 'email_id'>) => void
-  onServiceClick?: (service: ServiceAccount) => void
+  onServiceClick?: (
+    service: ServiceAccount,
+    targetTab?: 'service_security' | 'service_secret'
+  ) => void
   onServiceUpdate?: (serviceId: string, field: string, value: string) => Promise<boolean>
   onAddServiceAccount2FA?: (data: Omit<ServiceAccount2FA, 'id'>) => Promise<void>
   onUpdateServiceAccount2FA?: (id: string, updates: Partial<ServiceAccount2FA>) => Promise<void>
@@ -125,6 +128,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   onUpdateServiceAccount2FA,
   onDeleteServiceAccount2FA,
   onAddServiceAccountSecret,
+  onUpdateServiceAccountSecret,
   onDeleteServiceAccountSecret,
   onBackToList
 }) => {
@@ -189,9 +193,10 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
               <ServiceAccountSecretSection
                 serviceAccount={selectedServiceAccount}
                 secrets={serviceSecrets}
-                allServiceAccountSecrets={allServiceAccountSecrets} // ✅ Đảm bảo prop này có
-                allServiceAccounts={allServiceAccounts} // ✅ Thêm prop này
+                allServiceAccountSecrets={allServiceAccountSecrets}
+                allServiceAccounts={allServiceAccounts}
                 onAddSecret={onAddServiceAccountSecret}
+                onSecretChange={onUpdateServiceAccountSecret}
                 onDeleteSecret={onDeleteServiceAccountSecret}
               />
             </div>
@@ -227,7 +232,17 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
               showCreateForm={showCreateServiceForm}
               onToggleCreateForm={onToggleCreateServiceForm}
               onServiceAdd={onServiceAdd}
-              onServiceClick={onServiceClick}
+              onServiceClick={(
+                service: ServiceAccount,
+                targetTab?: 'service_security' | 'service_secret'
+              ) => {
+                if (onServiceClick) {
+                  onServiceClick(service, targetTab)
+                }
+                if (targetTab && onTabChange) {
+                  onTabChange(targetTab)
+                }
+              }}
               onServiceUpdate={onServiceUpdate}
               compact={false}
             />

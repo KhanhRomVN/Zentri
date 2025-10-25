@@ -6,6 +6,7 @@ import CustomButton from '../../../../../../../../components/common/CustomButton
 import { Label } from '../../../../../../../../components/ui/label'
 import CustomInput from '../../../../../../../../components/common/CustomInput'
 import Metadata from '../../../../../../../../components/common/Metadata'
+import CustomTag from '../../../../../../../../components/common/CustomTag'
 import {
   Eye,
   EyeOff,
@@ -17,7 +18,6 @@ import {
   Smartphone,
   Mail,
   Trash2,
-  Check,
   ChevronDown,
   ChevronUp,
   Calendar
@@ -49,6 +49,11 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
     typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
   )
 
+  // Sync secretValue với method.value khi method thay đổi
+  useEffect(() => {
+    setSecretValue(typeof method.value === 'string' ? method.value : JSON.stringify(method.value))
+  }, [method.value])
+
   const formatDateForInput = (dateString: string | undefined): string => {
     if (!dateString) return ''
     try {
@@ -67,9 +72,15 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
 
   const [expireDateValue, setExpireDateValue] = useState(formatDateForInput(method.expire_at))
 
-  // State cho việc lưu
   const [savingField, setSavingField] = useState<string | null>(null)
-  const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
+
+  // State riêng để track save success cho từng field
+  const [fieldSaveSuccess, setFieldSaveSuccess] = useState<{ [key: string]: boolean }>({})
+
+  // ✅ Reset fieldSaveSuccess khi component mount hoặc method thay đổi
+  useEffect(() => {
+    setFieldSaveSuccess({})
+  }, [method.id])
 
   useEffect(() => {
     const metadata = method.metadata || {}
@@ -92,14 +103,6 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
     } catch (err) {
       console.error('Failed to copy:', err)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
   }
 
   const getTwoFAMethodInfo = (type: string) => {
@@ -169,6 +172,8 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
 
     try {
       setSavingField(field)
+      // Reset save success state
+      setFieldSaveSuccess((prev) => ({ ...prev, [field]: false }))
 
       const updates: Partial<ServiceAccount2FA> = {}
 
@@ -184,7 +189,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
           updates.last_update = new Date().toISOString()
           break
         case 'expire_at':
-          updates.expire_at = parseDateFromInput(value) || null
+          updates.expire_at = parseDateFromInput(value) || undefined
           break
         default:
           console.warn(`Unknown field: ${field}`)
@@ -193,65 +198,18 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
 
       await onSave(method.id, updates)
 
-      setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
+      setFieldSaveSuccess((prev) => ({ ...prev, [field]: true }))
+
       // Reset status sau 2 giây
       setTimeout(() => {
-        setSaveStatus((prev) => ({ ...prev, [field]: null }))
+        setFieldSaveSuccess((prev) => ({ ...prev, [field]: false }))
       }, 2000)
     } catch (error) {
       console.error(`Error saving ${field}:`, error)
-      setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
+      setFieldSaveSuccess((prev) => ({ ...prev, [field]: false }))
     } finally {
       setSavingField(null)
     }
-  }
-
-  const hasExpireDateChanged = expireDateValue !== formatDateForInput(method.expire_at)
-
-  // Check if values have changed
-  const hasAppChanged = appValue !== (method.app || '')
-  const hasSecretChanged =
-    secretValue !== (typeof method.value === 'string' ? method.value : JSON.stringify(method.value))
-
-  // Hàm render icon trạng thái cho input
-  const renderStatusIcon = (field: string, hasChanged: boolean) => {
-    if (savingField === field) {
-      return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-    }
-
-    if (saveStatus[field] === 'success') {
-      return <Check className="h-4 w-4 text-green-600" />
-    }
-
-    if (saveStatus[field] === 'error') {
-      return <div className="text-red-600">!</div>
-    }
-
-    if (hasChanged) {
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            if (field === 'app') {
-              handleSaveField('app', appValue)
-            } else if (field === 'value') {
-              handleSaveField('value', secretValue)
-            } else if (field === 'metadata') {
-              handleSaveField('metadata', editingMetadata)
-            } else if (field === 'expire_at') {
-              handleSaveField('expire_at', expireDateValue)
-            }
-          }}
-          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
-          disabled={savingField !== null}
-        >
-          <Check className="h-2.5 w-2.5" />
-        </Button>
-      )
-    }
-
-    return undefined
   }
 
   const handleDelete = () => {
@@ -272,6 +230,10 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
 
   const renderMethodValue = () => {
     if (method.method_type === 'backup_codes' && Array.isArray(method.value)) {
+      const currentCodes = showSecret
+        ? method.value.map(String)
+        : method.value.map(() => '••••••••')
+
       return (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -293,10 +255,9 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
 
           <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-800/30">
             <CustomTag
-              tags={showSecret ? method.value.map(String) : method.value.map(() => '••••••••')}
-              onTagsChange={(newCodes) => {
+              tags={currentCodes}
+              onTagsChange={(newCodes: string[]) => {
                 if (onSave && showSecret) {
-                  // Only allow editing when codes are visible
                   handleSaveField('value', newCodes)
                 }
               }}
@@ -335,18 +296,33 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
         <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Secret Value</Label>
 
         <CustomInput
-          value={showSecret ? secretValue : '•'.repeat(24)}
-          onChange={(value) => setSecretValue(value)}
+          key={showSecret ? 'visible' : 'hidden'}
+          value={showSecret ? secretValue : '•'.repeat(Math.max(24, secretValue.length))}
+          onChange={(value) => {
+            if (showSecret) {
+              setSecretValue(value)
+            }
+          }}
           variant="filled"
           size="sm"
           multiline={secretValue.length > 50}
           rows={2}
-          rightIcon={
+          trackChanges={showSecret}
+          initialValue={
+            typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
+          }
+          onSave={(value) => handleSaveField('value', value)}
+          isSaving={savingField === 'value'}
+          saveSuccess={fieldSaveSuccess['value'] || false}
+          additionalActions={
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowSecret(!showSecret)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowSecret(!showSecret)
+                }}
                 className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
               >
                 {showSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
@@ -359,7 +335,6 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
               >
                 <Copy className="h-3 w-3" />
               </Button>
-              {renderStatusIcon('value', hasSecretChanged)}
             </div>
           }
           disabled={savingField !== null && savingField !== 'value'}
@@ -475,7 +450,11 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                   placeholder="App name"
                   variant="filled"
                   size="sm"
-                  rightIcon={renderStatusIcon('app', hasAppChanged)}
+                  trackChanges={true}
+                  initialValue={method.app || ''}
+                  onSave={(value) => handleSaveField('app', value)}
+                  isSaving={savingField === 'app'}
+                  saveSuccess={fieldSaveSuccess['app'] || false}
                   disabled={savingField !== null && savingField !== 'app'}
                 />
               </div>
@@ -500,7 +479,11 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                   type="datetime-local"
                   showTime={false}
                   leftIcon={<Calendar className="h-4 w-4" />}
-                  rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
+                  trackChanges={true}
+                  initialValue={formatDateForInput(method.expire_at)}
+                  onSave={(value) => handleSaveField('expire_at', value)}
+                  isSaving={savingField === 'expire_at'}
+                  saveSuccess={fieldSaveSuccess['expire_at'] || false}
                   disabled={savingField !== null && savingField !== 'expire_at'}
                 />
               </div>
@@ -525,9 +508,6 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                 maxVisibleFields={3}
                 showDeleteButtons={true}
                 hideEmpty={true}
-                editable={true}
-                allowEmpty={true}
-                showAddButton={true}
                 allowCreate={true}
                 allowEdit={true}
                 allowDelete={true}

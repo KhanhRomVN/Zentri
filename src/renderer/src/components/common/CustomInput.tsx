@@ -19,6 +19,7 @@ interface CustomInputProps
   prefix?: string
   suffix?: string
   onChange?: (value: string) => void
+  onCtrlEnter?: () => void
   // DateTimePicker specific props
   minDate?: string
   maxDate?: string
@@ -29,6 +30,13 @@ interface CustomInputProps
   minRows?: number
   maxRows?: number
   autoResize?: boolean
+  // Track changes props
+  trackChanges?: boolean
+  initialValue?: string
+  onSave?: (value: string) => void | Promise<void>
+  isSaving?: boolean
+  saveSuccess?: boolean
+  additionalActions?: React.ReactNode
 }
 
 const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInputProps>(
@@ -52,6 +60,7 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
       className = '',
       value = '',
       onChange,
+      onCtrlEnter,
       disabled,
       minDate,
       maxDate,
@@ -62,12 +71,20 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
       minRows = 1,
       maxRows = 10,
       autoResize = true,
+      // Track changes props
+      trackChanges = false,
+      initialValue = '',
+      onSave,
+      isSaving = false,
+      saveSuccess = false,
+      additionalActions,
       ...props
     },
     ref
   ) => {
     const [showPassword, setShowPassword] = useState(false)
     const [isFocused, setIsFocused] = useState(false)
+    const [showSuccessIcon, setShowSuccessIcon] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
     const isPassword = type === 'password'
@@ -75,6 +92,73 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
     const inputType = isPassword && showPassword ? 'text' : type
     const hasValue = String(value).length > 0
     const charCount = String(value).length
+
+    // Internal initial value để track changes độc lập
+    const [internalInitialValue, setInternalInitialValue] = useState(initialValue)
+
+    // Sync internal initial value khi initialValue prop thay đổi
+    useEffect(() => {
+      setInternalInitialValue(initialValue)
+    }, [initialValue])
+
+    // Track changes logic - so sánh với internal initial value
+    const hasChanged = trackChanges && String(value) !== String(internalInitialValue)
+
+    // Cập nhật internal initial value ngay sau khi save thành công
+    useEffect(() => {
+      if (saveSuccess && !isSaving && trackChanges) {
+        setInternalInitialValue(String(value))
+      }
+    }, [saveSuccess, isSaving, value, trackChanges])
+
+    // Sync success icon với saveSuccess prop
+    useEffect(() => {
+      if (saveSuccess && !hasChanged && trackChanges) {
+        setShowSuccessIcon(true)
+      } else {
+        setShowSuccessIcon(false)
+      }
+    }, [saveSuccess, hasChanged, trackChanges])
+
+    // Handle save button click
+    const handleSaveClick = async () => {
+      if (onSave && hasChanged) {
+        await onSave(String(value))
+      }
+    }
+
+    // Render track changes icon
+    const renderTrackChangesIcon = () => {
+      if (!trackChanges) return null
+
+      // Đang saving
+      if (isSaving) {
+        return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+      }
+
+      // Hiển thị success icon (không click được) khi vừa save thành công
+      if (showSuccessIcon && !hasChanged) {
+        return <CheckCircle className="h-4 w-4 text-green-600" />
+      }
+
+      // Không có thay đổi và không trong trạng thái success
+      if (!hasChanged) {
+        return null
+      }
+
+      // Có thay đổi → hiển thị button save
+      return (
+        <button
+          type="button"
+          onClick={handleSaveClick}
+          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+          disabled={isSaving}
+          tabIndex={-1}
+        >
+          <CheckCircle className="h-3 w-3" />
+        </button>
+      )
+    }
 
     // Auto-resize textarea
     useEffect(() => {
@@ -275,6 +359,14 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
       onChange?.(isoString)
     }
 
+    // Handle keyboard shortcuts
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault()
+        onCtrlEnter?.()
+      }
+    }
+
     // For datetime-local, we'll render the DateAndTimePicker
     if (isDateTimeLocal) {
       return (
@@ -371,6 +463,7 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
               }}
               value={value}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               disabled={disabled}
@@ -393,6 +486,7 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
               type={inputType}
               value={value}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               disabled={disabled}
@@ -412,8 +506,16 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
 
           {/* Right Icons Container */}
           <div
-            className={`absolute right-3 ${multiline ? 'top-4' : 'top-1/2 -translate-y-1/2'} flex items-center gap-2`}
+            className={`absolute right-3 ${multiline ? 'top-4' : 'top-1/2 -translate-y-1/2'} flex items-center gap-1`}
           >
+            {/* Additional Actions (Eye, Copy, etc.) */}
+            {additionalActions && (
+              <div className="flex items-center gap-1">{additionalActions}</div>
+            )}
+
+            {/* Track Changes Icon */}
+            {renderTrackChangesIcon()}
+
             {/* Loading Spinner */}
             {loading && <LoadingSpinner />}
 
@@ -433,9 +535,12 @@ const CustomInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, CustomInp
             )}
 
             {/* Custom Right Icon */}
-            {rightIcon && !isPassword && !isDateTimeLocal && !loading && !statusStyles.icon && (
-              <div className="text-gray-400 dark:text-gray-500">{rightIcon}</div>
-            )}
+            {rightIcon &&
+              !isPassword &&
+              !isDateTimeLocal &&
+              !loading &&
+              !statusStyles.icon &&
+              !trackChanges && <div className="text-gray-400 dark:text-gray-500">{rightIcon}</div>}
           </div>
 
           {/* Suffix */}

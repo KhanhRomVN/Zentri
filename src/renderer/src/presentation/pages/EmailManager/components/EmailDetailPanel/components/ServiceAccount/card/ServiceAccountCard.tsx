@@ -4,26 +4,21 @@ import { useFaviconColor } from '../../../../../../../../hooks/useFaviconColor'
 import CustomInput from '../../../../../../../../components/common/CustomInput'
 import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
 import Metadata from '../../../../../../../../components/common/Metadata'
-import {
-  ExternalLink,
-  User,
-  ChevronRight,
-  Globe,
-  Shield,
-  Copy,
-  Key,
-  Link,
-  Database,
-  Check
-} from 'lucide-react'
+import { ExternalLink, User, Globe, Shield, Copy, Key, Link, Database } from 'lucide-react'
 import { cn } from '../../../../../../../../shared/lib/utils'
 import { ServiceAccount, ServiceAccount2FA, ServiceAccountSecret } from '../../../../../types'
 import { Favicon } from '../../../../../../../../shared/utils/faviconUtils'
 
 interface ServiceAccountCardProps {
   service: ServiceAccount
-  onServiceClick?: (service: ServiceAccount) => void
-  onServiceView?: (service: ServiceAccount) => void
+  onServiceClick?: (
+    service: ServiceAccount,
+    targetTab?: 'service_security' | 'service_secret'
+  ) => void
+  onServiceView?: (
+    service: ServiceAccount,
+    targetTab?: 'service_security' | 'service_secret'
+  ) => void
   onServiceUpdate?: (serviceId: string, field: string, value: string) => Promise<boolean>
   serviceSecrets?: ServiceAccountSecret[]
   service2FA?: ServiceAccount2FA[]
@@ -31,6 +26,9 @@ interface ServiceAccountCardProps {
   defaultExpanded?: boolean
   showNestedServices?: boolean
   nestedServices?: ServiceAccount[]
+  // Track saving state for each field
+  savingFields?: Set<string>
+  saveSuccessFields?: Set<string>
 }
 
 // Service type options for the dropdown
@@ -74,7 +72,9 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
   className,
   defaultExpanded = false,
   showNestedServices = false,
-  nestedServices = []
+  nestedServices = [],
+  savingFields = new Set(),
+  saveSuccessFields = new Set()
 }) => {
   // State expand/collapse độc lập cho mỗi card
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
@@ -96,10 +96,6 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
     fallbackColor: 'var(--primary)'
   })
 
-  // State để theo dõi trạng thái loading và feedback
-  const [savingField, setSavingField] = useState<string | null>(null)
-  const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
-
   // Reset edited data khi service prop thay đổi
   useEffect(() => {
     setServiceName(service.service_name)
@@ -111,7 +107,6 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
     setPassword(service.password || '')
     setNote(service.note || '')
     setMetadata(service.metadata || {})
-    setSaveStatus({})
   }, [service])
 
   // Get service type label
@@ -131,74 +126,14 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
 
   const stats = getServiceStats()
 
-  // Check if values have changed
-  const hasServiceNameChanged = serviceName !== service.service_name
-  const hasServiceTypeChanged = serviceType !== service.service_type
-  const hasServiceUrlChanged = serviceUrl !== (service.service_url || '')
-  const hasUsernameChanged = username !== (service.username || '')
-  const hasNameChanged = name !== (service.name || '')
-  const hasPasswordChanged = password !== (service.password || '')
-  const hasNoteChanged = note !== (service.note || '')
-
-  // Hàm xử lý lưu field
-  const handleSaveField = async (field: string, value: string) => {
+  // Hàm xử lý lưu field - wrapper cho onServiceUpdate
+  const createSaveHandler = (field: string) => async (value: string) => {
     if (!service.id || !onServiceUpdate) {
       console.error('Missing service ID or update function')
       return
     }
 
-    try {
-      setSavingField(field)
-
-      // Gọi hàm update từ parent
-      const success = await onServiceUpdate(service.id, field, value)
-
-      if (success) {
-        setSaveStatus((prev) => ({ ...prev, [field]: 'success' }))
-        // Reset status sau 2 giây
-        setTimeout(() => {
-          setSaveStatus((prev) => ({ ...prev, [field]: null }))
-        }, 2000)
-      } else {
-        setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
-      }
-    } catch (error) {
-      console.error(`Error saving ${field}:`, error)
-      setSaveStatus((prev) => ({ ...prev, [field]: 'error' }))
-    } finally {
-      setSavingField(null)
-    }
-  }
-
-  // Hàm render icon trạng thái cho input
-  const renderStatusIcon = (field: string, hasChanged: boolean, currentValue: string) => {
-    if (savingField === field) {
-      return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-    }
-
-    if (saveStatus[field] === 'success') {
-      return <Check className="h-4 w-4 text-green-600" />
-    }
-
-    if (saveStatus[field] === 'error') {
-      return <div className="text-red-600">!</div>
-    }
-
-    if (hasChanged) {
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleSaveField(field, currentValue)}
-          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
-          disabled={savingField !== null}
-        >
-          <Check className="h-2.5 w-2.5" />
-        </Button>
-      )
-    }
-
-    return undefined
+    await onServiceUpdate(service.id, field, value)
   }
 
   // Handle card click - toggle expand/collapse
@@ -216,10 +151,19 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
     }
   }
 
-  const handleView = (e: React.MouseEvent) => {
+  const handleViewSecurity = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (onServiceView) {
-      onServiceView(service)
+      onServiceView(service, 'service_security')
+    } else if (onServiceClick) {
+      onServiceClick(service)
+    }
+  }
+
+  const handleViewSecret = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onServiceView) {
+      onServiceView(service, 'service_secret')
     } else if (onServiceClick) {
       onServiceClick(service)
     }
@@ -237,14 +181,24 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
   }
 
   // Handle dropdown changes
-  const handleServiceTypeChange = (value: string | string[]) => {
+  const handleServiceTypeChange = async (value: string | string[]) => {
     const newType = Array.isArray(value) ? value[0] : value
     setServiceType(newType as ServiceAccount['service_type'])
+
+    // Auto save khi thay đổi dropdown
+    if (service.id && onServiceUpdate) {
+      await onServiceUpdate(service.id, 'service_type', newType)
+    }
   }
 
-  const handleStatusChange = (value: string | string[]) => {
+  const handleStatusChange = async (value: string | string[]) => {
     const newStatus = Array.isArray(value) ? value[0] : value
     setStatus(newStatus as 'active' | 'inactive' | 'suspended')
+
+    // Auto save khi thay đổi dropdown
+    if (service.id && onServiceUpdate) {
+      await onServiceUpdate(service.id, 'status', newStatus)
+    }
   }
 
   // Handle metadata change
@@ -253,25 +207,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
 
     // Lưu metadata vào database
     if (service.id && onServiceUpdate) {
-      try {
-        setSavingField('metadata')
-        const success = await onServiceUpdate(service.id, 'metadata', JSON.stringify(newMetadata))
-
-        if (success) {
-          setSaveStatus((prev) => ({ ...prev, metadata: 'success' }))
-          // Reset status sau 2 giây
-          setTimeout(() => {
-            setSaveStatus((prev) => ({ ...prev, metadata: null }))
-          }, 2000)
-        } else {
-          setSaveStatus((prev) => ({ ...prev, metadata: 'error' }))
-        }
-      } catch (error) {
-        console.error('Error saving metadata:', error)
-        setSaveStatus((prev) => ({ ...prev, metadata: 'error' }))
-      } finally {
-        setSavingField(null)
-      }
+      await onServiceUpdate(service.id, 'metadata', JSON.stringify(newMetadata))
     }
   }
 
@@ -347,7 +283,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
             </div>
           </div>
 
-          {/* Right Section - Stats + Actions + Expand Button */}
+          {/* Right Section - Stats + Action Buttons */}
           <div className="flex items-center gap-2">
             {/* Service Stats */}
             <div className="flex items-center gap-1">
@@ -374,16 +310,30 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               )}
             </div>
 
-            {/* View Details Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleView}
-              className="p-0.5 h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors"
-              title="View service details"
-            >
-              <ChevronRight className="h-3 w-3" />
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Security Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleViewSecurity}
+                className="p-1 h-6 w-6 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                title="View security settings"
+              >
+                <Shield className="h-3 w-3" />
+              </Button>
+
+              {/* Secret Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleViewSecret}
+                className="p-1 h-6 w-6 text-gray-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors"
+                title="View secrets"
+              >
+                <Key className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -393,6 +343,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
         <div className="px-3 pb-3 space-y-4 animate-in slide-in-from-top-2 duration-300">
           {/* Divider */}
           <div className="border-t border-gray-100 dark:border-gray-700 ml-2" />
+
           {/* Service Information Section */}
           <div className="space-y-3 ml-2">
             {/* Service Name */}
@@ -404,63 +355,46 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               variant="filled"
               leftIcon={<Globe className="h-3 w-3" />}
               required
-              disabled={savingField !== null && savingField !== 'service_name'}
-              rightIcon={
-                <div className="flex items-center gap-1">
-                  {renderStatusIcon('service_name', hasServiceNameChanged, serviceName)}
-                  {serviceName && !hasServiceNameChanged && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => copyToClipboard(serviceName, e)}
-                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
-                      disabled={savingField !== null}
-                    >
-                      <Copy className="h-2.5 w-2.5" />
-                    </Button>
-                  )}
-                </div>
+              trackChanges={true}
+              initialValue={service.service_name}
+              onSave={createSaveHandler('service_name')}
+              isSaving={savingFields.has('service_name')}
+              saveSuccess={saveSuccessFields.has('service_name')}
+              additionalActions={
+                serviceName && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => copyToClipboard(serviceName, e)}
+                    className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                  >
+                    <Copy className="h-2.5 w-2.5" />
+                  </Button>
+                )
               }
             />
 
             {/* Service Type & Status - Same Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Service Type */}
-              <div className="space-y-1">
-                <CustomCombobox
-                  label="Service Type"
-                  value={serviceType}
-                  options={serviceTypeOptions}
-                  onChange={handleServiceTypeChange}
-                  placeholder="Select service type..."
-                  size="sm"
-                />
-                {hasServiceTypeChanged && (
-                  <div className="flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSaveField('service_type', serviceType)}
-                      className="p-1 h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
-                      disabled={savingField !== null}
-                    >
-                      <Check className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <CustomCombobox
+                label="Service Type"
+                value={serviceType}
+                options={serviceTypeOptions}
+                onChange={handleServiceTypeChange}
+                placeholder="Select service type..."
+                size="sm"
+              />
 
               {/* Status */}
-              <div className="space-y-1">
-                <CustomCombobox
-                  label="Status"
-                  value={status}
-                  options={statusOptions}
-                  onChange={handleStatusChange}
-                  placeholder="Select status..."
-                  size="sm"
-                />
-              </div>
+              <CustomCombobox
+                label="Status"
+                value={status}
+                options={statusOptions}
+                onChange={handleStatusChange}
+                placeholder="Select status..."
+                size="sm"
+              />
             </div>
 
             {/* Service URL */}
@@ -472,36 +406,35 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               variant="filled"
               leftIcon={<Link className="h-3 w-3" />}
               placeholder="https://example.com"
-              disabled={savingField !== null && savingField !== 'service_url'}
-              rightIcon={
-                <div className="flex items-center gap-1">
-                  {renderStatusIcon('service_url', hasServiceUrlChanged, serviceUrl)}
-                  {serviceUrl && !hasServiceUrlChanged && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          window.open(serviceUrl, '_blank')
-                        }}
-                        className="p-0.5 h-4 w-4 text-gray-500 hover:text-green-600"
-                        disabled={savingField !== null}
-                      >
-                        <ExternalLink className="h-2.5 w-2.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => copyToClipboard(serviceUrl, e)}
-                        className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
-                        disabled={savingField !== null}
-                      >
-                        <Copy className="h-2.5 w-2.5" />
-                      </Button>
-                    </>
-                  )}
-                </div>
+              trackChanges={true}
+              initialValue={service.service_url || ''}
+              onSave={createSaveHandler('service_url')}
+              isSaving={savingFields.has('service_url')}
+              saveSuccess={saveSuccessFields.has('service_url')}
+              additionalActions={
+                serviceUrl && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        window.open(serviceUrl, '_blank')
+                      }}
+                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-green-600"
+                    >
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => copyToClipboard(serviceUrl, e)}
+                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                    >
+                      <Copy className="h-2.5 w-2.5" />
+                    </Button>
+                  </>
+                )
               }
             />
 
@@ -514,22 +447,22 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               variant="filled"
               leftIcon={<User className="h-3 w-3" />}
               placeholder="Enter username"
-              disabled={savingField !== null && savingField !== 'username'}
-              rightIcon={
-                <div className="flex items-center gap-1">
-                  {renderStatusIcon('username', hasUsernameChanged, username)}
-                  {username && !hasUsernameChanged && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => copyToClipboard(username, e)}
-                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
-                      disabled={savingField !== null}
-                    >
-                      <Copy className="h-2.5 w-2.5" />
-                    </Button>
-                  )}
-                </div>
+              trackChanges={true}
+              initialValue={service.username || ''}
+              onSave={createSaveHandler('username')}
+              isSaving={savingFields.has('username')}
+              saveSuccess={saveSuccessFields.has('username')}
+              additionalActions={
+                username && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => copyToClipboard(username, e)}
+                    className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                  >
+                    <Copy className="h-2.5 w-2.5" />
+                  </Button>
+                )
               }
             />
 
@@ -542,22 +475,22 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               variant="filled"
               leftIcon={<User className="h-3 w-3" />}
               placeholder="Enter display name"
-              disabled={savingField !== null && savingField !== 'name'}
-              rightIcon={
-                <div className="flex items-center gap-1">
-                  {renderStatusIcon('name', hasNameChanged, name)}
-                  {name && !hasNameChanged && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => copyToClipboard(name, e)}
-                      className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
-                      disabled={savingField !== null}
-                    >
-                      <Copy className="h-2.5 w-2.5" />
-                    </Button>
-                  )}
-                </div>
+              trackChanges={true}
+              initialValue={service.name || ''}
+              onSave={createSaveHandler('name')}
+              isSaving={savingFields.has('name')}
+              saveSuccess={saveSuccessFields.has('name')}
+              additionalActions={
+                name && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => copyToClipboard(name, e)}
+                    className="p-0.5 h-4 w-4 text-gray-500 hover:text-blue-600"
+                  >
+                    <Copy className="h-2.5 w-2.5" />
+                  </Button>
+                )
               }
             />
 
@@ -571,8 +504,11 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               variant="filled"
               leftIcon={<Key className="h-3 w-3" />}
               placeholder="Enter password"
-              disabled={savingField !== null && savingField !== 'password'}
-              rightIcon={renderStatusIcon('password', hasPasswordChanged, password)}
+              trackChanges={true}
+              initialValue={service.password || ''}
+              onSave={createSaveHandler('password')}
+              isSaving={savingFields.has('password')}
+              saveSuccess={saveSuccessFields.has('password')}
             />
 
             {/* Notes */}
@@ -585,10 +521,14 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               multiline={true}
               rows={2}
               placeholder="Add notes about this service"
-              disabled={savingField !== null && savingField !== 'note'}
-              rightIcon={renderStatusIcon('note', hasNoteChanged, note)}
+              trackChanges={true}
+              initialValue={service.note || ''}
+              onSave={createSaveHandler('note')}
+              isSaving={savingFields.has('note')}
+              saveSuccess={saveSuccessFields.has('note')}
             />
           </div>
+
           {/* Metadata Section */}
           <div className="ml-2">
             <Metadata
@@ -607,6 +547,7 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
               showDeleteButtons={true}
             />
           </div>
+
           {/* Nested Services List */}
           {showNestedServices && nestedServices && nestedServices.length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 ml-2">
@@ -623,6 +564,8 @@ const ServiceAccountCard: React.FC<ServiceAccountCardProps> = ({
                     onServiceClick={handleNestedServiceClick}
                     onServiceView={onServiceView}
                     onServiceUpdate={onServiceUpdate}
+                    savingFields={savingFields}
+                    saveSuccessFields={saveSuccessFields}
                     className="ml-4 border-l-2 border-blue-200 dark:border-blue-700"
                     defaultExpanded={false}
                   />

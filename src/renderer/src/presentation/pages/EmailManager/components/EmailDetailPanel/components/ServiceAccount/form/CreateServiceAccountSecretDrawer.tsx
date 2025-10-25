@@ -121,47 +121,17 @@ const CreateServiceAccountSecretDrawer: React.FC<CreateServiceAccountSecretDrawe
 
   // Compute available secret names from allServiceAccountSecrets
   const availableSecretNames = useMemo(() => {
-    console.log('[DEBUG SECRET DRAWER] ===== Starting availableSecretNames computation =====')
-    console.log('[DEBUG SECRET DRAWER] Current serviceAccount:', serviceAccount)
-    console.log(
-      '[DEBUG SECRET DRAWER] Current serviceAccount.service_name:',
-      serviceAccount.service_name
-    )
-    console.log(
-      '[DEBUG SECRET DRAWER] allServiceAccountSecrets length:',
-      allServiceAccountSecrets?.length || 0
-    )
-    console.log('[DEBUG SECRET DRAWER] allServiceAccounts length:', allServiceAccounts?.length || 0)
-
     if (!allServiceAccountSecrets || allServiceAccountSecrets.length === 0) {
-      console.log('[DEBUG SECRET DRAWER] No allServiceAccountSecrets available')
       return []
     }
 
     if (!allServiceAccounts || allServiceAccounts.length === 0) {
-      console.log('[DEBUG SECRET DRAWER] No allServiceAccounts available')
       return []
     }
 
-    // Lấy tất cả secrets thuộc các service accounts có cùng service_name (không phụ thuộc email_id)
     const secretNameSet = new Set<string>()
-
-    allServiceAccountSecrets.forEach((secret: ServiceAccountSecret, index: number) => {
-      console.log(`[DEBUG SECRET DRAWER] Processing secret ${index}:`, secret)
-
-      // Tìm service account tương ứng với secret này
+    allServiceAccountSecrets.forEach((secret: ServiceAccountSecret) => {
       const relatedService = allServiceAccounts.find((sa) => sa.id === secret.service_account_id)
-
-      console.log(`[DEBUG SECRET DRAWER] Found relatedService for secret ${index}:`, relatedService)
-
-      if (relatedService) {
-        console.log(`[DEBUG SECRET DRAWER] Comparing service names:`)
-        console.log(`  - relatedService.service_name: "${relatedService.service_name}"`)
-        console.log(`  - serviceAccount.service_name: "${serviceAccount.service_name}"`)
-        console.log(
-          `  - Match (lowercase): ${relatedService.service_name.toLowerCase() === serviceAccount.service_name.toLowerCase()}`
-        )
-      }
 
       // Chỉ lấy secret_name của các service có cùng service_name với serviceAccount hiện tại
       if (
@@ -170,14 +140,9 @@ const CreateServiceAccountSecretDrawer: React.FC<CreateServiceAccountSecretDrawe
         secret.secret_name &&
         secret.secret_name.trim()
       ) {
-        console.log(`[DEBUG SECRET DRAWER] ✅ Adding secret_name: "${secret.secret_name.trim()}"`)
         secretNameSet.add(secret.secret_name.trim())
-      } else {
-        console.log(`[DEBUG SECRET DRAWER] ❌ Skipping secret ${index}`)
       }
     })
-
-    console.log('[DEBUG SECRET DRAWER] Final secretNameSet:', Array.from(secretNameSet))
 
     const result = Array.from(secretNameSet)
       .sort((a, b) => a.localeCompare(b))
@@ -185,9 +150,6 @@ const CreateServiceAccountSecretDrawer: React.FC<CreateServiceAccountSecretDrawe
         value: name,
         label: name
       }))
-
-    console.log('[DEBUG SECRET DRAWER] Final availableSecretNames result:', result)
-    console.log('[DEBUG SECRET DRAWER] ===== End availableSecretNames computation =====')
 
     return result
   }, [allServiceAccountSecrets, allServiceAccounts, serviceAccount.service_name])

@@ -18,7 +18,6 @@ import {
   Smartphone,
   Mail,
   Trash2,
-  Check,
   ChevronDown,
   ChevronUp,
   Calendar
@@ -89,14 +88,6 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     } catch (err) {
       console.error('Failed to copy:', err)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
   }
 
   const getTwoFAMethodInfo = (type: string) => {
@@ -297,51 +288,6 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     }
   }, [method.method_type, method.value])
 
-  const hasExpireDateChanged = expireDateValue !== formatDateForInput(method.expire_at)
-  const hasAppChanged = appValue !== (method.app || '')
-  const hasSecretChanged =
-    secretValue !== (typeof method.value === 'string' ? method.value : JSON.stringify(method.value))
-
-  const renderStatusIcon = (field: string, hasChanged: boolean) => {
-    if (savingField === field) {
-      return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-    }
-
-    if (saveStatus[field] === 'success') {
-      return <Check className="h-4 w-4 text-green-600" />
-    }
-
-    if (saveStatus[field] === 'error') {
-      return <div className="text-red-600">!</div>
-    }
-
-    if (hasChanged) {
-      return (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            if (field === 'app') {
-              handleSaveField('app', appValue)
-            } else if (field === 'value') {
-              handleSaveField('value', secretValue)
-            } else if (field === 'metadata') {
-              handleSaveField('metadata', editingMetadata)
-            } else if (field === 'expire_at') {
-              handleSaveField('expire_at', expireDateValue)
-            }
-          }}
-          className="p-0.5 h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-50"
-          disabled={savingField !== null}
-        >
-          <Check className="h-2.5 w-2.5" />
-        </Button>
-      )
-    }
-
-    return undefined
-  }
-
   const handleDelete = () => {
     if (onDelete && window.confirm('Are you sure you want to delete this 2FA method?')) {
       onDelete(method.id)
@@ -387,22 +333,34 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
 
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Secret Key
+              Secret Value
             </Label>
+
             <CustomInput
-              value={showSecret ? secretValue : '•'.repeat(32)}
+              value={showSecret ? secretValue : '•'.repeat(24)}
               onChange={(value) => setSecretValue(value)}
               variant="filled"
               size="sm"
               multiline={secretValue.length > 50}
               rows={2}
-              rightIcon={
+              trackChanges={true}
+              initialValue={
+                typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
+              }
+              onSave={async (newValue) => {
+                await handleSaveField('value', newValue)
+              }}
+              isSaving={savingField === 'value'}
+              saveSuccess={saveStatus['value'] === 'success'}
+              disabled={savingField !== null && savingField !== 'value'}
+              additionalActions={
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowSecret(!showSecret)}
                     className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    disabled={savingField !== null}
                   >
                     {showSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                   </Button>
@@ -411,13 +369,12 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                     size="sm"
                     onClick={() => copyToClipboard(secretValue)}
                     className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    disabled={savingField !== null}
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
-                  {renderStatusIcon('value', hasSecretChanged)}
                 </div>
               }
-              disabled={savingField !== null && savingField !== 'value'}
             />
           </div>
         </div>
@@ -469,8 +426,18 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
           size="sm"
           multiline={secretValue.length > 50}
           rows={2}
-          rightIcon={
-            <div className="flex items-center gap-1">
+          trackChanges={true}
+          initialValue={
+            typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
+          }
+          onSave={async (newValue) => {
+            await handleSaveField('value', newValue)
+          }}
+          isSaving={savingField === 'value'}
+          saveSuccess={saveStatus['value'] === 'success'}
+          disabled={savingField !== null && savingField !== 'value'}
+          actions={
+            <>
               <Button
                 variant="ghost"
                 size="sm"
@@ -487,10 +454,8 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
               >
                 <Copy className="h-3 w-3" />
               </Button>
-              {renderStatusIcon('value', hasSecretChanged)}
-            </div>
+            </>
           }
-          disabled={savingField !== null && savingField !== 'value'}
         />
       </div>
     )
@@ -603,7 +568,13 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                   placeholder="App name"
                   variant="filled"
                   size="sm"
-                  rightIcon={renderStatusIcon('app', hasAppChanged)}
+                  trackChanges={true}
+                  initialValue={method.app || ''}
+                  onSave={async (newValue) => {
+                    await handleSaveField('app', newValue)
+                  }}
+                  isSaving={savingField === 'app'}
+                  saveSuccess={saveStatus['app'] === 'success'}
                   disabled={savingField !== null && savingField !== 'app'}
                 />
               </div>
@@ -628,7 +599,13 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                   type="datetime-local"
                   showTime={false}
                   leftIcon={<Calendar className="h-4 w-4" />}
-                  rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
+                  trackChanges={true}
+                  initialValue={formatDateForInput(method.expire_at)}
+                  onSave={async (newValue) => {
+                    await handleSaveField('expire_at', newValue)
+                  }}
+                  isSaving={savingField === 'expire_at'}
+                  saveSuccess={saveStatus['expire_at'] === 'success'}
                   disabled={savingField !== null && savingField !== 'expire_at'}
                 />
               </div>
