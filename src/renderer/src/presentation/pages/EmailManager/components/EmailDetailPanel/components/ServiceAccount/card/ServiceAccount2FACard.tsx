@@ -24,7 +24,6 @@ import {
 } from 'lucide-react'
 import { cn } from '../../../../../../../../shared/lib/utils'
 import { ServiceAccount2FA } from '../../../../../types'
-import CustomArrayInput from '../../../../../../../../components/common/CustomArrayInput'
 
 interface ServiceAccount2FACardProps {
   method: ServiceAccount2FA
@@ -293,27 +292,19 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
           </div>
 
           <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-800/30">
-            <CustomArrayInput
-              items={showSecret ? method.value.map(String) : method.value.map(() => '••••••••')}
-              onChange={(newCodes) => {
+            <CustomTag
+              tags={showSecret ? method.value.map(String) : method.value.map(() => '••••••••')}
+              onTagsChange={(newCodes) => {
                 if (onSave && showSecret) {
                   // Only allow editing when codes are visible
                   handleSaveField('value', newCodes)
                 }
               }}
               disabled={savingField !== null || !showSecret || !onSave}
-              viewMode={!showSecret || savingField !== null}
               placeholder="Enter backup code..."
               allowDuplicates={false}
-              maxItems={20}
-              minItems={1}
-              hint={
-                !showSecret
-                  ? 'Codes are hidden - click Show to edit'
-                  : onSave
-                    ? 'Click on any code to copy, or edit directly'
-                    : 'Read-only backup codes'
-              }
+              maxTags={20}
+              size="sm"
             />
 
             {method.metadata && (

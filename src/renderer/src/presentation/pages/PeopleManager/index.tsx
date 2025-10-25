@@ -1,6 +1,5 @@
 // src/renderer/src/presentation/pages/PeopleManager/index.tsx
 import { useState } from 'react'
-import CustomBreadcrumb, { BreadcrumbItem } from '../../../components/common/CustomBreadcrumb'
 import { Users, Database, X, AlertCircle } from 'lucide-react'
 import { usePeopleManager } from './hooks/usePeopleManager'
 import DatabaseModal from './components/DatabaseModal'
@@ -120,8 +119,6 @@ const PeopleManagerPage = () => {
             <div className="flex-none border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <CustomBreadcrumb items={breadcrumbItems} className="text-text-secondary" />
-
                   {currentDatabase && (
                     <div className="flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-full">
                       <Database className="h-4 w-4 text-green-600 dark:text-green-400" />

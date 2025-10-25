@@ -94,12 +94,12 @@ const CustomTag: React.FC<CustomTagProps> = ({
     }
   }
 
-  const canAddMore = !maxTags || tags.length < maxTags
+  const canAddMore = !maxTags || (tags?.length || 0) < maxTags
 
   const handleAddTag = () => {
     const trimmedValue = newTagValue.trim()
-    if (trimmedValue && (allowDuplicates || !tags.includes(trimmedValue))) {
-      const updatedTags = [...tags, trimmedValue]
+    if (trimmedValue && (allowDuplicates || !(tags || []).includes(trimmedValue))) {
+      const updatedTags = [...(tags || []), trimmedValue]
       onTagsChange(updatedTags)
       setNewTagValue('')
       setShowAddTag(false)
@@ -132,8 +132,8 @@ const CustomTag: React.FC<CustomTagProps> = ({
       {/* Tags Container */}
       <div className="flex flex-wrap gap-2 items-center">
         {/* Existing Tags */}
-        {tags.length > 0 &&
-          tags.map((tag, index) => {
+        {(tags?.length || 0) > 0 &&
+          tags?.map((tag, index) => {
             const colorClasses = getTagColorClass(tag)
 
             return (
@@ -207,7 +207,8 @@ const CustomTag: React.FC<CustomTagProps> = ({
                     size="sm"
                     onClick={handleAddTag}
                     disabled={
-                      !newTagValue.trim() || (!allowDuplicates && tags.includes(newTagValue.trim()))
+                      !newTagValue.trim() ||
+                      (!allowDuplicates && (tags || []).includes(newTagValue.trim()))
                     }
                     className={cn(
                       'w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20',
@@ -238,7 +239,7 @@ const CustomTag: React.FC<CustomTagProps> = ({
         )}
 
         {/* No tags message */}
-        {tags.length === 0 && !showAddTag && (
+        {(tags?.length || 0) === 0 && !showAddTag && (
           <span className="text-sm text-text-secondary italic">No tags assigned</span>
         )}
 

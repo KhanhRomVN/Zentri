@@ -17,8 +17,15 @@ interface EmailListPanelProps {
   onCreateNewEmail: () => void
   onShowTableManager: () => void
   filters: {
+    email_address: string
     provider: string[]
+    name: string
+    age: string
+    recovery_email: string[]
     tags: string[]
+    email2FA: string[]
+    serviceAccount: string[]
+    service_type: string[]
   }
   onFiltersChange: (filters: any) => void
   isLoading?: boolean
@@ -43,6 +50,17 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
   // Get unique providers and tags for filter options
   const uniqueProviders = Array.from(new Set(emails.map((e) => e.email_provider))).sort()
   const uniqueTags = Array.from(new Set(emails.flatMap((e) => e.tags || []))).sort()
+  const uniqueRecoveryEmails = Array.from(
+    new Set(emails.map((e) => e.recovery_email).filter((email) => email != null))
+  ).sort()
+  const uniqueEmail2FA = Array.from(
+    new Set(
+      email2FAMethods.map((method) => method.two_fa_method).filter((method) => method != null)
+    )
+  ).sort()
+  const uniqueServiceTypes = Array.from(
+    new Set(serviceAccounts.map((sa) => sa.service_type).filter((type) => type != null))
+  ).sort()
 
   // Filter emails based on search and filters
   const filteredEmails = useMemo(() => {
@@ -74,11 +92,31 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
   }, [emails, serviceAccounts, email2FAMethods, searchQuery, filters])
 
   const clearAllFilters = () => {
-    onFiltersChange({ provider: [], tags: [] })
+    onFiltersChange({
+      email_address: '',
+      provider: [],
+      name: '',
+      age: '',
+      recovery_email: [],
+      tags: [],
+      email2FA: [],
+      serviceAccount: [],
+      service_type: []
+    })
     onSearchChange('')
   }
 
-  const hasActiveFilters = searchQuery || filters.provider.length > 0 || filters.tags.length > 0
+  const hasActiveFilters =
+    searchQuery ||
+    filters.email_address ||
+    filters.provider.length > 0 ||
+    filters.name ||
+    filters.age ||
+    filters.recovery_email.length > 0 ||
+    filters.tags.length > 0 ||
+    filters.email2FA.length > 0 ||
+    filters.serviceAccount.length > 0 ||
+    filters.service_type.length > 0
 
   // Helper function to count service accounts for an email
   const getServiceAccountsCount = (emailId: string) => {
@@ -219,6 +257,10 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
         onFiltersChange={onFiltersChange}
         availableProviders={uniqueProviders}
         availableTags={uniqueTags}
+        availableRecoveryEmails={uniqueRecoveryEmails}
+        availableEmail2FA={uniqueEmail2FA}
+        availableServiceAccounts={[]}
+        availableServiceTypes={uniqueServiceTypes}
       />
     </div>
   )

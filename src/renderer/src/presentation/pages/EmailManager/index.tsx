@@ -1,7 +1,6 @@
 // src/renderer/src/presentation/pages/EmailManager/index.tsx
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Mail, Database, X, AlertCircle } from 'lucide-react'
-import CustomBreadcrumb, { BreadcrumbItem } from '../../../components/common/CustomBreadcrumb'
 import DatabaseModal from './components/DatabaseModal'
 import CreateEmailModal from './components/CreateEmailModal'
 import EmailListPanel from './components/EmailListPanel'
@@ -99,28 +98,23 @@ const EmailManagerPage = () => {
 
   // Filters state
   const [filters, setFilters] = useState({
+    email_address: '',
     provider: [] as string[],
-    tags: [] as string[]
+    name: '',
+    age: '',
+    recovery_email: [] as string[],
+    tags: [] as string[],
+    email2FA: [] as string[],
+    serviceAccount: [] as string[],
+    service_type: [] as string[]
   })
-
-  // Breadcrumb items
-  const breadcrumbItems: BreadcrumbItem[] = [
-    {
-      label: 'Dashboard',
-      href: '/',
-      icon: Mail
-    },
-    {
-      label: 'Email Manager',
-      isCurrentPage: true
-    }
-  ]
 
   // Filter emails based on search and filters
   const filteredEmails = useMemo(() => {
     if (!isDatabaseReady || !emails) return []
 
     return emails.filter((email) => {
+      // Search query filter
       const matchesSearch =
         searchQuery === '' ||
         email.email_address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -128,16 +122,63 @@ const EmailManagerPage = () => {
         email.email_provider?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         email.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
 
-      const matchesProvider =
-        filters.provider.length === 0 || filters.provider.includes(email.email_provider)
+      // Email address filter
+      const matchesEmailAddress =
+        !filters.email_address ||
+        email.email_address?.toLowerCase().includes(filters.email_address.toLowerCase())
 
+      // Provider filter
+      const matchesProvider =
+        filters.provider.length === 0 ||
+        (email.email_provider && filters.provider.includes(email.email_provider))
+
+      // Name filter
+      const matchesName =
+        !filters.name || email.name?.toLowerCase().includes(filters.name.toLowerCase())
+
+      // Age filter
+      const matchesAge = !filters.age || email.age?.toString().includes(filters.age)
+
+      // Recovery email filter
+      const matchesRecoveryEmail =
+        filters.recovery_email.length === 0 ||
+        (email.recovery_email && filters.recovery_email.includes(email.recovery_email))
+
+      // Tags filter
       const matchesTags =
         filters.tags.length === 0 ||
         (email.tags && email.tags.some((tag) => filters.tags.includes(tag)))
 
-      return matchesSearch && matchesProvider && matchesTags
+      // Email 2FA filter
+      const matchesEmail2FA =
+        filters.email2FA.length === 0 ||
+        (email.id &&
+          email2FAMethods.some(
+            (method) =>
+              method.email_id === email.id && filters.email2FA.includes(method.two_fa_method)
+          ))
+
+      // Service Account filter - kiểm tra xem email có service account với service_type trong filters
+      const matchesServiceType =
+        filters.service_type.length === 0 ||
+        (email.id &&
+          serviceAccounts.some(
+            (sa) => sa.email_id === email.id && filters.service_type.includes(sa.service_type)
+          ))
+
+      return (
+        matchesSearch &&
+        matchesEmailAddress &&
+        matchesProvider &&
+        matchesName &&
+        matchesAge &&
+        matchesRecoveryEmail &&
+        matchesTags &&
+        matchesEmail2FA &&
+        matchesServiceType
+      )
     })
-  }, [emails, searchQuery, filters, isDatabaseReady])
+  }, [emails, searchQuery, filters, isDatabaseReady, email2FAMethods, serviceAccounts])
 
   // Load related data for selected email
   // Load related data for selected email
@@ -450,8 +491,6 @@ const EmailManagerPage = () => {
             <div className="flex-none border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <CustomBreadcrumb items={breadcrumbItems} className="text-text-secondary" />
-
                   {currentDatabase && (
                     <div className="flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-full">
                       <Database className="h-4 w-4 text-green-600 dark:text-green-400" />

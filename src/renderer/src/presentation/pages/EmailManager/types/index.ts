@@ -19,6 +19,7 @@ export interface Email {
 export interface Email2FA {
   id: string
   email_id: string
+  two_fa_method: string
   method_type:
     | 'backup_codes'
     | 'totp_key'
