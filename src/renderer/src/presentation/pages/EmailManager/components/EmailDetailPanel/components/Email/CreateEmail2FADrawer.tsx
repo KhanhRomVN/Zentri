@@ -1,9 +1,11 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/CreateEmail2FAForm.tsx
+// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/Email/CreateEmail2FADrawer.tsx
 import React, { useState, useEffect } from 'react'
 import CustomButton from '../../../../../../../components/common/CustomButton'
 import CustomInput from '../../../../../../../components/common/CustomInput'
 import CustomTextArea from '../../../../../../../components/common/CustomTextArea'
 import CustomCombobox from '../../../../../../../components/common/CustomCombobox'
+import CustomDrawer from '../../../../../../../components/common/CustomDrawer'
+import CustomTag from '../../../../../../../components/common/CustomTag'
 import {
   Shield,
   QrCode,
@@ -11,25 +13,21 @@ import {
   Key,
   Mail,
   Smartphone,
-  Plus,
-  X,
   AlertCircle,
   Calendar
 } from 'lucide-react'
-import { cn } from '../../../../../../../shared/lib/utils'
 import { Email2FA, Email } from '../../../../types'
 import Metadata from '../../../../../../../components/common/Metadata'
-import { Button } from '../../../../../../../components/ui/button'
 import CustomArrayInput from '../../../../../../../components/common/CustomArrayInput'
 import { Label } from '@radix-ui/react-label'
 
-interface CreateEmail2FAFormProps {
+interface CreateEmail2FADrawerProps {
+  isOpen: boolean
   email: Email
   existingMethods: Email2FA[]
   onSubmit: (data: Omit<Email2FA, 'id'>) => Promise<void>
-  onCancel: () => void
+  onClose: () => void
   loading?: boolean
-  className?: string
 }
 
 // 2FA Method options
@@ -104,13 +102,13 @@ const twoFAMethodOptions = [
   }
 ]
 
-const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
+const CreateEmail2FADrawer: React.FC<CreateEmail2FADrawerProps> = ({
+  isOpen,
   email,
   existingMethods = [],
   onSubmit,
-  onCancel,
-  loading = false,
-  className
+  onClose,
+  loading = false
 }) => {
   const [formData, setFormData] = useState<{
     method_type: string
@@ -127,6 +125,20 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Reset form when drawer opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        method_type: '',
+        app: '',
+        value: '',
+        expire_at: '',
+        metadata: {}
+      })
+      setErrors({})
+    }
+  }, [isOpen])
 
   // Lọc các method options để loại bỏ các method unique đã tồn tại
   const availableMethodOptions = twoFAMethodOptions.filter((method) => {
@@ -248,23 +260,11 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
       }
 
       await onSubmit(email2FAData)
+      onClose()
     } catch (error) {
       console.error('[DEBUG] Error in handleSubmit:', error)
       console.error('Error creating 2FA method:', error)
     }
-  }
-
-  // Handle cancel
-  const handleCancel = () => {
-    setFormData({
-      method_type: '',
-      app: '',
-      value: '',
-      expire_at: '',
-      metadata: {}
-    })
-    setErrors({})
-    onCancel()
   }
 
   // Get minimum date for expiry (today + 1 day)
@@ -331,13 +331,13 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {getValueLabel()}
             </Label>
-            <CustomArrayInput
-              items={currentCodes}
-              onChange={(newCodes) => {
+            <CustomTag
+              tags={currentCodes}
+              onTagsChange={(newCodes) => {
                 const joinedValue = newCodes.join('\n')
                 setFormData((prev) => ({ ...prev, value: joinedValue }))
 
-                // Clear any form-level errors since CustomArrayInput handles its own validation
+                // Clear any form-level errors since CustomTag handles its own validation
                 setErrors((prev) => {
                   const newErrors = { ...prev }
                   delete newErrors.value
@@ -346,18 +346,10 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
               }}
               placeholder="Enter backup code..."
               allowDuplicates={false}
-              maxItems={20}
-              minItems={1}
-              hint="Add backup codes one by one. Each code should be unique."
+              maxTags={20}
               disabled={loading}
-              // Don't pass error prop - let CustomArrayInput handle all validation
+              size="sm"
             />
-          </div>
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{currentCodes.length} codes added</span>
-            {currentCodes.length > 0 && (
-              <span className="text-green-600 dark:text-green-400">✓ Ready to save</span>
-            )}
           </div>
         </div>
       )
@@ -412,38 +404,37 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
   }
 
   return (
-    <div
-      className={cn(
-        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
-        className
-      )}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-            <Plus className="h-3 w-3 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <h4 className="text-base font-bold text-text-primary">Add 2FA Method</h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Configure a new two-factor authentication method for {email.email_address}
-            </p>
-          </div>
+    <CustomDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add 2FA Method"
+      subtitle={`Configure a new two-factor authentication method for ${email.email_address}`}
+      size="md"
+      footerActions={
+        <div className="flex items-center justify-end gap-2">
+          <CustomButton
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            disabled={loading}
+            className="min-w-[80px]"
+          >
+            Cancel
+          </CustomButton>
+          <CustomButton
+            variant="success"
+            size="sm"
+            onClick={handleSubmit}
+            disabled={loading || !formData.method_type || !formData.value}
+            loading={loading}
+            className="min-w-[140px] bg-green-600 hover:bg-green-700 text-white"
+          >
+            Add 2FA Method
+          </CustomButton>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCancel}
-          disabled={loading}
-          className="p-1 h-6 w-6"
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      </div>
-
-      {/* Form Container */}
-      <div className="space-y-4">
+      }
+    >
+      <div className="space-y-4 p-4">
         {/* 2FA Method Selection */}
         <div className="space-y-1">
           <CustomCombobox
@@ -463,26 +454,6 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
               <AlertCircle className="h-3 w-3" />
               {errors.method_type}
             </p>
-          )}
-
-          {/* Method Description */}
-          {selectedMethod && (
-            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <selectedMethod.icon className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                <span className="text-xs font-medium text-blue-800 dark:text-blue-300">
-                  {selectedMethod.label}
-                </span>
-              </div>
-              <p className="text-xs text-blue-700 dark:text-blue-200">
-                {selectedMethod.description}
-                {selectedMethod.autoFillFromEmail && (
-                  <span className="block mt-1 text-blue-600 dark:text-blue-400">
-                    • Will auto-fill from email {selectedMethod.autoFillField} if available
-                  </span>
-                )}
-              </p>
-            </div>
           )}
         </div>
 
@@ -531,7 +502,7 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
               onMetadataChange={(newMetadata) =>
                 setFormData((prev) => ({ ...prev, metadata: newMetadata }))
               }
-              title="Additional Metadata"
+              title="Metadata"
               compact={true}
               size="sm"
               allowCreate={true}
@@ -539,36 +510,12 @@ const CreateEmail2FAForm: React.FC<CreateEmail2FAFormProps> = ({
               allowDelete={true}
               collapsible={true}
               defaultExpanded={false}
-              className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/50"
             />
           </div>
         )}
-
-        {/* Form Actions */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <CustomButton
-            variant="secondary"
-            size="sm"
-            onClick={handleCancel}
-            disabled={loading}
-            className="min-w-[80px]"
-          >
-            Cancel
-          </CustomButton>
-          <CustomButton
-            variant="success"
-            size="sm"
-            onClick={handleSubmit}
-            disabled={loading || !formData.method_type || !formData.value}
-            loading={loading}
-            className="min-w-[140px] bg-green-600 hover:bg-green-700 text-white"
-          >
-            Add 2FA Method
-          </CustomButton>
-        </div>
       </div>
-    </div>
+    </CustomDrawer>
   )
 }
 
-export default CreateEmail2FAForm
+export default CreateEmail2FADrawer

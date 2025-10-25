@@ -476,7 +476,6 @@ const Metadata: React.FC<MetadataProps> = ({
     return (
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 space-y-3">
         <div className="flex items-center gap-2 mb-1">
-          <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           <h5 className="font-medium text-blue-900 dark:text-blue-100">Add New Field</h5>
         </div>
 

@@ -189,7 +189,8 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
               <ServiceAccountSecretSection
                 serviceAccount={selectedServiceAccount}
                 secrets={serviceSecrets}
-                allServiceAccountSecrets={allServiceAccountSecrets}
+                allServiceAccountSecrets={allServiceAccountSecrets} // ✅ Đảm bảo prop này có
+                allServiceAccounts={allServiceAccounts} // ✅ Thêm prop này
                 onAddSecret={onAddServiceAccountSecret}
                 onDeleteSecret={onDeleteServiceAccountSecret}
               />

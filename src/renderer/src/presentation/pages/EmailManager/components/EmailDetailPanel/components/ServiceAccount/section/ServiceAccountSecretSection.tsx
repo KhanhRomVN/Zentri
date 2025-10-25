@@ -20,7 +20,8 @@ import { ServiceAccount, ServiceAccountSecret } from '../../../../../types'
 interface ServiceAccountSecretSectionProps {
   serviceAccount: ServiceAccount
   secrets: ServiceAccountSecret[]
-  allServiceAccountSecrets?: ServiceAccountSecret[] // Thêm prop mới
+  allServiceAccountSecrets?: ServiceAccountSecret[]
+  allServiceAccounts?: ServiceAccount[]
   onAddSecret?: (secretData: Omit<ServiceAccountSecret, 'id'>) => Promise<void>
   onSecretChange?: (secretId: string, secret: ServiceAccountSecret) => void
   onDeleteSecret?: (secretId: string) => void
@@ -33,6 +34,7 @@ const ServiceAccountSecretSection: React.FC<ServiceAccountSecretSectionProps> = 
   serviceAccount,
   secrets = [],
   allServiceAccountSecrets = [],
+  allServiceAccounts = [],
   onAddSecret,
   onSecretChange,
   onDeleteSecret,
@@ -207,6 +209,7 @@ const ServiceAccountSecretSection: React.FC<ServiceAccountSecretSectionProps> = 
                 <CreateServiceAccountSecretForm
                   serviceAccount={serviceAccount}
                   allServiceAccountSecrets={allServiceAccountSecrets}
+                  allServiceAccounts={allServiceAccounts}
                   onAddSecret={handleSecretCreated}
                   onCancel={handleCancelCreate}
                   loading={loading}

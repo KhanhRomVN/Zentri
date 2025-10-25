@@ -5,10 +5,12 @@ import CustomButton from '../../../../../../../../components/common/CustomButton
 import CustomInput from '../../../../../../../../components/common/CustomInput'
 import { Key, AlertCircle, Plus, Calendar, X, Save, Trash2 } from 'lucide-react'
 import { ServiceAccount, ServiceAccountSecret } from '../../../../../types'
+import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
 
 interface CreateServiceAccountSecretFormProps {
   serviceAccount: ServiceAccount
   allServiceAccountSecrets?: ServiceAccountSecret[]
+  allServiceAccounts?: ServiceAccount[]
   onAddSecret?: (secretData: Omit<ServiceAccountSecret, 'id'>) => Promise<void>
   onCancel?: () => void
   loading?: boolean
@@ -22,6 +24,8 @@ interface SecretField {
 
 const CreateServiceAccountSecretForm: React.FC<CreateServiceAccountSecretFormProps> = ({
   serviceAccount,
+  allServiceAccountSecrets,
+  allServiceAccounts,
   onAddSecret,
   onCancel,
   className
@@ -101,6 +105,82 @@ const CreateServiceAccountSecretForm: React.FC<CreateServiceAccountSecretFormPro
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }, [formData.secret_name, formData.expire_at, formData.fields.length])
+
+  // Compute available secret names from allServiceAccountSecrets
+  // Filter secrets that belong to services with the SAME service_name (cross-email)
+  // Compute available secret names from allServiceAccountSecrets
+  // Filter secrets that belong to services with the SAME service_name (cross-email)
+  const availableSecretNames = useMemo(() => {
+    console.log('[DEBUG SECRET FORM] ===== Starting availableSecretNames computation =====')
+    console.log('[DEBUG SECRET FORM] Current serviceAccount:', serviceAccount)
+    console.log(
+      '[DEBUG SECRET FORM] Current serviceAccount.service_name:',
+      serviceAccount.service_name
+    )
+    console.log(
+      '[DEBUG SECRET FORM] allServiceAccountSecrets length:',
+      allServiceAccountSecrets?.length || 0
+    )
+    console.log('[DEBUG SECRET FORM] allServiceAccounts length:', allServiceAccounts?.length || 0)
+
+    if (!allServiceAccountSecrets || allServiceAccountSecrets.length === 0) {
+      console.log('[DEBUG SECRET FORM] No allServiceAccountSecrets available')
+      return []
+    }
+
+    if (!allServiceAccounts || allServiceAccounts.length === 0) {
+      console.log('[DEBUG SECRET FORM] No allServiceAccounts available')
+      return []
+    }
+
+    // Lấy tất cả secrets thuộc các service accounts có cùng service_name (không phụ thuộc email_id)
+    const secretNameSet = new Set<string>()
+
+    allServiceAccountSecrets.forEach((secret: ServiceAccountSecret, index: number) => {
+      console.log(`[DEBUG SECRET FORM] Processing secret ${index}:`, secret)
+
+      // Tìm service account tương ứng với secret này
+      const relatedService = allServiceAccounts.find((sa) => sa.id === secret.service_account_id)
+
+      console.log(`[DEBUG SECRET FORM] Found relatedService for secret ${index}:`, relatedService)
+
+      if (relatedService) {
+        console.log(`[DEBUG SECRET FORM] Comparing service names:`)
+        console.log(`  - relatedService.service_name: "${relatedService.service_name}"`)
+        console.log(`  - serviceAccount.service_name: "${serviceAccount.service_name}"`)
+        console.log(
+          `  - Match (lowercase): ${relatedService.service_name.toLowerCase() === serviceAccount.service_name.toLowerCase()}`
+        )
+      }
+
+      // Chỉ lấy secret_name của các service có cùng service_name với serviceAccount hiện tại
+      if (
+        relatedService &&
+        relatedService.service_name.toLowerCase() === serviceAccount.service_name.toLowerCase() &&
+        secret.secret_name &&
+        secret.secret_name.trim()
+      ) {
+        console.log(`[DEBUG SECRET FORM] ✅ Adding secret_name: "${secret.secret_name.trim()}"`)
+        secretNameSet.add(secret.secret_name.trim())
+      } else {
+        console.log(`[DEBUG SECRET FORM] ❌ Skipping secret ${index}`)
+      }
+    })
+
+    console.log('[DEBUG SECRET FORM] Final secretNameSet:', Array.from(secretNameSet))
+
+    const result = Array.from(secretNameSet)
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({
+        value: name,
+        label: name
+      }))
+
+    console.log('[DEBUG SECRET FORM] Final availableSecretNames result:', result)
+    console.log('[DEBUG SECRET FORM] ===== End availableSecretNames computation =====')
+
+    return result
+  }, [allServiceAccountSecrets, allServiceAccounts, serviceAccount.service_name])
 
   // Submit form
   const handleCreateSecret = async () => {
@@ -196,20 +276,35 @@ const CreateServiceAccountSecretForm: React.FC<CreateServiceAccountSecretFormPro
       </div>
 
       {/* Secret Name Field - Required */}
-      <CustomInput
-        key="secret-name-input"
-        label="Secret Name"
-        value={formData.secret_name}
-        onChange={(value) => setFormData((prev) => ({ ...prev, secret_name: value }))}
-        placeholder="e.g., Production API Keys, Development Tokens..."
-        variant="filled"
-        size="sm"
-        leftIcon={<Key className="h-4 w-4" />}
-        hint="Give this secret collection a descriptive name"
-        error={errors.secret_name}
-        required
-        disabled={isCreating}
-      />
+      {/* Secret Name Field - Required */}
+      <div className="space-y-1">
+        <CustomCombobox
+          label="Secret Name"
+          value={formData.secret_name}
+          options={availableSecretNames}
+          onChange={(value) => {
+            const secretName = Array.isArray(value) ? value[0] : value
+            setFormData((prev) => ({ ...prev, secret_name: secretName }))
+          }}
+          placeholder="Select or create secret name..."
+          searchable={true}
+          creatable={true}
+          size="sm"
+          required
+        />
+        {errors.secret_name && (
+          <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+            <AlertCircle className="h-4 w-4" />
+            {errors.secret_name}
+          </p>
+        )}
+        {formData.secret_name &&
+          availableSecretNames.find((s) => s.value === formData.secret_name) && (
+            <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+              ℹ️ This secret name was used before for {serviceAccount.service_name}
+            </p>
+          )}
+      </div>
 
       {/* Custom Fields Section */}
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">

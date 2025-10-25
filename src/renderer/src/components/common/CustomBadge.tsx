@@ -12,7 +12,7 @@ interface CustomBadgeProps {
     | 'info'
     | 'phone'
     | 'input-filled'
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   children: React.ReactNode
   icon?: LucideIcon
   iconClassName?: string
@@ -33,13 +33,15 @@ const CustomBadge: React.FC<CustomBadgeProps> = ({
   `
 
   const sizeStyles = {
+    xs: 'px-2 h-[32px] text-xs',
     sm: 'px-3 h-[38px] text-sm',
     md: 'px-4 h-[48px] text-base',
     lg: 'px-5 h-[56px] text-lg'
   }
 
   const iconSizes = {
-    sm: 'h-2 w-2',
+    xs: 'h-2 w-2',
+    sm: 'h-2.5 w-2.5',
     md: 'h-3 w-3',
     lg: 'h-4 w-4'
   }

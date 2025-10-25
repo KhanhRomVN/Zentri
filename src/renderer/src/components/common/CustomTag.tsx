@@ -14,6 +14,7 @@ interface CustomTagProps {
   allowDuplicates?: boolean
   onSave?: (tags: string[]) => void
   showSaveButton?: boolean
+  size?: 'xs' | 'sm' | 'md' | 'lg'
 }
 
 // Predefined Tailwind color classes for tags
@@ -55,11 +56,43 @@ const CustomTag: React.FC<CustomTagProps> = ({
   maxTags,
   allowDuplicates = false,
   onSave,
-  showSaveButton = false
+  showSaveButton = false,
+  size = 'md'
 }) => {
   const [hoveredTag, setHoveredTag] = useState<string | null>(null)
   const [showAddTag, setShowAddTag] = useState(false)
   const [newTagValue, setNewTagValue] = useState('')
+
+  const sizeStyles = {
+    xs: {
+      tag: 'px-2 h-[32px] text-xs',
+      input: 'px-2 py-1 text-xs h-[32px]',
+      button: 'h-[32px]',
+      icon: 'h-2 w-2',
+      iconButton: 'h-3 w-3'
+    },
+    sm: {
+      tag: 'px-3 h-[38px] text-sm',
+      input: 'px-3 py-2 text-sm h-[38px]',
+      button: 'h-[38px]',
+      icon: 'h-2.5 w-2.5',
+      iconButton: 'h-3 w-3'
+    },
+    md: {
+      tag: 'px-3 h-[48px] text-base',
+      input: 'px-3 py-3 text-base h-[48px]',
+      button: 'h-[48px]',
+      icon: 'h-3 w-3',
+      iconButton: 'h-4 w-4'
+    },
+    lg: {
+      tag: 'px-4 h-[56px] text-lg',
+      input: 'px-4 py-4 text-lg h-[56px]',
+      button: 'h-[56px]',
+      icon: 'h-4 w-4',
+      iconButton: 'h-5 w-5'
+    }
+  }
 
   const canAddMore = !maxTags || tags.length < maxTags
 
@@ -112,7 +145,8 @@ const CustomTag: React.FC<CustomTagProps> = ({
               >
                 <div
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-sm font-medium border transition-all duration-200 cursor-default',
+                    'rounded-lg font-medium border transition-all duration-200 cursor-default inline-flex items-center',
+                    sizeStyles[size].tag,
                     colorClasses
                   )}
                 >
@@ -125,7 +159,7 @@ const CustomTag: React.FC<CustomTagProps> = ({
                         onClick={() => handleRemoveTag(tag)}
                         className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-black/20 dark:bg-white/20 hover:bg-black/30 dark:hover:bg-white/30 transition-colors"
                       >
-                        <X className="h-2.5 w-2.5" />
+                        <X className={sizeStyles[size].icon} />
                       </button>
                     )}
                   </span>
@@ -142,9 +176,12 @@ const CustomTag: React.FC<CustomTagProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowAddTag(true)}
-                className="border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 h-8"
+                className={cn(
+                  'border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400',
+                  sizeStyles[size].button
+                )}
               >
-                <Plus className="h-3 w-3 mr-1" />
+                <Plus className={`${sizeStyles[size].iconButton} mr-1`} />
                 Add Tag
               </Button>
             ) : (
@@ -157,7 +194,10 @@ const CustomTag: React.FC<CustomTagProps> = ({
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
                     autoFocus
-                    className="px-3 py-1.5 text-sm bg-input-background border border-border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-w-[120px] text-text-primary placeholder:text-gray-500"
+                    className={cn(
+                      'bg-input-background border border-border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-w-[120px] text-text-primary placeholder:text-gray-500',
+                      sizeStyles[size].input
+                    )}
                   />
                 </div>
 
@@ -169,9 +209,12 @@ const CustomTag: React.FC<CustomTagProps> = ({
                     disabled={
                       !newTagValue.trim() || (!allowDuplicates && tags.includes(newTagValue.trim()))
                     }
-                    className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20"
+                    className={cn(
+                      'w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20',
+                      sizeStyles[size].button
+                    )}
                   >
-                    <Check className="h-3 w-3" />
+                    <Check className={sizeStyles[size].iconButton} />
                   </Button>
 
                   <Button
@@ -181,9 +224,12 @@ const CustomTag: React.FC<CustomTagProps> = ({
                       setShowAddTag(false)
                       setNewTagValue('')
                     }}
-                    className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800"
+                    className={cn(
+                      'w-7 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800',
+                      sizeStyles[size].button
+                    )}
                   >
-                    <X className="h-3 w-3" />
+                    <X className={sizeStyles[size].iconButton} />
                   </Button>
                 </div>
               </div>
@@ -202,9 +248,19 @@ const CustomTag: React.FC<CustomTagProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleSave}
-            className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20 text-sm ml-2"
+            className={cn(
+              'text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20 ml-2',
+              sizeStyles[size].button,
+              sizeStyles[size].tag.includes('text-xs')
+                ? 'text-xs'
+                : sizeStyles[size].tag.includes('text-sm')
+                  ? 'text-sm'
+                  : sizeStyles[size].tag.includes('text-lg')
+                    ? 'text-lg'
+                    : 'text-base'
+            )}
           >
-            <Check className="h-4 w-4 mr-1" />
+            <Check className={`${sizeStyles[size].iconButton} mr-1`} />
             Save Tags
           </Button>
         )}

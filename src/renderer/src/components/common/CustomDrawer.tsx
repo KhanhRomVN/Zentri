@@ -255,7 +255,7 @@ const MotionCustomDrawer: React.FC<MotionCustomDrawerProps> = ({
                 variants={headerVariants}
                 initial="hidden"
                 animate="visible"
-                className="flex-shrink-0 px-6 py-5 bg-drawer-background"
+                className="flex-shrink-0 px-4 py-4 bg-drawer-background"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -329,7 +329,7 @@ const MotionCustomDrawer: React.FC<MotionCustomDrawerProps> = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.4 }}
-                className="flex-shrink-0 p-4 border-t border-border bg-card-background"
+                className="flex-shrink-0 p-4 border-t border-border-default hover:border-border-hover bg-card-background"
               >
                 <div className="flex items-center justify-end gap-3">{footerActions}</div>
               </motion.div>

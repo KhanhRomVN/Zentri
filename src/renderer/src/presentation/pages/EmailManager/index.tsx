@@ -83,11 +83,6 @@ const EmailManagerPage = () => {
     loadAllServicesAndSecrets()
   }, [isDatabaseReady])
 
-  // Thêm useEffect để log
-  useEffect(() => {
-    console.log('[DEBUG] allServiceAccounts updated:', allServiceAccounts)
-  }, [allServiceAccounts])
-
   useEffect(() => {
     if (selectedEmail?.id) {
       // Giữ lại draft data cho email hiện tại
@@ -511,6 +506,7 @@ const EmailManagerPage = () => {
                   allServiceAccounts={allServiceAccounts}
                   selectedServiceAccount={selectedServiceAccount}
                   activeTab={emailActiveTabs[selectedEmail.id || ''] || 'overview'}
+                  allServiceAccountSecrets={allServiceAccountSecrets}
                   onTabChange={(tab) => {
                     if (selectedEmail.id) {
                       setEmailActiveTabs((prev) => ({

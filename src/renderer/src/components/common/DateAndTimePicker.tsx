@@ -669,9 +669,6 @@ const DateAndTimePicker: React.FC<DateAndTimePickerProps> = ({
             >
               {selectedDate ? formatDisplayValue(selectedDate) : placeholder}
             </span>
-            <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-              <Calendar className="h-4 w-4 text-gray-400" />
-            </div>
           </div>
         </div>
       </CustomPopover>

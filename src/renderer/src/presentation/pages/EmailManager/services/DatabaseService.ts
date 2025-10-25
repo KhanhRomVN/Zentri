@@ -531,7 +531,6 @@ export class DatabaseService {
     const rows = await window.electronAPI.sqlite.getAllRows(
       'SELECT * FROM service_accounts ORDER BY service_name'
     )
-    console.log('[DEBUG] DatabaseService.getAllServiceAccounts - rows:', rows) // Debug log
     return rows.map(this.mapRowToServiceAccount)
   }
 

@@ -6,7 +6,7 @@ import CustomButton from '../../../../../../../components/common/CustomButton'
 import { Label } from '../../../../../../../components/ui/label'
 import CustomInput from '../../../../../../../components/common/CustomInput'
 import Metadata from '../../../../../../../components/common/Metadata'
-import CustomOTP from '../../../../../../../components/common/CustomOTP'
+import CryptoJS from 'crypto-js'
 import {
   Eye,
   EyeOff,
@@ -20,11 +20,12 @@ import {
   Trash2,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Calendar
 } from 'lucide-react'
 import { cn } from '../../../../../../../shared/lib/utils'
 import { Email2FA } from '../../../../types'
-import CustomArrayInput from '../../../../../../../components/common/CustomArrayInput'
+import CustomTag from '../../../../../../../components/common/CustomTag'
 
 interface Email2FACardProps {
   method: Email2FA
@@ -38,6 +39,9 @@ interface Email2FACardProps {
 const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, className }) => {
   const [showSecret, setShowSecret] = useState(false)
   const [isExpanded, setIsExpanded] = useState(true)
+
+  const [currentOTP, setCurrentOTP] = useState('')
+  const [otpTimeRemaining, setOtpTimeRemaining] = useState(30)
 
   // State cho inline editing
   const [appValue, setAppValue] = useState(method.app || '')
@@ -197,6 +201,102 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     }
   }
 
+  // Base32 decode implementation
+  const base32Decode = (encoded: string): Uint8Array => {
+    const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+    encoded = encoded.toUpperCase().replace(/=+$/, '')
+
+    let bits = 0
+    let value = 0
+    let index = 0
+    const output = new Uint8Array(Math.floor((encoded.length * 5) / 8))
+
+    for (let i = 0; i < encoded.length; i++) {
+      const idx = base32Chars.indexOf(encoded[i])
+      if (idx === -1) continue
+
+      value = (value << 5) | idx
+      bits += 5
+
+      if (bits >= 8) {
+        output[index++] = (value >>> (bits - 8)) & 0xff
+        bits -= 8
+      }
+    }
+
+    return output
+  }
+
+  // Generate TOTP
+  const generateTOTP = (secret: string, timeStep: number = 30): string => {
+    try {
+      const keyBytes = base32Decode(secret.replace(/\s/g, ''))
+      const epoch = Math.floor(Date.now() / 1000)
+      let counter = Math.floor(epoch / timeStep)
+
+      const timeBytes = new Uint8Array(8)
+      for (let i = 7; i >= 0; i--) {
+        timeBytes[i] = counter & 0xff
+        counter = Math.floor(counter / 256)
+      }
+
+      const keyHex = Array.from(keyBytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+      const timeHex = Array.from(timeBytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+
+      const key = CryptoJS.enc.Hex.parse(keyHex)
+      const message = CryptoJS.enc.Hex.parse(timeHex)
+
+      const hmac = CryptoJS.HmacSHA1(message, key)
+      const hmacHex = hmac.toString(CryptoJS.enc.Hex)
+
+      const hmacBytes = new Uint8Array(hmacHex.length / 2)
+      for (let i = 0; i < hmacHex.length; i += 2) {
+        hmacBytes[i / 2] = parseInt(hmacHex.substr(i, 2), 16)
+      }
+
+      const offset = hmacBytes[hmacBytes.length - 1] & 0x0f
+      const code =
+        (((hmacBytes[offset] & 0x7f) << 24) |
+          ((hmacBytes[offset + 1] & 0xff) << 16) |
+          ((hmacBytes[offset + 2] & 0xff) << 8) |
+          (hmacBytes[offset + 3] & 0xff)) %
+        1000000
+
+      return code.toString().padStart(6, '0')
+    } catch (err) {
+      console.error('TOTP generation error:', err)
+      return '------'
+    }
+  }
+
+  // Generate and update OTP for TOTP method
+  useEffect(() => {
+    if (method.method_type === 'totp_key' && typeof method.value === 'string') {
+      const updateOTP = () => {
+        try {
+          const token = generateTOTP(method.value as string, 30)
+          setCurrentOTP(token)
+
+          const now = Math.floor(Date.now() / 1000)
+          const remaining = 30 - (now % 30)
+          setOtpTimeRemaining(remaining)
+        } catch (err) {
+          console.error('Error updating OTP:', err)
+          setCurrentOTP('------')
+        }
+      }
+
+      updateOTP()
+      const interval = setInterval(updateOTP, 1000)
+
+      return () => clearInterval(interval)
+    }
+  }, [method.method_type, method.value])
+
   const hasExpireDateChanged = expireDateValue !== formatDateForInput(method.expire_at)
   const hasAppChanged = appValue !== (method.app || '')
   const hasSecretChanged =
@@ -264,17 +364,30 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
     if (method.method_type === 'totp_key' && typeof method.value === 'string') {
       return (
         <div className="space-y-3">
-          <CustomOTP
-            secret={secretValue}
-            issuer={method.app || 'Email Manager'}
-            accountName={method.metadata?.account_name || 'user@example.com'}
-            showQRCode={false}
-            onCopy={() => {}}
-          />
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">OTP Code</Label>
+            <CustomInput
+              value={`${otpTimeRemaining}s - ${currentOTP || '------'}`}
+              variant="filled"
+              size="sm"
+              readOnly
+              placeholder="Generating OTP..."
+              rightIcon={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(currentOTP)}
+                  className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              }
+            />
+          </div>
 
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Secret Key (Advanced)
+              Secret Key
             </Label>
             <CustomInput
               value={showSecret ? secretValue : '•'.repeat(32)}
@@ -319,60 +432,27 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Backup Codes ({method.value.length} codes)
             </Label>
-            <div className="flex items-center gap-2">
-              <CustomButton
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSecret(!showSecret)}
-                icon={showSecret ? EyeOff : Eye}
-                className="text-xs"
-              >
-                {showSecret ? 'Hide' : 'Show'}
-              </CustomButton>
-            </div>
-          </div>
-
-          <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-800/30">
-            <CustomArrayInput
-              items={showSecret ? method.value.map(String) : method.value.map(() => '••••••••')}
-              onChange={(newCodes) => {
-                if (onSave && showSecret) {
-                  handleSaveField('value', newCodes)
-                }
-              }}
-              disabled={savingField !== null || !showSecret || !onSave}
-              viewMode={!showSecret || savingField !== null}
-              placeholder="Enter backup code..."
-              allowDuplicates={false}
-              maxItems={20}
-              minItems={1}
-              hint={
-                !showSecret
-                  ? 'Codes are hidden - click Show to edit'
-                  : onSave
-                    ? 'Click on any code to copy, or edit directly'
-                    : 'Read-only backup codes'
-              }
-            />
-
             {method.metadata && (
-              <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800">
-                <div className="text-sm text-orange-700 dark:text-orange-400 flex items-center justify-between">
-                  <span>
-                    Used: {method.metadata.codes_used || 0} /{' '}
-                    {method.metadata.total_codes || method.value.length}
-                  </span>
-                  {method.metadata.codes_used > 0 && (
-                    <span className="text-xs">
-                      Remaining:{' '}
-                      {(method.metadata.total_codes || method.value.length) -
-                        (method.metadata.codes_used || 0)}
-                    </span>
-                  )}
-                </div>
+              <div className="text-xs text-orange-700 dark:text-orange-400">
+                Used: {method.metadata.codes_used || 0} /{' '}
+                {method.metadata.total_codes || method.value.length}
               </div>
             )}
           </div>
+
+          <CustomTag
+            tags={method.value.map(String)}
+            onTagsChange={(newCodes) => {
+              if (onSave) {
+                handleSaveField('value', newCodes)
+              }
+            }}
+            disabled={savingField !== null || !onSave}
+            placeholder="Enter backup code..."
+            allowDuplicates={false}
+            maxTags={20}
+            size="sm"
+          />
         </div>
       )
     }
@@ -420,10 +500,41 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
   const MethodIcon = methodInfo.icon
 
   return (
-    <div className={cn('transition-all duration-200', className)}>
+    <div
+      className={cn(
+        'group relative bg-card-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600',
+        className
+      )}
+    >
+      {/* Status Indicator */}
+      <div
+        className="absolute top-0 left-0 w-1 h-full transition-colors duration-300"
+        style={{
+          background: (() => {
+            const gradients: Record<string, string> = {
+              'bg-gradient-to-br from-orange-500 to-orange-600':
+                'linear-gradient(to bottom right, rgb(249, 115, 22), rgb(234, 88, 12))',
+              'bg-gradient-to-br from-green-500 to-emerald-600':
+                'linear-gradient(to bottom right, rgb(34, 197, 94), rgb(5, 150, 105))',
+              'bg-gradient-to-br from-blue-500 to-blue-600':
+                'linear-gradient(to bottom right, rgb(59, 130, 246), rgb(37, 99, 235))',
+              'bg-gradient-to-br from-purple-500 to-purple-600':
+                'linear-gradient(to bottom right, rgb(168, 85, 247), rgb(147, 51, 234))',
+              'bg-gradient-to-br from-indigo-500 to-indigo-600':
+                'linear-gradient(to bottom right, rgb(99, 102, 241), rgb(79, 70, 229))',
+              'bg-gradient-to-br from-pink-500 to-pink-600':
+                'linear-gradient(to bottom right, rgb(236, 72, 153), rgb(219, 39, 119))'
+            }
+            return (
+              gradients[methodInfo.bgColor] ||
+              'linear-gradient(to bottom right, rgb(34, 197, 94), rgb(5, 150, 105))'
+            )
+          })()
+        }}
+      />
       <div className="space-y-0">
         {/* Header - Always Visible */}
-        <div className="pb-3">
+        <div className="p-4">
           <div className="flex items-center justify-between">
             <div
               className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
@@ -461,7 +572,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1"
                 children={undefined}
               />
-              <Button
+              <CustomButton
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -472,14 +583,14 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                 ) : (
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 )}
-              </Button>
+              </CustomButton>
             </div>
           </div>
         </div>
 
         {/* Expandable Content */}
         {isExpanded && (
-          <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+          <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 p-4">
             {/* App Name Field */}
             {method.app && (
               <div className="space-y-2">
@@ -503,10 +614,6 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
 
             {/* Dates and Status */}
             <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                <span>Last Updated: {formatDate(method.last_update)}</span>
-              </div>
-
               {/* Expire Date Field */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -520,6 +627,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                   size="sm"
                   type="datetime-local"
                   showTime={false}
+                  leftIcon={<Calendar className="h-4 w-4" />}
                   rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
                   disabled={savingField !== null && savingField !== 'expire_at'}
                 />
