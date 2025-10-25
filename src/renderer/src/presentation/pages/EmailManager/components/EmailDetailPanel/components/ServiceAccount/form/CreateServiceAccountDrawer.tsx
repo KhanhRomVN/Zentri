@@ -1,23 +1,22 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/AccountService/CreateAccountServiceForm.tsx
-import React, { useState, useMemo, useEffect } from 'react'
+// src/renderer/src/presentation/pages/EmailManager/components/EmailDetailPanel/components/ServiceAccount/form/CreateServiceAccountDrawer.tsx
+import React, { useState, useEffect, useMemo } from 'react'
 import CustomButton from '../../../../../../../../components/common/CustomButton'
 import CustomInput from '../../../../../../../../components/common/CustomInput'
 import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
-import { User, Key, Link, Plus, X, AlertCircle, Shield, Activity } from 'lucide-react'
-import { cn } from '../../../../../../../../shared/lib/utils'
+import CustomDrawer from '../../../../../../../../components/common/CustomDrawer'
+import { User, Key, Link, AlertCircle, Shield, Activity } from 'lucide-react'
 import { ServiceAccount, Email } from '../../../../../types'
 import Metadata from '../../../../../../../../components/common/Metadata'
-import { Button } from '../../../../../../../../components/ui/button'
 import { SERVICE_TEMPLATES, ServiceTemplate } from '../../../../../constants/serviceTemplates'
 
-interface CreateAccountServiceFormProps {
+interface CreateServiceAccountDrawerProps {
+  isOpen: boolean
   email: Email
-  existingServices: ServiceAccount[] // Để check trùng lặp service name
+  existingServices: ServiceAccount[]
   allServices?: ServiceAccount[]
   onSubmit: (data: Omit<ServiceAccount, 'id' | 'email_id'>) => Promise<void>
-  onCancel: () => void
+  onClose: () => void
   loading?: boolean
-  className?: string
   initialData?: any
   onDataChange?: (data: any) => void
 }
@@ -153,16 +152,16 @@ const statusOptions = [
   { value: 'suspended', label: 'Suspended' }
 ]
 
-const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
+const CreateServiceAccountDrawer: React.FC<CreateServiceAccountDrawerProps> = ({
+  isOpen,
   email,
   existingServices = [],
   onSubmit,
   loading = false,
   allServices = [],
-  onCancel,
+  onClose,
   initialData,
-  onDataChange,
-  className
+  onDataChange
 }) => {
   const [formData, setFormData] = useState<{
     service_name: string
@@ -175,7 +174,6 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
     note: string
     metadata: Record<string, any>
   }>(() => {
-    // Khôi phục draft data nếu có
     if (initialData) {
       return initialData
     }
@@ -194,62 +192,34 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Thay thế useEffect tại dòng 184-192
+  // Reset form when drawer opens/closes
   useEffect(() => {
-    // Restore draft data nếu có, ngược lại reset form
-    if (initialData) {
-      setFormData(initialData)
-    } else {
-      setFormData({
-        service_name: '',
-        service_type: '',
-        service_url: '',
-        status: 'active',
-        name: '',
-        username: '',
-        password: '',
-        note: '',
-        metadata: {}
-      })
+    if (isOpen) {
+      if (initialData) {
+        setFormData(initialData)
+      } else {
+        setFormData({
+          service_name: '',
+          service_type: '',
+          service_url: '',
+          status: 'active',
+          name: '',
+          username: '',
+          password: '',
+          note: '',
+          metadata: {}
+        })
+      }
+      setErrors({})
     }
-    setErrors({})
-  }, [email.id, initialData])
-
-  // Reset form chỉ khi email thực sự thay đổi và không có draft data
-  useEffect(() => {
-    // Nếu có initialData (draft data), khôi phục từ draft
-    if (initialData) {
-      setFormData(initialData)
-    } else {
-      // Chỉ reset form nếu thực sự cần (khi email thay đổi và không có draft)
-      setFormData({
-        service_name: '',
-        service_type: '',
-        service_url: '',
-        status: 'active',
-        name: '',
-        username: '',
-        password: '',
-        note: '',
-        metadata: {}
-      })
-    }
-    setErrors({})
-  }, [email.id, initialData]) // Thêm initialData vào dependency
-
-  // Đồng bộ form data với draft data khi initialData thay đổi
-  useEffect(() => {
-    if (initialData) {
-      setFormData(initialData)
-    }
-  }, [initialData])
+  }, [isOpen, email.id, initialData])
 
   // Auto-save draft data khi form thay đổi
   useEffect(() => {
-    if (onDataChange) {
+    if (onDataChange && isOpen) {
       onDataChange(formData)
     }
-  }, [formData, onDataChange])
+  }, [formData, onDataChange, isOpen])
 
   // Merge service templates với existing services
   const availableServices = useMemo(() => {
@@ -280,27 +250,18 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       })
     })
 
-    const result = Array.from(serviceMap.values()).sort((a, b) => a.label.localeCompare(b.label))
-
-    // Debug log - có thể xóa sau khi fix
-    console.log('[DEBUG] availableServices:', result)
-    console.log('[DEBUG] allServices:', allServices)
-    console.log('[DEBUG] SERVICE_TEMPLATES:', SERVICE_TEMPLATES)
-
-    return result
+    return Array.from(serviceMap.values()).sort((a, b) => a.label.localeCompare(b.label))
   }, [allServices])
 
   // Handle service name change - auto-fill type & URL from template
   const handleServiceNameChange = (value: string | string[]) => {
     const serviceName = Array.isArray(value) ? value[0] : value
 
-    // Tìm template matching với service name
     const matchedService = availableServices.find(
       (s) => s.value.toLowerCase() === serviceName.toLowerCase()
     )
 
     if (matchedService?.template) {
-      // Auto-fill từ template
       setFormData((prev) => ({
         ...prev,
         service_name: serviceName,
@@ -308,7 +269,6 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
         service_url: matchedService.template.service_url || ''
       }))
     } else {
-      // Service mới - chỉ set name
       setFormData((prev) => ({
         ...prev,
         service_name: serviceName
@@ -347,11 +307,9 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    // Required fields
     if (!formData.service_name.trim()) {
       newErrors.service_name = 'Service name is required'
     } else {
-      // Check for duplicate service names
       const isDuplicate = existingServices.some(
         (service) =>
           service.service_name.toLowerCase() === formData.service_name.trim().toLowerCase()
@@ -365,7 +323,6 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
       newErrors.service_type = 'Service type is required'
     }
 
-    // Validate URL if provided
     if (formData.service_url) {
       try {
         new URL(formData.service_url)
@@ -379,9 +336,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
   }
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleSubmit = async () => {
     if (!validateForm()) return
 
     try {
@@ -401,84 +356,64 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
         }
       }
 
-      const newService = await onSubmit(serviceData)
+      await onSubmit(serviceData)
 
-      // Chỉ reset form sau khi submit thành công
-      if (newService) {
-        setFormData({
-          service_name: '',
-          service_type: '',
-          service_url: '',
-          status: 'active',
-          name: '',
-          username: '',
-          password: '',
-          note: '',
-          metadata: {}
-        })
-        setErrors({})
+      // Reset form sau khi submit thành công
+      setFormData({
+        service_name: '',
+        service_type: '',
+        service_url: '',
+        status: 'active',
+        name: '',
+        username: '',
+        password: '',
+        note: '',
+        metadata: {}
+      })
+      setErrors({})
 
-        // Thông báo cho parent biết để xóa draft data
-        if (onDataChange) {
-          onDataChange(null)
-        }
+      if (onDataChange) {
+        onDataChange(null)
       }
+
+      onClose()
     } catch (error) {
       console.error('Error creating service account:', error)
     }
   }
 
-  // Handle cancel
-  const handleCancel = () => {
-    setFormData({
-      service_name: '',
-      service_type: '',
-      service_url: '',
-      status: 'active',
-      name: '',
-      username: '',
-      password: '',
-      note: '',
-      metadata: {}
-    })
-    setErrors({})
-    onCancel()
-  }
-
   return (
-    <div
-      className={cn(
-        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
-        className
-      )}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-            <Plus className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h4 className="text-base font-bold text-text-primary">Add Service Account</h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Connect a new service account to {email.email_address}
-            </p>
-          </div>
+    <CustomDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add Service Account"
+      subtitle={`Connect a new service account to ${email.email_address}`}
+      size="md"
+      footerActions={
+        <div className="flex items-center justify-end gap-2">
+          <CustomButton
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            disabled={loading}
+            className="min-w-[80px]"
+          >
+            Cancel
+          </CustomButton>
+          <CustomButton
+            variant="primary"
+            size="sm"
+            onClick={handleSubmit}
+            disabled={loading || !formData.service_name.trim() || !formData.service_type}
+            loading={loading}
+            className="min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Add Service Account
+          </CustomButton>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCancel}
-          disabled={loading}
-          className="p-1 h-6 w-6"
-          type="button"
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      }
+    >
+      <div className="space-y-4 p-4">
         {/* Service Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Service Name - Combobox */}
@@ -487,7 +422,6 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
               label="Service Name"
               value={formData.service_name}
               options={availableServices.map((s) => {
-                // Debug log - có thể xóa sau khi fix
                 return { value: s.value, label: s.label }
               })}
               onChange={handleServiceNameChange}
@@ -624,7 +558,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
           </div>
         </div>
 
-        {/* Notes - SỬA: Thay CustomTextArea thành CustomInput với multiline */}
+        {/* Notes */}
         <CustomInput
           label="Notes (Optional)"
           value={formData.note}
@@ -639,7 +573,7 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
         />
 
         {/* Metadata Form */}
-        <div onClick={(e) => e.preventDefault()}>
+        <div>
           <Metadata
             metadata={formData.metadata}
             onMetadataChange={(newMetadata) =>
@@ -656,33 +590,9 @@ const CreateAccountServiceForm: React.FC<CreateAccountServiceFormProps> = ({
             className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/50"
           />
         </div>
-
-        {/* Form Actions */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <CustomButton
-            variant="secondary"
-            size="sm"
-            onClick={handleCancel}
-            disabled={loading}
-            className="min-w-[80px]"
-            type="button"
-          >
-            Cancel
-          </CustomButton>
-          <CustomButton
-            variant="primary"
-            size="sm"
-            type="submit"
-            disabled={loading || !formData.service_name.trim() || !formData.service_type}
-            loading={loading}
-            className="min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            Add Service Account
-          </CustomButton>
-        </div>
-      </form>
-    </div>
+      </div>
+    </CustomDrawer>
   )
 }
 
-export default CreateAccountServiceForm
+export default CreateServiceAccountDrawer

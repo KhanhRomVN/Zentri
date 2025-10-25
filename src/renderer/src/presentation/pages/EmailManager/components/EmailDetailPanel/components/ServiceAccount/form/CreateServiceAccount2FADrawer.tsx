@@ -1,9 +1,11 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/CreateServiceAccount2FAForm.tsx
+// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/CreateServiceAccount2FADrawer.tsx
 import React, { useState, useEffect } from 'react'
 import CustomButton from '../../../../../../../../components/common/CustomButton'
 import CustomInput from '../../../../../../../../components/common/CustomInput'
 import CustomTextArea from '../../../../../../../../components/common/CustomTextArea'
 import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
+import CustomDrawer from '../../../../../../../../components/common/CustomDrawer'
+import CustomTag from '../../../../../../../../components/common/CustomTag'
 import {
   Shield,
   QrCode,
@@ -11,26 +13,20 @@ import {
   Key,
   Mail,
   Smartphone,
-  Plus,
-  X,
   AlertCircle,
-  Calendar,
-  Globe
+  Calendar
 } from 'lucide-react'
-import { cn } from '../../../../../../../../shared/lib/utils'
 import { ServiceAccount2FA, ServiceAccount } from '../../../../../types'
 import Metadata from '../../../../../../../../components/common/Metadata'
-import { Button } from '../../../../../../../../components/ui/button'
-import CustomArrayInput from '../../../../../../../../components/common/CustomArrayInput'
 import { Label } from '@radix-ui/react-label'
 
-interface CreateServiceAccount2FAFormProps {
+interface CreateServiceAccount2FADrawerProps {
+  isOpen: boolean
   serviceAccount: ServiceAccount
   existingMethods: ServiceAccount2FA[]
   onSubmit: (data: Omit<ServiceAccount2FA, 'id'>) => Promise<void>
-  onCancel: () => void
+  onClose: () => void
   loading?: boolean
-  className?: string
 }
 
 // 2FA Method options for Service Accounts
@@ -103,13 +99,13 @@ const twoFAMethodOptions = [
   }
 ]
 
-const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = ({
+const CreateServiceAccount2FADrawer: React.FC<CreateServiceAccount2FADrawerProps> = ({
+  isOpen,
   serviceAccount,
   existingMethods = [],
   onSubmit,
-  onCancel,
-  loading = false,
-  className
+  onClose,
+  loading = false
 }) => {
   const [formData, setFormData] = useState<{
     method_type: string
@@ -126,6 +122,20 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Reset form when drawer opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        method_type: '',
+        app: '',
+        value: '',
+        expire_at: '',
+        metadata: {}
+      })
+      setErrors({})
+    }
+  }, [isOpen])
 
   // Filter available methods based on uniqueness and existing methods
   const availableMethodOptions = twoFAMethodOptions.filter((method) => {
@@ -153,7 +163,6 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
       ...prev,
       method_type: methodValue,
       app: '',
-      value: '',
       metadata: {}
     }))
     setErrors({})
@@ -181,14 +190,6 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
         if (!phoneRegex.test(formData.value.trim())) {
           newErrors.value = 'Please enter a valid phone number'
         }
-      } else if (formData.method_type === 'backup_codes') {
-        const codes = formData.value
-          .trim()
-          .split('\n')
-          .filter((code) => code.trim())
-        if (codes.length === 0) {
-          newErrors.value = 'Please enter at least one backup code'
-        }
       }
     }
 
@@ -210,20 +211,17 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
   }
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) return
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return
+    }
 
     try {
       // Prepare value based on method type
       let processedValue: string | string[]
       if (formData.method_type === 'backup_codes') {
-        processedValue = formData.value
-          .trim()
-          .split('\n')
-          .map((code) => code.trim())
-          .filter((code) => code)
+        const rawCodes = formData.value.trim().split('\n')
+        processedValue = rawCodes.map((code) => code.trim()).filter((code) => code)
       } else {
         processedValue = formData.value.trim()
       }
@@ -245,23 +243,11 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
       }
 
       await onSubmit(serviceAccount2FAData)
+      onClose()
     } catch (error) {
+      console.error('[DEBUG] Error in handleSubmit:', error)
       console.error('Error creating service account 2FA method:', error)
-      throw error
     }
-  }
-
-  // Handle cancel
-  const handleCancel = () => {
-    setFormData({
-      method_type: '',
-      app: '',
-      value: '',
-      expire_at: '',
-      metadata: {}
-    })
-    setErrors({})
-    onCancel()
   }
 
   // Get minimum date for expiry (today + 1 day)
@@ -305,7 +291,6 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
     }
 
     if (selectedMethod.inputType === 'textarea' && formData.method_type === 'backup_codes') {
-      // Parse current value into array
       const currentCodes = formData.value
         .split('\n')
         .map((code) => code.trim())
@@ -317,27 +302,25 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {getValueLabel()}
             </Label>
-            <CustomArrayInput
-              items={currentCodes}
-              onChange={(newCodes) => {
-                // Update form data with joined codes
+            <CustomTag
+              tags={currentCodes}
+              onTagsChange={(newCodes) => {
                 const joinedValue = newCodes.join('\n')
                 setFormData((prev) => ({ ...prev, value: joinedValue }))
+
+                // Clear any form-level errors since CustomTag handles its own validation
+                setErrors((prev) => {
+                  const newErrors = { ...prev }
+                  delete newErrors.value
+                  return newErrors
+                })
               }}
               placeholder="Enter backup code..."
               allowDuplicates={false}
-              maxItems={20}
-              minItems={1}
-              hint="Add backup codes one by one. Each code should be unique."
-              error={errors.value}
+              maxTags={20}
               disabled={loading}
+              size="sm"
             />
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>{currentCodes.length} codes added</span>
-              {currentCodes.length > 0 && (
-                <span className="text-green-600 dark:text-green-400">✓ Ready to save</span>
-              )}
-            </div>
           </div>
         </div>
       )
@@ -375,56 +358,37 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
   }
 
   return (
-    <div
-      className={cn(
-        'bg-card-background rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4',
-        className
-      )}
+    <CustomDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add 2FA Method"
+      subtitle={`Configure a new two-factor authentication method for ${serviceAccount.service_name}`}
+      size="md"
+      footerActions={
+        <div className="flex items-center justify-end gap-2">
+          <CustomButton
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            disabled={loading}
+            className="min-w-[80px]"
+          >
+            Cancel
+          </CustomButton>
+          <CustomButton
+            variant="success"
+            size="sm"
+            onClick={handleSubmit}
+            disabled={loading || !formData.method_type || !formData.value}
+            loading={loading}
+            className="min-w-[140px] bg-green-600 hover:bg-green-700 text-white"
+          >
+            Add 2FA Method
+          </CustomButton>
+        </div>
+      }
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-            <Plus className="h-3 w-3 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <h4 className="text-base font-bold text-text-primary">
-              Add 2FA Method for {serviceAccount.service_name}
-            </h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Configure a new two-factor authentication method for this service account
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCancel}
-          disabled={loading}
-          className="p-1 h-6 w-6"
-          type="button"
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      </div>
-
-      {/* Service Account Info */}
-      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <div>
-            <div className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              {serviceAccount.service_name}
-            </div>
-            <div className="text-xs text-blue-700 dark:text-blue-200">
-              {serviceAccount.service_type} • {serviceAccount.service_url || 'No URL provided'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4 p-4">
         {/* 2FA Method Selection */}
         <div className="space-y-1">
           <CustomCombobox
@@ -506,7 +470,7 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
 
         {/* Metadata Form */}
         {formData.method_type && (
-          <div onClick={(e) => e.preventDefault()}>
+          <div>
             <Metadata
               metadata={formData.metadata}
               onMetadataChange={(newMetadata) =>
@@ -524,33 +488,9 @@ const CreateServiceAccount2FAForm: React.FC<CreateServiceAccount2FAFormProps> = 
             />
           </div>
         )}
-
-        {/* Form Actions */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <CustomButton
-            variant="secondary"
-            size="sm"
-            onClick={handleCancel}
-            disabled={loading}
-            className="min-w-[80px]"
-            type="button"
-          >
-            Cancel
-          </CustomButton>
-          <CustomButton
-            variant="success"
-            size="sm"
-            type="submit"
-            disabled={loading || !formData.method_type || !formData.value.trim()}
-            loading={loading}
-            className="min-w-[140px] bg-green-600 hover:bg-green-700 text-white"
-          >
-            Add 2FA Method
-          </CustomButton>
-        </div>
-      </form>
-    </div>
+      </div>
+    </CustomDrawer>
   )
 }
 
-export default CreateServiceAccount2FAForm
+export default CreateServiceAccount2FADrawer

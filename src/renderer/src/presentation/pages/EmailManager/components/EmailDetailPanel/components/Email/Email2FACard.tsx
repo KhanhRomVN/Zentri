@@ -502,7 +502,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
   return (
     <div
       className={cn(
-        'group relative bg-card-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600',
+        'group relative bg-card-background rounded-lg border border-border-default transition-all duration-200 overflow-hidden  hover:border-border-hover',
         className
       )}
     >

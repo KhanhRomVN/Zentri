@@ -50,7 +50,7 @@ const EmailCard: React.FC<EmailCardProps> = ({
         <div className="absolute top-3 right-3 w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full" />
       )}
 
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         {/* Avatar/Favicon */}
         <div className="relative flex-shrink-0">
           <div
@@ -72,7 +72,11 @@ const EmailCard: React.FC<EmailCardProps> = ({
         <div className="flex-1 min-w-0 space-y-2">
           {/* Dòng 1: Favicon + Email address */}
           <div className="flex items-center gap-2">
-            <Mail className="w-3 h-3 text-text-secondary opacity-70 flex-shrink-0" />
+            <img
+              src={`/src/renderer/src/assets/icon/${email.email_provider}_icon.png`}
+              alt={email.email_provider}
+              className="w-3 h-3 flex-shrink-0"
+            />
             <span className="text-sm font-medium text-text-primary truncate">
               {email.email_address}
             </span>

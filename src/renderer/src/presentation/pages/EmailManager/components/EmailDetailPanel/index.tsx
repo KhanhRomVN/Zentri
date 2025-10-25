@@ -12,7 +12,6 @@ import {
 import CustomButton from '../../../../../components/common/CustomButton'
 import EmailSection from './components/Email/EmailSection'
 import Email2FASection from './components/Email/Email2FASection'
-import ServiceAccountList from './components/ServiceAccount/section/ServiceAccountList'
 import ServiceAccountSection from './components/ServiceAccount/section/ServiceAccountSection'
 import ServiceAccount2FASection from './components/ServiceAccount/section/ServiceAccount2FASection'
 import ServiceAccountSecretSection from './components/ServiceAccount/section/ServiceAccountSecretSection'
@@ -164,6 +163,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
           return (
             <div className="p-6 space-y-6">
               <ServiceAccountSection
+                mode="detail"
                 serviceAccount={selectedServiceAccount}
                 onServiceUpdate={onServiceUpdate}
               />
@@ -219,11 +219,11 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
       case 'services':
         return (
           <div className="p-6 space-y-6">
-            <ServiceAccountList
+            <ServiceAccountSection
+              mode="list"
               services={serviceAccounts}
               email={email}
               allServices={allServiceAccounts}
-              emailAddress={email.email_address}
               showCreateForm={showCreateServiceForm}
               onToggleCreateForm={onToggleCreateServiceForm}
               onServiceAdd={onServiceAdd}
@@ -354,6 +354,12 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
                 >
                   <Icon className={`h-4 w-4 ${isActive ? tab.color : ''}`} />
                   <span>{tab.label}</span>
+                  {/* Service Name Badge - hiển thị khi đang xem service detail và tab là services */}
+                  {tab.id === 'services' && selectedServiceAccount && (
+                    <span className="ml-1 px-2 py-0.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-700">
+                      {selectedServiceAccount.service_name}
+                    </span>
+                  )}
                 </button>
               )
             })}

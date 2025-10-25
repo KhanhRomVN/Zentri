@@ -1,20 +1,8 @@
-// src/renderer/src/presentation/pages/EmailManager/components/EmailDrawer/ServiceAccount/ServiceAccount2FASection.tsx
 import React, { useState } from 'react'
-import CustomBadge from '../../../../../../../../components/common/CustomBadge'
 import CustomButton from '../../../../../../../../components/common/CustomButton'
 import ServiceAccount2FACard from '../card/ServiceAccount2FACard'
-import CreateServiceAccount2FAForm from '../form/CreateServiceAccount2FAForm'
-import {
-  Shield,
-  CheckCircle,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  Users,
-  Lock
-} from 'lucide-react'
-import { cn } from '../../../../../../../../shared/lib/utils'
+import CreateServiceAccount2FADrawer from '../form/CreateServiceAccount2FADrawer'
+import { Shield, CheckCircle, AlertCircle, Plus } from 'lucide-react'
 import { ServiceAccount, ServiceAccount2FA } from '../../../../../types'
 
 interface ServiceAccount2FASectionProps {
@@ -33,26 +21,23 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
   onAdd2FA,
   onEdit2FA,
   onDelete2FA,
-  onSave2FA,
-  className
+  onSave2FA
 }) => {
-  const [is2FAExpanded, setIs2FAExpanded] = useState(false)
-  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
   const has2FA = serviceAccount2FAMethods.length > 0
   const active2FAMethods = serviceAccount2FAMethods.length
 
   const handleAdd2FA = () => {
-    setShowCreateForm(true)
-    setIs2FAExpanded(true)
+    setShowCreateDrawer(true)
   }
 
   const handleCreate2FA = async (data: Omit<ServiceAccount2FA, 'id'>) => {
     try {
       setIsCreating(true)
       await onAdd2FA(data)
-      setShowCreateForm(false)
+      setShowCreateDrawer(false)
     } catch (error) {
       console.error('Error creating ServiceAccount 2FA method:', error)
       throw error
@@ -62,7 +47,7 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
   }
 
   const handleCancelCreate = () => {
-    setShowCreateForm(false)
+    setShowCreateDrawer(false)
   }
 
   const handleEdit2FA = (method: ServiceAccount2FA) => {
@@ -113,151 +98,78 @@ const ServiceAccount2FASection: React.FC<ServiceAccount2FASectionProps> = ({
   }
 
   const securityStatus = getSecurityStatus()
-  const SecurityIcon = securityStatus.icon
 
   return (
-    <div className={cn('space-y-6', className)}>
+    <>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="pl-2">
-          <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
+        <div>
+          <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
             <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
             Service Two-Factor Authentication
-            <CustomBadge
-              variant={has2FA ? 'success' : 'secondary'}
-              size="sm"
-              icon={has2FA ? CheckCircle : AlertCircle}
-              className="text-xs ml-2"
-            >
-              {has2FA ? 'Enabled' : 'Disabled'}
-            </CustomBadge>
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
             {active2FAMethods} method{active2FAMethods !== 1 ? 's' : ''} configured • Security
             level: {securityStatus.level}
           </p>
         </div>
-        <CustomButton
-          size="sm"
-          variant="success"
-          icon={Plus}
-          onClick={handleAdd2FA}
-          className="shadow-sm px-3 py-1.5 text-xs"
-        >
+        <CustomButton size="sm" variant="success" icon={Plus} onClick={handleAdd2FA}>
           Add 2FA
         </CustomButton>
       </div>
-
       {/* Main Card - Reduced padding and spacing */}
       <div className="bg-card-background rounded-xl border border-gray-200/60 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200">
-        {/* Header - Reduced padding */}
-        <div className="p-4 pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Stats Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    <span className="text-xs">
-                      {active2FAMethods} method{active2FAMethods !== 1 ? 's' : ''}
-                    </span>
-                  </div>
+        <div className="space-y-4">
+          {/* Methods List */}
+          {has2FA ? (
+            serviceAccount2FAMethods.map((method) => (
+              <ServiceAccount2FACard
+                key={method.id}
+                method={method}
+                onEdit={handleEdit2FA}
+                onDelete={handleDelete2FA}
+                onSave={handleSave2FA}
+              />
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <Shield className="h-6 w-6 text-gray-400" />
+              </div>
 
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs">Security:</span>
-                    <CustomBadge
-                      variant="secondary"
-                      size="sm"
-                      icon={SecurityIcon}
-                      className={cn('text-xs px-1.5 py-0.5', securityStatus.color)}
-                    >
-                      {securityStatus.level}
-                    </CustomBadge>
-                  </div>
-                </div>
+              <h4 className="text-base font-medium text-text-primary mb-2">
+                No 2FA Methods Configured
+              </h4>
+
+              <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-sm mx-auto text-sm">
+                Enhance your service account security by setting up two-factor authentication.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <CustomButton
+                  onClick={handleAdd2FA}
+                  variant="primary"
+                  size="sm"
+                  icon={Shield}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Set up 2FA Now
+                </CustomButton>
               </div>
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIs2FAExpanded(!is2FAExpanded)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                {is2FAExpanded ? (
-                  <ChevronUp className="h-4 w-4 text-gray-500" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                )}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-
-        {/* Expandable Content */}
-        {is2FAExpanded && (
-          <div className="px-4 pb-4">
-            <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-4">
-              {/* Create Form */}
-              {showCreateForm && (
-                <CreateServiceAccount2FAForm
-                  serviceAccount={serviceAccount}
-                  existingMethods={serviceAccount2FAMethods}
-                  onSubmit={handleCreate2FA}
-                  onCancel={handleCancelCreate}
-                  loading={isCreating}
-                />
-              )}
-
-              {/* Methods List */}
-              {has2FA ? (
-                <div className="space-y-3">
-                  <div className="grid gap-3">
-                    {serviceAccount2FAMethods.map((method) => (
-                      <ServiceAccount2FACard
-                        key={method.id}
-                        method={method}
-                        onEdit={handleEdit2FA}
-                        onDelete={handleDelete2FA}
-                        onSave={handleSave2FA}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : !showCreateForm ? (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <Lock className="h-6 w-6 text-gray-400" />
-                  </div>
-
-                  <h4 className="text-base font-medium text-text-primary mb-2">
-                    No 2FA Methods Configured
-                  </h4>
-
-                  <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-sm mx-auto text-sm">
-                    Enhance your {serviceAccount.service_name} account security by setting up
-                    two-factor authentication.
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <CustomButton
-                      onClick={handleAdd2FA}
-                      variant="primary"
-                      size="sm"
-                      icon={Shield}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      Set up 2FA Now
-                    </CustomButton>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+      {/* Create 2FA Drawer */}
+      <CreateServiceAccount2FADrawer
+        isOpen={showCreateDrawer}
+        serviceAccount={serviceAccount}
+        existingMethods={serviceAccount2FAMethods}
+        onSubmit={handleCreate2FA}
+        onClose={handleCancelCreate}
+        loading={isCreating}
+      />
+    </>
   )
 }
 

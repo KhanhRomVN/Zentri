@@ -18,7 +18,6 @@ import {
 } from 'lucide-react'
 import { Email2FA, Email } from '../../../../types'
 import Metadata from '../../../../../../../components/common/Metadata'
-import CustomArrayInput from '../../../../../../../components/common/CustomArrayInput'
 import { Label } from '@radix-ui/react-label'
 
 interface CreateEmail2FADrawerProps {

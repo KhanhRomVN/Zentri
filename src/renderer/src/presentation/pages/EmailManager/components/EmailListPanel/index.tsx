@@ -4,6 +4,7 @@ import { Search, Plus, Mail, SlidersHorizontal, X, Table } from 'lucide-react'
 import CustomButton from '../../../../../components/common/CustomButton'
 import EmailCard from './components/EmailCard'
 import { Email, ServiceAccount, Email2FA } from '../../types'
+import FilterOverlay from './components/FilterOverlay'
 
 interface EmailListPanelProps {
   emails: Email[]
@@ -38,6 +39,10 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
   isLoading = false
 }) => {
   const [showFilters, setShowFilters] = useState(false)
+
+  // Get unique providers and tags for filter options
+  const uniqueProviders = Array.from(new Set(emails.map((e) => e.email_provider))).sort()
+  const uniqueTags = Array.from(new Set(emails.flatMap((e) => e.tags || []))).sort()
 
   // Filter emails based on search and filters
   const filteredEmails = useMemo(() => {
@@ -91,11 +96,8 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
       <div className="flex-none p-4 border-b border-border-default bg-background">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Mail className="h-4 w-4 text-primary" />
-            </div>
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">Emails</h2>
+              <h2 className="text-lg font-semibold text-text-primary">Email Manager</h2>
               <p className="text-xs text-text-secondary">{filteredEmails.length} accounts</p>
             </div>
           </div>
@@ -104,7 +106,7 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="p-2 hover:bg-sidebar-itemHover rounded-lg transition-colors"
-              title="Filter (Coming Soon)"
+              title="Filter"
             >
               <SlidersHorizontal className="h-4 w-4 text-text-secondary" />
             </button>
@@ -209,6 +211,15 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
           </div>
         )}
       </div>
+      {/* Filter Overlay */}
+      <FilterOverlay
+        isOpen={showFilters}
+        onClose={() => setShowFilters(false)}
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        availableProviders={uniqueProviders}
+        availableTags={uniqueTags}
+      />
     </div>
   )
 }

@@ -19,7 +19,8 @@ import {
   Trash2,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Calendar
 } from 'lucide-react'
 import { cn } from '../../../../../../../../shared/lib/utils'
 import { ServiceAccount2FA } from '../../../../../types'
@@ -41,7 +42,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
   className
 }) => {
   const [showSecret, setShowSecret] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true)
 
   // State cho inline editing
   const [appValue, setAppValue] = useState(method.app || '')
@@ -380,12 +381,46 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
   const MethodIcon = methodInfo.icon
 
   return (
-    <div className={cn('transition-all duration-200', className)}>
+    <div
+      className={cn(
+        'group relative bg-card-background rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-200 overflow-hidden hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600',
+        className
+      )}
+    >
+      {/* Status Indicator */}
+      <div
+        className="absolute top-0 left-0 w-1 h-full transition-colors duration-300"
+        style={{
+          background: (() => {
+            const gradients: Record<string, string> = {
+              'bg-gradient-to-br from-orange-500 to-orange-600':
+                'linear-gradient(to bottom right, rgb(249, 115, 22), rgb(234, 88, 12))',
+              'bg-gradient-to-br from-green-500 to-emerald-600':
+                'linear-gradient(to bottom right, rgb(34, 197, 94), rgb(5, 150, 105))',
+              'bg-gradient-to-br from-blue-500 to-blue-600':
+                'linear-gradient(to bottom right, rgb(59, 130, 246), rgb(37, 99, 235))',
+              'bg-gradient-to-br from-purple-500 to-purple-600':
+                'linear-gradient(to bottom right, rgb(168, 85, 247), rgb(147, 51, 234))',
+              'bg-gradient-to-br from-indigo-500 to-indigo-600':
+                'linear-gradient(to bottom right, rgb(99, 102, 241), rgb(79, 70, 229))',
+              'bg-gradient-to-br from-pink-500 to-pink-600':
+                'linear-gradient(to bottom right, rgb(236, 72, 153), rgb(219, 39, 119))'
+            }
+            return (
+              gradients[methodInfo.bgColor] ||
+              'linear-gradient(to bottom right, rgb(34, 197, 94), rgb(5, 150, 105))'
+            )
+          })()
+        }}
+      />
       <div className="space-y-0">
         {/* Header - Always Visible */}
-        <div className=" pb-3">
+        <div className="p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div
+              className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
               <div
                 className={`w-10 h-10 ${methodInfo.bgColor} rounded-lg flex items-center justify-center shadow-sm flex-shrink-0`}
               >
@@ -396,7 +431,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-text-primary font-medium">{methodInfo.label}</span>
                   {method.app && (
-                    <CustomBadge variant="secondary" size="xs" className="text-xs">
+                    <CustomBadge variant="secondary" size="sm" className="text-xs">
                       {method.app}
                     </CustomBadge>
                   )}
@@ -418,7 +453,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs px-2 py-1"
                 children={undefined}
               />
-              <Button
+              <CustomButton
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -429,14 +464,14 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                 ) : (
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 )}
-              </Button>
+              </CustomButton>
             </div>
           </div>
         </div>
 
         {/* Expandable Content */}
         {isExpanded && (
-          <div className=" space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+          <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 p-4">
             {/* App Name Field (if applicable) */}
             {method.app && (
               <div className="space-y-2">
@@ -460,10 +495,6 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
 
             {/* Dates and Status */}
             <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                <span>Last Updated: {formatDate(method.last_update)}</span>
-              </div>
-
               {/* Expire Date Field */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -477,6 +508,7 @@ const ServiceAccount2FACard: React.FC<ServiceAccount2FACardProps> = ({
                   size="sm"
                   type="datetime-local"
                   showTime={false}
+                  leftIcon={<Calendar className="h-4 w-4" />}
                   rightIcon={renderStatusIcon('expire_at', hasExpireDateChanged)}
                   disabled={savingField !== null && savingField !== 'expire_at'}
                 />

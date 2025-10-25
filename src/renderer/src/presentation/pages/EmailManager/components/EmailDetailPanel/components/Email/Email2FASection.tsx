@@ -77,6 +77,11 @@ const Email2FASection: React.FC<Email2FASectionProps> = ({
             <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
             Two-Factor Authentication
           </h3>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+            {has2FA
+              ? `${email2FAMethods.length} method${email2FAMethods.length !== 1 ? 's' : ''} configured`
+              : 'No 2FA methods configured'}
+          </p>
         </div>
         <CustomButton size="sm" variant="success" icon={Plus} onClick={handleAdd2FA}>
           Add 2FA
