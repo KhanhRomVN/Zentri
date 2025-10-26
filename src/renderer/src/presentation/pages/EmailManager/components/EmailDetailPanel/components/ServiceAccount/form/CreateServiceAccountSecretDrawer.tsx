@@ -5,7 +5,7 @@ import CustomButton from '../../../../../../../../components/common/CustomButton
 import CustomInput from '../../../../../../../../components/common/CustomInput'
 import CustomDrawer from '../../../../../../../../components/common/CustomDrawer'
 import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
-import { Key, AlertCircle, Plus, Calendar, Trash2 } from 'lucide-react'
+import { AlertCircle, Plus, Calendar, Trash2 } from 'lucide-react'
 import { ServiceAccount, ServiceAccountSecret } from '../../../../../types'
 
 interface CreateServiceAccountSecretDrawerProps {

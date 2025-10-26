@@ -2,7 +2,6 @@ import { RouterProvider, createHashRouter } from 'react-router-dom'
 import { routes } from './presentation/routes'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from './presentation/providers/theme-provider'
-import { DatabaseSchemaProvider } from './presentation/providers/DatabaseSchemaProvider'
 
 function App() {
   const router = createHashRouter(routes)
@@ -10,9 +9,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="zentri-theme">
-        <DatabaseSchemaProvider>
-          <RouterProvider router={router} />
-        </DatabaseSchemaProvider>
+        <RouterProvider router={router} />
       </ThemeProvider>
     </QueryClientProvider>
   )

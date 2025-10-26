@@ -1,5 +1,5 @@
 // src/renderer/src/presentation/pages/EmailManager/components/ServiceAccountSection.tsx
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Button } from '../../../../../../../../components/ui/button'
 import CustomCombobox from '../../../../../../../../components/common/CustomCombobox'
 import CreateServiceAccountDrawer from '../form/CreateServiceAccountDrawer'
@@ -23,7 +23,10 @@ interface ServiceAccountSectionProps {
   formDraft?: any
   onFormDraftChange?: (draftData: any) => void
   onServiceAdd?: (service: Omit<ServiceAccount, 'id' | 'email_id'>) => void
-  onServiceClick?: (service: ServiceAccount) => void
+  onServiceClick?: (
+    service: ServiceAccount,
+    targetTab?: 'service_security' | 'service_secret'
+  ) => void
   compact?: boolean
   showViewDetailsButton?: boolean
 
@@ -36,7 +39,6 @@ interface ServiceAccountSectionProps {
 
 const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
   mode = 'list',
-  serviceAccount,
   services = [],
   email,
   allServices = [],
@@ -57,36 +59,6 @@ const ServiceAccountSection: React.FC<ServiceAccountSectionProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [showFilterPanel] = useState(false)
   const [isCreatingService, setIsCreatingService] = useState(false)
-
-  // ==================== DETAIL MODE STATE ====================
-  const [serviceName, setServiceName] = useState('')
-  const [serviceType, setServiceType] = useState('')
-  const [serviceUrl, setServiceUrl] = useState('')
-  const [status, setStatus] = useState<'active' | 'inactive' | 'suspended'>('active')
-  const [username, setUsername] = useState('')
-  const [name, setName] = useState('')
-  const [password, setPassword] = useState('')
-  const [note, setNote] = useState('')
-  const [metadata, setMetadata] = useState<Record<string, any>>({})
-  const [savingField, setSavingField] = useState<string | null>(null)
-  const [saveStatus, setSaveStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({})
-
-  // ==================== EFFECTS ====================
-  // Reset detail form when serviceAccount changes
-  useEffect(() => {
-    if (mode === 'detail' && serviceAccount) {
-      setServiceName(serviceAccount.service_name || '')
-      setServiceType(serviceAccount.service_type || '')
-      setServiceUrl(serviceAccount.service_url || '')
-      setStatus(serviceAccount.status || 'active')
-      setUsername(serviceAccount.username || '')
-      setName(serviceAccount.name || '')
-      setPassword(serviceAccount.password || '')
-      setNote(serviceAccount.note || '')
-      setMetadata(serviceAccount.metadata || {})
-      setSaveStatus({})
-    }
-  }, [mode, serviceAccount])
 
   // ==================== LIST MODE LOGIC ====================
   const uniqueTypes = Array.from(new Set(services.map((s) => s.service_type))).sort()

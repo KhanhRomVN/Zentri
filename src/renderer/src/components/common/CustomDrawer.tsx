@@ -38,8 +38,8 @@ const overlayVariants = {
   visible: { opacity: 1 }
 }
 
-const getDrawerVariants = (direction: string, animationType: string) => {
-  const baseVariants = {
+const getDrawerVariants = (direction: string, animationType: string): any => {
+  const baseVariants: Record<string, any> = {
     slide: {
       hidden: {
         x: direction === 'right' ? '100%' : direction === 'left' ? '-100%' : 0,
@@ -93,21 +93,7 @@ const getDrawerVariants = (direction: string, animationType: string) => {
   return baseVariants[animationType] || baseVariants.slide
 }
 
-// Content animation variants
-const contentVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.1,
-      duration: 0.4,
-      ease: 'easeOut'
-    }
-  })
-}
-
-const headerVariants = {
+const headerVariants: any = {
   hidden: { opacity: 0, y: -20 },
   visible: {
     opacity: 1,

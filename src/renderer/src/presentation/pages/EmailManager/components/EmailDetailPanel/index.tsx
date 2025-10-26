@@ -1,7 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDetailPanel/index.tsx
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Globe, Shield, Key, SlidersHorizontal, Plus, User } from 'lucide-react'
+import { Globe, Shield, Key, SlidersHorizontal, Plus, User, Trash2 } from 'lucide-react'
 import {
   Email,
   Email2FA,
@@ -32,6 +32,7 @@ interface EmailDetailPanelProps {
   serviceFormDraft?: any
   onServiceFormDraftChange?: (draftData: any) => void
   onUpdateEmail?: (id: string, updates: Partial<Email>) => Promise<boolean>
+  onDeleteEmail?: (id: string) => Promise<boolean>
   onAdd2FA?: (data: Omit<Email2FA, 'id'>) => Promise<void>
   onUpdate2FA?: (id: string, updates: Partial<Email2FA>) => Promise<void>
   onDelete2FA?: (id: string) => void
@@ -50,7 +51,7 @@ interface EmailDetailPanelProps {
   onBackToList?: () => void
 }
 
-type TabType = 'overview' | 'services' | 'security' | 'service_security' | 'service_secret'
+export type TabType = 'overview' | 'services' | 'security' | 'service_security' | 'service_secret'
 
 interface TabConfig {
   id: TabType
@@ -118,6 +119,7 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   showCreateServiceForm = false,
   allServiceAccounts,
   onUpdateEmail,
+  onDeleteEmail,
   onAdd2FA,
   onUpdate2FA,
   onDelete2FA,
@@ -133,6 +135,25 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   onBackToList
 }) => {
   const activeTab = externalActiveTab
+
+  // ✅ THÊM MỚI: Handler xóa email
+  const handleDeleteEmail = async () => {
+    if (!email.id || !onDeleteEmail) return
+
+    const confirmMessage = `Bạn có chắc chắn muốn xóa email "${email.email_address}"?\n\nHành động này sẽ xóa:\n- Email account\n- ${email2FAMethods.length} 2FA method(s)\n- ${serviceAccounts.length} service account(s)\n- Tất cả secrets liên quan\n\nHành động này không thể hoàn tác!`
+
+    if (window.confirm(confirmMessage)) {
+      try {
+        const success = await onDeleteEmail(email.id)
+        if (!success) {
+          alert('Không thể xóa email. Vui lòng thử lại.')
+        }
+      } catch (error) {
+        console.error('Failed to delete email:', error)
+        alert('Đã xảy ra lỗi khi xóa email.')
+      }
+    }
+  }
 
   const handleTabChange = (tab: TabType) => {
     if (onTabChange) {
@@ -325,6 +346,18 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
               >
                 <SlidersHorizontal className="h-4 w-4 text-gray-600 dark:text-gray-400" />
               </button>
+
+              {/* ✅ THÊM MỚI: Delete Email Button */}
+              {onDeleteEmail && (
+                <button
+                  onClick={handleDeleteEmail}
+                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group"
+                  title="Delete Email"
+                >
+                  <Trash2 className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
+                </button>
+              )}
+
               <CustomButton
                 variant="primary"
                 size="sm"

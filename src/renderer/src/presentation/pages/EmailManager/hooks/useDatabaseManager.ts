@@ -117,13 +117,15 @@ export const useDatabaseManager = () => {
 
   // Load emails from database
   const loadEmails = useCallback(async () => {
-    if (!isDatabaseReady && !state.currentDatabase) return
+    // ✅ FIX: Chỉ load khi database thực sự sẵn sàng
+    if (!state.currentDatabase) {
+      return
+    }
 
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
       const emails = await databaseService.getAllEmails()
-
       setState((prev) => ({
         ...prev,
         emails,

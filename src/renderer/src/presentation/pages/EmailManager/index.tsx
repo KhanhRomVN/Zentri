@@ -4,7 +4,7 @@ import { Mail, Database, X, AlertCircle } from 'lucide-react'
 import DatabaseModal from './components/DatabaseModal'
 import CreateEmailModal from './components/CreateEmailModal'
 import EmailListPanel from './components/EmailListPanel'
-import EmailDetailPanel from './components/EmailDetailPanel'
+import EmailDetailPanel, { TabType } from './components/EmailDetailPanel'
 import TableManagerDrawer from './components/TableManagerDrawer'
 import BulkImportDrawer from './components/EmailListPanel/components/BulkImportDrawer'
 import { useDatabaseManager } from './hooks/useDatabaseManager'
@@ -39,18 +39,9 @@ const EmailManagerPage = () => {
   const [isCreatingEmail, setIsCreatingEmail] = useState(false)
   const [showTableManager, setShowTableManager] = useState(false)
   const [showBulkImport, setShowBulkImport] = useState(false)
-
-  // Track active tab cho từng email
-  const [emailActiveTabs, setEmailActiveTabs] = useState<Record<string, string>>({})
-
-  // Track trạng thái CreateServiceAccountForm cho từng email
+  const [emailActiveTabs, setEmailActiveTabs] = useState<Record<string, TabType>>({})
   const [showCreateFormByEmail, setShowCreateFormByEmail] = useState<Record<string, boolean>>({})
-
-  // Track draft data cho CreateServiceAccountForm của từng email
   const [serviceFormDraftByEmail, setServiceFormDraftByEmail] = useState<Record<string, any>>({})
-
-  // Track việc đang load editing table để tránh auto-rebuild xóa mất whereClause
-  const [isLoadingEditingTable, setIsLoadingEditingTable] = useState(false)
 
   // Related data for selected email
   const [email2FAMethods, setEmail2FAMethods] = useState<Email2FA[]>([])
@@ -155,7 +146,7 @@ const EmailManagerPage = () => {
         (email.id &&
           email2FAMethods.some(
             (method) =>
-              method.email_id === email.id && filters.email2FA.includes(method.two_fa_method)
+              method.email_id === email.id && filters.email2FA.includes(method.method_type)
           ))
 
       // Service Account filter - kiểm tra xem email có service account với service_type trong filters
@@ -257,6 +248,25 @@ const EmailManagerPage = () => {
   const handleCreateNewEmail = () => {
     if (isDatabaseReady && !isLoading) {
       setIsCreateModalOpen(true)
+    }
+  }
+
+  const handleDeleteEmail = async (emailId: string): Promise<boolean> => {
+    if (!isDatabaseReady) return false
+
+    try {
+      await databaseService.deleteEmail(emailId)
+      await loadEmails()
+
+      // Reset selected email nếu đang xem email bị xóa
+      if (selectedEmail?.id === emailId) {
+        setSelectedEmail(null)
+      }
+
+      return true
+    } catch (error) {
+      console.error('Failed to delete email:', error)
+      return false
     }
   }
 
@@ -530,8 +540,11 @@ const EmailManagerPage = () => {
                   {currentDatabase && (
                     <div className="flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-full">
                       <Database className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                        {currentDatabase.name}
+                      <span
+                        className="text-sm font-medium text-green-700 dark:text-green-300 truncate max-w-md"
+                        title={currentDatabase.path}
+                      >
+                        {currentDatabase.path}
                       </span>
                       <button
                         onClick={closeDatabase}
@@ -607,6 +620,7 @@ const EmailManagerPage = () => {
 
                     return success
                   }}
+                  onDeleteEmail={handleDeleteEmail}
                   onAdd2FA={handleAddEmail2FA}
                   onUpdate2FA={handleUpdateEmail2FA}
                   onDelete2FA={handleDeleteEmail2FA}

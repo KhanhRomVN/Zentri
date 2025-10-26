@@ -1,18 +1,7 @@
 import React, { useState } from 'react'
 import CustomDrawer from '../../../../../../components/common/CustomDrawer'
 import CustomButton from '../../../../../../components/common/CustomButton'
-import {
-  History,
-  Clock,
-  Database,
-  Trash2,
-  Eye,
-  RefreshCw,
-  Calendar,
-  FileText,
-  Search,
-  X
-} from 'lucide-react'
+import { History, Clock, Database, Trash2, Eye, Calendar, FileText, Search, X } from 'lucide-react'
 
 interface QueryHistoryItem {
   id: string
@@ -72,18 +61,6 @@ const HistoryQueryDrawer: React.FC<HistoryQueryDrawerProps> = ({
     })
   }
 
-  const formatDate = (timestamp: string) => {
-    const date = new Date(timestamp)
-    return date.toLocaleDateString('vi-VN', {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
   const handlePreview = (item: QueryHistoryItem) => {
     setSelectedHistoryId(item.id)
     onPreviewHistory(item)
@@ -135,7 +112,7 @@ const HistoryQueryDrawer: React.FC<HistoryQueryDrawerProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Lịch Sử Query"
-      position="right"
+      direction="right"
       size="md"
     >
       <div className="h-full flex flex-col bg-gray-50/50 dark:bg-gray-900/50">

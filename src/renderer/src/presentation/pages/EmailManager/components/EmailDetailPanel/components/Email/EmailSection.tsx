@@ -287,7 +287,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             isSaving={savingField === 'phone_numbers'}
             saveSuccess={saveStatus['phone_numbers'] === 'success'}
             disabled={savingField !== null && savingField !== 'phone_numbers'}
-            actions={
+            additionalActions={
               phoneNumbers ? (
                 <Button
                   variant="ghost"
@@ -321,7 +321,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             isSaving={savingField === 'address'}
             saveSuccess={saveStatus['address'] === 'success'}
             disabled={savingField !== null && savingField !== 'address'}
-            actions={
+            additionalActions={
               address ? (
                 <Button
                   variant="ghost"
@@ -378,7 +378,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             isSaving={savingField === 'recovery_email'}
             saveSuccess={saveStatus['recovery_email'] === 'success'}
             disabled={savingField !== null && savingField !== 'recovery_email'}
-            actions={
+            additionalActions={
               recoveryEmail ? (
                 <Button
                   variant="ghost"
@@ -411,7 +411,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email, className, onUpdateE
             isSaving={savingField === 'password'}
             saveSuccess={saveStatus['password'] === 'success'}
             disabled={savingField !== null && savingField !== 'password'}
-            actions={
+            additionalActions={
               <>
                 <Button
                   variant="ghost"

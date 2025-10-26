@@ -181,8 +181,11 @@ const DatabaseModal: React.FC<DatabaseModalProps> = ({ onDatabaseSelected, class
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-text-primary mb-1">Recent Project</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 truncate">
-                      {recentDatabase.name}
+                    <p
+                      className="text-sm text-gray-600 dark:text-gray-400 mb-1 truncate"
+                      title={recentDatabase.path}
+                    >
+                      {recentDatabase.path}
                     </p>
                     <p className="text-xs text-green-600 dark:text-green-400">
                       Last accessed: {formatDate(recentDatabase.lastAccess)}

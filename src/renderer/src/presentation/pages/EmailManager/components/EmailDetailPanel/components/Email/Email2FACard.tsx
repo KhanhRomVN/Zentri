@@ -171,7 +171,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
           updates.last_update = new Date().toISOString()
           break
         case 'expire_at':
-          updates.expire_at = parseDateFromInput(value) || null
+          updates.expire_at = parseDateFromInput(value) || undefined
           break
         default:
           console.warn(`Unknown field: ${field}`)
@@ -337,17 +337,13 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
             </Label>
 
             <CustomInput
-              value={showSecret ? secretValue : '•'.repeat(Math.max(24, secretValue.length))}
-              onChange={(value) => {
-                if (showSecret) {
-                  setSecretValue(value)
-                }
-              }}
+              value={showSecret ? secretValue : '•'.repeat(24)}
+              onChange={(value) => setSecretValue(value)}
               variant="filled"
               size="sm"
               multiline={secretValue.length > 50}
               rows={2}
-              trackChanges={showSecret}
+              trackChanges={true}
               initialValue={
                 typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
               }
@@ -358,13 +354,12 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
               saveSuccess={saveStatus['value'] === 'success'}
               disabled={savingField !== null && savingField !== 'value'}
               additionalActions={
-                <div className="flex items-center gap-1">
+                <>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowSecret(!showSecret)}
                     className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
-                    disabled={savingField !== null}
                   >
                     {showSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                   </Button>
@@ -373,11 +368,10 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                     size="sm"
                     onClick={() => copyToClipboard(secretValue)}
                     className="p-1 h-6 w-6 hover:bg-gray-100 dark:hover:bg-gray-600"
-                    disabled={savingField !== null}
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
-                </div>
+                </>
               }
             />
           </div>
@@ -440,7 +434,7 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
           isSaving={savingField === 'value'}
           saveSuccess={saveStatus['value'] === 'success'}
           disabled={savingField !== null && savingField !== 'value'}
-          actions={
+          additionalActions={
             <>
               <Button
                 variant="ghost"
@@ -634,9 +628,6 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
                 maxVisibleFields={3}
                 showDeleteButtons={true}
                 hideEmpty={true}
-                editable={true}
-                allowEmpty={true}
-                showAddButton={true}
                 allowCreate={true}
                 allowEdit={true}
                 allowDelete={true}

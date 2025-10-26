@@ -1,7 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailListPanel/components/EmailCard.tsx
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Mail, Phone, Shield, Globe, Tag } from 'lucide-react'
+import { Phone, Shield, Globe, Tag } from 'lucide-react'
 import { Email } from '../../../types'
 
 interface EmailCardProps {

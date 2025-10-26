@@ -45,7 +45,7 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
   const [editingSecretField, setEditingSecretField] = useState<EditingSecretField | null>(null)
 
   // State cho inline editing
-  const [secretName, setSecretName] = useState(secret.secret_name || '')
+  const [secretName, setSecretName] = useState(secret.secret?.secret_name || '')
   const [editingFields, setEditingFields] = useState<Record<string, string>>(() => {
     const fields: Record<string, string> = {}
     if (secret.secret && typeof secret.secret === 'object') {
@@ -60,8 +60,8 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
 
   // ✅ Sync secretName khi secret.secret_name thay đổi
   useEffect(() => {
-    setSecretName(secret.secret_name || '')
-  }, [secret.secret_name])
+    setSecretName(secret.secret?.secret_name || '')
+  }, [secret.secret?.secret_name])
 
   // ✅ Sync editingFields khi secret.secret thay đổi
   useEffect(() => {
@@ -95,23 +95,13 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
 
   // ✅ Reset saveSuccess khi component mount
   useEffect(() => {
-    console.log('[ServiceAccountSecretCard] Component mounted, resetting saveSuccess')
     setSaveSuccess({})
   }, [])
 
   // ✅ Reset saveSuccess khi secret thay đổi
   useEffect(() => {
-    console.log(
-      '[ServiceAccountSecretCard] Secret changed, resetting saveSuccess. Secret ID:',
-      secret.id
-    )
     setSaveSuccess({})
   }, [secret.id])
-
-  // ✅ Log saveSuccess changes
-  useEffect(() => {
-    console.log('[ServiceAccountSecretCard] saveSuccess state changed:', saveSuccess)
-  }, [saveSuccess])
 
   // Initial values for tracking
   const initialExpireDate = formatDateForInput(secret.expire_at)
@@ -158,9 +148,13 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
 
       switch (field) {
         case 'secret_name':
-          updatedSecret.secret_name = value
           if (updatedSecret.secret && typeof updatedSecret.secret === 'object') {
-            updatedSecret.secret.secret_name = value
+            updatedSecret.secret = {
+              ...updatedSecret.secret,
+              secret_name: value
+            }
+          } else {
+            updatedSecret.secret = { secret_name: value }
           }
           break
         case 'expire_at':
@@ -322,7 +316,7 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-text-primary font-medium">
-                    {secret.secret_name || 'Unnamed Secret'}
+                    {secret.secret?.secret_name || 'Unnamed Secret'}
                   </span>
                   {isExpired && (
                     <CustomBadge
@@ -392,7 +386,7 @@ const ServiceAccountSecretCard: React.FC<ServiceAccountSecretCardProps> = ({
                 variant="filled"
                 size="sm"
                 trackChanges={true}
-                initialValue={secret.secret_name || ''}
+                initialValue={secret.secret?.secret_name || ''}
                 onSave={async (value) => {
                   await handleSaveField('secret_name', value)
                 }}

@@ -7,7 +7,6 @@ import { Plus, Trash2, Eye, FileSpreadsheet, Edit, Clock, Database, BarChart3 } 
 import TableDrawer from './TableDrawer'
 import { databaseService } from '../services/DatabaseService'
 import { SavedTable } from '../types'
-import CustomInput from '../../../../components/common/CustomInput'
 
 interface TableManagerDrawerProps {
   isOpen: boolean
@@ -125,7 +124,7 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         title="Quản lý Bảng Thống Kê"
-        position="right"
+        direction="right"
         size="sm"
       >
         <div className="h-full flex flex-col bg-gray-50/50 dark:bg-gray-900/50">
@@ -270,7 +269,7 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
           isOpen={!!viewingTable}
           onClose={() => setViewingTable(null)}
           title={viewingTable.name}
-          position="right"
+          direction="right"
           size="xl"
         >
           <div className="p-4">

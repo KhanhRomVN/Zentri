@@ -56,9 +56,7 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
     new Set(emails.map((e) => e.recovery_email).filter((email) => email != null))
   ).sort()
   const uniqueEmail2FA = Array.from(
-    new Set(
-      email2FAMethods.map((method) => method.two_fa_method).filter((method) => method != null)
-    )
+    new Set(email2FAMethods.map((method) => method.method_type).filter((method) => method != null))
   ).sort()
   const uniqueServiceTypes = Array.from(
     new Set(serviceAccounts.map((sa) => sa.service_type).filter((type) => type != null))

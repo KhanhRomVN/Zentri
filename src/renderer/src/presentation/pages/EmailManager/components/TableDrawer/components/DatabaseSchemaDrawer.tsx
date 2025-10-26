@@ -350,7 +350,7 @@ const DatabaseSchemaDrawer: React.FC<DatabaseSchemaDrawerProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Database Schema"
-      position="left"
+      direction="left"
       size="md"
     >
       <div className="h-full flex flex-col bg-gray-50/50 dark:bg-gray-900/50">

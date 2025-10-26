@@ -49,17 +49,12 @@ export class DatabaseService {
       if (lastDatabase) {
         const exists = await window.electronAPI.fileSystem.exists(lastDatabase.path)
         if (exists) {
-          // Đảm bảo database được mở hoàn toàn trước khi tiếp tục
           await window.electronAPI.sqlite.openDatabase(lastDatabase.path)
-
-          // Đợi một chút để đảm bảo connection ổn định
           await new Promise((resolve) => setTimeout(resolve, 100))
-
-          // Kiểm tra xem database có thực sự hoạt động không
           try {
             await window.electronAPI.sqlite.getOneRow('SELECT 1 as test')
           } catch (testError) {
-            console.error('Database connection test failed:', testError)
+            console.error('❌ [DEBUG Initialize] Database connection test failed:', testError)
             await this.clearLastDatabase()
             return false
           }
@@ -384,10 +379,27 @@ export class DatabaseService {
     // Expected structure: .../projectName/EmailManager/email_manager.db
     const EmailManagerIndex = pathParts.findIndex((part) => part === 'EmailManager')
     if (EmailManagerIndex > 0) {
-      return pathParts[EmailManagerIndex - 1]
+      const projectName = pathParts[EmailManagerIndex - 1]
+
+      // ✅ Kiểm tra xem project name có phải là common folder không
+      const commonFolders = ['downloads', 'documents', 'desktop', 'home', 'users']
+      if (commonFolders.includes(projectName.toLowerCase())) {
+        return 'Email Manager Project'
+      }
+
+      return projectName
     }
-    // Fallback to database file name if structure is different
-    return this.getFileNameFromPath(databasePath).replace('.db', '')
+
+    // Fallback: nếu không tìm thấy EmailManager folder → dùng tên file database
+    const fallbackName = this.getFileNameFromPath(databasePath).replace('.db', '')
+
+    // ✅ Nếu fallback name cũng là common folder → dùng tên mặc định
+    const commonFolders = ['downloads', 'documents', 'desktop', 'home', 'users', 'email_manager']
+    if (commonFolders.includes(fallbackName.toLowerCase())) {
+      return 'Email Manager Project'
+    }
+
+    return fallbackName
   }
 
   // Email CRUD operations

@@ -225,7 +225,7 @@ const PeopleDetailPanel: React.FC<PeopleDetailPanelProps> = ({
     }
   }
 
-  const getPersonDisplayName = (person: Person, personInfo: PersonInfo | null) => {
+  const getPersonDisplayName = (_person: Person, personInfo: PersonInfo | null) => {
     return personInfo?.preferred_name || personInfo?.full_name || 'Unknown'
   }
 
