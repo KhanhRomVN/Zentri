@@ -43,7 +43,6 @@ const STORAGE_KEY_LAST_DATABASE = 'email_manager_last_database'
 export class DatabaseService {
   private currentDatabase: DatabaseInfo | null = null
 
-  // Thêm method để khởi tạo và tự động mở database cuối cùng
   async initialize(): Promise<boolean> {
     try {
       const lastDatabase = await this.getLastDatabase()
@@ -64,9 +63,6 @@ export class DatabaseService {
             await this.clearLastDatabase()
             return false
           }
-
-          // Kiểm tra và tạo các table còn thiếu
-          await this.ensureTablesExist()
 
           this.currentDatabase = {
             ...lastDatabase,
@@ -165,10 +161,6 @@ export class DatabaseService {
 
       const filePath = result.filePaths[0]
       await window.electronAPI.sqlite.openDatabase(filePath)
-
-      // Kiểm tra và tạo các table còn thiếu
-      await this.ensureTablesExist()
-
       // Extract project name from the path structure
       const projectName = this.getProjectNameFromDatabasePath(filePath)
 
@@ -634,7 +626,6 @@ export class DatabaseService {
     return {
       id: row.id,
       service_account_id: row.service_account_id,
-      secret_name: parsedSecret.secret_name || 'Unknown Secret',
       secret: parsedSecret,
       expire_at: row.expire_at
     }
@@ -870,7 +861,7 @@ id, service_account_id, secret, expire_at, created_at, updated_at
         [
           id,
           secretData.service_account_id,
-          JSON.stringify(secretData.secret || { secret_name: secretData.secret_name || 'Unknown' }),
+          JSON.stringify(secretData.secret),
           secretData.expire_at || null,
           now,
           now
@@ -901,8 +892,7 @@ id, service_account_id, secret, expire_at, created_at, updated_at
     if (updates.secret !== undefined) {
       // Ensure secret_name is included in the secret object
       const secretWithName = {
-        ...updates.secret,
-        secret_name: updates.secret_name || updates.secret.secret_name
+        ...updates.secret
       }
       fields.push('secret = ?')
       values.push(JSON.stringify(secretWithName))
@@ -922,73 +912,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
     await window.electronAPI.sqlite.runQuery('DELETE FROM service_account_secrets WHERE id = ?', [
       id
     ])
-  }
-
-  private async migrateEmailsTable(): Promise<void> {
-    try {
-      const tableInfo = await window.electronAPI.sqlite.getAllRows('PRAGMA table_info(emails)')
-
-      const hasCategory = tableInfo.some((col: any) => col.name === 'category')
-      if (hasCategory) {
-        const existingEmails = await window.electronAPI.sqlite.getAllRows('SELECT * FROM emails')
-        await window.electronAPI.sqlite.runQuery('DROP TABLE IF EXISTS emails')
-        await window.electronAPI.sqlite.runQuery(`
-        CREATE TABLE emails (
-          id TEXT PRIMARY KEY,
-          email_address TEXT NOT NULL UNIQUE,
-          email_provider TEXT NOT NULL CHECK (email_provider IN ('gmail', 'yahoo', 'outlook', 'icloud')),
-          name TEXT,
-          age INTEGER,
-          address TEXT,
-          password TEXT NOT NULL,
-          last_password_change TEXT NOT NULL,
-          recovery_email TEXT,
-          phone_numbers TEXT,
-          tags TEXT,
-          note TEXT,
-          metadata TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-      `)
-
-        // Restore dữ liệu (loại bỏ field category)
-        for (const email of existingEmails) {
-          await window.electronAPI.sqlite.runQuery(
-            `INSERT INTO emails (
-            id, email_address, email_provider, name, age, address, password,
-            last_password_change, recovery_email, phone_numbers, tags, note, metadata,
-            created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              email.id,
-              email.email_address,
-              email.email_provider,
-              email.name,
-              email.age,
-              email.address,
-              email.password,
-              email.last_password_change,
-              email.recovery_email,
-              email.phone_numbers,
-              email.tags,
-              email.note,
-              email.metadata,
-              email.created_at || new Date().toISOString(),
-              email.updated_at || new Date().toISOString()
-            ]
-          )
-        }
-
-        // Tạo lại index
-        await window.electronAPI.sqlite.runQuery(
-          'CREATE INDEX IF NOT EXISTS idx_emails_provider ON emails (email_provider)'
-        )
-      }
-    } catch (error) {
-      console.error('[MIGRATION] Error migrating emails table:', error)
-      throw error
-    }
   }
 
   // ============================================================
@@ -1154,111 +1077,6 @@ id, service_account_id, secret, expire_at, created_at, updated_at
       rowCount: row.row_count,
       columnCount: row.column_count,
       createdAt: row.created_at
-    }
-  }
-
-  // Kiểm tra và tạo các table còn thiếu
-  async ensureTablesExist(): Promise<void> {
-    try {
-      // Lấy danh sách các table hiện có
-      const existingTables = await window.electronAPI.sqlite.getAllRows(
-        "SELECT name FROM sqlite_master WHERE type='table'"
-      )
-      const tableNames = existingTables.map((row: any) => row.name)
-
-      // Danh sách các table cần có
-      const requiredTables = [
-        'emails',
-        'email_2fa',
-        'service_accounts',
-        'service_account_2fa',
-        'service_account_secrets',
-        'saved_tables',
-        'query_history'
-      ]
-
-      // Kiểm tra table nào còn thiếu
-      const missingTables = requiredTables.filter((table) => !tableNames.includes(table))
-
-      if (missingTables.length > 0) {
-        // Tạo lại tất cả các table (initializeTables sẽ dùng IF NOT EXISTS)
-        await this.initializeTables()
-      }
-
-      // Kiểm tra và migrate các table cũ nếu cần
-      await this.checkAndMigrateTables()
-    } catch (error) {
-      console.error('[DatabaseService] Error ensuring tables exist:', error)
-      throw new Error(
-        `Failed to ensure tables exist: ${error instanceof Error ? error.message : 'Unknown error'}`
-      )
-    }
-  }
-
-  // Kiểm tra và migrate các table cũ
-  private async checkAndMigrateTables(): Promise<void> {
-    try {
-      // Kiểm tra emails table có column 'category' hay không (cần migrate)
-      const emailsTableInfo = await window.electronAPI.sqlite.getAllRows(
-        'PRAGMA table_info(emails)'
-      )
-      const hasCategory = emailsTableInfo.some((col: any) => col.name === 'category')
-
-      if (hasCategory) {
-        await this.migrateEmailsTable()
-      }
-
-      // Migration: Add selected_fields to saved_tables
-      await this.migrateSavedTablesSchema()
-
-      // Migration: Add secret_name to service_account_secrets
-      await this.migrateServiceAccountSecretsSchema()
-    } catch (error) {
-      console.error('[DatabaseService] Error checking migration:', error)
-    }
-  }
-
-  // Migration: Add selected_fields column to saved_tables
-  private async migrateSavedTablesSchema(): Promise<void> {
-    try {
-      const tableInfo = await window.electronAPI.sqlite.getAllRows(
-        'PRAGMA table_info(saved_tables)'
-      )
-      const hasSelectedFields = tableInfo.some((col: any) => col.name === 'selected_fields')
-
-      if (!hasSelectedFields) {
-        await window.electronAPI.sqlite.runQuery(
-          'ALTER TABLE saved_tables ADD COLUMN selected_fields TEXT'
-        )
-      }
-    } catch (error) {
-      console.error('[Migration] Error adding selected_fields column:', error)
-    }
-  }
-
-  // Migration: Add secret_name column to service_account_secrets
-  private async migrateServiceAccountSecretsSchema(): Promise<void> {
-    try {
-      const tableInfo = await window.electronAPI.sqlite.getAllRows(
-        'PRAGMA table_info(service_account_secrets)'
-      )
-      const hasSecretName = tableInfo.some((col: any) => col.name === 'secret_name')
-
-      if (!hasSecretName) {
-        // 1. Thêm column secret_name
-        await window.electronAPI.sqlite.runQuery(
-          'ALTER TABLE service_account_secrets ADD COLUMN secret_name TEXT'
-        )
-
-        // 2. Migrate dữ liệu cũ: extract secret_name từ JSON vào column mới
-        await window.electronAPI.sqlite.runQuery(`
-        UPDATE service_account_secrets 
-        SET secret_name = json_extract(secret, '$.secret_name')
-        WHERE secret_name IS NULL
-      `)
-      }
-    } catch (error) {
-      console.error('[Migration] Error adding secret_name column:', error)
     }
   }
 }

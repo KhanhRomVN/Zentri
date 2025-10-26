@@ -569,23 +569,7 @@ FUZZY MATCHING RULES:
         columnCount: columns.length
       }
 
-      // Add vào history state
       setQueryHistory((prev) => [...prev, historyItem])
-
-      // Lưu vào database
-      try {
-        await databaseService.createQueryHistory({
-          prompt: historyItem.prompt,
-          query: historyItem.query,
-          rowCount: historyItem.rowCount,
-          columnCount: historyItem.columnCount,
-          createdAt: historyItem.timestamp
-        })
-      } catch (error) {
-        console.error('Failed to save query history:', error)
-      }
-
-      // Update table data (query đã execute trong try block trên)
       setTableColumns(columns)
       setTableData(rows)
       setQueryError('')
@@ -682,7 +666,7 @@ FUZZY MATCHING RULES:
     onClose()
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!tableName.trim() || !sqlQuery.trim() || tableData.length === 0) {
       return
     }
@@ -698,7 +682,33 @@ FUZZY MATCHING RULES:
       updatedAt: editingTable ? new Date().toISOString() : undefined
     }
 
-    onSubmit(config, !!editingTable, editingTable?.id)
+    // ✅ Trước khi submit, lưu toàn bộ query history vào database
+    try {
+      // Lưu saved table trước (để có savedTableId)
+      await onSubmit(config, !!editingTable, editingTable?.id)
+
+      // Sau khi save table thành công, persist toàn bộ history vào database
+      const savedTableId = config.id
+      for (const historyItem of queryHistory) {
+        // Kiểm tra xem history item này đã được lưu chưa (có trong database chưa)
+        // Nếu chưa thì mới lưu
+        try {
+          await databaseService.createQueryHistory({
+            savedTableId: savedTableId,
+            prompt: historyItem.prompt,
+            query: historyItem.query,
+            rowCount: historyItem.rowCount,
+            columnCount: historyItem.columnCount,
+            createdAt: historyItem.timestamp
+          })
+        } catch (error) {
+          // Nếu bị duplicate (đã tồn tại) thì bỏ qua
+          console.warn('History item already exists or failed to save:', error)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to submit table and history:', error)
+    }
   }
 
   const handleExport = () => {

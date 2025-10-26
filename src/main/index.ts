@@ -252,24 +252,32 @@ function setupDatabaseHandlers() {
       // Đóng database cũ nếu có
       if (db) {
         await new Promise<void>((resolve, reject) => {
-          db!.close((err) => {
-            if (err) reject(err)
-            else resolve()
+          const dbToClose = db
+          db = null // Clear reference trước khi close
+
+          dbToClose!.close((err) => {
+            if (err) {
+              console.warn('Warning: Error closing previous database:', err)
+              // Không reject vì đã clear reference, tiếp tục mở database mới
+              resolve()
+            } else {
+              resolve()
+            }
           })
         })
-        db = null
       }
 
       // Đợi một chút sau khi đóng
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       // Mở database mới
       return new Promise<void>((resolve, reject) => {
-        db = new sqlite3.Database(path, sqlite3.OPEN_READWRITE, (err) => {
+        const newDb = new sqlite3.Database(path, sqlite3.OPEN_READWRITE, (err) => {
           if (err) {
-            db = null
             reject(err)
           } else {
+            // Chỉ set db nếu không có error
+            db = newDb
             // Đợi thêm để đảm bảo database sẵn sàng
             setTimeout(() => resolve(), 50)
           }
@@ -277,6 +285,7 @@ function setupDatabaseHandlers() {
       })
     } catch (error) {
       console.error('Error opening database:', error)
+      db = null
       throw error
     }
   })

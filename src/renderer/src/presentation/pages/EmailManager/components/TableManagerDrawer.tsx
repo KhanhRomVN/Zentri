@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from 'react'
 import CustomDrawer from '../../../../components/common/CustomDrawer'
 import CustomButton from '../../../../components/common/CustomButton'
+import CustomCodeEditor from '../../../../components/common/CustomCodeEditor'
 import { Plus, Trash2, Eye, FileSpreadsheet, Edit, Clock, Database, BarChart3 } from 'lucide-react'
 import TableDrawer from './TableDrawer'
 import { databaseService } from '../services/DatabaseService'
 import { SavedTable } from '../types'
+import CustomInput from '../../../../components/common/CustomInput'
 
 interface TableManagerDrawerProps {
   isOpen: boolean
@@ -124,7 +126,7 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
         onClose={onClose}
         title="Quản lý Bảng Thống Kê"
         position="right"
-        size="md"
+        size="sm"
       >
         <div className="h-full flex flex-col bg-gray-50/50 dark:bg-gray-900/50">
           {/* Tables List */}
@@ -208,10 +210,19 @@ const TableManagerDrawer: React.FC<TableManagerDrawerProps> = ({
                     </div>
 
                     {/* Query Preview */}
-                    <div className="p-3">
-                      <div className="text-[10px] font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-2 rounded border border-gray-200 dark:border-gray-700 line-clamp-2 leading-relaxed">
-                        {table.query}
-                      </div>
+                    <div className="px-3 pb-3">
+                      <CustomCodeEditor
+                        value={table.query}
+                        language="sql"
+                        onChange={() => {}}
+                        onLanguageChange={() => {}}
+                        disabled={true}
+                        height="auto"
+                        minHeight={80}
+                        maxHeight={180}
+                        autoDetectLanguage={false}
+                        showLanguageSelector={false}
+                      />
                     </div>
                   </div>
                 ))}

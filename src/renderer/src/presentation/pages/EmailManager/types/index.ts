@@ -19,7 +19,6 @@ export interface Email {
 export interface Email2FA {
   id: string
   email_id: string
-  two_fa_method: string
   method_type:
     | 'backup_codes'
     | 'totp_key'
@@ -88,7 +87,6 @@ export interface ServiceAccount2FA {
 export interface ServiceAccountSecret {
   id: string
   service_account_id: string
-  secret_name: string
   secret: Record<string, any>
   expire_at?: string
 }

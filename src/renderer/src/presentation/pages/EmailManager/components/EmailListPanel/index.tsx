@@ -1,6 +1,6 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailListPanel/index.tsx
 import React, { useState, useMemo } from 'react'
-import { Search, Plus, Mail, SlidersHorizontal, X, Table } from 'lucide-react'
+import { Search, Plus, Mail, SlidersHorizontal, X, Table, Upload } from 'lucide-react'
 import CustomButton from '../../../../../components/common/CustomButton'
 import EmailCard from './components/EmailCard'
 import { Email, ServiceAccount, Email2FA } from '../../types'
@@ -16,6 +16,7 @@ interface EmailListPanelProps {
   onSelectEmail: (email: Email) => void
   onCreateNewEmail: () => void
   onShowTableManager: () => void
+  onShowBulkImport: () => void
   filters: {
     email_address: string
     provider: string[]
@@ -41,6 +42,7 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
   onSelectEmail,
   onCreateNewEmail,
   onShowTableManager,
+  onShowBulkImport,
   filters,
   onFiltersChange,
   isLoading = false
@@ -154,6 +156,13 @@ const EmailListPanel: React.FC<EmailListPanelProps> = ({
               title="Manage Tables"
             >
               <Table className="h-4 w-4 text-text-secondary" />
+            </button>
+            <button
+              onClick={onShowBulkImport}
+              className="p-2 hover:bg-sidebar-itemHover rounded-lg transition-colors"
+              title="Bulk Import Emails"
+            >
+              <Upload className="h-4 w-4 text-text-secondary" />
             </button>
             <button
               onClick={onCreateNewEmail}

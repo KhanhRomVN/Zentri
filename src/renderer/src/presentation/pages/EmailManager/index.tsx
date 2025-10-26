@@ -6,6 +6,7 @@ import CreateEmailModal from './components/CreateEmailModal'
 import EmailListPanel from './components/EmailListPanel'
 import EmailDetailPanel from './components/EmailDetailPanel'
 import TableManagerDrawer from './components/TableManagerDrawer'
+import BulkImportDrawer from './components/EmailListPanel/components/BulkImportDrawer'
 import { useDatabaseManager } from './hooks/useDatabaseManager'
 import { Email, Email2FA, ServiceAccount, ServiceAccount2FA, ServiceAccountSecret } from './types'
 import { databaseService } from './services/DatabaseService'
@@ -37,6 +38,7 @@ const EmailManagerPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreatingEmail, setIsCreatingEmail] = useState(false)
   const [showTableManager, setShowTableManager] = useState(false)
+  const [showBulkImport, setShowBulkImport] = useState(false)
 
   // Track active tab cho từng email
   const [emailActiveTabs, setEmailActiveTabs] = useState<Record<string, string>>({})
@@ -465,6 +467,32 @@ const EmailManagerPage = () => {
     }
   }
 
+  // Handle bulk create emails
+  const handleBulkCreateEmails = async (emails: Omit<Email, 'id'>[]) => {
+    if (!isDatabaseReady) return
+
+    try {
+      const createdEmails: Email[] = []
+
+      for (const emailData of emails) {
+        const newEmail = await createEmail(emailData)
+        if (newEmail) {
+          createdEmails.push(newEmail)
+        }
+      }
+
+      await loadEmails()
+
+      // Select first created email
+      if (createdEmails.length > 0) {
+        handleSelectEmail(createdEmails[0])
+      }
+    } catch (error) {
+      console.error('Failed to bulk create emails:', error)
+      throw error
+    }
+  }
+
   // If database modal should be shown, render only the modal
   if (showDatabaseModal) {
     return <DatabaseModal onDatabaseSelected={handleDatabaseSelected} />
@@ -485,6 +513,7 @@ const EmailManagerPage = () => {
             onSelectEmail={handleSelectEmail}
             onCreateNewEmail={handleCreateNewEmail}
             onShowTableManager={() => setShowTableManager(true)}
+            onShowBulkImport={() => setShowBulkImport(true)}
             filters={filters}
             onFiltersChange={setFilters}
             isLoading={isLoading}
@@ -627,6 +656,13 @@ const EmailManagerPage = () => {
         email2FAMethods={email2FAMethods}
         serviceAccount2FAMethods={serviceAccount2FAMethods}
         serviceAccountSecrets={serviceAccountSecrets}
+      />
+
+      {/* Bulk Import Drawer */}
+      <BulkImportDrawer
+        isOpen={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        onBulkCreate={handleBulkCreateEmails}
       />
     </div>
   )

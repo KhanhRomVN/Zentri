@@ -133,14 +133,18 @@ const CreateServiceAccountSecretDrawer: React.FC<CreateServiceAccountSecretDrawe
     allServiceAccountSecrets.forEach((secret: ServiceAccountSecret) => {
       const relatedService = allServiceAccounts.find((sa) => sa.id === secret.service_account_id)
 
+      // Lấy secret_name từ trong JSON secret
+      const secretName = secret.secret?.secret_name
+
       // Chỉ lấy secret_name của các service có cùng service_name với serviceAccount hiện tại
       if (
         relatedService &&
         relatedService.service_name.toLowerCase() === serviceAccount.service_name.toLowerCase() &&
-        secret.secret_name &&
-        secret.secret_name.trim()
+        secretName &&
+        typeof secretName === 'string' &&
+        secretName.trim()
       ) {
-        secretNameSet.add(secret.secret_name.trim())
+        secretNameSet.add(secretName.trim())
       }
     })
 
@@ -172,7 +176,6 @@ const CreateServiceAccountSecretDrawer: React.FC<CreateServiceAccountSecretDrawe
 
       const secretData: Omit<ServiceAccountSecret, 'id'> = {
         service_account_id: serviceAccount.id,
-        secret_name: formData.secret_name.trim(),
         secret: {
           secret_name: formData.secret_name.trim(),
           ...customFieldsObject

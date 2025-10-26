@@ -52,7 +52,7 @@ const TablePreviewPanel: React.FC<TablePreviewPanelProps> = ({
       // Các cột dữ liệu
       ...visibleColumns.map((col) => ({
         accessorKey: col,
-        header: col.toUpperCase(),
+        header: col, // ✅ Giữ nguyên tên field từ database
         cell: ({ getValue }: any) => {
           const value = getValue()
           return <div>{value !== null && value !== undefined ? String(value) : '-'}</div>

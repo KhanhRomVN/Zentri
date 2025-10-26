@@ -182,7 +182,7 @@ const CustomCodeEditor: React.FC<CustomCodeEditorProps> = ({
     if (height === 'auto') {
       const lines = value ? value.split('\n').length : 1
       const lineHeight = 24 // 24px per line
-      const padding = 32 // 16px top + 16px bottom
+      const padding = 16 // 8px top + 8px bottom (tighter padding)
       const calculatedHeight = Math.min(
         maxHeight,
         Math.max(minHeight, lines * lineHeight + padding)
@@ -266,10 +266,13 @@ const CustomCodeEditor: React.FC<CustomCodeEditorProps> = ({
           fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace',
           height: `${dynamicHeight}px`
         },
+        '.cm-line': {
+          padding: 0
+        },
         '.cm-content': {
-          padding: '16px',
-          minHeight: `${dynamicHeight - 32}px`,
-          maxHeight: `${dynamicHeight - 32}px`,
+          padding: '8px 12px',
+          minHeight: `${dynamicHeight - 16}px`,
+          maxHeight: `${dynamicHeight - 16}px`,
           lineHeight: '24px',
           overflow: 'auto'
         },
@@ -282,7 +285,7 @@ const CustomCodeEditor: React.FC<CustomCodeEditorProps> = ({
         },
         '.cm-scroller': {
           fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace',
-          maxHeight: `${dynamicHeight - 32}px`
+          maxHeight: `${dynamicHeight - 16}px`
         }
       }),
       EditorState.readOnly.of(disabled || false)
@@ -322,17 +325,6 @@ const CustomCodeEditor: React.FC<CustomCodeEditorProps> = ({
     }
   }, [value])
 
-  // Calculate code statistics
-  const lines = value ? value.split('\n') : ['']
-  const lineCount = lines.length
-  const characterCount = value ? value.length : 0
-  const wordCount = value
-    ? value
-        .trim()
-        .split(/\s+/)
-        .filter((word) => word.length > 0).length
-    : 0
-
   // Auto-detect language button
   const handleAutoDetect = () => {
     if (value.trim()) {
@@ -347,10 +339,6 @@ const CustomCodeEditor: React.FC<CustomCodeEditorProps> = ({
       {/* Header with controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Programming Language
-          </label>
-
           {/* Auto-detect button */}
           {autoDetectLanguage && !disabled && (
             <button
@@ -442,21 +430,6 @@ const CustomCodeEditor: React.FC<CustomCodeEditorProps> = ({
           className={cn(!isEditorReady && 'hidden')}
           style={{ height: `${dynamicHeight}px` }}
         />
-      </div>
-
-      {/* Code statistics and info */}
-      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-        <div className="flex items-center gap-4">
-          <span className="font-medium">
-            Language: {languages.find((l) => l.value === language)?.label || language}
-          </span>
-          {height === 'auto' && <span>Auto-height: {dynamicHeight}px</span>}
-        </div>
-        <div className="flex items-center gap-4">
-          <span>Lines: {lineCount}</span>
-          <span>Words: {wordCount}</span>
-          <span>Characters: {characterCount}</span>
-        </div>
       </div>
     </div>
   )

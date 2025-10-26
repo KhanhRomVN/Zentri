@@ -119,7 +119,6 @@ const DATABASE_SCHEMA: SchemaNode[] = [
                 table: 'service_account_secrets',
                 description: 'Foreign key to service_accounts'
               },
-              { name: 'secret_name', table: 'service_account_secrets', description: 'Secret name' },
               {
                 name: 'secret',
                 table: 'service_account_secrets',

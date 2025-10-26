@@ -337,13 +337,17 @@ const Email2FACard: React.FC<Email2FACardProps> = ({ method, onDelete, onSave, c
             </Label>
 
             <CustomInput
-              value={showSecret ? secretValue : '•'.repeat(24)}
-              onChange={(value) => setSecretValue(value)}
+              value={showSecret ? secretValue : '•'.repeat(Math.max(24, secretValue.length))}
+              onChange={(value) => {
+                if (showSecret) {
+                  setSecretValue(value)
+                }
+              }}
               variant="filled"
               size="sm"
               multiline={secretValue.length > 50}
               rows={2}
-              trackChanges={true}
+              trackChanges={showSecret}
               initialValue={
                 typeof method.value === 'string' ? method.value : JSON.stringify(method.value)
               }
