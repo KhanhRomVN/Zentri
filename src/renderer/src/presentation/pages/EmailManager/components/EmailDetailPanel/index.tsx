@@ -1,7 +1,17 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDetailPanel/index.tsx
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Globe, Shield, Key, SlidersHorizontal, Plus, User, Trash2 } from 'lucide-react'
+import {
+  Globe,
+  Shield,
+  Key,
+  SlidersHorizontal,
+  Plus,
+  User,
+  Trash2,
+  Database,
+  X
+} from 'lucide-react'
 import {
   Email,
   Email2FA,
@@ -25,6 +35,8 @@ interface EmailDetailPanelProps {
   selectedServiceAccount: ServiceAccount | null
   allServiceAccountSecrets: ServiceAccountSecret[]
   allServiceAccounts: ServiceAccount[]
+  currentDatabase?: { path: string } | null
+  onCloseDatabase?: () => void
   activeTab?: TabType
   onTabChange?: (tab: TabType) => void
   showCreateServiceForm?: boolean
@@ -113,6 +125,8 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   serviceAccountSecrets,
   allServiceAccountSecrets,
   selectedServiceAccount,
+  currentDatabase,
+  onCloseDatabase,
   activeTab: externalActiveTab = 'overview',
   onTabChange,
   onToggleCreateServiceForm,
@@ -160,8 +174,6 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
       onTabChange(tab)
     }
 
-    // Reset selectedServiceAccount khi chuyển sang bất kỳ tab nào không phải service detail tabs
-    // hoặc khi click vào tab "services" để quay về list
     if (tab === 'overview' || tab === 'security' || tab === 'services') {
       if (onBackToList) {
         onBackToList()
@@ -303,13 +315,33 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
 
               {/* Basic Details */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h1 className="text-xl font-bold text-text-primary truncate">
                     {email.name || email.email_address}
                   </h1>
                   {email.name && (
                     <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">
                       {email.email_address}
+                    </span>
+                  )}
+                  {currentDatabase && (
+                    <span className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 px-2 py-0.5 rounded-md flex items-center gap-1.5 max-w-xs">
+                      <Database className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate" title={currentDatabase.path}>
+                        {currentDatabase.path}
+                      </span>
+                      {onCloseDatabase && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onCloseDatabase()
+                          }}
+                          className="flex-shrink-0 hover:bg-green-100 dark:hover:bg-green-800 rounded-sm transition-colors"
+                          title="Close database"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
                     </span>
                   )}
                 </div>
