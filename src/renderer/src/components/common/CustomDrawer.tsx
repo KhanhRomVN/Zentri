@@ -93,7 +93,7 @@ const getDrawerVariants = (direction: string, animationType: string): any => {
   return baseVariants[animationType] || baseVariants.slide
 }
 
-const headerVariants: any = {
+const headerVariants = {
   hidden: { opacity: 0, y: -20 },
   visible: {
     opacity: 1,

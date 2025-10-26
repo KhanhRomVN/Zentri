@@ -23,6 +23,39 @@ const EmailCard: React.FC<EmailCardProps> = ({
     return emailAddress.charAt(0).toUpperCase()
   }
 
+  const getGradientByLetter = (letter: string): string => {
+    const gradients: Record<string, string> = {
+      A: 'bg-gradient-to-br from-red-500 to-pink-600',
+      B: 'bg-gradient-to-br from-pink-500 to-rose-600',
+      C: 'bg-gradient-to-br from-purple-500 to-indigo-600',
+      D: 'bg-gradient-to-br from-indigo-500 to-blue-600',
+      E: 'bg-gradient-to-br from-blue-500 to-cyan-600',
+      F: 'bg-gradient-to-br from-cyan-500 to-teal-600',
+      G: 'bg-gradient-to-br from-teal-500 to-emerald-600',
+      H: 'bg-gradient-to-br from-emerald-500 to-green-600',
+      I: 'bg-gradient-to-br from-green-500 to-lime-600',
+      J: 'bg-gradient-to-br from-lime-500 to-yellow-600',
+      K: 'bg-gradient-to-br from-yellow-500 to-amber-600',
+      L: 'bg-gradient-to-br from-amber-500 to-orange-600',
+      M: 'bg-gradient-to-br from-orange-500 to-red-600',
+      N: 'bg-gradient-to-br from-rose-500 to-pink-600',
+      O: 'bg-gradient-to-br from-fuchsia-500 to-purple-600',
+      P: 'bg-gradient-to-br from-violet-500 to-purple-600',
+      Q: 'bg-gradient-to-br from-purple-600 to-indigo-700',
+      R: 'bg-gradient-to-br from-blue-600 to-indigo-700',
+      S: 'bg-gradient-to-br from-sky-500 to-blue-600',
+      T: 'bg-gradient-to-br from-cyan-600 to-blue-700',
+      U: 'bg-gradient-to-br from-teal-600 to-cyan-700',
+      V: 'bg-gradient-to-br from-emerald-600 to-teal-700',
+      W: 'bg-gradient-to-br from-green-600 to-emerald-700',
+      X: 'bg-gradient-to-br from-lime-600 to-green-700',
+      Y: 'bg-gradient-to-br from-amber-600 to-yellow-700',
+      Z: 'bg-gradient-to-br from-orange-600 to-red-700'
+    }
+
+    return gradients[letter] || 'bg-gradient-to-br from-gray-500 to-gray-600'
+  }
+
   const initials = getInitials(email.email_address)
 
   // Check if email has phone number
@@ -60,7 +93,7 @@ const EmailCard: React.FC<EmailCardProps> = ({
               ${
                 isSelected
                   ? 'bg-blue-600 shadow-sm'
-                  : 'bg-gradient-to-br from-blue-500 to-purple-600 group-hover:shadow-sm'
+                  : `${getGradientByLetter(initials)} group-hover:shadow-sm`
               }
             `}
           >

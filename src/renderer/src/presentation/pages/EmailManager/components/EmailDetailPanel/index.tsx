@@ -1,17 +1,7 @@
 // src/renderer/src/presentation/pages/EmailManager/components/EmailDetailPanel/index.tsx
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Globe,
-  Shield,
-  Key,
-  SlidersHorizontal,
-  Plus,
-  User,
-  Trash2,
-  Database,
-  X
-} from 'lucide-react'
+import { Globe, Shield, Key, User, Trash2, Database, X } from 'lucide-react'
 import {
   Email,
   Email2FA,
@@ -303,8 +293,8 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
   return (
     <div className="h-full flex flex-col bg-transparent">
       {/* Header Section */}
-      <div className="flex-none border-b border-gray-200 dark:border-gray-700 bg-transparent">
-        <div className="px-6 py-4">
+      <div className="flex-none  bg-transparent">
+        <div className="px-6 pt-4 py-2">
           <div className="flex items-start justify-between">
             {/* Email Info */}
             <div className="flex items-start gap-3">
@@ -372,14 +362,6 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
                   ← Back to Services
                 </CustomButton>
               )}
-              <button
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Filter (Coming Soon)"
-              >
-                <SlidersHorizontal className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-              </button>
-
-              {/* ✅ THÊM MỚI: Delete Email Button */}
               {onDeleteEmail && (
                 <button
                   onClick={handleDeleteEmail}
@@ -389,21 +371,13 @@ const EmailDetailPanel: React.FC<EmailDetailPanelProps> = ({
                   <Trash2 className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
                 </button>
               )}
-
-              <CustomButton
-                variant="primary"
-                size="sm"
-                icon={Plus}
-                className="p-2 h-8 w-8 bg-blue-600 hover:bg-blue-700"
-                children={undefined}
-              />
             </div>
           </div>
         </div>
       </div>
 
       {/* Tab Navigation - Always show */}
-      <div className="flex-none border-b border-gray-200 dark:border-gray-700 bg-transparent">
+      <div className="flex-none border-b border-border-default bg-transparent">
         <div className="px-6">
           <div className="flex space-x-6 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
