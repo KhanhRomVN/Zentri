@@ -279,8 +279,14 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
     const loadQueryHistory = async () => {
       if (!isOpen) return
 
+      // ✅ CHỈ load history khi Edit table (có editingTable)
+      if (!editingTable) {
+        setQueryHistory([])
+        return
+      }
+
       try {
-        const history = await databaseService.getAllQueryHistory()
+        const history = await databaseService.getAllQueryHistory(editingTable.id)
         // Convert từ QueryHistory type sang QueryHistoryItem type
         const convertedHistory = history.map((h) => ({
           id: h.id,
@@ -297,7 +303,7 @@ const TableDrawer: React.FC<TableDrawerProps> = ({ isOpen, onClose, onSubmit, ed
     }
 
     loadQueryHistory()
-  }, [isOpen])
+  }, [isOpen, editingTable])
 
   useEffect(() => {
     // Skip rebuild nếu đang load editing table
@@ -596,6 +602,8 @@ FUZZY MATCHING RULES:
 
   // Handle preview history item
   const handlePreviewHistory = (item: QueryHistoryItem) => {
+    console.log('[DEBUG PreviewHistory] Original query:', item.query)
+
     // Backup current state (cần backup cả 3 phần)
     setCurrentStateBackup({
       prompt: promptInput,
@@ -608,6 +616,8 @@ FUZZY MATCHING RULES:
 
     // ✅ Parse query thành 3 phần và set riêng biệt
     const parsed = parseSQLQuery(item.query)
+    console.log('[DEBUG PreviewHistory] Parsed:', parsed)
+
     setSelectClause(parsed.select)
     setFromClause(parsed.from)
     setWhereClause(parsed.where)

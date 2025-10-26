@@ -314,7 +314,6 @@ export class DatabaseService {
       `CREATE TABLE IF NOT EXISTS service_account_secrets (
         id TEXT PRIMARY KEY,
         service_account_id TEXT NOT NULL,
-        secret_name TEXT,
         secret TEXT NOT NULL,
         expire_at TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -359,6 +358,51 @@ export class DatabaseService {
 
     for (const query of queries) {
       await window.electronAPI.sqlite.runQuery(query)
+    }
+
+    // ✅ Migration: Remove secret_name column if exists
+    try {
+      // Check if column exists
+      const tableInfo = await window.electronAPI.sqlite.getAllRows(
+        `PRAGMA table_info(service_account_secrets)`
+      )
+      const hasSecretName = tableInfo.some((col: any) => col.name === 'secret_name')
+
+      if (hasSecretName) {
+        console.log('[Migration] Removing secret_name column from service_account_secrets')
+
+        // SQLite không hỗ trợ DROP COLUMN trực tiếp, phải recreate table
+        await window.electronAPI.sqlite.runQuery(`
+      CREATE TABLE service_account_secrets_new (
+        id TEXT PRIMARY KEY,
+        service_account_id TEXT NOT NULL,
+        secret TEXT NOT NULL,
+        expire_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (service_account_id) REFERENCES service_accounts (id) ON DELETE CASCADE
+      )
+    `)
+
+        // Copy data (excluding secret_name)
+        await window.electronAPI.sqlite.runQuery(`
+      INSERT INTO service_account_secrets_new (id, service_account_id, secret, expire_at, created_at, updated_at)
+      SELECT id, service_account_id, secret, expire_at, created_at, updated_at
+      FROM service_account_secrets
+    `)
+
+        // Drop old table
+        await window.electronAPI.sqlite.runQuery(`DROP TABLE service_account_secrets`)
+
+        // Rename new table
+        await window.electronAPI.sqlite.runQuery(`
+      ALTER TABLE service_account_secrets_new RENAME TO service_account_secrets
+    `)
+
+        console.log('[Migration] Successfully removed secret_name column')
+      }
+    } catch (migrationError) {
+      console.error('[Migration] Failed:', migrationError)
     }
   }
 
