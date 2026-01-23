@@ -11,6 +11,7 @@
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
+    "ignoreDeprecations": "6.0",
     "noEmit": true,
     "jsx": "react-jsx",
 
@@ -19,13 +20,12 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-
-    "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "src/presentation/components/speaking/form/SpeakingEditConversationalRepetitionForm/.tsx"]
+  "include": [
+    "src",
+    "src/presentation/components/speaking/form/SpeakingEditConversationalRepetitionForm/.tsx"
+  ]
 }

@@ -1,67 +1,100 @@
-# Zentri
+# Template Electron App
 
-**Zentri - Your Central Hub for Digital Serenity.** Zentri is the secure, multi-platform vault for your identity, accounts, and secrets. Manage everything from personal details and 2FA keys to API credentials in one tranquil, encrypted space. Reclaim control and find your center in the digital chaos.
+Professional, production-ready Electron application template featuring a modern tech stack and best practices.
 
-I. Thông tin cá nhân
+## Usage
 
-1. Thông tin cơ bản
+This is a CLI tool to bootstrap a new Electron application.
 
-- Họ và tên
-- Ngày, tháng, năm sinh
-- Giới tính
-- Nơi sinh, tạm trú, thường trú
-- Tên gọi khác/biệt danh/bí danh
+### Scaffold a new project
 
-2. Thông tin nhận dạng
+Use `npx` (recommended) to create a new project in seconds:
 
-- CCCD
-- Dấu hiệu nhận biết
-- Ảnh chân dung
+```bash
+npx @khanhromvn/create-electron-app
+```
 
-3. Thông tin liên lạc
+Then follow the interactive prompts to set up your project name.
 
-- Email
-- Số điện thoại
-- Mạng xã hội
+After scaffolding:
 
-4. Thông tin sức khỏe
+```bash
+cd <your-project-name>
+npm install
+npm run dev
+```
 
-II. Lịch sử học vấn & công tác (ghi sự kiện quá khứ)
+## Features
 
-1. Học vấn và đào tạo
+- 🏗 **Architecture**: Feature-based folder structure for scalability.
+- ⚡ **Tech Stack**: Electron, React, TypeScript, Vite.
+- 🎨 **Styling**: TailwindCSS with shadcn/ui integration.
+- 🎭 **Theming**: Advanced theme system with presets (Light/Dark/System).
+- 🧪 **Testing**: Vitest ready for Unit and Integration tests.
+- 🧹 **Code Quality**: ESLint, Prettier, Husky, lint-staged.
+- 📦 **Build**: efficient build process with electron-builder.
 
-- Trường đã học (cấp tiểu học → đại học), chuyên ngành, bằng cấp, năm tốt nghiệp
+## Project Structure
 
-2. Lịch sử nghề nghiệp / công tác
+```bash
+src/
+├── main/           # Main process
+│   ├── core/       # Core logic (WindowManager, Config)
+│   ├── features/   # Main process features
+│   └── index.ts    # Entry point
+├── preload/        # Preload scripts
+│   ├── api/        # Exposed APIs
+│   └── index.ts    # Entry point
+└── renderer/       # Renderer process (React)
+    ├── src/
+    │   ├── core/       # Core providers, routes, theme
+    │   ├── features/   # Feature modules (Dashboard, etc)
+    │   ├── shared/     # Shared components, hooks, utils
+    │   ├── assets/     # Static assets
+    │   └── main.tsx    # Entry point
+```
 
-- Nơi làm việc trước đây (tên tổ chức, vị trí, thời gian)
-- Lịch sử thay đổi công việc/địa điểm làm việc
+## Development (Contributing)
 
-3. Lịch sử cư trú & di chuyển
+If you want to contribute to this template or run it locally as a standalone app:
 
-- Địa chỉ từng cư trú, thời gian cư trú, lý do chuyển đi
-- Lịch sử di chuyển thường xuyên (tỉnh/thành, quốc gia)
-  III. Quan hệ & mạng lưới xã hội
+### Prerequisites
 
-1. Quan hệ gia đình
-2. Quan hệ bạn bè
-3. Quan hệ xã hội, nghề nghiệp (xã giao)
-4. Quan hệ bậc trên
+- Node.js >= 18
+- npm or yarn
 
-IV. Hoạt động & Sự kiện liên quan 5. Lịch sử tham gia sự kiện
+### Installation
 
-- Tên sự kiện, vai trò, ngày, địa điểm
+```bash
+# Clone the repository
+git clone <repository-url>
 
-2. Hành vi đáng chú ý / lặp lại
+# Install dependencies
+npm install
 
-- Mô tả hành vi, thời điểm, bối cảnh, bằng chứng (ảnh/video)
+# Start development server
+npm run dev
+```
 
-V. Sức khỏe & Tâm lý
+## Scripts
 
-1. Tiền sử bệnh tật / hiện trạng sức khỏe
+- `npm run dev`: Start development server.
+- `npm run build`: Build for production.
+- `npm test`: Run tests.
+- `npm run lint`: Lint code.
+- `npm run format`: Format code.
 
-- Bệnh mãn tính, dị ứng, thuốc đang dùng
+## Documentation
 
-2. Đánh giá tâm lý / ghi chú chuyên gia (nếu có)
+- [Architecture](./docs/ARCHITECTURE.md)
+- [Setup](./docs/SETUP.md)
+- [Development](./docs/DEVELOPMENT.md)
+- [Dependencies](./docs/DEPENDENCIES.md)
 
-- Báo cáo đánh giá, dấu hiệu rối loạn hành vi, nguy cơ tự/ tái hại
+## Contributing
+
+Please read [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+
+MIT
