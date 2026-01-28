@@ -1,6 +1,8 @@
 import { RouteObject } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
-import DashboardPage from '../../features/dashboard';
+import Dashboard from '../../features/dashboard';
+import AccountManager from '../../features/email';
+import MailClient from '../../features/mail';
 
 export const routes: RouteObject[] = [
   {
@@ -8,16 +10,16 @@ export const routes: RouteObject[] = [
     element: <MainLayout />,
     children: [
       {
-        path: '',
-        element: <DashboardPage />,
+        index: true,
+        element: <Dashboard />,
       },
       {
-        path: 'analytics',
-        element: (
-          <div className="p-6">
-            <h1 className="text-2xl font-bold">Analytics</h1>
-          </div>
-        ),
+        path: 'email',
+        element: <AccountManager />,
+      },
+      {
+        path: 'mail',
+        element: <MailClient />,
       },
     ],
   },

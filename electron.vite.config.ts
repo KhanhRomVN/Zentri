@@ -15,6 +15,7 @@ export default defineConfig({
       rollupOptions: {
         external: [
           'electron',
+          'sqlite3',
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           ...Object.keys(require('./package.json').dependencies || {}),
         ],
@@ -35,6 +36,7 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
+        '@': resolve('src/renderer/src'),
         '@renderer': resolve('src/renderer/src'),
         '@shared': resolve('src/renderer/src/shared'),
         '@core': resolve('src/renderer/src/core'),

@@ -77,3 +77,38 @@
 }
 
 /* Animations */
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+  opacity: 0.2;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+  opacity: 0.3;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-secondary) transparent;
+}
+/* Code Diff Highlighting */
+.code-line-added {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+}
+
+.code-line-deleted {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}

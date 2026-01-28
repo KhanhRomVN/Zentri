@@ -1,5 +1,336 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog, BrowserWindow, app } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as sqlite3 from 'sqlite3';
+import { Database } from 'sqlite3';
+import { setupEmailHandlers } from './email';
+
+let db: Database | null = null;
+
+// Storage file path
+const getStorageFilePath = () => {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'email-manager-config.json');
+};
+
+function setupStorageHandlers() {
+  // Set storage value
+  ipcMain.handle('storage:set', async (_event, key: string, value: any) => {
+    try {
+      const storagePath = getStorageFilePath();
+      let data: Record<string, any> = {};
+
+      // Read existing data if file exists
+      if (fs.existsSync(storagePath)) {
+        const fileContent = fs.readFileSync(storagePath, 'utf8');
+        try {
+          data = JSON.parse(fileContent);
+        } catch (parseError) {
+          console.warn('Failed to parse storage file, creating new one');
+          data = {};
+        }
+      }
+
+      // Update data
+      data[key] = value;
+
+      // Write back to file
+      fs.writeFileSync(storagePath, JSON.stringify(data, null, 2), 'utf8');
+    } catch (error) {
+      console.error('Error setting storage value:', error);
+      throw error;
+    }
+  });
+
+  // Get storage value
+  ipcMain.handle('storage:get', async (_event, key: string) => {
+    try {
+      const storagePath = getStorageFilePath();
+
+      if (!fs.existsSync(storagePath)) {
+        return null;
+      }
+
+      const fileContent = fs.readFileSync(storagePath, 'utf8');
+      try {
+        const data = JSON.parse(fileContent);
+        return data[key] || null;
+      } catch (parseError) {
+        console.warn('Failed to parse storage file');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting storage value:', error);
+      return null;
+    }
+  });
+
+  // Remove storage value
+  ipcMain.handle('storage:remove', async (_event, key: string) => {
+    try {
+      const storagePath = getStorageFilePath();
+
+      if (!fs.existsSync(storagePath)) {
+        return;
+      }
+
+      const fileContent = fs.readFileSync(storagePath, 'utf8');
+      try {
+        const data = JSON.parse(fileContent);
+        delete data[key];
+        fs.writeFileSync(storagePath, JSON.stringify(data, null, 2), 'utf8');
+      } catch (parseError) {
+        console.warn('Failed to parse storage file');
+      }
+    } catch (error) {
+      console.error('Error removing storage value:', error);
+      throw error;
+    }
+  });
+}
+
+function setupDatabaseHandlers() {
+  // Get main window for dialogs
+  const getMainWindow = (): BrowserWindow | null => {
+    const windows = BrowserWindow.getAllWindows();
+    return windows.length > 0 ? windows[0] : null;
+  };
+
+  // Dialog handlers
+  ipcMain.handle('dialog:save', async (_event, options) => {
+    const mainWindow = getMainWindow();
+    if (!mainWindow) throw new Error('Main window not available');
+
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: options.title || 'Save File',
+        defaultPath: options.defaultPath || 'database.db',
+        filters: options.filters || [
+          { name: 'Database Files', extensions: ['db', 'sqlite'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      return {
+        canceled: result.canceled,
+        filePath: result.filePath,
+      };
+    } catch (error) {
+      console.error('Error in dialog:save:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('dialog:open', async (_event, options) => {
+    const mainWindow = getMainWindow();
+    if (!mainWindow) throw new Error('Main window not available');
+
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: options.title || 'Open File',
+        filters: options.filters || [
+          { name: 'Database Files', extensions: ['db', 'sqlite'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: options.properties || ['openFile'],
+      });
+
+      return {
+        canceled: result.canceled,
+        filePaths: result.filePaths,
+      };
+    } catch (error) {
+      console.error('Error in dialog:open:', error);
+      throw error;
+    }
+  });
+
+  // File system handlers
+  ipcMain.handle('fs:exists', async (_event, filePath: string) => {
+    try {
+      return fs.existsSync(filePath);
+    } catch (error) {
+      console.error('Error checking file existence:', error);
+      return false;
+    }
+  });
+
+  ipcMain.handle(
+    'fs:createDirectory',
+    async (_event, dirPath: string, options?: { recursive?: boolean }) => {
+      try {
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: options?.recursive ?? true });
+        }
+      } catch (error) {
+        console.error('Error creating directory:', error);
+        throw error;
+      }
+    },
+  );
+
+  // SQLite handlers
+  ipcMain.handle('sqlite:create', async (_event, dbPath: string) => {
+    try {
+      // Close existing database if open
+      if (db) {
+        await new Promise<void>((resolve, reject) => {
+          db!.close((err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+        db = null;
+      }
+
+      // Create new database with callback to ensure it's ready
+      return new Promise<void>((resolve, reject) => {
+        db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+          if (err) {
+            db = null;
+            reject(err);
+          } else {
+            // Database is successfully created and ready
+            resolve();
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error creating database:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('sqlite:open', async (_event, dbPath: string) => {
+    try {
+      // Close existing database if open
+      if (db) {
+        await new Promise<void>((resolve) => {
+          const dbToClose = db;
+          db = null; // Clear reference before close
+
+          dbToClose!.close((err) => {
+            if (err) {
+              console.warn('Warning: Error closing previous database:', err);
+              resolve();
+            } else {
+              resolve();
+            }
+          });
+        });
+      }
+
+      // Wait a bit after closing
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Open new database
+      return new Promise<void>((resolve, reject) => {
+        const newDb = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            db = newDb;
+            setTimeout(() => resolve(), 50);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error opening database:', error);
+      db = null;
+      throw error;
+    }
+  });
+
+  ipcMain.handle('sqlite:close', async () => {
+    try {
+      if (db) {
+        await new Promise<void>((resolve, reject) => {
+          db!.close((err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+        db = null;
+      }
+    } catch (error) {
+      console.error('Error closing database:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('sqlite:run', async (_event, query: string, params: any[] = []) => {
+    try {
+      if (!db) throw new Error('Database not connected');
+
+      return new Promise((resolve, reject) => {
+        db!.run(query, params, function (err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({
+              lastID: this.lastID,
+              changes: this.changes,
+            });
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error running query:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('sqlite:all', async (_event, query: string, params: any[] = []) => {
+    try {
+      if (!db) throw new Error('Database not connected');
+
+      return new Promise((resolve, reject) => {
+        db!.all(query, params, (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error running select query:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('sqlite:get', async (_event, query: string, params: any[] = []) => {
+    try {
+      if (!db) throw new Error('Database not connected');
+
+      return new Promise((resolve, reject) => {
+        db!.get(query, params, (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error running get query:', error);
+      throw error;
+    }
+  });
+}
 
 export function setupEventHandlers() {
   ipcMain.handle('ping', () => 'pong');
+  setupStorageHandlers();
+  setupDatabaseHandlers();
+  setupEmailHandlers();
+}
+
+// Export for cleanup on app quit
+export function closeDatabase() {
+  if (db) {
+    db.close((err) => {
+      if (err) console.error('Error closing database on app quit:', err);
+    });
+  }
 }
