@@ -378,11 +378,21 @@ const AccountManager = () => {
                     <div className="relative shrink-0">
                       <div
                         className={cn(
-                          'h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg transition-transform group-hover:scale-105',
-                          theme.avatar,
+                          'h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg transition-transform group-hover:scale-105 overflow-hidden',
+                          !account.avatar?.startsWith('http') && theme.avatar,
+                          account.avatar?.startsWith('http') &&
+                            'bg-background border border-border',
                         )}
                       >
-                        {account.avatar}
+                        {account.avatar?.startsWith('http') ? (
+                          <img
+                            src={account.avatar}
+                            alt={account.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          account.avatar || account.name[0]
+                        )}
                       </div>
                       <div
                         className={cn(

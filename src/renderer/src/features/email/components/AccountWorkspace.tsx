@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Account, ServiceItem, ProfileMetadata } from '../mock/accounts';
 import { cn } from '../../../shared/lib/utils';
 import { User, Mail, LayoutGrid, Globe, Trash2 } from 'lucide-react';
-import CoreTab from './tabs/CoreTab';
-import ProfileTab from './tabs/ProfileTab';
-import MailTab from './tabs/MailTab';
-import ServiceTab from './tabs/ServiceTab';
+import CoreTab from './tabs/core';
+import ProfileTab from './tabs/profile';
+import MailTab from './tabs/mail';
+import ServiceTab from './tabs/service';
 import SessionMonitorModal from './SessionMonitorModal';
 
 interface AccountWorkspaceProps {
