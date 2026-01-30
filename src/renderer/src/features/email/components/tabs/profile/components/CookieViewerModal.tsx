@@ -76,7 +76,7 @@ export const CookieViewerModal = ({ isOpen, onClose, cookies = [] }: CookieViewe
         {/* Header */}
         <div className="px-6 py-5 border-b border-border bg-muted/30 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center text-primary">
               <Database className="w-5 h-5" />
             </div>
             <div>
@@ -111,7 +111,7 @@ export const CookieViewerModal = ({ isOpen, onClose, cookies = [] }: CookieViewe
               placeholder="Search by name or domain..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full h-11 pl-10 pr-4 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
         </div>

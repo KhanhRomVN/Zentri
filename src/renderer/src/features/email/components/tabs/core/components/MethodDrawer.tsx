@@ -79,7 +79,7 @@ export const MethodDrawer = ({
               <button
                 key={m.id}
                 onClick={() => setNewMethodTypeId(m.id)}
-                className="flex items-center gap-4 p-3 rounded-xl border hover:border-primary/40 hover:bg-muted/30 text-left transition-all"
+                className="flex items-center gap-4 p-3 rounded-md border hover:border-primary/40 hover:bg-muted/30 text-left transition-all"
               >
                 <div
                   className={cn(

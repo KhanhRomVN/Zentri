@@ -117,7 +117,7 @@ export const UnifiedDrawer = ({
                         <button
                           key={m.id}
                           onClick={() => setNewMethodTypeId!(m.id)}
-                          className="flex items-center gap-4 p-3 rounded-xl border border-border hover:border-primary/40 hover:bg-muted/30 transition-all text-left"
+                          className="flex items-center gap-4 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-muted/30 transition-all text-left"
                         >
                           <div
                             className={cn(
@@ -355,7 +355,7 @@ export const UnifiedDrawer = ({
             <div className="pt-6 border-t border-border mt-auto flex flex-col gap-3">
               <button
                 onClick={onCompleteReview}
-                className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
               >
                 <Save className="w-5 h-5" />
                 Complete Update

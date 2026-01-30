@@ -50,7 +50,7 @@ export const SecretsSection = ({
               key={secret.id}
               onClick={() => !isDeleted && onSecretClick(secret.id)}
               className={cn(
-                'group relative flex items-center gap-4 py-3 px-4 rounded-xl border transition-all',
+                'group relative flex items-center gap-4 py-3 px-4 rounded-md border transition-all',
                 !isDeleted
                   ? 'cursor-pointer border-border hover:border-primary/40'
                   : 'cursor-not-allowed border-red-500 border-dashed bg-red-500/5 opacity-60',
@@ -60,7 +60,7 @@ export const SecretsSection = ({
                 isModified && !isDeleted && 'border-yellow-500 border-dashed',
               )}
             >
-              <div className="w-12 h-12 flex items-center justify-center shrink-0 bg-amber-500/10 rounded-xl text-amber-500">
+              <div className="w-12 h-12 flex items-center justify-center shrink-0 bg-amber-500/10 rounded-md text-amber-500">
                 <Lock className="w-6 h-6" />
               </div>
               <div className="flex flex-col min-w-0 flex-1">

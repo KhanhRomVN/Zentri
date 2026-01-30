@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GitGraph, Info, FolderOpen, FilePlus, X, AlertCircle } from 'lucide-react';
+import { GitGraph, Info, FolderOpen, FilePlus, X } from 'lucide-react';
 
 const SettingPage = () => {
   const [folderPath, setFolderPath] = useState('');
@@ -22,16 +22,28 @@ const SettingPage = () => {
     );
   };
 
+  const extractData = (res: any) => {
+    if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
+      return res.data;
+    }
+    return res;
+  };
+
   const handleSelectFolder = async () => {
     try {
       // @ts-ignore
       const result = await window.electron.ipcRenderer.invoke('git:select-folder');
       if (result) {
-        // Check if email.json exists
+        // Check if entries exist by trying to read emails.json
         // @ts-ignore
-        const data = await window.electron.ipcRenderer.invoke('git:read-data', result);
+        const rawData = await window.electron.ipcRenderer.invoke(
+          'git:read-data',
+          result,
+          'emails.json',
+        );
+        const data = extractData(rawData);
 
-        if (data === null) {
+        if (data === null || data === undefined) {
           // File not found, show modal
           setTempPath(result);
           setShowCreateModal(true);
@@ -47,16 +59,26 @@ const SettingPage = () => {
 
   const handleCreateFile = async () => {
     try {
+      // Create emails.json
       // @ts-ignore
       await window.electron.ipcRenderer.invoke('git:write-data', {
         folderPath: tempPath,
-        data: [], // Initial empty account list
+        filename: 'emails.json',
+        data: [],
       });
+      // Create regs.json
+      // @ts-ignore
+      await window.electron.ipcRenderer.invoke('git:write-data', {
+        folderPath: tempPath,
+        filename: 'regs.json',
+        data: { sessions: [], accounts: [] },
+      });
+
       saveConfiguration(tempPath);
       setShowCreateModal(false);
     } catch (error) {
-      console.error('Failed to create email.json:', error);
-      alert('Failed to create file. Please check folder permissions.');
+      console.error('Failed to initialize repository files:', error);
+      alert('Failed to create files. Please check folder permissions.');
     }
   };
 
@@ -81,24 +103,24 @@ const SettingPage = () => {
             <Info className="w-3.5 h-3.5 text-muted-foreground" />
           </label>
           <div className="flex gap-2">
-            <div className="flex-1 h-11 rounded-xl border border-border bg-muted/10 px-4 text-xs flex items-center text-muted-foreground overflow-hidden font-mono">
+            <div className="flex-1 h-11 rounded-md border border-border bg-muted/10 px-4 text-xs flex items-center text-muted-foreground overflow-hidden font-mono">
               {folderPath || 'No folder selected'}
             </div>
             <button
               onClick={handleSelectFolder}
-              className="px-6 h-11 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 whitespace-nowrap"
+              className="px-6 h-11 rounded-md bg-primary text-primary-foreground font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 whitespace-nowrap"
             >
               <FolderOpen className="w-4 h-4" />
               Select Folder
             </button>
           </div>
           <p className="text-[10px] text-muted-foreground ml-1 italic">
-            * Data will be synchronized via file 'email.json' inside this directory.
+            * Data will be synchronized via 'emails.json' and 'regs.json' inside this directory.
           </p>
         </div>
 
         {isSaved && (
-          <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-sm font-medium animate-in fade-in zoom-in duration-300">
+          <div className="p-4 rounded-md bg-green-500/10 border border-green-500/20 text-green-500 text-sm font-medium animate-in fade-in zoom-in duration-300">
             Repository folder updated!
           </div>
         )}
@@ -123,25 +145,25 @@ const SettingPage = () => {
               <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6">
                 <FilePlus className="w-8 h-8" />
               </div>
-              <h2 className="text-xl font-bold mb-2">File 'emails.json' not found</h2>
+              <h2 className="text-xl font-bold mb-2">Initialize Repository?</h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-                The selected folder does not contain an{' '}
-                <code className="bg-muted px-1 rounded text-foreground">emails.json</code> file.
-                Would you like us to create one for you to start storing your accounts?
+                The selected folder is missing database files. Would you like us to initialize{' '}
+                <code className="bg-muted px-1 rounded text-foreground">emails.json</code> and{' '}
+                <code className="bg-muted px-1 rounded text-foreground">regs.json</code> for you?
               </p>
 
               <div className="flex gap-3 w-full">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 h-12 rounded-xl border border-border font-bold text-sm hover:bg-muted transition-all"
+                  className="flex-1 h-12 rounded-md border border-border font-bold text-sm hover:bg-muted transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateFile}
-                  className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
+                  className="flex-1 h-12 rounded-md bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
                 >
-                  Create & Save
+                  Initialize & Save
                 </button>
               </div>
             </div>

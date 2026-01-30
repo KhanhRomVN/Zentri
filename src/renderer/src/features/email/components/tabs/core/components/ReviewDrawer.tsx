@@ -154,7 +154,7 @@ export const ReviewDrawer = ({
       </div>
       <button
         onClick={onComplete}
-        className="mt-8 w-full h-12 bg-primary text-primary-foreground rounded-xl font-bold flex items-center justify-center gap-2 transform active:scale-[0.98] transition-all"
+        className="mt-8 w-full h-12 bg-primary text-primary-foreground rounded-md font-bold flex items-center justify-center gap-2 transform active:scale-[0.98] transition-all"
       >
         <Save className="w-5 h-5" />
         Complete Update

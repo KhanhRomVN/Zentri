@@ -177,7 +177,7 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                 {account.services.map((service, idx) => (
                   <div
                     key={idx}
-                    className="group relative p-4 rounded-xl border border-border/50 bg-card/30 hover:bg-card hover:border-primary/20 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden"
+                    className="group relative p-4 rounded-md border border-border/50 bg-card/30 hover:bg-card hover:border-primary/20 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative z-10 flex flex-col gap-3">
@@ -210,7 +210,7 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-accent/20 border border-border/50">
+                  <div className="flex items-center justify-between p-4 rounded-md bg-accent/20 border border-border/50">
                     <div className="flex items-center gap-3">
                       <div
                         className={cn(
@@ -240,7 +240,7 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-accent/20 border border-border/50">
+                  <div className="flex items-center justify-between p-4 rounded-md bg-accent/20 border border-border/50">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
                         <Globe className="w-5 h-5" />

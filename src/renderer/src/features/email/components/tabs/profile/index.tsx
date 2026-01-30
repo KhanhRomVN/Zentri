@@ -126,7 +126,7 @@ const ProfileTab = ({ account, profile, repoPath }: ProfileTabProps) => {
         {/* Header Section - Transparent & Compact */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-primary-foreground text-xl font-bold shadow-sm overflow-hidden bg-primary">
+            <div className="w-14 h-14 rounded-md flex items-center justify-center text-primary-foreground text-xl font-bold shadow-sm overflow-hidden bg-primary">
               {account.avatar?.startsWith('http') ? (
                 <img
                   src={account.avatar}

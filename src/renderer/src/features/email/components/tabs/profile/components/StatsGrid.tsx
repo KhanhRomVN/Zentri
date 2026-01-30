@@ -17,7 +17,7 @@ export const MetadataCard = ({
   <div
     onClick={onClick}
     className={cn(
-      'flex flex-col gap-3 p-4 rounded-xl border border-border bg-card shadow-sm transition-all duration-300',
+      'flex flex-col gap-3 p-4 rounded-md border border-border bg-card shadow-sm transition-all duration-300',
       onClick ? 'cursor-pointer hover:border-primary/40 hover:shadow-md' : '',
     )}
   >

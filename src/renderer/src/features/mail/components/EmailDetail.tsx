@@ -87,7 +87,7 @@ const EmailDetail = ({ email }: EmailDetailProps) => {
             </div>
           </div>
 
-          <div className="flex items-start justify-between p-4 rounded-xl bg-card border border-border shadow-sm">
+          <div className="flex items-start justify-between p-4 rounded-md bg-card border border-border shadow-sm">
             <div className="flex items-center gap-4">
               <div
                 className={cn(
@@ -115,7 +115,7 @@ const EmailDetail = ({ email }: EmailDetailProps) => {
 
         {/* Content */}
         <div className="px-8 pb-8">
-          <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:font-bold prose-p:leading-relaxed prose-a:text-primary prose-img:rounded-xl">
+          <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:font-bold prose-p:leading-relaxed prose-a:text-primary prose-img:rounded-md">
             <div dangerouslySetInnerHTML={{ __html: email.content }} />
           </div>
         </div>
@@ -135,7 +135,7 @@ const EmailDetail = ({ email }: EmailDetailProps) => {
 
       {/* Reply Box */}
       <div className="p-6 border-t border-border mt-auto bg-background/50 backdrop-blur">
-        <button className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-accent/50 transition-colors shadow-sm text-left group">
+        <button className="flex items-center gap-3 w-full p-4 rounded-md border border-border bg-card hover:bg-accent/50 transition-colors shadow-sm text-left group">
           <div className="bg-primary/10 p-2 rounded-full text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
             <Reply className="h-5 w-5" />
           </div>

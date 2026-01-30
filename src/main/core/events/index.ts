@@ -328,6 +328,23 @@ export function setupEventHandlers() {
   setupDatabaseHandlers();
   setupEmailHandlers();
 
+  // Utility Fetch Handler to bypass CORS
+  ipcMain.handle('util:fetch', async (_event, url: string) => {
+    try {
+      const response = await fetch(url);
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      return {
+        success: response.ok,
+        status: response.status,
+        data: isJson ? await response.json() : await response.text(),
+        headers: Object.fromEntries(response.headers.entries()),
+      };
+    } catch (error: any) {
+      console.error(`Fetch error for ${url}:`, error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // 1. Select Git Folder
   ipcMain.handle('git:select-folder', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -342,13 +359,13 @@ export function setupEventHandlers() {
     'git:read-data',
     async (_event, folderPath: string, filename: string = 'emails.json') => {
       const filePath = path.join(folderPath, filename);
-      if (!fs.existsSync(filePath)) return null;
+      if (!fs.existsSync(filePath)) return { success: true, data: null };
       try {
         const content = fs.readFileSync(filePath, 'utf-8');
-        return JSON.parse(content);
-      } catch (e) {
+        return { success: true, data: JSON.parse(content) };
+      } catch (e: any) {
         console.error(`Error reading ${filename}:`, e);
-        return null;
+        return { success: false, error: e.message };
       }
     },
   );

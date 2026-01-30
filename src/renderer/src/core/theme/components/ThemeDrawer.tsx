@@ -34,7 +34,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             <button
               key={idx}
               onClick={() => applyPresetTheme(preset)}
-              className="relative flex flex-col p-3 rounded-xl transition-all overflow-hidden bg-card border border-border hover:border-primary/50 hover:scale-[1.02] duration-200 group text-left shadow-sm"
+              className="relative flex flex-col p-3 rounded-md transition-all overflow-hidden bg-card border border-border hover:border-primary/50 hover:scale-[1.02] duration-200 group text-left shadow-sm"
             >
               <div className="w-full h-24 rounded-lg overflow-hidden mb-3 relative border border-border/50">
                 <div className="h-3 w-full" style={{ backgroundColor: preset.tailwind.primary }} />

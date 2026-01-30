@@ -37,7 +37,7 @@ const DetailItem = ({
   subValue,
   colorTheme = 'gray',
 }: DetailItemProps) => (
-  <div className="flex items-start gap-3 p-3 rounded-xl border border-border/40 bg-card/50 hover:bg-card hover:border-primary/20 transition-all group">
+  <div className="flex items-start gap-3 p-3 rounded-md border border-border/40 bg-card/50 hover:bg-card hover:border-primary/20 transition-all group">
     <div
       className={cn(
         'w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors',

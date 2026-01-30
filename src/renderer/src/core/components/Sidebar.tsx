@@ -12,9 +12,13 @@ import {
   UploadCloud,
   AlertCircle,
   Loader2,
+  PlusCircle,
+  Search,
+  FileCode,
+  FolderTree,
+  Network,
 } from 'lucide-react';
 import ThemeDrawer from '../theme/components/ThemeDrawer';
-import { parseGitlabUrl, saveGitlabData } from '../../shared/services/gitlabService';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -79,10 +83,40 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
       color: '#a855f7', // purple-500
     },
     {
-      title: 'Accounts',
+      title: 'Email',
       href: '/email',
       icon: Users,
       color: '#f59e0b', // amber-500
+    },
+    {
+      title: 'Reg',
+      href: '/reg',
+      icon: PlusCircle,
+      color: '#22c55e', // green-500
+    },
+    {
+      title: 'Search',
+      href: '/search',
+      icon: Search,
+      color: '#eab308', // yellow-500
+    },
+    {
+      title: 'Script',
+      href: '/script',
+      icon: FileCode,
+      color: '#6366f1', // indigo-500
+    },
+    {
+      title: 'Category',
+      href: '/category',
+      icon: FolderTree,
+      color: '#ec4899', // pink-500
+    },
+    {
+      title: 'Proxy',
+      href: '/proxy',
+      icon: Network,
+      color: '#06b6d4', // cyan-500
     },
     {
       title: 'Settings',
@@ -169,11 +203,16 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
               background: isActive
                 ? `linear-gradient(to right, ${item.color}15, transparent)`
                 : undefined,
-              borderRight: isActive && !isCollapsed ? `3px solid ${item.color}` : 'none',
             })}
           >
             {({ isActive }) => (
               <>
+                {isActive && !isCollapsed && (
+                  <div
+                    className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-lg"
+                    style={{ backgroundColor: item.color }}
+                  />
+                )}
                 <item.icon
                   className={cn(
                     'w-5 h-5 flex-shrink-0 transition-colors',
@@ -216,7 +255,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
               <button
                 disabled={syncing}
                 onClick={handleSyncToCloud}
-                className="w-full h-10 rounded-xl bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-600 transition-all active:scale-95 shadow-md shadow-amber-500/20"
+                className="w-full h-10 rounded-md bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-600 transition-all active:scale-95 shadow-md shadow-amber-500/20"
               >
                 {syncing ? (
                   <Loader2 className="w-3.h-3 animate-spin" />
@@ -230,7 +269,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
             <button
               disabled={syncing}
               onClick={handleSyncToCloud}
-              className="relative w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center hover:bg-amber-600 transition-all active:scale-90"
+              className="relative w-10 h-10 rounded-md bg-amber-500 text-white flex items-center justify-center hover:bg-amber-600 transition-all active:scale-90"
               title="Unsaved Changes - Sync Now"
             >
               {syncing ? (
@@ -252,13 +291,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
           <div className="flex flex-col gap-2">
             <button
               onClick={() => setIsThemeDrawerOpen(true)}
-              className="w-10 h-10 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted transition-all"
+              className="w-10 h-10 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted transition-all"
             >
               <Palette className="w-5 h-5" />
             </button>
             <button
               onClick={() => setIsCollapsed(false)}
-              className="w-10 h-10 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+              className="w-10 h-10 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
             >
               <UnfoldHorizontal className="w-5 h-5" />
             </button>

@@ -51,7 +51,7 @@ export const TwoFactorSection = ({
               key={method.id}
               onClick={() => !isDeleted && onMethodClick(method.id)}
               className={cn(
-                'group relative flex items-center gap-4 py-3 px-4 rounded-xl border transition-all',
+                'group relative flex items-center gap-4 py-3 px-4 rounded-md border transition-all',
                 !isDeleted
                   ? 'cursor-pointer border-border hover:border-primary/40'
                   : 'cursor-not-allowed border-red-500 border-dashed bg-red-500/5 opacity-60',

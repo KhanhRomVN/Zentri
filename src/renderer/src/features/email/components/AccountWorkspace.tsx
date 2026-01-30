@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Account, ServiceItem, ProfileMetadata } from '../mock/accounts';
 import { cn } from '../../../shared/lib/utils';
-import { User, Mail, LayoutGrid, Globe, Trash2 } from 'lucide-react';
+import { User, Mail, LayoutGrid, Globe, Trash2, RefreshCcw } from 'lucide-react';
 import CoreTab from './tabs/core';
 import ProfileTab from './tabs/profile';
 import MailTab from './tabs/mail';
@@ -63,103 +63,153 @@ const AccountWorkspace = ({
         accountId={account.id}
       />
 
-      <div className="h-16 shrink-0 border-b border-border bg-background px-6 flex items-center justify-between animate-in slide-in-from-top-2 duration-300">
-        {/* Navigation Tabs */}
-        <nav className="flex items-center justify-between h-full w-full">
-          <div className="flex items-center gap-6 h-full">
-            <button
-              onClick={() => setActiveTab('Core')}
-              className={cn(
-                'h-full text-sm font-medium transition-colors flex items-center gap-2 border-b-2 px-1',
-                activeTab === 'Core'
-                  ? 'text-primary border-primary'
-                  : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border',
+      <div className="h-16 shrink-0 border-b border-border bg-background px-6 grid grid-cols-3 items-center animate-in slide-in-from-top-2 duration-300">
+        {/* Left: Account Info */}
+        <div className="flex items-center gap-3 justify-start min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-9 h-9 rounded-md overflow-hidden border border-border bg-muted">
+              {account.avatar ? (
+                <img
+                  src={account.avatar}
+                  alt={account.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
+                  <User className="w-5 h-5" />
+                </div>
               )}
-            >
-              <User className="w-4 h-4" />
-              Core
-            </button>
-
-            <button
-              onClick={() => setActiveTab('Profile')}
-              className={cn(
-                'h-full text-sm font-medium transition-colors flex items-center gap-2 border-b-2 px-1',
-                activeTab === 'Profile'
-                  ? 'text-primary border-primary'
-                  : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border',
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-background flex items-center justify-center p-0.5 border border-border">
+              {account.provider === 'gmail' && (
+                <div className="w-full h-full rounded-full bg-red-500" />
               )}
-            >
-              <User className="w-4 h-4" />
-              Profile
-            </button>
-
-            <button
-              onClick={() => setActiveTab('Mail')}
-              className={cn(
-                'h-full text-sm font-medium transition-colors flex items-center gap-2 border-b-2 px-1',
-                activeTab === 'Mail'
-                  ? 'text-primary border-primary'
-                  : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border',
+              {account.provider === 'hotmail' && (
+                <div className="w-full h-full rounded-full bg-blue-500" />
               )}
-            >
-              <Mail className="w-4 h-4" />
-              Mail
-            </button>
-
-            <button
-              onClick={() => setActiveTab('Service')}
-              className={cn(
-                'h-full text-sm font-medium transition-colors flex items-center gap-2 border-b-2 px-1',
-                activeTab === 'Service'
-                  ? 'text-primary border-primary'
-                  : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border',
+              {account.provider === 'protonmail' && (
+                <div className="w-full h-full rounded-full bg-purple-500" />
               )}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Service
-            </button>
+              {account.provider === 'icloud' && (
+                <div className="w-full h-full rounded-full bg-sky-500" />
+              )}
+              {account.provider === 'yahoo' && (
+                <div className="w-full h-full rounded-full bg-violet-600" />
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                if (
-                  account &&
-                  onDelete &&
-                  confirm(`Are you sure you want to delete account ${account.email}?`)
-                ) {
-                  onDelete(account.id);
-                }
-              }}
-              className="p-2 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
-              title="Delete Account"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={async () => {
-                setIsMonitorOpen(true);
-                try {
-                  // @ts-ignore
-                  await window.electron.ipcRenderer.invoke('email:open-login', {
-                    provider: account.provider,
-                    accountId: account.id,
-                    url: 'https://mail.google.com',
-                    profilePath: repoPath ? `${repoPath}/profiles/${account.id}` : undefined,
-                  });
-                } catch (error) {
-                  console.error('Failed to launch browser', error);
-                  setIsMonitorOpen(false); // Close on error init
-                }
-              }}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all border border-primary/20"
-            >
-              <Globe className="w-3.5 h-3.5" />
-              Launch Browser
-            </button>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-foreground truncate">{account.email}</h2>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 px-1.5 rounded-sm font-medium">
+                Active
+              </span>
+              {account.twoFactorEnabled && (
+                <span className="text-[10px] bg-blue-500/10 text-blue-600 px-1.5 rounded-sm font-medium">
+                  2FA On
+                </span>
+              )}
+            </div>
           </div>
-        </nav>
+        </div>
+
+        {/* Center: Navigation Tabs */}
+        <div className="flex items-center justify-center">
+          <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-lg">
+            {[
+              {
+                id: 'Core',
+                icon: User,
+                label: 'Core',
+                activeClass: 'bg-blue-500/10 text-blue-600',
+              },
+              {
+                id: 'Profile',
+                icon: User,
+                label: 'Profile',
+                activeClass: 'bg-indigo-500/10 text-indigo-600',
+              },
+              {
+                id: 'Mail',
+                icon: Mail,
+                label: 'Mail',
+                activeClass: 'bg-emerald-500/10 text-emerald-600',
+              },
+              {
+                id: 'Service',
+                icon: LayoutGrid,
+                label: 'Service',
+                activeClass: 'bg-orange-500/10 text-orange-600',
+              },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  'h-9 px-4 rounded-md text-sm font-medium transition-all flex items-center gap-2',
+                  activeTab === tab.id
+                    ? tab.activeClass
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                )}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => onUpdate?.(account)}
+            className="p-2 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+            title="Sync Account"
+          >
+            <RefreshCcw className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={async () => {
+              setIsMonitorOpen(true);
+              try {
+                // @ts-ignore
+                await window.electron.ipcRenderer.invoke('email:open-login', {
+                  provider: account.provider,
+                  accountId: account.id,
+                  url: 'https://mail.google.com',
+                  profilePath: repoPath ? `${repoPath}/profiles/${account.id}` : undefined,
+                });
+              } catch (error) {
+                console.error('Failed to launch browser', error);
+                setIsMonitorOpen(false); // Close on error init
+              }
+            }}
+            className="p-2 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+            title="Launch Browser"
+          >
+            <Globe className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => {
+              if (
+                account &&
+                onDelete &&
+                confirm(`Are you sure you want to delete account ${account.email}?`)
+              ) {
+                onDelete(account.id);
+              }
+            }}
+            className="p-2 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all"
+            title="Delete Account"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Workspace Content */}

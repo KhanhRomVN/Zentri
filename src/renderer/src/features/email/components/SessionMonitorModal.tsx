@@ -50,7 +50,7 @@ export default function SessionMonitorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-[400px] bg-background border border-border rounded-xl shadow-2xl p-6 relative animate-in zoom-in-95 duration-200">
+      <div className="w-[400px] bg-background border border-border rounded-md shadow-2xl p-6 relative animate-in zoom-in-95 duration-200">
         <h2 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
           <Database className="w-5 h-5 text-primary" />
           Session Monitor
@@ -84,7 +84,7 @@ export default function SessionMonitorModal({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-4 bg-muted/50 rounded-xl text-center border border-border shadow-sm">
+              <div className="p-4 bg-muted/50 rounded-md text-center border border-border shadow-sm">
                 <div className="text-3xl font-bold text-primary">
                   {stats?.cookies !== -1 ? stats?.cookies || 0 : '0'}
                 </div>
@@ -92,7 +92,7 @@ export default function SessionMonitorModal({
                   Cookies Captured
                 </div>
               </div>
-              <div className="p-4 bg-muted/50 rounded-xl text-center border border-border shadow-sm">
+              <div className="p-4 bg-muted/50 rounded-md text-center border border-border shadow-sm">
                 <div className="text-sm font-bold text-foreground h-full flex items-center justify-center">
                   <span className="bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded text-[10px]">
                     SECURED
@@ -110,7 +110,7 @@ export default function SessionMonitorModal({
 
             <button
               onClick={onClose}
-              className="w-full h-11 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
+              className="w-full h-11 bg-primary text-primary-foreground font-semibold rounded-md hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
             >
               Continue to Dashboard
             </button>

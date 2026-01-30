@@ -26,7 +26,7 @@ const EmailCard = ({ email, selected, onClick }: EmailCardProps) => {
     <div
       onClick={onClick}
       className={cn(
-        'flex flex-col gap-3 p-4 rounded-xl cursor-pointer transition-all border group relative',
+        'flex flex-col gap-3 p-4 rounded-md cursor-pointer transition-all border group relative',
         selected
           ? 'bg-primary/5 border-primary shadow-sm'
           : 'bg-card border-border hover:border-primary/50 hover:shadow-md',

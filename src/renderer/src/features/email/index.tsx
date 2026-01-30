@@ -12,6 +12,7 @@ import {
   RefreshCw,
   AlertCircle,
   Loader2,
+  User,
 } from 'lucide-react';
 import { cn } from '../../shared/lib/utils';
 import { Account, ServiceItem, ActivityItem, ProfileMetadata } from './mock/accounts';
@@ -55,52 +56,112 @@ const AccountManager = () => {
     return localStorage.getItem('gitlab_repo_folder');
   }, []);
 
+  const getAvatarColor = (identifier: string) => {
+    const colors = [
+      { bg: 'bg-red-500/15', text: 'text-red-500', hex: '#ef4444' }, // red-500
+      { bg: 'bg-orange-500/15', text: 'text-orange-500', hex: '#f97316' }, // orange-500
+      { bg: 'bg-amber-500/15', text: 'text-amber-500', hex: '#f59e0b' }, // amber-500
+      { bg: 'bg-green-500/15', text: 'text-green-500', hex: '#22c55e' }, // green-500
+      { bg: 'bg-emerald-500/15', text: 'text-emerald-500', hex: '#10b981' }, // emerald-500
+      { bg: 'bg-teal-500/15', text: 'text-teal-500', hex: '#14b8a6' }, // teal-500
+      { bg: 'bg-cyan-500/15', text: 'text-cyan-500', hex: '#06b6d4' }, // cyan-500
+      { bg: 'bg-sky-500/15', text: 'text-sky-500', hex: '#0ea5e9' }, // sky-500
+      { bg: 'bg-blue-500/15', text: 'text-blue-500', hex: '#3b82f6' }, // blue-500
+      { bg: 'bg-indigo-500/15', text: 'text-indigo-500', hex: '#6366f1' }, // indigo-500
+      { bg: 'bg-violet-500/15', text: 'text-violet-500', hex: '#8b5cf6' }, // violet-500
+      { bg: 'bg-purple-500/15', text: 'text-purple-500', hex: '#a855f7' }, // purple-500
+      { bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-500', hex: '#d946ef' }, // fuchsia-500
+      { bg: 'bg-pink-500/15', text: 'text-pink-500', hex: '#ec4899' }, // pink-500
+      { bg: 'bg-rose-500/15', text: 'text-rose-500', hex: '#f43f5e' }, // rose-500
+    ];
+
+    let hash = 0;
+    for (let i = 0; i < identifier.length; i++) {
+      hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  };
+
   const loadData = async (forceCloud = false) => {
     setLoading(true);
     setError(null);
     try {
       if (!gitlabFolder) {
+        console.warn('[Email] No gitlabFolder found in localStorage');
         setError('Please select a Git Repository Folder in Settings');
         return;
       }
 
+      console.log('[Email] Loading data from:', gitlabFolder);
+
       // Load from physical files on disk
       // @ts-ignore
-      const emailsData = await window.electron.ipcRenderer.invoke(
+      let emailsData = await window.electron.ipcRenderer.invoke(
         'git:read-data',
         gitlabFolder,
         'emails.json',
       );
+
+      console.log('[Email] Raw emailsData:', emailsData);
+
+      if (!emailsData) {
+        console.log('[Email] emails.json not found, initializing empty array');
+        emailsData = [];
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: 'emails.json',
+          data: [],
+        });
+      }
       // @ts-ignore
       const servicesData = await window.electron.ipcRenderer.invoke(
         'git:read-data',
         gitlabFolder,
         'services.json',
       );
+      console.log('[Email] servicesData:', servicesData);
+
       // @ts-ignore
       const activitiesData = await window.electron.ipcRenderer.invoke(
         'git:read-data',
         gitlabFolder,
         'recent_activities.json',
       );
+      console.log('[Email] activitiesData:', activitiesData);
+
       // @ts-ignore
       const profilesData = await window.electron.ipcRenderer.invoke(
         'git:read-data',
         gitlabFolder,
         'profiles.json',
       );
+      console.log('[Email] profilesData:', profilesData);
 
-      const loadedAccounts = emailsData || [];
+      const extractData = (res: any) => {
+        if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
+          return Array.isArray(res.data) ? res.data : typeof res.data === 'object' ? res.data : [];
+        }
+        return Array.isArray(res) ? res : res && typeof res === 'object' ? res : null;
+      };
+
+      const loadedEmails = extractData(emailsData);
+      const loadedAccounts = Array.isArray(loadedEmails) ? loadedEmails : [];
+
+      console.log('[Email] Processed loadedAccounts:', loadedAccounts.length);
+
       setAccounts(loadedAccounts);
-      setServices(servicesData || []);
-      setActivities(activitiesData || []);
-      setProfiles(profilesData || []);
+      setServices(Array.isArray(extractData(servicesData)) ? extractData(servicesData) : []);
+      setActivities(Array.isArray(extractData(activitiesData)) ? extractData(activitiesData) : []);
+      setProfiles(Array.isArray(extractData(profilesData)) ? extractData(profilesData) : []);
 
       if (loadedAccounts.length > 0 && !selectedAccount) {
         setSelectedAccount(loadedAccounts[0]);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to read data');
+      console.error('[Email] Load error:', err);
+      setError(`Failed to read data: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -212,9 +273,13 @@ const AccountManager = () => {
 
   const handleDeleteAccount = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const updatedAccounts = accounts.filter((a) => a.id !== id);
-    const updatedServices = services.filter((s) => s.accountId !== id);
-    const updatedActivities = activities.filter((a) => a.accountId !== id);
+    const updatedAccounts = (Array.isArray(accounts) ? accounts : []).filter((a) => a.id !== id);
+    const updatedServices = (Array.isArray(services) ? services : []).filter(
+      (s) => s.accountId !== id,
+    );
+    const updatedActivities = (Array.isArray(activities) ? activities : []).filter(
+      (a) => a.accountId !== id,
+    );
 
     setAccounts(updatedAccounts);
     setServices(updatedServices);
@@ -227,13 +292,15 @@ const AccountManager = () => {
   };
 
   const handleUpdateAccount = async (updatedAccount: Account) => {
-    const updated = accounts.map((a) => (a.id === updatedAccount.id ? updatedAccount : a));
+    const updated = (Array.isArray(accounts) ? accounts : []).map((a) =>
+      a.id === updatedAccount.id ? updatedAccount : a,
+    );
     setAccounts(updated);
     setSelectedAccount(updatedAccount);
     markAsDirty(updated, services, activities, profiles);
   };
 
-  const filteredAccounts = accounts.filter(
+  const filteredAccounts = (Array.isArray(accounts) ? accounts : []).filter(
     (account) =>
       account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       account.email.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -353,19 +420,33 @@ const AccountManager = () => {
               const faviconUrl = `https://www.google.com/s2/favicons?domain=https://${domain}&sz=32`;
               const theme = getProviderTheme(account.provider);
               const isSelected = selectedAccount?.id === account.id;
+              const avatarColor = getAvatarColor(account.email);
+
+              // Determine active color for gradient and border
+              const activeColor = avatarColor.hex;
 
               return (
                 <div
                   key={account.id}
                   onClick={() => setSelectedAccount(account)}
                   className={cn(
-                    'group relative flex flex-col gap-2 p-3 cursor-pointer transition-all duration-300 border-r-2',
-                    isSelected ? 'bg-primary/5' : 'hover:bg-muted/30',
+                    'group relative flex flex-col gap-2 p-3 cursor-pointer transition-all duration-300',
+                    isSelected ? '' : 'hover:bg-muted/30',
                   )}
                   style={{
-                    borderRightColor: isSelected ? theme.hex : 'transparent',
+                    background: isSelected
+                      ? `linear-gradient(to right, ${activeColor}15, transparent)`
+                      : undefined,
                   }}
                 >
+                  {/* Custom Border Indicator */}
+                  {isSelected && (
+                    <div
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-lg"
+                      style={{ backgroundColor: activeColor }}
+                    />
+                  )}
+
                   {/* Delete Icon */}
                   <button
                     onClick={(e) => handleDeleteAccount(account.id, e)}
@@ -378,8 +459,8 @@ const AccountManager = () => {
                     <div className="relative shrink-0">
                       <div
                         className={cn(
-                          'h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg transition-transform group-hover:scale-105 overflow-hidden',
-                          !account.avatar?.startsWith('http') && theme.avatar,
+                          'h-10 w-10 rounded-md flex items-center justify-center text-sm font-bold shadow-lg transition-transform group-hover:scale-105 overflow-hidden',
+                          !account.avatar?.startsWith('http') && avatarColor.bg,
                           account.avatar?.startsWith('http') &&
                             'bg-background border border-border',
                         )}
@@ -391,7 +472,7 @@ const AccountManager = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          account.avatar || account.name[0]
+                          <User className={cn('w-5 h-5', avatarColor.text)} />
                         )}
                       </div>
                       <div
@@ -440,7 +521,7 @@ const AccountManager = () => {
         <div className="p-4 border-t border-border bg-card/30 backdrop-blur-md">
           <button
             onClick={() => setIsModalOpen(true)}
-            className="w-full h-11 bg-primary text-primary-foreground rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
+            className="w-full h-8 text-text-secondary hover:text-primary rounded-md font-bold flex items-center justify-center gap-2 hover:bg-primary/20 transition-all active:scale-95 border border-transparent hover:border-primary/10"
           >
             <Plus className="h-4 w-4" />
             Add Account
@@ -527,7 +608,7 @@ const AccountManager = () => {
               </button>
               <button
                 onClick={handleAddAccount}
-                className="px-6 h-10 rounded-md bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
+                className="px-6 h-10 rounded-md bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all border border-transparent hover:border-primary/10"
               >
                 Create Account
               </button>

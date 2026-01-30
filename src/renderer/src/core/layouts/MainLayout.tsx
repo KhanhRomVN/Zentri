@@ -15,7 +15,7 @@ const MainLayout = () => {
           isCollapsed ? 'pl-[60px]' : 'pl-[280px]',
         )}
       >
-        <div className="flex-1 min-h-0 bg-background rounded-xl overflow-hidden shadow-sm flex flex-col">
+        <div className="flex-1 min-h-0 bg-background rounded-md overflow-hidden shadow-sm flex flex-col">
           <Outlet />
         </div>
       </div>
