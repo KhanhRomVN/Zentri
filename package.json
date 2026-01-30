@@ -53,6 +53,7 @@
     "framer-motion": "^12.29.2",
     "lucide-react": "^0.294.0",
     "papaparse": "^5.5.3",
+    "puppeteer-core": "^24.36.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
@@ -68,6 +69,7 @@
     "@electron-toolkit/eslint-config-prettier": "^1.0.1",
     "@electron-toolkit/eslint-config-ts": "^1.0.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
+    "@secretlint/secretlint-rule-preset-recommend": "^11.3.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@types/node": "^20.0.0",
@@ -88,6 +90,7 @@
     "lint-staged": "^15.2.0",
     "postcss": "^8.4.32",
     "prettier": "^3.1.0",
+    "secretlint": "^11.3.1",
     "tailwindcss": "^3.3.0",
     "typescript": "^5.3.0",
     "typescript-eslint": "^8.50.0",
@@ -98,16 +101,13 @@
     "*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write",
-      "npm run typecheck",
-      "bash -c 'njsscan . --exit-zero'"
+      "npm run typecheck"
     ],
     "*.{json,css,md}": [
       "prettier --write"
     ],
     "*": [
-      "bash -c 'ggshield secret scan pre-commit --exit-zero || true'",
-      "bash -c 'scripts/bin/gitleaks protect --staged -v'",
-      "bash -c 'scripts/bin/talisman --pattern staged'"
+      "secretlint --maskSecrets"
     ]
   }
 }

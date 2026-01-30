@@ -12,7 +12,7 @@ const MainLayout = () => {
       <div
         className={cn(
           'flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300',
-          isCollapsed ? 'pl-[60px]' : 'pl-72',
+          isCollapsed ? 'pl-[60px]' : 'pl-[280px]',
         )}
       >
         <div className="flex-1 min-h-0 bg-background rounded-xl overflow-hidden shadow-sm flex flex-col">

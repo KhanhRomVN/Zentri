@@ -40,15 +40,15 @@ let cachedProviders: ProviderConfig[] | null = null;
  */
 export function getFaviconUrl(websiteUrl?: string): string {
   if (!websiteUrl) {
-    return 'https://www.google.com/s2/favicons?domain=example.com&sz=64';
+    return 'https://www.google.com/s2/favicons?domain=https://example.com&sz=64';
   }
 
   try {
     const url = new URL(websiteUrl);
     // Use Google's favicon service which is more reliable
-    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
+    return `https://www.google.com/s2/favicons?domain=https://${url.hostname}&sz=64`;
   } catch {
-    return 'https://www.google.com/s2/favicons?domain=example.com&sz=64';
+    return 'https://www.google.com/s2/favicons?domain=https://example.com&sz=64';
   }
 }
 

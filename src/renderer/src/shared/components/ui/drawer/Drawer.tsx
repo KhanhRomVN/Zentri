@@ -4,6 +4,8 @@ import { DrawerProps } from './Drawer.types';
 import { getDrawerVariants, getDrawerPosition, overlayVariants } from './Drawer.utils';
 import { cn } from '../../../lib/utils';
 
+import { createPortal } from 'react-dom';
+
 const Drawer: React.FC<DrawerProps> = ({
   isOpen,
   onClose,
@@ -19,7 +21,7 @@ const Drawer: React.FC<DrawerProps> = ({
   const drawerVariants = getDrawerVariants(direction, animationType);
   const drawerPosition = getDrawerPosition(direction, width, height);
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -43,7 +45,7 @@ const Drawer: React.FC<DrawerProps> = ({
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             style={drawerPosition}
             className={cn(
-              'bg-card-background border-l border-border shadow-2xl z-[1000] overflow-hidden flex flex-col',
+              'bg-card border-l border-border shadow-2xl z-[1000] overflow-hidden flex flex-col',
               className,
             )}
           >
@@ -51,7 +53,8 @@ const Drawer: React.FC<DrawerProps> = ({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 };
 

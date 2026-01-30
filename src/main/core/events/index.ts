@@ -4,6 +4,9 @@ import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 import { Database } from 'sqlite3';
 import { setupEmailHandlers } from './email';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
 
 let db: Database | null = null;
 
@@ -324,6 +327,89 @@ export function setupEventHandlers() {
   setupStorageHandlers();
   setupDatabaseHandlers();
   setupEmailHandlers();
+
+  // 1. Select Git Folder
+  ipcMain.handle('git:select-folder', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+    });
+    if (canceled) return null;
+    return filePaths[0];
+  });
+
+  // 2. Read file data from git folder
+  ipcMain.handle(
+    'git:read-data',
+    async (_event, folderPath: string, filename: string = 'emails.json') => {
+      const filePath = path.join(folderPath, filename);
+      if (!fs.existsSync(filePath)) return null;
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return JSON.parse(content);
+      } catch (e) {
+        console.error(`Error reading ${filename}:`, e);
+        return null;
+      }
+    },
+  );
+
+  // 3. Write data to file in git folder
+  ipcMain.handle(
+    'git:write-data',
+    async (
+      _event,
+      {
+        folderPath,
+        data,
+        filename = 'emails.json',
+      }: { folderPath: string; data: any; filename?: string },
+    ) => {
+      try {
+        const filePath = path.join(folderPath, filename);
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+        return true;
+      } catch (e) {
+        console.error(`Error writing ${filename}:`, e);
+        return false;
+      }
+    },
+  );
+
+  // 4. Git Sync (Add, Commit, Push)
+  ipcMain.handle('git:sync-repo', async (_event, folderPath: string) => {
+    try {
+      // Execute git commands sequentially
+      // Use bash explicitly to handle shell aliases or path issues if any
+      const commands = ['git add .', 'git commit -m "Zentri Sync: Updated data"', 'git push'];
+
+      for (const cmd of commands) {
+        try {
+          const { stdout, stderr } = await execAsync(cmd, { cwd: folderPath });
+          console.log(`[Git Stdout]: ${stdout}`);
+          if (stderr) console.error(`[Git Stderr]: ${stderr}`);
+        } catch (e: any) {
+          // If already up-to-date or nothing to commit, commit might fail.
+          // Check for 'nothing to commit' in message if needed, or just warn for commit.
+          if (
+            cmd.includes('commit') &&
+            (e.message.includes('nothing to commit') || e.message.includes('up to date'))
+          ) {
+            console.log('Nothing to commit, skipping push might be better but we continue.');
+            continue;
+          }
+          if (cmd.includes('push') && e.message.includes('Everything up-to-date')) {
+            continue;
+          }
+          console.error(`Error executing git cmd: ${cmd}`, e);
+          throw e;
+        }
+      }
+      return { success: true };
+    } catch (error: any) {
+      console.error('Git Sync Error:', error);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
 // Export for cleanup on app quit

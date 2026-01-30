@@ -10,7 +10,7 @@ export const getFaviconUrl = (url?: string, size: number = 32): string => {
   try {
     const domain = new URL(url).hostname;
     // Google's favicon service - most reliable
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
+    return `https://www.google.com/s2/favicons?domain=https://${domain}&sz=${size}`;
   } catch {
     return '/favicon-fallback.png';
   }
@@ -25,7 +25,7 @@ export const getFaviconSources = (url?: string, size: number = 32): string[] => 
   try {
     const domain = new URL(url).hostname;
     return [
-      `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`,
+      `https://www.google.com/s2/favicons?domain=https://${domain}&sz=${size}`,
       `https://icons.duckduckgo.com/ip3/${domain}.ico`,
       `https://favicon.yandex.net/favicon/${domain}`,
       `https://${domain}/favicon.ico`,

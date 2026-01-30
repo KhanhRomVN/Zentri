@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../../shared/lib/utils';
 import {
@@ -8,9 +8,13 @@ import {
   Palette,
   FoldHorizontal,
   UnfoldHorizontal,
-  RefreshCw,
+  Settings as SettingsIcon,
+  UploadCloud,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import ThemeDrawer from '../theme/components/ThemeDrawer';
+import { parseGitlabUrl, saveGitlabData } from '../../shared/services/gitlabService';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -19,6 +23,47 @@ interface SidebarProps {
 
 const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
   const [isThemeDrawerOpen, setIsThemeDrawerOpen] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    // Check initial state
+    setIsDirty(localStorage.getItem('zentri_is_dirty') === 'true');
+
+    const handleStatusChange = (e: any) => {
+      setIsDirty(e.detail?.isDirty ?? localStorage.getItem('zentri_is_dirty') === 'true');
+    };
+
+    window.addEventListener('zentri:sync-status-changed', handleStatusChange);
+    return () => window.removeEventListener('zentri:sync-status-changed', handleStatusChange);
+  }, []);
+
+  const handleSyncToCloud = async () => {
+    const folderPath = localStorage.getItem('gitlab_repo_folder');
+    if (!folderPath) return;
+
+    setSyncing(true);
+    try {
+      // @ts-ignore
+      const result = await window.electron.ipcRenderer.invoke('git:sync-repo', folderPath);
+
+      if (result && result.success) {
+        // Success
+        localStorage.setItem('zentri_is_dirty', 'false');
+        setIsDirty(false);
+        window.dispatchEvent(
+          new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: false } }),
+        );
+      } else {
+        throw new Error(result?.error || 'Unknown git error');
+      }
+    } catch (err: any) {
+      console.error('Local Git Sync Failed:', err);
+      alert(`Sync failed: ${err.message}. Make sure the folder is a valid Git repository.`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const navItems = [
     {
@@ -39,10 +84,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
       icon: Users,
       color: '#f59e0b', // amber-500
     },
+    {
+      title: 'Settings',
+      href: '/setting',
+      icon: SettingsIcon,
+      color: '#64748b', // slate-500
+    },
   ];
-
-  // Mock version and update status for UI consistency
-  const isChecking = false;
 
   return (
     <div
@@ -101,7 +149,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
       {/* Navigation */}
       <nav
         className={cn(
-          'flex-1 py-4 space-y-2',
+          'flex-1 py-4 space-y-1',
           isCollapsed ? 'overflow-visible px-2' : 'overflow-y-auto custom-scrollbar',
         )}
       >
@@ -112,18 +160,16 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
             end={item.href === '/'}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 py-3 text-sm font-medium rounded-xl transition-all relative group',
+                'flex items-center gap-3 py-3 text-sm font-medium rounded-none transition-all relative group',
                 isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
-                isCollapsed
-                  ? 'justify-center px-0 mx-0 w-full'
-                  : 'px-4 mx-2 rounded-r-none rounded-l-md',
+                isCollapsed ? 'justify-center px-0 mx-0 w-full mb-1' : 'px-4 mb-1',
               )
             }
             style={({ isActive }) => ({
-              borderRight: isActive && !isCollapsed ? `3px solid ${item.color}` : 'none',
               background: isActive
                 ? `linear-gradient(to right, ${item.color}15, transparent)`
                 : undefined,
+              borderRight: isActive && !isCollapsed ? `3px solid ${item.color}` : 'none',
             })}
           >
             {({ isActive }) => (
@@ -140,25 +186,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
                     {item.title}
                   </span>
                 )}
-
-                {/* Gradient on hover for non-active items */}
-                {!isActive && (
-                  <div
-                    className={cn(
-                      'absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none',
-                      !isCollapsed && 'rounded-l-md',
-                    )}
-                    style={{
-                      background: `linear-gradient(to right, ${item.color}08, transparent)`,
-                    }}
-                  />
-                )}
-
-                {/* Tooltip for collapsed state */}
                 {isCollapsed && (
                   <div className="absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-popover border border-border text-popover-foreground text-xs font-medium rounded-md shadow-lg z-[100] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     {item.title}
-                    {/* Triangle arrow */}
                     <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-popover border-l border-b border-border rotate-45 transform" />
                   </div>
                 )}
@@ -168,49 +198,73 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
         ))}
       </nav>
 
-      {/* Footer */}
-      <div
-        className={cn(
-          'mt-auto border-t border-border/50 transition-all duration-300',
-          isCollapsed ? 'p-2 flex flex-col items-center gap-4' : 'p-4',
-        )}
-      >
-        {isCollapsed && (
-          <div className="flex flex-col items-center gap-2 w-full">
+      {/* Sync Footer */}
+      {isDirty && (
+        <div
+          className={cn(
+            'px-4 py-4 mb-2 mx-2 rounded-2xl border transition-all duration-300 animate-in slide-in-from-bottom-4',
+            'bg-amber-500/5 border-amber-500/20 shadow-lg shadow-amber-500/5',
+            isCollapsed && 'px-0 mx-2 p-3 justify-center border-amber-500/40 bg-amber-500/10',
+          )}
+        >
+          {!isCollapsed ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-amber-500">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Unsaved Changes</span>
+              </div>
+              <button
+                disabled={syncing}
+                onClick={handleSyncToCloud}
+                className="w-full h-10 rounded-xl bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-600 transition-all active:scale-95 shadow-md shadow-amber-500/20"
+              >
+                {syncing ? (
+                  <Loader2 className="w-3.h-3 animate-spin" />
+                ) : (
+                  <UploadCloud className="w-3.5 h-3.5" />
+                )}
+                {syncing ? 'Syncing...' : 'Sync to Cloud'}
+              </button>
+            </div>
+          ) : (
+            <button
+              disabled={syncing}
+              onClick={handleSyncToCloud}
+              className="relative w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center hover:bg-amber-600 transition-all active:scale-90"
+              title="Unsaved Changes - Sync Now"
+            >
+              {syncing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <UploadCloud className="w-5 h-5" />
+              )}
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Settings/Collapse Footer (Only in Collapsed Mode) */}
+      {isCollapsed && (
+        <div
+          className={cn('mt-auto transition-all duration-300 flex flex-col items-center gap-2 p-2')}
+        >
+          <div className="flex flex-col gap-2">
             <button
               onClick={() => setIsThemeDrawerOpen(true)}
-              className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
-              title="Theme Settings"
+              className="w-10 h-10 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted transition-all"
             >
               <Palette className="w-5 h-5" />
             </button>
             <button
               onClick={() => setIsCollapsed(false)}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              title="Expand Sidebar"
+              className="w-10 h-10 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
             >
               <UnfoldHorizontal className="w-5 h-5" />
             </button>
           </div>
-        )}
-
-        {!isCollapsed && (
-          <div className="flex items-center justify-end">
-            <div className="flex items-center gap-1">
-              <button
-                disabled={isChecking}
-                className={cn(
-                  'p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-all',
-                  isChecking && 'animate-spin text-primary',
-                )}
-                title="Check for updates"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <ThemeDrawer isOpen={isThemeDrawerOpen} onClose={() => setIsThemeDrawerOpen(false)} />
     </div>
