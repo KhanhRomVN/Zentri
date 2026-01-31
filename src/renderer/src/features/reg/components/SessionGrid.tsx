@@ -8,8 +8,11 @@ import {
   XCircle,
   X,
   Layout,
+  Shield,
 } from 'lucide-react';
-import { RegSession } from '../types';
+import { Switch } from '../../../shared/components/ui/Switch';
+import FingerprintDrawer from './FingerprintDrawer';
+import { Agent, RegSession } from '../types';
 import { cn } from '../../../shared/lib/utils';
 import { useState } from 'react';
 
@@ -23,6 +26,29 @@ const SessionGrid = ({ sessions, onSelectSession, onCreateSession }: SessionGrid
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
+
+  const [isFingerprintOpen, setIsFingerprintOpen] = useState(false);
+  const [isFingerprintEnabled, setIsFingerprintEnabled] = useState(true);
+  const [fingerprintConfig, setFingerprintConfig] = useState<Omit<Agent, 'id'>>({
+    name: '',
+    userAgent: '',
+    os: 'Windows',
+    timezone: 'UTC+7',
+    resolution: '1920x1080',
+    webrtc: 'Disabled',
+    location: 'Disabled',
+    language: 'vi-VN',
+    fingerprint: {
+      canvas: 'Safe',
+      audio: 'Safe',
+      clientRect: 'Safe',
+      webglImage: 'Safe',
+      webglMetadata: 'Safe',
+      webglVector: 'Safe',
+      webglVendor: 'Deepmind',
+      webglReRender: 'Enabled',
+    },
+  });
 
   const filteredSessions = sessions.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -53,13 +79,39 @@ const SessionGrid = ({ sessions, onSelectSession, onCreateSession }: SessionGrid
             />
           </div>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="h-8 px-4 rounded-md bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-95 ml-4"
-        >
-          <Plus className="w-4 h-4" />
-          Create Session
-        </button>
+
+        <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2 bg-card/50 border border-border/50 rounded-lg pl-3 pr-2 h-8">
+            <span className="text-[10px] font-bold uppercase text-muted-foreground/70">
+              Fingerprint
+            </span>
+            <Switch
+              checked={isFingerprintEnabled}
+              onCheckedChange={setIsFingerprintEnabled}
+              className="scale-75"
+            />
+          </div>
+
+          <button
+            onClick={() => setIsFingerprintOpen(true)}
+            disabled={!isFingerprintEnabled}
+            className={cn(
+              'h-8 px-3 rounded-md border border-border bg-card text-xs font-bold transition-all flex items-center gap-2 hover:bg-muted',
+              !isFingerprintEnabled && 'opacity-50 pointer-events-none grayscale',
+            )}
+          >
+            <Shield className="w-4 h-4 text-primary" />
+            Config
+          </button>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="h-8 px-4 rounded-md bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            Create Session
+          </button>
+        </div>
       </div>
 
       {/* Grid Content */}
@@ -199,6 +251,12 @@ const SessionGrid = ({ sessions, onSelectSession, onCreateSession }: SessionGrid
           </form>
         </div>
       )}
+      <FingerprintDrawer
+        isOpen={isFingerprintOpen}
+        onClose={() => setIsFingerprintOpen(false)}
+        formData={fingerprintConfig}
+        setFormData={setFingerprintConfig}
+      />
     </div>
   );
 };

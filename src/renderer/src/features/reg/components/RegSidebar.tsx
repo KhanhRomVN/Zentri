@@ -1,7 +1,6 @@
-import { Search, Globe, LayoutGrid, CheckCircle2 } from 'lucide-react';
+import { Globe, LayoutGrid, CheckCircle2 } from 'lucide-react';
 import { Website } from '../types';
 import { cn } from '../../../shared/lib/utils';
-import { useState } from 'react';
 
 interface RegSidebarProps {
   websites: Website[];
@@ -10,31 +9,13 @@ interface RegSidebarProps {
 }
 
 const RegSidebar = ({ websites, selectedWebsiteId, onSelectWebsite }: RegSidebarProps) => {
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const filteredWebsites = websites.filter((w) =>
-    w.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredWebsites = websites;
 
   return (
     <div className="w-[300px] flex flex-col border-r border-border h-full bg-muted/5 backdrop-blur-xl shrink-0">
       {/* Header */}
       <div className="h-16 shrink-0 flex items-center px-4 border-b border-border bg-card/20">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Reg</h2>
-      </div>
-
-      {/* Search */}
-      <div className="p-3 border-b border-border">
-        <div className="relative group">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <input
-            type="text"
-            placeholder="Search platforms..."
-            className="w-full h-9 pl-9 pr-4 rounded-lg bg-input border border-border focus:border-primary/40 text-sm shadow-sm transition-all focus-visible:outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
       </div>
 
       {/* Website List */}

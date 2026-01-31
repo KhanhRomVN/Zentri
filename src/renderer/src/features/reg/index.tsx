@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import RegSidebar from './components/RegSidebar';
 import SessionGrid from './components/SessionGrid';
 import AccountTable from './components/AccountTable';
-import AgentDrawer from './components/AgentDrawer';
+import FingerprintDrawer from './components/FingerprintDrawer';
+import AccountDrawer from './components/AccountDrawer';
 import { RegSession, RegAccount, Website, RegData, Agent } from './types';
 import { HARDCODED_PLATFORMS } from './constants';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -24,8 +25,32 @@ const RegPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Agent Drawer State
-  const [isAgentDrawerOpen, setIsAgentDrawerOpen] = useState(false);
-  const [activeAccountForAgent, setActiveAccountForAgent] = useState<string | null>(null);
+  // Agent Editor State
+  const [isAgentEditorOpen, setIsAgentEditorOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Omit<Agent, 'id'>>({
+    name: '',
+    userAgent: '',
+    os: 'Windows',
+    timezone: 'UTC+7',
+    resolution: '1920x1080',
+    webrtc: 'Disabled',
+    location: 'Disabled',
+    language: 'vi-VN',
+    fingerprint: {
+      canvas: 'Safe',
+      audio: 'Safe',
+      clientRect: 'Safe',
+      webglImage: 'Safe',
+      webglMetadata: 'Safe',
+      webglVector: 'Safe',
+      webglVendor: 'Depth',
+      webglReRender: 'Enabled',
+    },
+  });
+
+  // Account Drawer State
+  const [isAccountDrawerOpen, setIsAccountDrawerOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<RegAccount | null>(null);
 
   const gitlabFolder = useMemo(() => {
     return localStorage.getItem('gitlab_repo_folder');
@@ -215,25 +240,129 @@ const RegPage = () => {
     saveAgents([...allData.agents, newAgent]);
   };
 
-  const handleDeleteAgent = (id: string) => {
-    saveAgents(allData.agents.filter((a) => a.id !== id));
+  const handleOpenCreateAgent = () => {
+    setEditingAgent({
+      name: '',
+      userAgent: '',
+      os: 'Windows',
+      timezone: 'UTC+7',
+      resolution: '1920x1080',
+      webrtc: 'Disabled',
+      location: 'Disabled',
+      language: 'vi-VN',
+      fingerprint: {
+        canvas: 'Safe',
+        audio: 'Safe',
+        clientRect: 'Safe',
+        webglImage: 'Safe',
+        webglMetadata: 'Safe',
+        webglVector: 'Safe',
+        webglVendor: 'Deepmind',
+        webglReRender: 'Enabled',
+      },
+    });
+    setIsAgentEditorOpen(true);
   };
 
-  const handleOpenAgentDrawer = (accountId: string) => {
-    setActiveAccountForAgent(accountId);
-    setIsAgentDrawerOpen(true);
+  const handleSaveAgent = () => {
+    if (!editingAgent.name) return; // Validate name
+    handleCreateAgent(editingAgent);
+    setIsAgentEditorOpen(false);
   };
 
-  const handleSelectAgentForAccount = async (agentId: string) => {
-    if (!activeAccountForAgent) return;
+  const handleQuickCreateAgent = (
+    accountId: string,
+    agentInfo: { name: string; userAgent: string; os: string },
+  ) => {
+    const newAgent: Agent = {
+      id: `agent-${Math.random().toString(36).substr(2, 9)}`,
+      name: agentInfo.name,
+      userAgent: agentInfo.userAgent,
+      os: agentInfo.os as any,
+      timezone: 'UTC+7',
+      resolution: '1920x1080',
+      webrtc: 'Disabled',
+      location: 'Disabled',
+      language: 'vi-VN',
+      fingerprint: {
+        canvas: 'Safe',
+        audio: 'Safe',
+        clientRect: 'Safe',
+        webglImage: 'Safe',
+        webglMetadata: 'Safe',
+        webglVector: 'Safe',
+        webglVendor: 'Deepmind',
+        webglReRender: 'Enabled',
+      },
+    };
 
+    // Save new agent
+    const updatedAgents = [...allData.agents, newAgent];
+    saveAgents(updatedAgents);
+
+    // Update account with new agent
     const updatedAccounts = allData.accounts.map((acc) =>
-      acc.id === activeAccountForAgent ? { ...acc, agentId } : acc,
+      acc.id === accountId ? { ...acc, agentId: newAgent.id } : acc,
+    );
+    setAllData((prev) => ({ ...prev, accounts: updatedAccounts, agents: updatedAgents }));
+    saveData(allData.sessions, updatedAccounts);
+  };
+
+  const handleUpdateAccountAgent = async (accountId: string, agentId: string) => {
+    const updatedAccounts = allData.accounts.map((acc) =>
+      acc.id === accountId ? { ...acc, agentId } : acc,
     );
 
     setAllData((prev) => ({ ...prev, accounts: updatedAccounts }));
     await saveData(allData.sessions, updatedAccounts);
-    setIsAgentDrawerOpen(false);
+  };
+
+  const handleCreateAccountTrigger = () => {
+    setEditingAccount(null);
+    setIsAccountDrawerOpen(true);
+  };
+
+  const handleEditAccountTrigger = (account: RegAccount) => {
+    setEditingAccount(account);
+    setIsAccountDrawerOpen(true);
+  };
+
+  const handleSaveAccount = async (accountData: Partial<RegAccount>) => {
+    if (!selectedSession) return;
+
+    let updatedAccounts = [...allData.accounts];
+    let updatedSessions = [...allData.sessions];
+
+    if (editingAccount) {
+      // Update existing
+      updatedAccounts = updatedAccounts.map((acc) =>
+        acc.id === editingAccount.id ? { ...acc, ...accountData } : acc,
+      );
+    } else {
+      // Create new
+      const newAccount: RegAccount = {
+        id: `acc-${Math.random().toString(36).substr(2, 9)}`,
+        sessionId: selectedSession.id,
+        username: accountData.username || accountData.email || '',
+        email: accountData.email,
+        password: accountData.password,
+        proxy: accountData.proxy,
+        agentId: accountData.agentId,
+        status: 'processing',
+        metadata: {},
+        ...accountData, // spread other fields
+      };
+      updatedAccounts.push(newAccount);
+
+      // Update session account count
+      updatedSessions = updatedSessions.map((s) =>
+        s.id === selectedSession.id ? { ...s, accountCount: s.accountCount + 1 } : s,
+      );
+      setAllData((prev) => ({ ...prev, sessions: updatedSessions }));
+    }
+
+    setAllData((prev) => ({ ...prev, accounts: updatedAccounts }));
+    await saveData(updatedSessions, updatedAccounts);
   };
 
   if (loading && !allData.sessions.length) {
@@ -268,7 +397,11 @@ const RegPage = () => {
             config={selectedWebsite.config}
             agents={allData.agents}
             onBack={handleBackToSessions}
-            onOpenAgentDrawer={handleOpenAgentDrawer}
+            onUpdateAccountAgent={handleUpdateAccountAgent}
+            onCreateAccount={handleCreateAccountTrigger}
+            onCreateAgent={handleOpenCreateAgent}
+            onQuickCreateAgent={handleQuickCreateAgent}
+            onEditAccount={handleEditAccountTrigger}
           />
         ) : (
           <SessionGrid
@@ -279,14 +412,20 @@ const RegPage = () => {
         )}
       </div>
 
-      <AgentDrawer
-        isOpen={isAgentDrawerOpen}
-        onClose={() => setIsAgentDrawerOpen(false)}
+      <FingerprintDrawer
+        isOpen={isAgentEditorOpen}
+        onClose={() => setIsAgentEditorOpen(false)}
+        formData={editingAgent}
+        setFormData={setEditingAgent}
+        onSave={handleSaveAgent}
+      />
+
+      <AccountDrawer
+        isOpen={isAccountDrawerOpen}
+        onClose={() => setIsAccountDrawerOpen(false)}
+        account={editingAccount}
         agents={allData.agents}
-        onCreateAgent={handleCreateAgent}
-        onDeleteAgent={handleDeleteAgent}
-        onSelectAgent={handleSelectAgentForAccount}
-        selectedAgentId={allData.accounts.find((a) => a.id === activeAccountForAgent)?.agentId}
+        onSave={handleSaveAccount}
       />
     </div>
   );
