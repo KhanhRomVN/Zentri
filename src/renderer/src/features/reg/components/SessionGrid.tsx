@@ -106,7 +106,7 @@ const SessionGrid = ({ sessions, onSelectSession, onCreateSession }: SessionGrid
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="h-8 px-4 rounded-md bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-95"
+            className="h-8 px-4 rounded-md bg-input  text-primary-foreground text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all flex items-center gap-2 active:scale-95"
           >
             <Plus className="w-4 h-4" />
             Create Session

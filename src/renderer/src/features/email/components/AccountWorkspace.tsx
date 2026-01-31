@@ -118,7 +118,7 @@ const AccountWorkspace = ({
 
         {/* Center: Navigation Tabs */}
         <div className="flex items-center justify-center">
-          <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-lg">
+          <div className="flex items-center gap-1">
             {[
               {
                 id: 'Core',

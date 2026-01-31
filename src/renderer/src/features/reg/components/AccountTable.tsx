@@ -260,7 +260,7 @@ const AccountTable = ({
     <TooltipProvider>
       <div className="flex flex-col h-full bg-background overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
         {/* Table Header */}
-        <div className="h-16 shrink-0 flex items-center gap-4 px-6 border-b border-border bg-card/10">
+        <div className="h-16 shrink-0 flex items-center gap-4 px-6 border-b border-border">
           <button
             onClick={onBack}
             className="p-2 hover:bg-muted rounded-full transition-all text-muted-foreground hover:text-foreground"
@@ -288,7 +288,7 @@ const AccountTable = ({
         {/* Table Content */}
         <div className="flex-1 overflow-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead className="sticky top-0 z-10 bg-muted/50 border-b border-border">
+            <thead className="sticky top-0 z-10 bg-table-headerBg border-b border-border">
               <tr>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-12">
                   #
@@ -310,7 +310,7 @@ const AccountTable = ({
               {accounts.map((account, index) => (
                 <tr
                   key={account.id}
-                  className="group hover:bg-muted/30 transition-colors duration-200 cursor-pointer"
+                  className="group transition-colors duration-200 cursor-pointer"
                   onClick={() => onEditAccount(account)}
                 >
                   <td className="px-6 py-4 text-xs text-muted-foreground font-medium">

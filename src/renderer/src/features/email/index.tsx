@@ -518,15 +518,13 @@ const AccountManager = () => {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-border bg-card/30 backdrop-blur-md">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-full h-8 text-text-secondary hover:text-primary rounded-md font-bold flex items-center justify-center gap-2 hover:bg-primary/20 transition-all active:scale-95 border border-transparent hover:border-primary/10"
-          >
-            <Plus className="h-4 w-4" />
-            Add Account
-          </button>
-        </div>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full py-2.5 flex items-center justify-center gap-2 border-t border-border  backdrop-blur-md transition-all hover:bg-primary/10 text-muted-foreground hover:text-primary group"
+        >
+          <Plus className="h-4 w-4 transition-colors group-hover:text-primary" />
+          <span className="font-bold text-sm">Add Account</span>
+        </button>
       </div>
 
       {/* Right Panel */}
