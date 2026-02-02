@@ -1,10 +1,7 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DrawerProps } from './Drawer.types';
 import { getDrawerVariants, getDrawerPosition, overlayVariants } from './Drawer.utils';
-import { cn } from '../../../lib/utils';
-
-import { createPortal } from 'react-dom';
+import { cn } from '../../../../shared/utils/cn';
 
 const Drawer: React.FC<DrawerProps> = ({
   isOpen,
@@ -21,7 +18,7 @@ const Drawer: React.FC<DrawerProps> = ({
   const drawerVariants = getDrawerVariants(direction, animationType);
   const drawerPosition = getDrawerPosition(direction, width, height);
 
-  return createPortal(
+  return (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -33,7 +30,7 @@ const Drawer: React.FC<DrawerProps> = ({
             variants={overlayVariants}
             transition={{ duration: 0.3 }}
             onClick={closeOnOverlayClick ? onClose : undefined}
-            className={cn('fixed inset-0 z-[999] bg-black/40', overlayClassName)}
+            className={cn('fixed inset-0 z-[999]', overlayClassName)}
           />
 
           {/* Drawer */}
@@ -44,17 +41,13 @@ const Drawer: React.FC<DrawerProps> = ({
             variants={drawerVariants}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             style={drawerPosition}
-            className={cn(
-              'bg-card border-l border-border shadow-2xl z-[1000] overflow-hidden flex flex-col',
-              className,
-            )}
+            className={className}
           >
             {children}
           </motion.div>
         </>
       )}
-    </AnimatePresence>,
-    document.body,
+    </AnimatePresence>
   );
 };
 

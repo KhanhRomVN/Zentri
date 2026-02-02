@@ -1,3 +1,14 @@
-export { default as Drawer } from './Drawer';
-export * from './Drawer.types';
-export * from './Drawer.utils';
+export { default as Drawer } from "./Drawer";
+export type {
+  DrawerProps,
+  DrawerDirection,
+  DrawerAnimationType,
+  DrawerSize,
+  DrawerVariants,
+} from "./Drawer.types";
+export {
+  parseSize,
+  getDrawerVariants,
+  getDrawerPosition,
+  overlayVariants,
+} from "./Drawer.utils";

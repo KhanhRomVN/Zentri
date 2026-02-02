@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../../shared/lib/utils';
 import {
   LayoutDashboard,
-  Mail,
   Users,
   Palette,
   FoldHorizontal,
@@ -25,7 +24,58 @@ interface SidebarProps {
   setIsCollapsed: (value: boolean) => void;
 }
 
-const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
+const NAV_ITEMS = [
+  {
+    title: 'Dashboard',
+    href: '/',
+    icon: LayoutDashboard,
+    color: '#3b82f6', // blue-500
+  },
+  {
+    title: 'Email',
+    href: '/email',
+    icon: Users,
+    color: '#f59e0b', // amber-500
+  },
+  {
+    title: 'Reg',
+    href: '/reg',
+    icon: PlusCircle,
+    color: '#22c55e', // green-500
+  },
+  {
+    title: 'Search',
+    href: '/search',
+    icon: Search,
+    color: '#eab308', // yellow-500
+  },
+  {
+    title: 'Script',
+    href: '/script',
+    icon: FileCode,
+    color: '#6366f1', // indigo-500
+  },
+  {
+    title: 'Category',
+    href: '/category',
+    icon: FolderTree,
+    color: '#ec4899', // pink-500
+  },
+  {
+    title: 'Proxy',
+    href: '/proxy',
+    icon: Network,
+    color: '#06b6d4', // cyan-500
+  },
+  {
+    title: 'Settings',
+    href: '/setting',
+    icon: SettingsIcon,
+    color: '#64748b', // slate-500
+  },
+];
+
+const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
   const [isThemeDrawerOpen, setIsThemeDrawerOpen] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -68,63 +118,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
       setSyncing(false);
     }
   };
-
-  const navItems = [
-    {
-      title: 'Dashboard',
-      href: '/',
-      icon: LayoutDashboard,
-      color: '#3b82f6', // blue-500
-    },
-    {
-      title: 'Mail',
-      href: '/mail',
-      icon: Mail,
-      color: '#a855f7', // purple-500
-    },
-    {
-      title: 'Email',
-      href: '/email',
-      icon: Users,
-      color: '#f59e0b', // amber-500
-    },
-    {
-      title: 'Reg',
-      href: '/reg',
-      icon: PlusCircle,
-      color: '#22c55e', // green-500
-    },
-    {
-      title: 'Search',
-      href: '/search',
-      icon: Search,
-      color: '#eab308', // yellow-500
-    },
-    {
-      title: 'Script',
-      href: '/script',
-      icon: FileCode,
-      color: '#6366f1', // indigo-500
-    },
-    {
-      title: 'Category',
-      href: '/category',
-      icon: FolderTree,
-      color: '#ec4899', // pink-500
-    },
-    {
-      title: 'Proxy',
-      href: '/proxy',
-      icon: Network,
-      color: '#06b6d4', // cyan-500
-    },
-    {
-      title: 'Settings',
-      href: '/setting',
-      icon: SettingsIcon,
-      color: '#64748b', // slate-500
-    },
-  ];
 
   return (
     <div
@@ -187,7 +180,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
           isCollapsed ? 'overflow-visible px-2' : 'overflow-y-auto custom-scrollbar',
         )}
       >
-        {navItems.map((item) => (
+        {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.href}
             to={item.href}
@@ -308,6 +301,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
       <ThemeDrawer isOpen={isThemeDrawerOpen} onClose={() => setIsThemeDrawerOpen(false)} />
     </div>
   );
-};
+});
 
 export default Sidebar;

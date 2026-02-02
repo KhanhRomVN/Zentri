@@ -2,7 +2,6 @@ import { RouteObject } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../../features/dashboard';
 import AccountManager from '../../features/email';
-import MailClient from '../../features/mail';
 import SettingPage from '../../features/setting';
 import ProxyPage from '../../features/proxy';
 import RegPage from '../../features/reg';
@@ -19,10 +18,6 @@ export const routes: RouteObject[] = [
       {
         path: 'email',
         element: <AccountManager />,
-      },
-      {
-        path: 'mail',
-        element: <MailClient />,
       },
       {
         path: 'setting',

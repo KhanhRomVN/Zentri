@@ -1,5 +1,5 @@
-import { CSSProperties } from 'react';
-import { DropdownPosition, DropdownSize } from './Dropdown.types';
+import { CSSProperties } from "react";
+import { DropdownPosition, DropdownSize } from "./Dropdown.types";
 
 /**
  * Get dropdown size styles
@@ -7,24 +7,24 @@ import { DropdownPosition, DropdownSize } from './Dropdown.types';
 export const getDropdownSizeStyles = (size: DropdownSize) => {
   const sizes = {
     sm: {
-      fontSize: '14px',
-      padding: '4px',
-      itemPadding: '8px 12px',
-      gap: '2px',
+      fontSize: "14px",
+      padding: "4px",
+      itemPadding: "8px 12px",
+      gap: "2px",
       iconSize: 14,
     },
     md: {
-      fontSize: '14px',
-      padding: '6px',
-      itemPadding: '10px 14px',
-      gap: '4px',
+      fontSize: "14px",
+      padding: "6px",
+      itemPadding: "10px 14px",
+      gap: "4px",
       iconSize: 16,
     },
     lg: {
-      fontSize: '16px',
-      padding: '8px',
-      itemPadding: '12px 16px',
-      gap: '6px',
+      fontSize: "16px",
+      padding: "8px",
+      itemPadding: "12px 16px",
+      gap: "6px",
       iconSize: 18,
     },
   };
@@ -37,67 +37,69 @@ export const getDropdownSizeStyles = (size: DropdownSize) => {
  */
 export const getPositionStyles = (
   position: DropdownPosition,
-  spacing: number = 8,
+  spacing: number = 8
 ): CSSProperties => {
+  const offset = `${spacing}px`;
+
   const positions: Record<DropdownPosition, CSSProperties> = {
     // Top positions
-    'top-left': {
+    "top-left": {
       bottom: `calc(100% + ${spacing}px)`,
-      left: '0',
+      left: "0",
     },
-    'top-center': {
+    "top-center": {
       bottom: `calc(100% + ${spacing}px)`,
-      left: '50%',
-      transform: 'translateX(-50%)',
+      left: "50%",
+      transform: "translateX(-50%)",
     },
-    'top-right': {
+    "top-right": {
       bottom: `calc(100% + ${spacing}px)`,
-      right: '0',
+      right: "0",
     },
 
     // Bottom positions
-    'bottom-left': {
+    "bottom-left": {
       top: `calc(100% + ${spacing}px)`,
-      left: '0',
+      left: "0",
     },
-    'bottom-center': {
+    "bottom-center": {
       top: `calc(100% + ${spacing}px)`,
-      left: '50%',
-      transform: 'translateX(-50%)',
+      left: "50%",
+      transform: "translateX(-50%)",
     },
-    'bottom-right': {
+    "bottom-right": {
       top: `calc(100% + ${spacing}px)`,
-      right: '0',
+      right: "0",
     },
 
     // Left positions
-    'left-top': {
+    "left-top": {
       right: `calc(100% + ${spacing}px)`,
-      top: '0',
+      top: "0",
     },
-    'left-center': {
+    "left-center": {
       right: `calc(100% + ${spacing}px)`,
-      top: '50%',
-      transform: 'translateY(-50%)',
+      top: "50%",
+      transform: "translateY(-50%)",
     },
-    'left-bottom': {
+    "left-bottom": {
       right: `calc(100% + ${spacing}px)`,
-      bottom: '0',
+      bottom: "0",
     },
 
     // Right positions
-    'right-top': {
+    "right-top": {
       left: `calc(100% + ${spacing}px)`,
-      top: '0',
+      top: "0",
     },
-    'right-center': {
+    "right-center": {
       left: `calc(100% + ${spacing}px)`,
-      top: '50%',
-      transform: 'translateY(-50%)',
+      top: "50%",
+      transform: "translateY(-50%)",
     },
-    'right-bottom': {
+    "right-bottom": {
       left: `calc(100% + ${spacing}px)`,
-      bottom: '0',
+      bottom: "0",
     },
   };
 
@@ -115,4 +117,32 @@ export const getIconSize = (size: DropdownSize): number => {
   };
 
   return sizeMap[size];
+};
+
+/**
+ * Check if position is on the top
+ */
+export const isTopPosition = (position: DropdownPosition): boolean => {
+  return position.startsWith("top-");
+};
+
+/**
+ * Check if position is on the bottom
+ */
+export const isBottomPosition = (position: DropdownPosition): boolean => {
+  return position.startsWith("bottom-");
+};
+
+/**
+ * Check if position is on the left
+ */
+export const isLeftPosition = (position: DropdownPosition): boolean => {
+  return position.startsWith("left-");
+};
+
+/**
+ * Check if position is on the right
+ */
+export const isRightPosition = (position: DropdownPosition): boolean => {
+  return position.startsWith("right-");
 };

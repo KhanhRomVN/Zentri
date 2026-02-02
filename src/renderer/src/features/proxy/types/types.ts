@@ -27,6 +27,7 @@ export interface ProxyDetails {
   networkRange?: string;
   registeredAt?: string;
   abuseContact?: string;
+  asn?: string;
 }
 
 export interface RDAPResponse {

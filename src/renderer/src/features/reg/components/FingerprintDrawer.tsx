@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { X, Monitor, Globe, Shield, ChevronDown } from 'lucide-react';
 import { Agent, Fingerprint } from '../types';
 import { RESOLUTIONS, TIMEZONES, LANGUAGES, USER_AGENTS } from '../constants';
@@ -9,6 +10,7 @@ import {
   DropdownItem,
 } from '../../../shared/components/ui/dropdown';
 import { cn } from '../../../shared/lib/utils';
+import { Drawer } from '../../../shared/components/ui/drawer';
 
 interface FingerprintDrawerProps {
   isOpen: boolean;
@@ -18,20 +20,10 @@ interface FingerprintDrawerProps {
   onSave?: () => void;
 }
 
-const FingerprintDrawer = ({
-  isOpen,
-  onClose,
-  formData,
-  setFormData,
-  onSave,
-}: FingerprintDrawerProps) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[120] flex justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative w-full max-w-lg bg-background h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-border">
+const FingerprintDrawer = memo(
+  ({ isOpen, onClose, formData, setFormData, onSave }: FingerprintDrawerProps) => {
+    return (
+      <Drawer isOpen={isOpen} onClose={onClose} direction="right" width={512}>
         {/* Header */}
         <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-border bg-card/20">
           <div className="flex items-center gap-2">
@@ -324,9 +316,9 @@ const FingerprintDrawer = ({
             Confirm Settings
           </button>
         </div>
-      </div>
-    </div>
-  );
-};
+      </Drawer>
+    );
+  },
+);
 
 export default FingerprintDrawer;

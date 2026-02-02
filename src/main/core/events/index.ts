@@ -25,7 +25,7 @@ function setupStorageHandlers() {
 
       // Read existing data if file exists
       if (fs.existsSync(storagePath)) {
-        const fileContent = fs.readFileSync(storagePath, 'utf8');
+        const fileContent = await fs.promises.readFile(storagePath, 'utf8');
         try {
           data = JSON.parse(fileContent);
         } catch (parseError) {
@@ -38,7 +38,7 @@ function setupStorageHandlers() {
       data[key] = value;
 
       // Write back to file
-      fs.writeFileSync(storagePath, JSON.stringify(data, null, 2), 'utf8');
+      await fs.promises.writeFile(storagePath, JSON.stringify(data, null, 2), 'utf8');
     } catch (error) {
       console.error('Error setting storage value:', error);
       throw error;
@@ -54,7 +54,7 @@ function setupStorageHandlers() {
         return null;
       }
 
-      const fileContent = fs.readFileSync(storagePath, 'utf8');
+      const fileContent = await fs.promises.readFile(storagePath, 'utf8');
       try {
         const data = JSON.parse(fileContent);
         return data[key] || null;
@@ -77,11 +77,11 @@ function setupStorageHandlers() {
         return;
       }
 
-      const fileContent = fs.readFileSync(storagePath, 'utf8');
+      const fileContent = await fs.promises.readFile(storagePath, 'utf8');
       try {
         const data = JSON.parse(fileContent);
         delete data[key];
-        fs.writeFileSync(storagePath, JSON.stringify(data, null, 2), 'utf8');
+        await fs.promises.writeFile(storagePath, JSON.stringify(data, null, 2), 'utf8');
       } catch (parseError) {
         console.warn('Failed to parse storage file');
       }
@@ -361,7 +361,7 @@ export function setupEventHandlers() {
       const filePath = path.join(folderPath, filename);
       if (!fs.existsSync(filePath)) return { success: true, data: null };
       try {
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = await fs.promises.readFile(filePath, 'utf-8');
         return { success: true, data: JSON.parse(content) };
       } catch (e: any) {
         console.error(`Error reading ${filename}:`, e);
@@ -383,7 +383,7 @@ export function setupEventHandlers() {
     ) => {
       try {
         const filePath = path.join(folderPath, filename);
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+        await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2));
         return true;
       } catch (e) {
         console.error(`Error writing ${filename}:`, e);

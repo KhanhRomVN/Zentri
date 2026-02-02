@@ -1,14 +1,19 @@
-import { ReactNode } from 'react';
+import { ReactNode } from "react";
 
 /**
  * Hướng mở của drawer
  */
-export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom';
+export type DrawerDirection = "left" | "right" | "top" | "bottom";
 
 /**
  * Loại hiệu ứng animation
  */
-export type DrawerAnimationType = 'slide' | 'scale' | 'fade' | 'bounce' | 'elastic';
+export type DrawerAnimationType =
+  | "slide"
+  | "scale"
+  | "fade"
+  | "bounce"
+  | "elastic";
 
 /**
  * Kiểu dữ liệu cho kích thước (có thể là string hoặc number)

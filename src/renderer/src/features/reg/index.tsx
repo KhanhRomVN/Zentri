@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import RegSidebar from './components/RegSidebar';
 import SessionGrid from './components/SessionGrid';
 import AccountTable from './components/AccountTable';
@@ -66,7 +66,23 @@ const RegPage = () => {
     return res;
   };
 
-  const loadData = async () => {
+  const updateAllPlatformStats = useCallback((sessions: RegSession[]) => {
+    setPlatforms((prev) =>
+      prev.map((p) => {
+        const platformSessions = sessions.filter((s) => s.websiteId === p.id);
+        const totalSessions = platformSessions.length;
+        const avgSuccess =
+          totalSessions > 0
+            ? Math.round(
+                platformSessions.reduce((acc, s) => acc + s.successRate, 0) / totalSessions,
+              )
+            : 0;
+        return { ...p, totalSessions, successRate: avgSuccess };
+      }),
+    );
+  }, []);
+
+  const loadData = useCallback(async () => {
     if (!gitlabFolder) {
       setError('Please select a Git Repository Folder in Settings');
       return;
@@ -122,64 +138,54 @@ const RegPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [gitlabFolder, agentsPath, dataPath, updateAllPlatformStats]);
 
-  const saveData = async (updatedSessions: RegSession[], updatedAccounts: RegAccount[]) => {
-    if (!gitlabFolder) return;
+  const saveData = useCallback(
+    async (updatedSessions: RegSession[], updatedAccounts: RegAccount[]) => {
+      if (!gitlabFolder) return;
 
-    try {
-      const data = {
-        sessions: updatedSessions,
-        accounts: updatedAccounts,
-      };
+      try {
+        const data = {
+          sessions: updatedSessions,
+          accounts: updatedAccounts,
+        };
 
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('git:write-data', {
-        folderPath: gitlabFolder,
-        filename: dataPath,
-        data: data,
-      });
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: dataPath,
+          data: data,
+        });
 
-      window.dispatchEvent(
-        new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: true } }),
-      );
+        window.dispatchEvent(
+          new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: true } }),
+        );
 
-      updateAllPlatformStats(updatedSessions);
-    } catch (err: any) {
-      setError(`Failed to save data: ${err.message}`);
-    }
-  };
+        updateAllPlatformStats(updatedSessions);
+      } catch (err: any) {
+        setError(`Failed to save data: ${err.message}`);
+      }
+    },
+    [gitlabFolder, dataPath, updateAllPlatformStats],
+  );
 
-  const saveAgents = async (updatedAgents: Agent[]) => {
-    if (!gitlabFolder) return;
-    try {
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('git:write-data', {
-        folderPath: gitlabFolder,
-        filename: agentsPath,
-        data: updatedAgents,
-      });
-      setAllData((prev) => ({ ...prev, agents: updatedAgents }));
-    } catch (err) {
-      console.error('Failed to save agents', err);
-    }
-  };
-
-  const updateAllPlatformStats = (sessions: RegSession[]) => {
-    setPlatforms((prev) =>
-      prev.map((p) => {
-        const platformSessions = sessions.filter((s) => s.websiteId === p.id);
-        const totalSessions = platformSessions.length;
-        const avgSuccess =
-          totalSessions > 0
-            ? Math.round(
-                platformSessions.reduce((acc, s) => acc + s.successRate, 0) / totalSessions,
-              )
-            : 0;
-        return { ...p, totalSessions, successRate: avgSuccess };
-      }),
-    );
-  };
+  const saveAgents = useCallback(
+    async (updatedAgents: Agent[]) => {
+      if (!gitlabFolder) return;
+      try {
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: agentsPath,
+          data: updatedAgents,
+        });
+        setAllData((prev) => ({ ...prev, agents: updatedAgents }));
+      } catch (err) {
+        console.error('Failed to save agents', err);
+      }
+    },
+    [gitlabFolder, agentsPath],
+  );
 
   useEffect(() => {
     loadData();

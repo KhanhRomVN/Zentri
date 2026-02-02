@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Globe, LayoutGrid, CheckCircle2 } from 'lucide-react';
 import { Website } from '../types';
 import { cn } from '../../../shared/lib/utils';
@@ -8,7 +9,7 @@ interface RegSidebarProps {
   onSelectWebsite: (id: string) => void;
 }
 
-const RegSidebar = ({ websites, selectedWebsiteId, onSelectWebsite }: RegSidebarProps) => {
+const RegSidebar = memo(({ websites, selectedWebsiteId, onSelectWebsite }: RegSidebarProps) => {
   const filteredWebsites = websites;
 
   return (
@@ -95,6 +96,6 @@ const RegSidebar = ({ websites, selectedWebsiteId, onSelectWebsite }: RegSidebar
       </div>
     </div>
   );
-};
+});
 
 export default RegSidebar;

@@ -14,7 +14,7 @@ import { Switch } from '../../../shared/components/ui/Switch';
 import FingerprintDrawer from './FingerprintDrawer';
 import { Agent, RegSession } from '../types';
 import { cn } from '../../../shared/lib/utils';
-import { useState } from 'react';
+import { useState, memo, useMemo, useCallback } from 'react';
 
 interface SessionGridProps {
   sessions: RegSession[];
@@ -22,7 +22,7 @@ interface SessionGridProps {
   onCreateSession: (name: string) => void;
 }
 
-const SessionGrid = ({ sessions, onSelectSession, onCreateSession }: SessionGridProps) => {
+const SessionGrid = memo(({ sessions, onSelectSession, onCreateSession }: SessionGridProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
@@ -50,18 +50,21 @@ const SessionGrid = ({ sessions, onSelectSession, onCreateSession }: SessionGrid
     },
   });
 
-  const filteredSessions = sessions.filter((s) =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredSessions = useMemo(() => {
+    return sessions.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [sessions, searchQuery]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newSessionName.trim()) {
-      onCreateSession(newSessionName);
-      setNewSessionName('');
-      setIsModalOpen(false);
-    }
-  };
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (newSessionName.trim()) {
+        onCreateSession(newSessionName);
+        setNewSessionName('');
+        setIsModalOpen(false);
+      }
+    },
+    [newSessionName, onCreateSession],
+  );
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -259,6 +262,6 @@ const SessionGrid = ({ sessions, onSelectSession, onCreateSession }: SessionGrid
       />
     </div>
   );
-};
+});
 
 export default SessionGrid;

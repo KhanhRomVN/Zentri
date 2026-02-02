@@ -48,6 +48,12 @@ export interface Account {
   phone: string;
   twoFactorEnabled: boolean;
   status: 'active' | 'warning' | 'error';
+  securityScore?: number;
+  services?: Array<{
+    name: string;
+    connectedDate?: string;
+  }>;
+  recentActivity?: ActivityItem[];
 }
 
 export const mockAccounts: Account[] = [

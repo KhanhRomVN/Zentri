@@ -1,29 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { Account, ConnectedDevice, RecentActivity } from '../mock/accounts';
+import { useState, useCallback } from 'react';
+import { Account } from '../mock/accounts';
 import {
   Shield,
   ShieldCheck,
   ShieldAlert,
-  Smartphone,
   Mail,
   Cloud,
-  Edit2,
-  Trash2,
   Globe,
   MoreVertical,
-  Plus,
   HardDrive,
-  Laptop,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
   History,
   Lock,
   ChevronRight,
   LogOut,
 } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+
+const TABS = ['overview', 'security', 'data'] as const;
 
 interface AccountDetailProps {
   account: Account | null;
@@ -48,7 +41,7 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
     );
   }
 
-  const getProviderColor = (provider: Account['provider']) => {
+  const getProviderColor = useCallback((provider: Account['provider']) => {
     switch (provider) {
       case 'gmail':
         return 'from-red-500 to-red-600 shadow-red-500/20';
@@ -59,13 +52,17 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
       default:
         return 'from-gray-500 to-gray-600 shadow-gray-500/20';
     }
-  };
+  }, []);
 
-  const getSecurityScoreColor = (score: number) => {
+  const getSecurityScoreColor = useCallback((score: number) => {
     if (score >= 90) return 'text-emerald-500';
     if (score >= 70) return 'text-yellow-500';
     return 'text-red-500';
-  };
+  }, []);
+
+  const handleTabClick = useCallback((tab: (typeof TABS)[number]) => {
+    setActiveTab(tab);
+  }, []);
 
   return (
     <div className="h-full flex flex-col bg-background/50 relative overflow-hidden">
@@ -105,10 +102,10 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
 
                 {/* Integrated Tabs */}
                 <div className="pt-4 flex items-center gap-2">
-                  {['overview', 'security', 'data'].map((tab) => (
+                  {TABS.map((tab) => (
                     <button
                       key={tab}
-                      onClick={() => setActiveTab(tab as any)}
+                      onClick={() => handleTabClick(tab)}
                       className={cn(
                         'px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize border',
                         activeTab === tab
@@ -135,8 +132,8 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                     strokeWidth="3"
                   />
                   <path
-                    className={getSecurityScoreColor(account.securityScore)}
-                    strokeDasharray={`${account.securityScore}, 100`}
+                    className={getSecurityScoreColor(account.securityScore ?? 0)}
+                    strokeDasharray={`${account.securityScore ?? 0}, 100`}
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="currentColor"
@@ -148,10 +145,10 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                   <span
                     className={cn(
                       'text-xl font-bold',
-                      getSecurityScoreColor(account.securityScore),
+                      getSecurityScoreColor(account.securityScore ?? 0),
                     )}
                   >
-                    {account.securityScore}
+                    {account.securityScore ?? 0}
                   </span>
                 </div>
               </div>
@@ -174,9 +171,9 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                 </button>
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {account.services.map((service, idx) => (
+                {account.services?.map((service) => (
                   <div
-                    key={idx}
+                    key={service.name}
                     className="group relative p-4 rounded-md border border-border/50 bg-card/30 hover:bg-card hover:border-primary/20 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -268,8 +265,8 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                 <div className="space-y-6 relative flex-1">
                   <div className="absolute left-[19px] top-2 bottom-2 w-[2px] bg-border/50" />
 
-                  {account.recentActivity.length > 0 ? (
-                    account.recentActivity.map((activity, idx) => (
+                  {account.recentActivity?.length ? (
+                    account.recentActivity.map((activity) => (
                       <div key={activity.id} className="relative flex gap-4">
                         <div
                           className={cn(

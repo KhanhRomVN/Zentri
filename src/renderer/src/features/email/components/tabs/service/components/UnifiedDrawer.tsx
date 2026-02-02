@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { X, Save, Trash2, Plus, Key, Lock, Shield, Check } from 'lucide-react';
 import { cn } from '../../../../../../shared/lib/utils';
 
@@ -49,6 +50,15 @@ export const UnifiedDrawer = ({
   allMethods,
   onCompleteReview,
 }: UnifiedDrawerProps) => {
+  // Memoize grouped changes to avoid filtering on every render
+  const groupedChanges = useMemo(() => {
+    if (!pendingChanges) return { '2fa': [], secrets: [] };
+    return {
+      '2fa': pendingChanges.filter((c) => c.area === 'Two-Factor Authentication'),
+      secrets: pendingChanges.filter((c) => c.area === 'Secrets & Keys'),
+    };
+  }, [pendingChanges]);
+
   return (
     <>
       <div
@@ -259,9 +269,9 @@ export const UnifiedDrawer = ({
             <div className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
               {pendingChanges && pendingChanges.length > 0 ? (
                 <div className="space-y-6">
-                  {['Two-Factor Authentication', 'Secrets & Keys'].map((area) => {
-                    const areaChanges = pendingChanges.filter((c) => c.area === area);
+                  {Object.entries(groupedChanges).map(([key, areaChanges]) => {
                     if (areaChanges.length === 0) return null;
+                    const area = key === '2fa' ? 'Two-Factor Authentication' : 'Secrets & Keys';
 
                     return (
                       <div key={area} className="space-y-3">

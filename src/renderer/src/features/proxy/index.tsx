@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Plus,
   Search,
@@ -80,7 +80,7 @@ const ProxyPage: React.FC = () => {
   };
 
   // Sync Data Logic
-  const loadProxies = async () => {
+  const loadProxies = useCallback(async () => {
     if (!gitlabFolder) return;
     setLoading(true);
     try {
@@ -100,21 +100,24 @@ const ProxyPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [gitlabFolder]);
 
-  const saveProxies = async (data: ProxyItem[]) => {
-    if (!gitlabFolder) return;
-    try {
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('git:write-data', {
-        folderPath: gitlabFolder,
-        filename: 'proxies.json',
-        data: data,
-      });
-    } catch (err) {
-      console.error('Failed to save proxies:', err);
-    }
-  };
+  const saveProxies = useCallback(
+    async (data: ProxyItem[]) => {
+      if (!gitlabFolder) return;
+      try {
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: 'proxies.json',
+          data: data,
+        });
+      } catch (err) {
+        console.error('Failed to save proxies:', err);
+      }
+    },
+    [gitlabFolder],
+  );
 
   useEffect(() => {
     loadProxies();
@@ -154,7 +157,7 @@ const ProxyPage: React.FC = () => {
     manualData.password
   );
 
-  const handleQuickProcess = () => {
+  const handleQuickProcess = useCallback(() => {
     if (!quickInput) return;
     const parts = quickInput.trim().split(':');
     if (parts.length >= 2) {
@@ -171,9 +174,9 @@ const ProxyPage: React.FC = () => {
       return parsed;
     }
     return null;
-  };
+  }, [quickInput, manualData.type]);
 
-  const handleClearModal = () => {
+  const handleClearModal = useCallback(() => {
     setQuickInput('');
     setManualData({
       ip: '',
@@ -183,9 +186,9 @@ const ProxyPage: React.FC = () => {
       password: '',
     });
     setCheckResult(null);
-  };
+  }, []);
 
-  const handleCheckProxy = async () => {
+  const handleCheckProxy = useCallback(async () => {
     let dataToCheck = { ...manualData };
     if (quickInput) {
       const parsed = handleQuickProcess();
@@ -203,9 +206,9 @@ const ProxyPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [manualData, quickInput, handleQuickProcess]);
 
-  const handleSaveProxy = async () => {
+  const handleSaveProxy = useCallback(async () => {
     let finalData = { ...manualData };
     if (quickInput) {
       const parsed = handleQuickProcess();
@@ -235,7 +238,15 @@ const ProxyPage: React.FC = () => {
     saveProxies(updated);
     setIsModalOpen(false);
     handleClearModal();
-  };
+  }, [
+    manualData,
+    quickInput,
+    handleQuickProcess,
+    proxies,
+    checkResult,
+    saveProxies,
+    handleClearModal,
+  ]);
 
   return (
     <div className="flex h-full w-full bg-background overflow-hidden animate-in fade-in duration-500">

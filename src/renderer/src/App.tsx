@@ -4,10 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './core/theme/ThemeProvider';
 import { Toaster } from 'sonner';
 
-function App() {
-  const router = createHashRouter(routes);
-  const queryClient = new QueryClient();
+const router = createHashRouter(routes);
+const queryClient = new QueryClient();
 
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="syfer-theme">

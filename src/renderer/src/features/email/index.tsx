@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import AccountWorkspace from './components/AccountWorkspace';
 import {
   Search,
@@ -18,6 +18,20 @@ import { cn } from '../../shared/lib/utils';
 import { Account, ServiceItem, ActivityItem, ProfileMetadata } from './mock/accounts';
 import { v4 as uuidv4 } from 'uuid';
 
+// Domain mapping for email provider favicons
+const DOMAIN_MAP: Record<string, string> = {
+  'gmail.com': 'google.com',
+  'googlemail.com': 'google.com',
+  'hotmail.com': 'microsoft.com',
+  'outlook.com': 'microsoft.com',
+  'live.com': 'microsoft.com',
+  'yahoo.com': 'yahoo.com',
+  'protonmail.com': 'proton.me',
+  'proton.me': 'proton.me',
+  'icloud.com': 'apple.com',
+  'me.com': 'apple.com',
+};
+
 const AccountManager = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -29,15 +43,12 @@ const AccountManager = () => {
   const servicesRef = useRef(services);
   const activitiesRef = useRef(activities);
 
-  useEffect(() => {
+  // Sync refs with state (consolidated for performance)
+  useLayoutEffect(() => {
     accountsRef.current = accounts;
-  }, [accounts]);
-  useEffect(() => {
     servicesRef.current = services;
-  }, [services]);
-  useEffect(() => {
     activitiesRef.current = activities;
-  }, [activities]);
+  }, [accounts, services, activities]);
 
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,7 +67,7 @@ const AccountManager = () => {
     return localStorage.getItem('gitlab_repo_folder');
   }, []);
 
-  const getAvatarColor = (identifier: string) => {
+  const getAvatarColor = useCallback((identifier: string) => {
     const colors = [
       { bg: 'bg-red-500/15', text: 'text-red-500', hex: '#ef4444' }, // red-500
       { bg: 'bg-orange-500/15', text: 'text-orange-500', hex: '#f97316' }, // orange-500
@@ -82,90 +93,99 @@ const AccountManager = () => {
 
     const index = Math.abs(hash) % colors.length;
     return colors[index];
-  };
+  }, []);
 
-  const loadData = async (forceCloud = false) => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (!gitlabFolder) {
-        console.warn('[Email] No gitlabFolder found in localStorage');
-        setError('Please select a Git Repository Folder in Settings');
-        return;
-      }
-
-      console.log('[Email] Loading data from:', gitlabFolder);
-
-      // Load from physical files on disk
-      // @ts-ignore
-      let emailsData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'emails.json',
-      );
-
-      console.log('[Email] Raw emailsData:', emailsData);
-
-      if (!emailsData) {
-        console.log('[Email] emails.json not found, initializing empty array');
-        emailsData = [];
-        await window.electron.ipcRenderer.invoke('git:write-data', {
-          folderPath: gitlabFolder,
-          filename: 'emails.json',
-          data: [],
-        });
-      }
-      // @ts-ignore
-      const servicesData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'services.json',
-      );
-      console.log('[Email] servicesData:', servicesData);
-
-      // @ts-ignore
-      const activitiesData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'recent_activities.json',
-      );
-      console.log('[Email] activitiesData:', activitiesData);
-
-      // @ts-ignore
-      const profilesData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'profiles.json',
-      );
-      console.log('[Email] profilesData:', profilesData);
-
-      const extractData = (res: any) => {
-        if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
-          return Array.isArray(res.data) ? res.data : typeof res.data === 'object' ? res.data : [];
+  const loadData = useCallback(
+    async (forceCloud = false) => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (!gitlabFolder) {
+          console.warn('[Email] No gitlabFolder found in localStorage');
+          setError('Please select a Git Repository Folder in Settings');
+          return;
         }
-        return Array.isArray(res) ? res : res && typeof res === 'object' ? res : null;
-      };
 
-      const loadedEmails = extractData(emailsData);
-      const loadedAccounts = Array.isArray(loadedEmails) ? loadedEmails : [];
+        console.log('[Email] Loading data from:', gitlabFolder);
 
-      console.log('[Email] Processed loadedAccounts:', loadedAccounts.length);
+        // Load from physical files on disk
+        // @ts-ignore
+        let emailsData = await window.electron.ipcRenderer.invoke(
+          'git:read-data',
+          gitlabFolder,
+          'emails.json',
+        );
 
-      setAccounts(loadedAccounts);
-      setServices(Array.isArray(extractData(servicesData)) ? extractData(servicesData) : []);
-      setActivities(Array.isArray(extractData(activitiesData)) ? extractData(activitiesData) : []);
-      setProfiles(Array.isArray(extractData(profilesData)) ? extractData(profilesData) : []);
+        console.log('[Email] Raw emailsData:', emailsData);
 
-      if (loadedAccounts.length > 0 && !selectedAccount) {
-        setSelectedAccount(loadedAccounts[0]);
+        if (!emailsData) {
+          console.log('[Email] emails.json not found, initializing empty array');
+          emailsData = [];
+          await window.electron.ipcRenderer.invoke('git:write-data', {
+            folderPath: gitlabFolder,
+            filename: 'emails.json',
+            data: [],
+          });
+        }
+        // @ts-ignore
+        const servicesData = await window.electron.ipcRenderer.invoke(
+          'git:read-data',
+          gitlabFolder,
+          'services.json',
+        );
+        console.log('[Email] servicesData:', servicesData);
+
+        // @ts-ignore
+        const activitiesData = await window.electron.ipcRenderer.invoke(
+          'git:read-data',
+          gitlabFolder,
+          'recent_activities.json',
+        );
+        console.log('[Email] activitiesData:', activitiesData);
+
+        // @ts-ignore
+        const profilesData = await window.electron.ipcRenderer.invoke(
+          'git:read-data',
+          gitlabFolder,
+          'profiles.json',
+        );
+        console.log('[Email] profilesData:', profilesData);
+
+        const extractData = (res: any) => {
+          if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
+            return Array.isArray(res.data)
+              ? res.data
+              : typeof res.data === 'object'
+                ? res.data
+                : [];
+          }
+          return Array.isArray(res) ? res : res && typeof res === 'object' ? res : null;
+        };
+
+        const loadedEmails = extractData(emailsData);
+        const loadedAccounts = Array.isArray(loadedEmails) ? loadedEmails : [];
+
+        console.log('[Email] Processed loadedAccounts:', loadedAccounts.length);
+
+        setAccounts(loadedAccounts);
+        setServices(Array.isArray(extractData(servicesData)) ? extractData(servicesData) : []);
+        setActivities(
+          Array.isArray(extractData(activitiesData)) ? extractData(activitiesData) : [],
+        );
+        setProfiles(Array.isArray(extractData(profilesData)) ? extractData(profilesData) : []);
+
+        if (loadedAccounts.length > 0 && !selectedAccount) {
+          setSelectedAccount(loadedAccounts[0]);
+        }
+      } catch (err: any) {
+        console.error('[Email] Load error:', err);
+        setError(`Failed to read data: ${err.message}`);
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      console.error('[Email] Load error:', err);
-      setError(`Failed to read data: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [gitlabFolder, selectedAccount],
+  );
 
   useEffect(() => {
     loadData();
@@ -210,46 +230,49 @@ const AccountManager = () => {
     };
   }, [gitlabFolder]);
 
-  const markAsDirty = async (
-    updatedAccounts: Account[],
-    updatedServices: ServiceItem[],
-    updatedActivities: ActivityItem[],
-    updatedProfiles: ProfileMetadata[] = profiles,
-  ) => {
-    // Write to physical files immediately
-    if (gitlabFolder) {
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('git:write-data', {
-        folderPath: gitlabFolder,
-        filename: 'emails.json',
-        data: updatedAccounts,
-      });
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('git:write-data', {
-        folderPath: gitlabFolder,
-        filename: 'services.json',
-        data: updatedServices,
-      });
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('git:write-data', {
-        folderPath: gitlabFolder,
-        filename: 'recent_activities.json',
-        data: updatedActivities,
-      });
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('git:write-data', {
-        folderPath: gitlabFolder,
-        filename: 'profiles.json',
-        data: updatedProfiles,
-      });
-    }
+  const markAsDirty = useCallback(
+    async (
+      updatedAccounts: Account[],
+      updatedServices: ServiceItem[],
+      updatedActivities: ActivityItem[],
+      updatedProfiles: ProfileMetadata[] = profiles,
+    ) => {
+      // Write to physical files immediately
+      if (gitlabFolder) {
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: 'emails.json',
+          data: updatedAccounts,
+        });
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: 'services.json',
+          data: updatedServices,
+        });
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: 'recent_activities.json',
+          data: updatedActivities,
+        });
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: 'profiles.json',
+          data: updatedProfiles,
+        });
+      }
 
-    window.dispatchEvent(
-      new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: true } }),
-    );
-  };
+      window.dispatchEvent(
+        new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: true } }),
+      );
+    },
+    [gitlabFolder, profiles],
+  );
 
-  const handleAddAccount = async () => {
+  const handleAddAccount = useCallback(async () => {
     const account: Account = {
       id: uuidv4(),
       email: newAccount.email,
@@ -269,36 +292,42 @@ const AccountManager = () => {
     setIsModalOpen(false);
     setNewAccount({ email: '', password: '', name: '', provider: 'gmail' });
     markAsDirty(updatedAccounts, services, activities, profiles);
-  };
+  }, [newAccount, accounts, services, activities, profiles, markAsDirty]);
 
-  const handleDeleteAccount = async (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const updatedAccounts = (Array.isArray(accounts) ? accounts : []).filter((a) => a.id !== id);
-    const updatedServices = (Array.isArray(services) ? services : []).filter(
-      (s) => s.accountId !== id,
-    );
-    const updatedActivities = (Array.isArray(activities) ? activities : []).filter(
-      (a) => a.accountId !== id,
-    );
+  const handleDeleteAccount = useCallback(
+    async (id: string, e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
+      const updatedAccounts = (Array.isArray(accounts) ? accounts : []).filter((a) => a.id !== id);
+      const updatedServices = (Array.isArray(services) ? services : []).filter(
+        (s) => s.accountId !== id,
+      );
+      const updatedActivities = (Array.isArray(activities) ? activities : []).filter(
+        (a) => a.accountId !== id,
+      );
 
-    setAccounts(updatedAccounts);
-    setServices(updatedServices);
-    setActivities(updatedActivities);
+      setAccounts(updatedAccounts);
+      setServices(updatedServices);
+      setActivities(updatedActivities);
 
-    if (selectedAccount?.id === id) {
-      setSelectedAccount(updatedAccounts[0] || null);
-    }
-    markAsDirty(updatedAccounts, updatedServices, updatedActivities, profiles);
-  };
+      if (selectedAccount?.id === id) {
+        setSelectedAccount(updatedAccounts[0] || null);
+      }
+      markAsDirty(updatedAccounts, updatedServices, updatedActivities, profiles);
+    },
+    [accounts, services, activities, profiles, selectedAccount, markAsDirty],
+  );
 
-  const handleUpdateAccount = async (updatedAccount: Account) => {
-    const updated = (Array.isArray(accounts) ? accounts : []).map((a) =>
-      a.id === updatedAccount.id ? updatedAccount : a,
-    );
-    setAccounts(updated);
-    setSelectedAccount(updatedAccount);
-    markAsDirty(updated, services, activities, profiles);
-  };
+  const handleUpdateAccount = useCallback(
+    async (updatedAccount: Account) => {
+      const updated = (Array.isArray(accounts) ? accounts : []).map((a) =>
+        a.id === updatedAccount.id ? updatedAccount : a,
+      );
+      setAccounts(updated);
+      setSelectedAccount(updatedAccount);
+      markAsDirty(updated, services, activities, profiles);
+    },
+    [accounts, services, activities, profiles, markAsDirty],
+  );
 
   const filteredAccounts = (Array.isArray(accounts) ? accounts : []).filter(
     (account) =>
@@ -306,7 +335,7 @@ const AccountManager = () => {
       account.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const getProviderTheme = (provider: Account['provider']) => {
+  const getProviderTheme = useCallback((provider: Account['provider']) => {
     switch (provider) {
       case 'gmail':
         return {
@@ -341,7 +370,7 @@ const AccountManager = () => {
           avatar: 'bg-gradient-to-br from-gray-500 to-gray-600 shadow-gray-500/20',
         };
     }
-  };
+  }, []);
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
@@ -401,22 +430,7 @@ const AccountManager = () => {
           ) : (
             filteredAccounts.map((account) => {
               let domain = account.email.split('@')[1] || 'google.com';
-
-              // Map email providers to their actual favicon domains
-              const domainMap: Record<string, string> = {
-                'gmail.com': 'google.com',
-                'googlemail.com': 'google.com',
-                'hotmail.com': 'microsoft.com',
-                'outlook.com': 'microsoft.com',
-                'live.com': 'microsoft.com',
-                'yahoo.com': 'yahoo.com',
-                'protonmail.com': 'proton.me',
-                'proton.me': 'proton.me',
-                'icloud.com': 'apple.com',
-                'me.com': 'apple.com',
-              };
-
-              domain = domainMap[domain] || domain;
+              domain = DOMAIN_MAP[domain] || domain;
               const faviconUrl = `https://www.google.com/s2/favicons?domain=https://${domain}&sz=32`;
               const theme = getProviderTheme(account.provider);
               const isSelected = selectedAccount?.id === account.id;

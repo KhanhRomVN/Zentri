@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, memo } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { Drawer } from '../../../shared/components/ui/drawer';
 import { X, Moon, Sun, Palette } from 'lucide-react';
@@ -10,14 +10,17 @@ interface ThemeDrawerProps {
   onClose: () => void;
 }
 
-const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
+const ThemeDrawer: React.FC<ThemeDrawerProps> = memo(({ isOpen, onClose }) => {
   const { theme, setTheme, applyPresetTheme } = useTheme();
 
   // Filter to just Light and Dark
-  const themes = [
-    { value: 'light', label: 'Light', icon: Sun },
-    { value: 'dark', label: 'Dark', icon: Moon },
-  ];
+  const themes = useMemo(
+    () => [
+      { value: 'light', label: 'Light', icon: Sun },
+      { value: 'dark', label: 'Dark', icon: Moon },
+    ],
+    [],
+  );
 
   // Cast theme to 'light' | 'dark' safely since we removed system
   const currentMode = theme === 'light' || theme === 'dark' ? theme : 'dark';
@@ -153,6 +156,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       </div>
     </Drawer>
   );
-};
+});
 
 export default ThemeDrawer;
