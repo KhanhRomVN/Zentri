@@ -2,6 +2,7 @@ import { Account } from '../../../mock/accounts';
 import { cn } from '../../../../../shared/lib/utils';
 import { useState, useMemo } from 'react';
 import { User, Mail, Shield, Smartphone, Key, ScanLine, MessageSquare, X } from 'lucide-react';
+import { Drawer } from '../../../../../shared/components/ui/drawer';
 
 import { InfoSection } from './components/InfoSection';
 import { TwoFactorSection } from './components/TwoFactorSection';
@@ -246,22 +247,16 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
         </button>
       )}
 
-      {activeDrawer && (
-        <div
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[50] animate-in fade-in duration-300"
-          onClick={() => setActiveDrawer(null)}
-        />
-      )}
-
-      <div
-        className={cn(
-          'absolute top-0 right-0 h-full w-[35%] bg-background border-l border-border z-[60] shadow-2xl transition-transform duration-500 flex flex-col p-8',
-          activeDrawer ? 'translate-x-0' : 'translate-x-full',
-        )}
+      <Drawer
+        isOpen={!!activeDrawer}
+        onClose={() => setActiveDrawer(null)}
+        direction="right"
+        width="35%"
+        className="p-8 flex flex-col bg-background border-l border-border"
       >
         <button
           onClick={() => setActiveDrawer(null)}
-          className="absolute top-6 right-6 p-2 rounded-full hover:bg-muted text-muted-foreground"
+          className="absolute top-6 right-6 p-2 rounded-full hover:bg-muted text-muted-foreground z-50"
         >
           <X className="w-5 h-5" />
         </button>
@@ -302,7 +297,7 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
             }}
           />
         )}
-      </div>
+      </Drawer>
     </div>
   );
 };

@@ -19,6 +19,9 @@ const DropdownTrigger: React.FC<DropdownTriggerProps> = ({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (props.onClick) {
+      props.onClick(e);
+    }
     if (!disabled) {
       setIsOpen(!isOpen);
     }
@@ -32,8 +35,8 @@ const DropdownTrigger: React.FC<DropdownTriggerProps> = ({
         disabled && 'opacity-50 cursor-not-allowed',
         className,
       )}
-      onClick={handleClick}
       {...props}
+      onClick={handleClick}
     >
       {children}
     </div>

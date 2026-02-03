@@ -8,6 +8,7 @@ import {
   Cpu,
   Plus,
   ChevronDown,
+  Eye,
 } from 'lucide-react';
 import {
   Dropdown,
@@ -328,11 +329,7 @@ const AccountTable = memo(
               </thead>
               <tbody className="divide-y divide-border/50">
                 {accounts.map((account, index) => (
-                  <tr
-                    key={account.id}
-                    className="group transition-colors duration-200 cursor-pointer"
-                    onClick={() => onEditAccount(account)}
-                  >
+                  <tr key={account.id} className="group transition-colors duration-200">
                     <td className="px-6 py-4 text-xs text-muted-foreground font-medium">
                       {index + 1}
                     </td>
@@ -341,10 +338,24 @@ const AccountTable = memo(
                         {renderCell(account, col)}
                       </td>
                     ))}
-                    <td className="px-6 py-4 text-center">
-                      <button className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-all">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => onEditAccount(account)}
+                              className="p-1.5 hover:bg-primary/10 rounded-md text-muted-foreground hover:text-primary transition-all"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>View Details</TooltipContent>
+                        </Tooltip>
+
+                        <button className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-all">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

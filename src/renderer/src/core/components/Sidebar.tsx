@@ -48,18 +48,21 @@ const NAV_ITEMS = [
     href: '/search',
     icon: Search,
     color: '#eab308', // yellow-500
+    disabled: true,
   },
   {
     title: 'Script',
     href: '/script',
     icon: FileCode,
     color: '#6366f1', // indigo-500
+    disabled: true,
   },
   {
     title: 'Category',
     href: '/category',
     icon: FolderTree,
     color: '#ec4899', // pink-500
+    disabled: true,
   },
   {
     title: 'Proxy',
@@ -72,6 +75,7 @@ const NAV_ITEMS = [
     href: '/setting',
     icon: SettingsIcon,
     color: '#64748b', // slate-500
+    disabled: true,
   },
 ];
 
@@ -184,12 +188,14 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
           <NavLink
             key={item.href}
             to={item.href}
+            onClick={(e) => item.disabled && e.preventDefault()}
             end={item.href === '/'}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 py-3 text-sm font-medium rounded-none transition-all relative group',
                 isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 isCollapsed ? 'justify-center px-0 mx-0 w-full mb-1' : 'px-4 mb-1',
+                item.disabled && 'opacity-50 cursor-not-allowed grayscale pointer-events-none',
               )
             }
             style={({ isActive }) => ({

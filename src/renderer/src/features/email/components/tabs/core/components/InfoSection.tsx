@@ -1,4 +1,4 @@
-import { Mail, Key, AtSign, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Key, AtSign, User, Eye, EyeOff, Smartphone } from 'lucide-react';
 import { cn } from '../../../../../../shared/lib/utils';
 import { ReactNode } from 'react';
 
@@ -104,6 +104,40 @@ export const InfoSection = ({
               )}
               value={form.name}
               onChange={(e) => onChange('name', e.target.value)}
+            />
+          </div>
+        </InputGroup>
+        <InputGroup label="Recovery Email">
+          <div className="relative group">
+            <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input
+              className={cn(
+                'flex h-11 w-full rounded-lg border border-border bg-input pl-10 pr-4 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary',
+                form.recoveryEmail !== initialForm.recoveryEmail &&
+                  (form.recoveryEmail === ''
+                    ? 'border-red-500 border-dashed'
+                    : 'border-yellow-500 border-dashed'),
+              )}
+              value={form.recoveryEmail}
+              onChange={(e) => onChange('recoveryEmail', e.target.value)}
+              placeholder="recovery@example.com"
+            />
+          </div>
+        </InputGroup>
+        <InputGroup label="Phone Number">
+          <div className="relative group">
+            <Smartphone className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input
+              className={cn(
+                'flex h-11 w-full rounded-lg border border-border bg-input pl-10 pr-4 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary',
+                form.phoneNumber !== initialForm.phoneNumber &&
+                  (form.phoneNumber === ''
+                    ? 'border-red-500 border-dashed'
+                    : 'border-yellow-500 border-dashed'),
+              )}
+              value={form.phoneNumber}
+              onChange={(e) => onChange('phoneNumber', e.target.value)}
+              placeholder="+1 (555) 000-0000"
             />
           </div>
         </InputGroup>

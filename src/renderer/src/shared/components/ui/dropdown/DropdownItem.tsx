@@ -23,11 +23,12 @@ const DropdownItem: React.FC<DropdownItemProps> = ({
   const { setIsOpen, closeOnSelect, size } = context;
   const iconSize = getIconSize(size);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (disabled) return;
 
     if (onClick) {
-      onClick();
+      onClick(e);
     }
 
     if (closeOnSelect) {

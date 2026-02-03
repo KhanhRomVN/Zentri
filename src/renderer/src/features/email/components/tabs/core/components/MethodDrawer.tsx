@@ -29,7 +29,7 @@ export const MethodDrawer = ({
   onCancel,
 }: MethodDrawerProps) => {
   return (
-    <div className="flex flex-col h-full animate-in slide-in-from-right-10 duration-500">
+    <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 mb-8">
         {currentFocusedMethod ? (
           <>

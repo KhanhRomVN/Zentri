@@ -15,7 +15,7 @@ export const ReviewDrawer = ({
   onComplete,
 }: ReviewDrawerProps) => {
   return (
-    <div className="flex flex-col h-full animate-in slide-in-from-right-10 duration-500">
+    <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 mb-8">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
           <Shield className="w-7 h-7" />

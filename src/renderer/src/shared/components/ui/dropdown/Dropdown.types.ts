@@ -1,20 +1,20 @@
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
 
 export type DropdownPosition =
-  | "top-left"
-  | "top-center"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-center"
-  | "bottom-right"
-  | "left-top"
-  | "left-center"
-  | "left-bottom"
-  | "right-top"
-  | "right-center"
-  | "right-bottom";
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right'
+  | 'left-top'
+  | 'left-center'
+  | 'left-bottom'
+  | 'right-top'
+  | 'right-center'
+  | 'right-bottom';
 
-export type DropdownSize = "sm" | "md" | "lg";
+export type DropdownSize = 'sm' | 'md' | 'lg';
 
 export interface DropdownContextValue {
   isOpen: boolean;
@@ -90,7 +90,7 @@ export interface DropdownItemProps {
   disabled?: boolean;
 
   /** Click handler */
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
 
   /** Custom className */
   className?: string;

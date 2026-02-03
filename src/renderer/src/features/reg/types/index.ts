@@ -59,6 +59,9 @@ export interface RegAccount {
   username: string;
   password?: string;
   email?: string;
+  recoveryEmail?: string;
+  twoFactorAuth?: string;
+  cookies?: string; // JSON string
   status: 'success' | 'failed' | 'processing';
   proxy?: string;
   metadata?: Record<string, any>;
