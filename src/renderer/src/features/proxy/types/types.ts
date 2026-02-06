@@ -1,16 +1,17 @@
-export type ProxyType = 'HTTPS' | 'SOCKS4' | 'SOCKS5';
+import { Proxy as SharedProxy } from '../../../../../../shared/types';
 
-export interface ProxyItem {
+export interface ProxyItem extends Omit<SharedProxy, 'metadata'> {
+  // Legacy fields mapped to or from metadata for UI compatibility
   id: string;
-  stt: number;
-  proxy: string; // host:port:user:pass or host:port
-  type: ProxyType;
+  stt: number; // Was deleted in SharedProxy, likely needs to be optional or computed
   country: string;
   countryCode: string;
-  expired: string;
-  status: 'active' | 'expired' | 'error';
-  lastCheck?: string;
   details?: ProxyDetails;
+
+  // SharedProxy has 'metadata'. We can alias it or merge it?
+  // Ideally, we should update the UI to use 'metadata.country' etc.
+  // But for now, let's keep ProxyItem as a UI wrapper.
+  metadata?: any;
 }
 
 export interface ProxyDetails {

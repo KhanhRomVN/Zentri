@@ -16,6 +16,8 @@ const Combobox: React.FC<ComboboxProps> = ({
   searchable = true,
   creatable = false,
   creatableMessage = 'Create "%s"',
+  creatableClassName, // New prop
+  creatableIcon, // New prop
   children,
   onCreate,
   renderOption,
@@ -117,11 +119,16 @@ const Combobox: React.FC<ComboboxProps> = ({
   const sizeStyles = getComboboxSizeStyles(size);
 
   return (
-    <div className={cn('w-full rounded-md border', className)}>
+    <div
+      className={cn(
+        'w-full rounded-md border border-dropdown-border bg-dropdown-background overflow-hidden',
+        className,
+      )}
+    >
       {/* Options List */}
       <ul ref={listboxRef} className="overflow-auto" style={{ maxHeight }} role="listbox">
         {filteredOptions.length === 0 && !showCreateOption ? (
-          <li className="px-4 py-2 text-gray-500 text-sm">{emptyMessage}</li>
+          <li className="px-4 py-2 text-gray-500 text-sm italic">{emptyMessage}</li>
         ) : (
           <>
             {filteredOptions.map((option, index) => (
@@ -131,10 +138,9 @@ const Combobox: React.FC<ComboboxProps> = ({
                 aria-selected={selectedOption?.value === option.value}
                 className={cn(
                   'px-4 py-2 cursor-pointer transition-colors flex items-center justify-between',
+                  'hover:bg-dropdown-itemHover',
                   option.className,
-                  index === highlightedIndex &&
-                    selectedOption?.value === option.value &&
-                    'bg-blue-50 dark:bg-blue-900/20',
+                  index === highlightedIndex && 'bg-dropdown-itemHover',
                 )}
                 onClick={() => !option.disabled && handleSelect(option)}
                 onMouseEnter={() => !option.disabled && setHighlightedIndex(index)}
@@ -146,7 +152,7 @@ const Combobox: React.FC<ComboboxProps> = ({
                   ) : (
                     <span
                       className={
-                        selectedOption?.value === option.value ? 'text-blue-600 font-medium' : ''
+                        selectedOption?.value === option.value ? 'text-primary font-bold' : ''
                       }
                     >
                       {option.label}
@@ -154,7 +160,7 @@ const Combobox: React.FC<ComboboxProps> = ({
                   )}
                 </div>
                 {selectedOption?.value === option.value && (
-                  <Check size={sizeStyles.iconSize} className="text-blue-600 flex-shrink-0" />
+                  <Check size={sizeStyles.iconSize} className="text-primary flex-shrink-0" />
                 )}
               </li>
             ))}
@@ -163,13 +169,25 @@ const Combobox: React.FC<ComboboxProps> = ({
                 role="option"
                 className={cn(
                   'px-4 py-2 cursor-pointer transition-colors flex items-center gap-2',
-                  'border-t',
+                  'border-t border-dropdown-border hover:bg-dropdown-itemHover',
+                  highlightedIndex === filteredOptions.length && 'bg-dropdown-itemHover',
+                  creatableClassName,
                 )}
                 onClick={handleCreate}
                 onMouseEnter={() => setHighlightedIndex(filteredOptions.length)}
               >
-                <Plus size={sizeStyles.iconSize} className="flex-shrink-0 text-blue-600" />
-                <span className="text-blue-600">{creatableMessage.replace('%s', searchQuery)}</span>
+                {creatableIcon || (
+                  <Plus size={sizeStyles.iconSize} className="flex-shrink-0 text-primary" />
+                )}
+                <span
+                  className={cn(
+                    'italic font-medium',
+                    !creatableClassName && 'text-primary',
+                    creatableClassName,
+                  )}
+                >
+                  {creatableMessage.replace('%s', searchQuery)}
+                </span>
               </li>
             )}
           </>

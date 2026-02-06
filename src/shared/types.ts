@@ -1,0 +1,156 @@
+export interface GlobalEntity {
+  id: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// --- Email / Account ---
+export interface EmailMetadata {
+  [key: string]: any;
+}
+
+export interface Email extends GlobalEntity {
+  emailProviderId?: string;
+  email: string;
+  username?: string;
+  password?: string;
+  name?: string;
+  recoveryEmail?: string;
+  phoneNumber?: string;
+  status: string;
+  tags?: string[];
+  metadata?: EmailMetadata;
+
+  // Relations
+  services?: Service[];
+  twoFactorMethods?: Email2FA[];
+  recentActivity?: ActivityItem[];
+}
+
+// --- Service Provider ---
+export interface ServiceProvider extends GlobalEntity {
+  name: string;
+  type: string; // 'website' | 'pc' | 'mobile' or custom
+  category?: string;
+  metadata?: any;
+}
+
+// --- Service ---
+export interface ServiceMetadata {
+  username?: string;
+  password?: string;
+  websiteUrl?: string;
+  [key: string]: any;
+}
+
+export interface Service extends GlobalEntity {
+  emailId?: string;
+  serviceProviderId: string; // Link to ServiceProvider
+  linkedServiceId?: string; // For syncing with other services
+  tags?: string[];
+  categories?: string[];
+  metadata?: ServiceMetadata;
+  twoFactorMethods?: Service2FA[];
+}
+
+// --- 2FA ---
+export type TwoFactorType = 'totp' | 'otp_phone' | 'recovery_email' | 'backup_code';
+
+export interface Email2FA extends GlobalEntity {
+  emailId: string;
+  type: TwoFactorType;
+  value: any;
+}
+
+export interface Service2FA extends GlobalEntity {
+  serviceId: string;
+  type: TwoFactorType;
+  value: any;
+}
+
+// --- Proxy ---
+export type ProxyType = 'HTTPS' | 'SOCKS4' | 'SOCKS5';
+export type ProxyStatus = 'active' | 'expired' | 'error';
+
+export interface ProxyMetadata {
+  country?: string;
+  countryCode?: string;
+  [key: string]: any;
+}
+
+export interface Proxy extends GlobalEntity {
+  proxy: string;
+  type: ProxyType;
+  expired?: string;
+  status: ProxyStatus;
+  metadata?: ProxyMetadata;
+}
+
+// --- Reg (Registration) ---
+export interface RegSession extends GlobalEntity {
+  type: 'email' | 'service';
+  emailProviderId?: string; // if type === 'email'
+  serviceId?: string; // if type === 'service' (refers to ServiceProvider ID)
+}
+
+export interface RegAccountMetadata {
+  username: string;
+  password?: string;
+  email?: string;
+  emailId?: string;
+  [key: string]: any;
+}
+
+export interface RegAccount extends GlobalEntity {
+  regSessionId: string;
+  agentId: string;
+  userAgent: string;
+  proxyId: string;
+  status?: 'success' | 'failed' | 'processing'; // Keeping status as it's essential for state tracking
+  metadata: RegAccountMetadata;
+}
+
+// --- Agent ---
+export interface Fingerprint {
+  canvas: string;
+  audio: string;
+  clientRect: string;
+  webglImage: string;
+  webglMetadata: string;
+  webglVector: string;
+  webglVendor: string;
+  webglReRender: string;
+}
+
+export interface Agent extends GlobalEntity {
+  name: string;
+  userAgent: string;
+  os: string;
+  timezone?: string;
+  resolution?: string;
+  webrtc?: string;
+  location?: string;
+  language?: string;
+  fingerprint?: Fingerprint;
+}
+
+// --- Activity ---
+export interface ActivityItem extends GlobalEntity {
+  emailId: string;
+  action: 'login' | 'security_change' | 'data_export' | 'device_linked';
+  device: string;
+  location: string;
+  status: 'success' | 'warning' | 'failed';
+  timestamp: string; // duplicate of createdAt usually?
+}
+
+// --- Cookie ---
+export interface Cookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires?: number;
+  httpOnly: boolean;
+  secure: boolean;
+}

@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { LucideIcon } from "lucide-react";
+import { ReactNode } from 'react';
+import { LucideIcon } from 'lucide-react';
 
 export type BadgeColor = string;
 
@@ -9,8 +9,8 @@ export interface BadgeItem {
   color?: string;
 }
 
-export type InputSize = "sm" | "md" | "lg" | "xl";
-export type InputType = "text" | "password" | "combobox" | "calendar";
+export type InputSize = 'sm' | 'md' | 'lg' | 'xl';
+export type InputType = 'text' | 'password' | 'combobox' | 'calendar';
 
 export type InputIcon = LucideIcon | ReactNode;
 
@@ -39,7 +39,8 @@ export interface InputProps {
   multiValue?: boolean;
   badges?: BadgeItem[];
   onBadgeRemove?: (id: string | number) => void;
-  badgeColorMode?: "uniform" | "diverse";
+  badgeColorMode?: 'uniform' | 'diverse';
   badgeColors?: string[];
+  badgeVariant?: 'solid' | 'neon';
   [key: string]: any;
 }

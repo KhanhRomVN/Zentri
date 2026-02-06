@@ -14,6 +14,7 @@ const Drawer: React.FC<DrawerProps> = ({
   closeOnOverlayClick = true,
   width,
   height,
+  showOverlay = true,
 }) => {
   const drawerVariants = getDrawerVariants(direction, animationType);
   const drawerPosition = getDrawerPosition(direction, width, height);
@@ -23,15 +24,17 @@ const Drawer: React.FC<DrawerProps> = ({
       {isOpen && (
         <>
           {/* Overlay */}
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            variants={overlayVariants}
-            transition={{ duration: 0.3 }}
-            onClick={closeOnOverlayClick ? onClose : undefined}
-            className={cn('fixed inset-0 z-[999]', overlayClassName)}
-          />
+          {showOverlay && (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={overlayVariants}
+              transition={{ duration: 0.3 }}
+              onClick={closeOnOverlayClick ? onClose : undefined}
+              className={cn('fixed inset-0 z-[999]', overlayClassName)}
+            />
+          )}
 
           {/* Drawer */}
           <motion.div

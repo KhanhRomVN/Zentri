@@ -1,4 +1,4 @@
-import { Shield, Save } from 'lucide-react';
+import { Shield, Save, X } from 'lucide-react';
 import { cn } from '../../../../../../shared/lib/utils';
 
 interface ReviewDrawerProps {
@@ -6,6 +6,7 @@ interface ReviewDrawerProps {
   allMethods: any[];
   getMethodStyle: (type: string) => any;
   onComplete: () => void;
+  onClose: () => void;
 }
 
 export const ReviewDrawer = ({
@@ -13,19 +14,30 @@ export const ReviewDrawer = ({
   allMethods,
   getMethodStyle,
   onComplete,
+  onClose,
 }: ReviewDrawerProps) => {
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-          <Shield className="w-7 h-7" />
+      <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold tracking-tight">Review Changes</h2>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">
+              Verify your updates
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold tracking-tight">Review Changes</h2>
-          <p className="text-xs text-muted-foreground">Verify your updates</p>
-        </div>
+        <button
+          onClick={onClose}
+          className="p-2 -mr-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
-      <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto space-y-6 p-6 custom-scrollbar">
         {['Information', 'Two-Factor Authentication'].map((area) => {
           const areaChanges = pendingChanges.filter((c) => c.area === area);
           if (areaChanges.length === 0) return null;
@@ -152,13 +164,15 @@ export const ReviewDrawer = ({
           );
         })}
       </div>
-      <button
-        onClick={onComplete}
-        className="mt-8 w-full h-12 bg-primary text-primary-foreground rounded-md font-bold flex items-center justify-center gap-2 transform active:scale-[0.98] transition-all"
-      >
-        <Save className="w-5 h-5" />
-        Complete Update
-      </button>
+      <div className="p-4 border-t border-border mt-auto flex flex-col gap-3 shrink-0">
+        <button
+          onClick={onComplete}
+          className="w-full h-10 bg-primary text-primary-foreground rounded-md font-semibold flex items-center justify-center gap-2 transform active:scale-[0.99] transition-all hover:bg-primary/90 text-sm"
+        >
+          <Save className="w-4 h-4" />
+          Complete Update
+        </button>
+      </div>
     </div>
   );
 };

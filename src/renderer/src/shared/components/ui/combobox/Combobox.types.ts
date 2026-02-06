@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
 
 export interface ComboboxOption {
   value: string;
@@ -8,7 +8,7 @@ export interface ComboboxOption {
   className?: string;
 }
 
-export type ComboboxSize = "sm" | "md" | "lg";
+export type ComboboxSize = 'sm' | 'md' | 'lg';
 
 export interface ComboboxItemProps {
   value: string;
@@ -31,6 +31,8 @@ export interface ComboboxProps {
   searchable?: boolean;
   creatable?: boolean;
   creatableMessage?: string;
+  creatableClassName?: string;
+  creatableIcon?: ReactNode;
   onCreate?: (value: string) => void;
   renderOption?: (option: ComboboxOption) => ReactNode;
   maxHeight?: string;

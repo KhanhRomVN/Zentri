@@ -55,15 +55,20 @@ interface AccountDrawerProps {
 }
 
 const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: AccountDrawerProps) => {
+  // Initialize with new structure
   const [formData, setFormData] = useState<Partial<RegAccount>>({
-    email: '',
-    password: '',
-    recoveryEmail: '',
-    twoFactorAuth: '',
-    cookies: '',
-    proxy: '',
     agentId: '',
+    proxyId: '',
+    metadata: {
+      username: '',
+      password: '',
+      email: '',
+      recoveryEmail: '',
+      twoFactorAuth: '',
+      cookies: '',
+    },
   });
+
   const [showPassword, setShowPassword] = useState(false);
   const [platform] = useState('google');
   const [proxies, setProxies] = useState<ProxyItem[]>([]);
@@ -119,29 +124,37 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
   useEffect(() => {
     if (isOpen && account) {
       setFormData({
-        email: account.email || account.username || '',
-        password: account.password || '',
-        recoveryEmail: account.recoveryEmail || '',
-        twoFactorAuth: account.twoFactorAuth || '', // We need to parse this if it stores complex state
-        cookies: account.cookies || '',
-        proxy: account.proxy || '',
+        id: account.id,
+        regSessionId: account.regSessionId,
         agentId: account.agentId || '',
+        proxyId: account.proxyId || '',
+        // Handle optional metadata safely
+        metadata: {
+          username: account.metadata?.username || '',
+          password: account.metadata?.password || '',
+          email: account.metadata?.email || '',
+          recoveryEmail: account.metadata?.recoveryEmail || '',
+          twoFactorAuth: account.metadata?.twoFactorAuth || '',
+          cookies: account.metadata?.cookies || '',
+          ...account.metadata,
+        },
       });
 
       // Attempt to parse 2FA state from twoFactorAuth string if it is JSON
       try {
-        if (account.twoFactorAuth && account.twoFactorAuth.startsWith('{')) {
-          const parsed = JSON.parse(account.twoFactorAuth);
+        const twoFactorAuth = account.metadata?.twoFactorAuth;
+        if (twoFactorAuth && twoFactorAuth.startsWith('{')) {
+          const parsed = JSON.parse(twoFactorAuth);
           setActiveMethods(parsed.activeMethods || []);
           setMethodValues(parsed.methodValues || {});
           setInitialActiveMethods(parsed.activeMethods || []);
           setInitialMethodValues(parsed.methodValues || {});
-        } else if (account.twoFactorAuth) {
+        } else if (twoFactorAuth) {
           // Fallback: treat as a single 'app' secret key
           setActiveMethods(['app']);
-          setMethodValues({ app: account.twoFactorAuth });
+          setMethodValues({ app: twoFactorAuth });
           setInitialActiveMethods(['app']);
-          setInitialMethodValues({ app: account.twoFactorAuth });
+          setInitialMethodValues({ app: twoFactorAuth });
         } else {
           setActiveMethods([]);
           setMethodValues({});
@@ -157,13 +170,16 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
     } else if (isOpen) {
       // Reset for new account
       setFormData({
-        email: '',
-        password: '',
-        recoveryEmail: '',
-        twoFactorAuth: '',
-        cookies: '',
-        proxy: '',
         agentId: '',
+        proxyId: '',
+        metadata: {
+          username: '',
+          password: '',
+          email: '',
+          recoveryEmail: '',
+          twoFactorAuth: '',
+          cookies: '',
+        },
       });
       setActiveMethods([]);
       setMethodValues({});
@@ -176,9 +192,27 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
   const handleSave = useCallback(() => {
     // Serialize 2FA state
     const twoFactorAuthData = JSON.stringify({ activeMethods, methodValues });
-    onSave({ ...formData, twoFactorAuth: twoFactorAuthData });
+    onSave({
+      ...formData,
+      metadata: {
+        ...formData.metadata,
+        username: formData.metadata?.username || '', // Ensure required fields
+        twoFactorAuth: twoFactorAuthData,
+      },
+    });
     onClose();
   }, [formData, activeMethods, methodValues, onSave, onClose]);
+
+  // A helper to update metadata
+  const updateMetadata = (key: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      metadata: {
+        ...prev.metadata!,
+        [key]: value,
+      },
+    }));
+  };
 
   // 2FA Handlers
   const availableToAdd = ALL_METHODS.filter(
@@ -269,7 +303,7 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
         </div>
         <button
           onClick={onClose}
-          className="p-2 -mr-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full transition-colors"
+          className="p-2 -mr-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
@@ -293,14 +327,18 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
               <label className="text-sm font-medium text-foreground">Email</label>
               <input
                 type="text"
-                value={formData.email || ''}
-                onChange={(e) =>
+                value={formData.metadata?.email || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
                   setFormData((prev) => ({
                     ...prev,
-                    email: e.target.value,
-                    username: e.target.value,
-                  }))
-                }
+                    metadata: {
+                      ...prev.metadata!,
+                      email: val,
+                      username: val,
+                    },
+                  }));
+                }}
                 className="w-full h-9 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
                 placeholder="example@gmail.com"
               />
@@ -312,8 +350,8 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  value={formData.password || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                  value={formData.metadata?.password || ''}
+                  onChange={(e) => updateMetadata('password', e.target.value)}
                   className="w-full h-9 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 pr-9"
                   placeholder="••••••••"
                 />
@@ -332,10 +370,8 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
               <label className="text-sm font-medium text-foreground">Recovery Email</label>
               <input
                 type="email"
-                value={formData.recoveryEmail || ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, recoveryEmail: e.target.value }))
-                }
+                value={formData.metadata?.recoveryEmail || ''}
+                onChange={(e) => updateMetadata('recoveryEmail', e.target.value)}
                 className="w-full h-9 px-3 rounded-md bg-input border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
                 placeholder="recovery@example.com"
               />
@@ -391,8 +427,8 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
                 <div className="relative">
                   <Cookie className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                   <textarea
-                    value={formData.cookies || ''}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, cookies: e.target.value }))}
+                    value={formData.metadata?.cookies || ''}
+                    onChange={(e) => updateMetadata('cookies', e.target.value)}
                     className="w-full h-48 pl-9 pr-3 py-2 rounded-md bg-input border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono resize-none custom-scrollbar"
                     placeholder='[{"name":"SID","value":"..."}]'
                   />
@@ -402,16 +438,25 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
                   {(() => {
                     let parsedCookies: any[] = [];
                     try {
-                      if (formData.cookies) parsedCookies = JSON.parse(formData.cookies);
+                      const cookies = formData.metadata?.cookies;
+                      if (cookies) parsedCookies = JSON.parse(cookies);
                     } catch (e) {}
+
+                    // Find proxy details for display
+                    const currentProxyItem = proxies.find(
+                      (p) => p.id === formData.proxyId || p.proxy === formData.proxyId,
+                    );
+                    // The proxies state contains ProxyItem[]. ProxyItem has .proxy string.
+                    // If formData.proxyId stores ID, great. If we store proxy string (legacy), we might need to match both.
+                    // For now let's assume proxyId stores ID if available, or fall back to finding by proxy string if mismatched.
 
                     const mockProfile = {
                       id: account?.id || 'new',
                       userAgent: selectedAgent?.userAgent,
-                      ip: formData.proxy
-                        ? formData.proxy.split('@').pop()?.split(':')[0] || 'Unknown'
+                      ip: currentProxyItem
+                        ? currentProxyItem.proxy.split('@').pop()?.split(':')[0] || 'Unknown'
                         : 'Direct',
-                      proxy: formData.proxy,
+                      proxy: currentProxyItem?.proxy || 'No Proxy',
                       cookieCount: parsedCookies.length,
                     };
 
@@ -490,21 +535,26 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
             <Dropdown className="w-full">
               <DropdownTrigger className="w-full h-9 px-3 rounded-md bg-input border border-border text-sm flex items-center justify-between hover:border-primary/40 transition-colors">
                 <span className="truncate flex-1 font-mono text-xs">
-                  {formData.proxy ? (
-                    formData.proxy
-                  ) : (
-                    <span className="text-muted-foreground font-sans">Select Proxy from List</span>
-                  )}
+                  {(() => {
+                    const p = proxies.find((px) => px.id === formData.proxyId);
+                    return p ? (
+                      p.proxy
+                    ) : (
+                      <span className="text-muted-foreground font-sans">
+                        Select Proxy from List
+                      </span>
+                    );
+                  })()}
                 </span>
               </DropdownTrigger>
               <DropdownContent className="w-[500px] max-h-[300px] overflow-y-auto">
                 {proxies.map((p) => (
                   <DropdownItem
                     key={p.id}
-                    onClick={() => setFormData((prev) => ({ ...prev, proxy: p.proxy }))}
+                    onClick={() => setFormData((prev) => ({ ...prev, proxyId: p.id }))}
                     className={cn(
                       'py-2',
-                      formData.proxy === p.proxy && 'bg-primary/10 text-primary',
+                      formData.proxyId === p.id && 'bg-primary/10 text-primary',
                     )}
                   >
                     <div className="flex flex-col gap-0.5 w-full overflow-hidden">
@@ -545,7 +595,7 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
       </div>
 
       {/* Footer */}
-      <div className="p-6 border-t border-border shrink-0 flex justify-end gap-3">
+      <div className="p-4 border-t border-border shrink-0 flex justify-end gap-3">
         <button
           onClick={onClose}
           className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"

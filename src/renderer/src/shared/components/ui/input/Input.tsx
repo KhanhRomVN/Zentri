@@ -29,7 +29,21 @@ const Input: React.FC<InputProps> = ({
   badges = [],
   onBadgeRemove,
   badgeColorMode = 'uniform',
-  badgeColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'],
+  badgeColors = [
+    '#3B82F6', // Blue
+    '#10B981', // green
+    '#F59E0B', // amber
+    '#EF4444', // red
+    '#8B5CF6', // violet
+    '#EC4899', // pink
+    '#00f3ff', // neon blue
+    '#39ff14', // neon green
+    '#ff00f0', // neon pink
+    '#ccff00', // neon yellow
+    '#ff7e00', // neon orange
+    '#b026ff', // neon purple
+  ],
+  badgeVariant = 'solid',
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -157,10 +171,18 @@ const Input: React.FC<InputProps> = ({
           placeholder={placeholder}
           disabled={isDisabled}
           readOnly={type === 'calendar'}
-          onChange={type === 'combobox' ? handleChange : undefined}
+          onChange={(e) => {
+            if (type === 'combobox') {
+              handleChange(e);
+              handlePopoverOpen();
+            }
+          }}
           onFocus={() => {
             setIsFocused(true);
             handlePopoverOpen();
+          }}
+          onClick={() => {
+            if (!popoverOpen) handlePopoverOpen();
           }}
           onBlur={() => setIsFocused(false)}
           className={cn(
@@ -198,11 +220,24 @@ const Input: React.FC<InputProps> = ({
           const bgColor =
             badgeColorMode === 'uniform' ? badgeColors[0] : badgeColors[index % badgeColors.length];
 
+          const color = badge.color || bgColor;
+          const isNeon = badgeVariant === 'neon';
+
           return (
             <div
               key={badge.id}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium text-white"
-              style={{ backgroundColor: badge.color || bgColor }}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium',
+                !isNeon && 'text-white',
+              )}
+              style={
+                isNeon
+                  ? {
+                      backgroundColor: color.startsWith('#') ? color + '1a' : color, // Add 10% opacity if hex
+                      color: color,
+                    }
+                  : { backgroundColor: color }
+              }
             >
               <span>{badge.label}</span>
               {onBadgeRemove && (
@@ -222,53 +257,55 @@ const Input: React.FC<InputProps> = ({
   const badgesPosition = inlinePanel ? 'top' : 'bottom';
 
   return (
-    <div className="w-full relative">
+    <div className="w-full">
       {/* Badges on top (if inlinePanel exists) */}
       {badgesPosition === 'top' && <div className="w-full mb-2">{renderBadges()}</div>}
 
-      <div
-        className={cn(
-          'flex items-center w-full transition-all duration-200 rounded-md',
-          'border bg-transparent',
-          'placeholder:text-gray-400',
-          sizeClasses,
-          isDisabled && 'opacity-50 cursor-not-allowed pointer-events-none',
-          type === 'calendar' && !isDisabled && 'cursor-pointer',
-          className,
-        )}
-        onFocus={(e) => {
-          if (e.target === e.currentTarget) return;
-          setIsFocused(true);
-        }}
-        onBlur={(e) => {
-          if (e.target === e.currentTarget) return;
-          setIsFocused(false);
-        }}
-      >
-        {/* Left Icon */}
-        {showLeftIcon && <div className="flex-shrink-0 mr-2">{renderLeftIcon()}</div>}
+      <div className="relative w-full">
+        <div
+          className={cn(
+            'flex items-center w-full transition-all duration-200 rounded-md',
+            'border bg-input',
+            'placeholder:text-gray-400',
+            sizeClasses,
+            isDisabled && 'opacity-50 cursor-not-allowed pointer-events-none',
+            type === 'calendar' && !isDisabled && 'cursor-pointer',
+            className,
+          )}
+          onFocus={(e) => {
+            if (e.target === e.currentTarget) return;
+            setIsFocused(true);
+          }}
+          onBlur={(e) => {
+            if (e.target === e.currentTarget) return;
+            setIsFocused(false);
+          }}
+        >
+          {/* Left Icon */}
+          {showLeftIcon && <div className="flex-shrink-0 mr-2">{renderLeftIcon()}</div>}
 
-        {/* Input Content */}
-        <div className="flex-1 flex items-center">{renderInputContent()}</div>
+          {/* Input Content */}
+          <div className="flex-1 flex items-center">{renderInputContent()}</div>
 
-        {/* Right Icons */}
-        {showRightIcons && (
-          <div className="flex items-center gap-2 ml-2 flex-shrink-0">{renderRightIcons()}</div>
-        )}
+          {/* Right Icons */}
+          {showRightIcons && (
+            <div className="flex items-center gap-2 ml-2 flex-shrink-0">{renderRightIcons()}</div>
+          )}
+        </div>
+
+        {/* Popover for combobox/calendar */}
+        {(type === 'combobox' || type === 'calendar') &&
+          popoverOpen &&
+          !isDisabled &&
+          popoverContent && (
+            <div ref={popoverRef} className="absolute z-50 w-full top-[calc(100%+4px)] left-0">
+              {popoverContent}
+            </div>
+          )}
       </div>
 
       {/* Badges on bottom (default) */}
       {badgesPosition === 'bottom' && <div className="w-full mt-2">{renderBadges()}</div>}
-
-      {/* Popover for combobox/calendar */}
-      {(type === 'combobox' || type === 'calendar') &&
-        popoverOpen &&
-        !isDisabled &&
-        popoverContent && (
-          <div ref={popoverRef} className="absolute z-50 w-full top-[calc(100%+4px)] left-0">
-            {popoverContent}
-          </div>
-        )}
 
       {/* Inline Panel */}
       {inlinePanel && <div className="w-full mt-2">{inlinePanel}</div>}

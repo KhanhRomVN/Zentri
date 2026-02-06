@@ -23,15 +23,24 @@ interface FingerprintDrawerProps {
 const FingerprintDrawer = memo(
   ({ isOpen, onClose, formData, setFormData, onSave }: FingerprintDrawerProps) => {
     return (
-      <Drawer isOpen={isOpen} onClose={onClose} direction="right" width={512}>
+      <Drawer
+        isOpen={isOpen}
+        onClose={onClose}
+        direction="right"
+        width={512}
+        className="!bg-drawer-background flex flex-col"
+      >
         {/* Header */}
-        <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-border bg-card/20">
+        <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-bold tracking-tight">Advanced Settings</h3>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-all">
-            <X className="w-5 h-5 text-muted-foreground" />
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -305,13 +314,13 @@ const FingerprintDrawer = memo(
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-border bg-card/10 backdrop-blur-md flex justify-end">
+        <div className="p-4 border-t border-border flex justify-end shrink-0">
           <button
             onClick={() => {
               if (onSave) onSave();
               onClose();
             }}
-            className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+            className="flex-1 h-10 rounded-md bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
           >
             Confirm Settings
           </button>

@@ -1,93 +1,51 @@
-export interface ServiceItem {
-  id: string;
-  accountId: string;
-  name: string;
-  username: string;
-  password?: string;
-  websiteUrl: string;
-  icon?: string;
-  connectedDate?: string;
-}
+import { Email, Service, ActivityItem, Cookie } from '../../../../../../shared/types';
 
-export interface ActivityItem {
-  id: string;
-  accountId: string;
-  action: 'login' | 'security_change' | 'data_export' | 'device_linked';
-  device: string;
-  location: string;
-  timestamp: string;
-  status: 'success' | 'warning' | 'failed';
-}
+// Re-export specific types if needed by other files, or they should import from shared
+export type { Service, ActivityItem, Cookie };
+export type ServiceItem = Service;
 
-export interface Cookie {
-  name: string;
-  value: string;
-  domain: string;
-  path: string;
-  expires?: number;
-  httpOnly: boolean;
-  secure: boolean;
-}
-
-export interface ProfileMetadata {
-  accountId: string;
-  cookieCount: number;
-  lastSync: string;
-  status: 'active' | 'expired' | 'none';
-  cookies?: Cookie[];
-}
-
-export interface Account {
-  id: string;
-  email: string;
-  password?: string;
-  name: string;
-  avatar: string;
-  provider: 'gmail' | 'hotmail' | 'protonmail' | 'icloud' | 'yahoo';
-  recoveryEmail: string;
-  phone: string;
-  twoFactorEnabled: boolean;
-  status: 'active' | 'warning' | 'error';
-  securityScore?: number;
-  services?: Array<{
-    name: string;
-    connectedDate?: string;
-  }>;
-  recentActivity?: ActivityItem[];
-}
-
-export const mockAccounts: Account[] = [
+export const mockAccounts: Email[] = [
   {
     id: '1',
     email: 'khanh.dev@gmail.com',
     name: 'Khanh Nguyen',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-    provider: 'gmail',
+    emailProviderId: 'google',
     recoveryEmail: 'recovery@proton.me',
-    phone: '+84 909 *** 123',
-    twoFactorEnabled: true,
+    phoneNumber: '+84 909 *** 123',
     status: 'active',
+    metadata: {
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+      twoFactorEnabled: true,
+    },
+    // services: has changed in shared types, now uses Service linked via emailId
+    // But for mock data, if we want to nest it:
+    services: [],
+    recentActivity: [],
   },
   {
     id: '2',
     email: 'khanh.work@microsoft.com',
     name: 'Khanh Work',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
-    provider: 'hotmail',
+    emailProviderId: 'hotmail', // Note: Need to check if 'hotmail' is in our constants, for now keeping as is
     recoveryEmail: 'khanh.dev@gmail.com',
-    phone: '+84 912 *** 456',
-    twoFactorEnabled: true,
+    phoneNumber: '+84 912 *** 456',
     status: 'active',
+    metadata: {
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
+      twoFactorEnabled: true,
+    },
   },
   {
     id: '3',
     email: 'secure.khanh@proton.me',
     name: 'Khanh Secure',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Midnight',
-    provider: 'protonmail',
+    emailProviderId: 'protonmail',
     recoveryEmail: 'N/A',
-    phone: 'N/A',
-    twoFactorEnabled: true,
+    phoneNumber: 'N/A',
     status: 'active',
+    metadata: {
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Midnight',
+      twoFactorEnabled: true,
+    },
   },
 ];

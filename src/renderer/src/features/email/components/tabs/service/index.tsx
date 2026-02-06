@@ -289,6 +289,19 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
                 selectedService={selectedService}
                 showPassword={showPassword}
                 setShowPassword={setShowPassword}
+                onChange={(field, value) => {
+                  if (field === 'tags' || field === 'categories') {
+                    // Split by comma
+                    const arrayVal = value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean);
+                    setSelectedService({ ...selectedService, [field]: arrayVal });
+                  } else {
+                    // For other fields if they become editable
+                    setSelectedService({ ...selectedService, [field]: value });
+                  }
+                }}
               />
 
               <TwoFactorSection

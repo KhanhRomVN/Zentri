@@ -66,48 +66,46 @@ export const UnifiedDrawer = ({
       onClose={onClose}
       direction="right"
       width="35%"
-      className="p-8 flex flex-col bg-background border-l border-border"
+      className="flex flex-col bg-drawer-background border-l border-border"
     >
-      <button
-        onClick={onClose}
-        className="absolute top-6 right-6 p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground z-50"
-      >
-        <X className="w-5 h-5" />
-      </button>
-
       {activeDrawer === '2fa' && (
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-4 mb-8">
-            {currentFocusedMethod ? (
-              <>
-                <div
-                  className={cn(
-                    'w-14 h-14 rounded-2xl flex items-center justify-center shrink-0',
-                    getMethodStyle!(currentFocusedMethod.type).bg,
-                    getMethodStyle!(currentFocusedMethod.type).text,
-                  )}
-                >
-                  {(() => {
-                    const Icon = getMethodStyle!(currentFocusedMethod.type).icon;
-                    return <Icon className="w-7 h-7" />;
-                  })()}
-                </div>
-                <h2 className="text-xl font-bold tracking-tight">{currentFocusedMethod.name}</h2>
-              </>
-            ) : (
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center shrink-0">
-                  <Plus className="w-7 h-7 text-muted-foreground" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold tracking-tight">Add 2FA Method</h2>
-                  <p className="text-xs text-muted-foreground">Select a method</p>
-                </div>
-              </div>
-            )}
+          <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0">
+            <div className="flex items-center gap-3">
+              {currentFocusedMethod ? (
+                <>
+                  <div
+                    className={cn(
+                      'w-8 h-8 rounded-md flex items-center justify-center shrink-0',
+                      getMethodStyle!(currentFocusedMethod.type).bg,
+                      getMethodStyle!(currentFocusedMethod.type).text,
+                    )}
+                  >
+                    {(() => {
+                      const Icon = getMethodStyle!(currentFocusedMethod.type).icon;
+                      return <Icon className="w-5 h-5" />;
+                    })()}
+                  </div>
+                  <h2 className="text-lg font-bold tracking-tight">{currentFocusedMethod.name}</h2>
+                </>
+              ) : (
+                <>
+                  <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                    <Plus className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <h2 className="text-lg font-bold tracking-tight">Add 2FA Method</h2>
+                </>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <div className="space-y-6 flex-1">
+          <div className="space-y-6 flex-1 overflow-y-auto p-6">
             {drawer2FAMode === 'add' && !newMethodTypeId ? (
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground uppercase border-b border-border/40 pb-2">
@@ -160,11 +158,11 @@ export const UnifiedDrawer = ({
             )}
           </div>
 
-          <div className="pt-6 border-t border-border mt-auto flex items-center gap-3">
+          <div className="p-4 border-t border-border mt-auto flex items-center gap-3 shrink-0">
             {drawer2FAMode === 'edit' && (
               <button
                 onClick={handleDelete2FA}
-                className="h-11 px-4 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors mr-auto"
+                className="h-10 px-4 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors mr-auto"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -172,14 +170,14 @@ export const UnifiedDrawer = ({
             <button
               disabled={drawer2FAMode === 'add' && !newMethodTypeId}
               onClick={handleSave2FA}
-              className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 h-10 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 text-sm"
             >
               <Save className="w-4 h-4" />
               {drawer2FAMode === 'add' ? 'Add Method' : 'Save Changes'}
             </button>
             <button
               onClick={onClose}
-              className="h-11 px-6 rounded-lg border border-border hover:bg-muted transition-colors"
+              className="h-10 px-6 rounded-md border border-border hover:bg-muted transition-colors text-sm"
             >
               Cancel
             </button>
@@ -189,15 +187,23 @@ export const UnifiedDrawer = ({
 
       {activeDrawer === 'secret' && (
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center shrink-0 text-amber-500">
-              <Key className="w-7 h-7" />
+          <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0 text-amber-500">
+                <Key className="w-5 h-5" />
+              </div>
+              <h2 className="text-lg font-bold tracking-tight">
+                {secretDrawerMode === 'add' ? 'Add New Secret' : 'Edit Secret'}
+              </h2>
             </div>
-            <h2 className="text-xl font-bold tracking-tight">
-              {secretDrawerMode === 'add' ? 'Add New Secret' : 'Edit Secret'}
-            </h2>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="space-y-6 flex-1">
+          <div className="space-y-6 flex-1 overflow-y-auto p-6">
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-muted-foreground uppercase border-b border-border/40 pb-2">
                 Configuration
@@ -222,25 +228,25 @@ export const UnifiedDrawer = ({
               </div>
             </div>
           </div>
-          <div className="pt-6 border-t border-border mt-auto flex items-center gap-3">
+          <div className="p-4 border-t border-border mt-auto flex items-center gap-3 shrink-0">
             {secretDrawerMode === 'edit' && (
               <button
                 onClick={handleDeleteSecret}
-                className="h-11 px-4 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors mr-auto"
+                className="h-10 px-4 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors mr-auto"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
             <button
               onClick={handleSaveSecret}
-              className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 flex items-center justify-center gap-2 transition-colors"
+              className="flex-1 h-10 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 flex items-center justify-center gap-2 transition-colors text-sm"
             >
               <Save className="w-4 h-4" />
               Save Secret
             </button>
             <button
               onClick={onClose}
-              className="h-11 px-6 rounded-lg border border-border hover:bg-muted transition-colors"
+              className="h-10 px-6 rounded-md border border-border hover:bg-muted transition-colors text-sm"
             >
               Cancel
             </button>
@@ -250,17 +256,25 @@ export const UnifiedDrawer = ({
 
       {activeDrawer === 'review' && (
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-              <Shield className="w-7 h-7" />
+          <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold tracking-tight">Review Changes</h2>
+                <p className="text-[10px] text-muted-foreground leading-none">Verify updates</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold tracking-tight">Review Changes</h2>
-              <p className="text-xs text-muted-foreground">Verify your service updates</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto space-y-6 p-6 custom-scrollbar">
             {pendingChanges && pendingChanges.length > 0 ? (
               <div className="space-y-6">
                 {Object.entries(groupedChanges).map(([key, areaChanges]) => {
@@ -354,12 +368,12 @@ export const UnifiedDrawer = ({
             )}
           </div>
 
-          <div className="pt-6 border-t border-border mt-auto flex flex-col gap-3">
+          <div className="p-4 border-t border-border mt-auto flex flex-col gap-3 shrink-0">
             <button
               onClick={onCompleteReview}
-              className="w-full h-12 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+              className="w-full h-10 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 text-sm"
             >
-              <Save className="w-5 h-5" />
+              <Save className="w-4 h-4" />
               Complete Update
             </button>
           </div>

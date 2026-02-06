@@ -27,20 +27,31 @@ const ProxyDrawer: React.FC<ProxyDrawerProps> = ({ isOpen, onClose, proxy }) => 
   const details = proxy.details;
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} direction="right" width={450}>
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      direction="right"
+      width={450}
+      className="!bg-drawer-background flex flex-col"
+    >
       {/* Header */}
-      <div className="p-6 border-b border-border flex items-center justify-between">
+      <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center text-primary">
-            <Globe className="w-6 h-6" />
+          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-primary">
+            <Globe className="w-5 h-5" />
           </div>
           <div>
             <h3 className="font-bold text-lg leading-tight">Proxy Details</h3>
-            <p className="text-xs text-muted-foreground font-mono">{proxy.proxy}</p>
+            <p className="text-[10px] text-muted-foreground font-mono leading-none mt-0.5">
+              {proxy.proxy}
+            </p>
           </div>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
-          <X className="w-5 h-5 text-muted-foreground" />
+        <button
+          onClick={onClose}
+          className="p-2 -mr-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+        >
+          <X className="w-5 h-5" />
         </button>
       </div>
 
@@ -134,12 +145,12 @@ const ProxyDrawer: React.FC<ProxyDrawerProps> = ({ isOpen, onClose, proxy }) => 
       </div>
 
       {/* Footer */}
-      <div className="p-6 border-t border-border flex gap-3">
-        <button className="flex-1 h-11 bg-primary text-primary-foreground font-bold rounded-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2">
+      <div className="p-4 border-t border-border flex gap-3 shrink-0">
+        <button className="flex-1 h-10 bg-primary text-primary-foreground font-bold rounded-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2 text-xs">
           Re-check Proxy
         </button>
-        <button className="p-3 h-11 border border-border rounded-md hover:bg-muted text-muted-foreground transition-all">
-          <ExternalLink className="w-5 h-5" />
+        <button className="p-2.5 h-10 border border-border rounded-md hover:bg-muted text-muted-foreground transition-all">
+          <ExternalLink className="w-4 h-4" />
         </button>
       </div>
     </Drawer>

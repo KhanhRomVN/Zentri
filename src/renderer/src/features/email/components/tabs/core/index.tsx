@@ -1,7 +1,6 @@
-import { Account } from '../../../mock/accounts';
-import { cn } from '../../../../../shared/lib/utils';
+import { Email } from '../../../../../../../shared/types';
 import { useState, useMemo } from 'react';
-import { User, Mail, Shield, Smartphone, Key, ScanLine, MessageSquare, X } from 'lucide-react';
+import { User, Mail, Shield, Smartphone, Key, ScanLine, MessageSquare } from 'lucide-react';
 import { Drawer } from '../../../../../shared/components/ui/drawer';
 
 import { InfoSection } from './components/InfoSection';
@@ -10,8 +9,8 @@ import { ReviewDrawer } from './components/ReviewDrawer';
 import { MethodDrawer } from './components/MethodDrawer';
 
 interface CoreTabProps {
-  account: Account;
-  onUpdate?: (account: Account) => void;
+  account: Email;
+  onUpdate?: (account: Email) => void;
 }
 
 interface TwoFactorOption {
@@ -34,7 +33,8 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
     email: account.email || '',
     password: account.password || '',
     recoveryEmail: account.recoveryEmail || '',
-    phoneNumber: account.phone || '',
+    phoneNumber: account.phoneNumber || '',
+    tags: account.tags?.join(', ') || '',
   });
 
   const initialForm = useMemo(
@@ -44,7 +44,8 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
       email: account.email || '',
       password: account.password || '',
       recoveryEmail: account.recoveryEmail || '',
-      phoneNumber: account.phone || '',
+      phoneNumber: account.phoneNumber || '',
+      tags: account.tags?.join(', ') || '',
     }),
     [account],
   );
@@ -70,7 +71,7 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
 
   const [methodValues, setMethodValues] = useState<Record<string, string>>({
     app: '',
-    sms: account.phone || '',
+    sms: account.phoneNumber || '',
     email: account.recoveryEmail || '',
     key: '',
     prompt: '',
@@ -79,7 +80,7 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
   });
   const [initialMethodValues] = useState<Record<string, string>>({
     app: '',
-    sms: account.phone || '',
+    sms: account.phoneNumber || '',
     email: account.recoveryEmail || '',
     key: '',
     prompt: '',
@@ -217,7 +218,6 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
         <div className="flex flex-col gap-10">
           <InfoSection
             form={form}
-            initialForm={initialForm}
             onChange={handleChange}
             showPassword={showPassword}
             setShowPassword={setShowPassword}
@@ -251,16 +251,10 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
         isOpen={!!activeDrawer}
         onClose={() => setActiveDrawer(null)}
         direction="right"
-        width="35%"
-        className="p-8 flex flex-col bg-background border-l border-border"
+        width="28%"
+        showOverlay={false}
+        className="flex flex-col bg-drawer-background border-l border-border"
       >
-        <button
-          onClick={() => setActiveDrawer(null)}
-          className="absolute top-6 right-6 p-2 rounded-full hover:bg-muted text-muted-foreground z-50"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
         {activeDrawer === 'details' && (
           <MethodDrawer
             drawerMode={drawerMode}
@@ -282,15 +276,22 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
             pendingChanges={pendingChanges}
             allMethods={ALL_METHODS}
             getMethodStyle={getMethodStyle}
+            onClose={() => setActiveDrawer(null)}
             onComplete={() => {
               setActiveDrawer(null);
               if (onUpdate) {
-                const updatedAccount: Account = {
+                const updatedAccount: Email = {
                   ...account,
                   name: form.name,
                   email: form.email,
                   recoveryEmail: form.recoveryEmail,
-                  phone: form.phoneNumber,
+                  phoneNumber: form.phoneNumber, // Mapped from form.phoneNumber to Email.phoneNumber
+                  // tags are not handled in ReviewDrawer yet it seems, but form has it.
+                  // If we want to save tags, we should add it here.
+                  tags: form.tags
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean),
                 };
                 onUpdate(updatedAccount);
               }

@@ -3,17 +3,17 @@ productName: Template Electron
 directories:
   buildResources: build
 files:
-  - "!**/.vscode/*"
-  - "!src/*"
-  - "!electron.vite.config.{js,ts,mjs,cjs}"
-  - "!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc,dev-app-update.yml,CHANGELOG.md,README.md}"
-  - "!{.env,.env.*,.npmrc,pnpm-lock.yaml,yarn.lock}"
-  - "!{tsconfig.json,tsconfig.*.json}"
-  - "!{.github,docs,tests,scripts}"
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml,yarn.lock}'
+  - '!{tsconfig.json,tsconfig.*.json}'
+  - '!{.github,docs,tests,scripts}'
 asarUnpack:
   - resources/**
 win:
-  executableName: syfer
+  executableName: zentri
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
