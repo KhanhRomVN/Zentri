@@ -90,7 +90,7 @@ export function setupEmailHandlers() {
               path.join(browserProfileDir, 'Cookies'),
             ];
 
-            let foundPath = possibleCookiePaths.find((p) => fs.existsSync(p));
+            const foundPath = possibleCookiePaths.find((p) => fs.existsSync(p));
 
             if (foundPath) {
               // Copy to temp file to avoid "Source file is busy" errors
@@ -135,6 +135,59 @@ export function setupEmailHandlers() {
       } catch (error) {
         console.error('Error opening Real Chrome:', error);
         throw error;
+      }
+    },
+  );
+  ipcMain.handle(
+    'email:get-profile-cookies',
+    async (_event, { profilePath }: { profilePath: string }) => {
+      try {
+        if (!fs.existsSync(profilePath)) {
+          return '';
+        }
+
+        const userDataPath = app.getPath('userData');
+        const possibleCookiePaths = [
+          path.join(profilePath, 'Default', 'Cookies'),
+          path.join(profilePath, 'Default', 'Network', 'Cookies'),
+          path.join(profilePath, 'Cookies'),
+        ];
+
+        const foundPath = possibleCookiePaths.find((p) => fs.existsSync(p));
+        if (!foundPath) return '';
+
+        const tempCookieFile = path.join(userDataPath, `read_cookies_${Date.now()}.db`);
+        fs.copyFileSync(foundPath, tempCookieFile);
+
+        const db = new sqlite3.Database(tempCookieFile);
+        const cookies: any[] = await new Promise((resolve) => {
+          db.all(
+            'SELECT name, value, host_key FROM cookies WHERE host_key LIKE "%google.com%" OR host_key LIKE "%gmail.com%"',
+            (err, rows) => {
+              db.close();
+              if (err) {
+                console.error('SQLite Error:', err);
+                resolve([]);
+              } else {
+                resolve(rows || []);
+              }
+            },
+          );
+        });
+
+        fs.unlinkSync(tempCookieFile);
+
+        // Filter and join. Note: value might be empty if encrypted.
+        // On Linux, Chromium cookies are encrypted usually.
+        // We only join those that have a direct 'value'.
+        // For encrypted ones, we would need the system keyring key.
+        return cookies
+          .filter((c) => c.value && c.value.length > 0)
+          .map((c) => `${c.name}=${c.value}`)
+          .join('; ');
+      } catch (error) {
+        console.error('Error reading profile cookies:', error);
+        return '';
       }
     },
   );

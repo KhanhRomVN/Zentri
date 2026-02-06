@@ -63,7 +63,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
   // Handle date selection
   const handleDateSelect = (date: Date) => {
-    let newDate = new Date(date);
+    const newDate = new Date(date);
     if (tempDate && mode === 'datetime') {
       // Preserve time from previous selection
       newDate.setHours(tempDate.getHours());

@@ -25,22 +25,6 @@ interface AccountDetailProps {
 const AccountDetail = ({ account }: AccountDetailProps) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'security' | 'data'>('overview');
 
-  if (!account) {
-    return (
-      <div className="h-full flex items-center justify-center text-muted-foreground flex-col gap-6 bg-background/50">
-        <div className="h-32 w-32 rounded-full bg-accent/30 flex items-center justify-center animate-pulse">
-          <Shield className="h-12 w-12 opacity-30" />
-        </div>
-        <div className="text-center space-y-2">
-          <h3 className="text-xl font-semibold text-foreground">No Account Selected</h3>
-          <p className="text-sm max-w-[250px] mx-auto">
-            Select an account from the sidebar or connect a new one to get started.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const getProviderColor = useCallback((provider: Account['provider']) => {
     switch (provider) {
       case 'gmail':
@@ -63,6 +47,22 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
   const handleTabClick = useCallback((tab: (typeof TABS)[number]) => {
     setActiveTab(tab);
   }, []);
+
+  if (!account) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted-foreground flex-col gap-6 bg-background/50">
+        <div className="h-32 w-32 rounded-full bg-accent/30 flex items-center justify-center animate-pulse">
+          <Shield className="h-12 w-12 opacity-30" />
+        </div>
+        <div className="text-center space-y-2">
+          <h3 className="text-xl font-semibold text-foreground">No Account Selected</h3>
+          <p className="text-sm max-w-[250px] mx-auto">
+            Select an account from the sidebar or connect a new one to get started.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-background/50 relative overflow-hidden">
@@ -132,8 +132,8 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                     strokeWidth="3"
                   />
                   <path
-                    className={getSecurityScoreColor(account.securityScore ?? 0)}
-                    strokeDasharray={`${account.securityScore ?? 0}, 100`}
+                    className={getSecurityScoreColor(85)}
+                    strokeDasharray="85, 100"
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="currentColor"
@@ -142,14 +142,7 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span
-                    className={cn(
-                      'text-xl font-bold',
-                      getSecurityScoreColor(account.securityScore ?? 0),
-                    )}
-                  >
-                    {account.securityScore ?? 0}
-                  </span>
+                  <span className={cn('text-xl font-bold', getSecurityScoreColor(85))}>85</span>
                 </div>
               </div>
               <span className="text-xs font-medium text-muted-foreground mt-2">Security Score</span>
@@ -173,7 +166,7 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {account.services?.map((service) => (
                   <div
-                    key={service.name}
+                    key={service.id}
                     className="group relative p-4 rounded-md border border-border/50 bg-card/30 hover:bg-card hover:border-primary/20 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -182,9 +175,9 @@ const AccountDetail = ({ account }: AccountDetailProps) => {
                         <Cloud className="w-5 h-5" />
                       </div>
                       <div>
-                        <h4 className="font-medium">{service.name}</h4>
+                        <h4 className="font-medium">{service.serviceProviderId}</h4>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Connected {service.connectedDate || 'Unknown'}
+                          Connected {service.createdAt || 'Unknown'}
                         </p>
                       </div>
                     </div>

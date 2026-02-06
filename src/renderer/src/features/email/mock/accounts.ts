@@ -1,8 +1,21 @@
-import { Email, Service, ActivityItem, Cookie } from '../../../../../../shared/types';
+import { Email, Service, ActivityItem, Cookie } from '../../../../../shared/types';
 
 // Re-export specific types if needed by other files, or they should import from shared
 export type { Service, ActivityItem, Cookie };
 export type ServiceItem = Service;
+
+export interface Account extends Email {
+  provider: 'gmail' | 'hotmail' | 'protonmail' | 'icloud' | 'yahoo';
+  avatar?: string;
+  twoFactorEnabled?: boolean;
+}
+
+export interface ProfileMetadata {
+  accountId: string;
+  cookieCount: number;
+  lastSync: string;
+  status: 'active' | 'none' | 'expired';
+}
 
 export const mockAccounts: Email[] = [
   {

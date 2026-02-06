@@ -471,7 +471,7 @@ FUZZY MATCHING RULES:
       }
 
       // Clean up the query - remove ALL markdown artifacts
-      let cleanQuery = result.text
+      const cleanQuery = result.text
         .trim()
         .replace(/^```[\w]*\n?/gm, '')
         .replace(/\n?```$/gm, '')

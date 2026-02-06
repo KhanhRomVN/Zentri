@@ -11,6 +11,8 @@ import { MethodDrawer } from './components/MethodDrawer';
 interface CoreTabProps {
   account: Email;
   onUpdate?: (account: Email) => void;
+  isCreating?: boolean;
+  onCancel?: () => void;
 }
 
 interface TwoFactorOption {
@@ -20,7 +22,7 @@ interface TwoFactorOption {
   placeholder: string;
 }
 
-const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
+const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [activeDrawer, setActiveDrawer] = useState<'details' | 'review' | null>(null);
   const [drawerMode, setDrawerMode] = useState<'edit' | 'add'>('edit');
@@ -223,29 +225,55 @@ const CoreTab = ({ account, onUpdate }: CoreTabProps) => {
             setShowPassword={setShowPassword}
           />
 
-          <TwoFactorSection
-            activeMethods={activeMethods}
-            deletedMethods={deletedMethods}
-            allMethods={ALL_METHODS}
-            methodValues={methodValues}
-            initialActiveMethods={initialActiveMethods}
-            initialMethodValues={initialMethodValues}
-            selectedMethodId={selectedMethodId}
-            onMethodClick={handleMethodClick}
-            onAddClick={handleAddClick}
-            getMethodStyle={getMethodStyle}
-          />
+          {!isCreating && (
+            <TwoFactorSection
+              activeMethods={activeMethods}
+              deletedMethods={deletedMethods}
+              allMethods={ALL_METHODS}
+              methodValues={methodValues}
+              initialActiveMethods={initialActiveMethods}
+              initialMethodValues={initialMethodValues}
+              selectedMethodId={selectedMethodId}
+              onMethodClick={handleMethodClick}
+              onAddClick={handleAddClick}
+              getMethodStyle={getMethodStyle}
+            />
+          )}
         </div>
       </div>
 
-      {pendingChanges.length > 0 && (
-        <button
-          onClick={() => setActiveDrawer('review')}
-          className="absolute bottom-6 right-6 bg-primary text-primary-foreground h-10 px-6 rounded-md shadow-xl flex items-center justify-center text-sm font-bold z-[45] transform active:scale-95 transition-all"
-        >
-          Update {pendingChanges.length}
-        </button>
-      )}
+      <div className="absolute bottom-6 right-6 flex items-center gap-3">
+        {isCreating && (
+          <button
+            onClick={onCancel}
+            className="bg-button-secondBg text-button-text h-10 px-6 rounded-md flex items-center justify-center text-sm font-bold z-[45] transform active:scale-95 transition-all"
+          >
+            Cancel
+          </button>
+        )}
+        {(pendingChanges.length > 0 || isCreating) && (
+          <button
+            onClick={() => {
+              if (isCreating) {
+                if (onUpdate) {
+                  onUpdate({
+                    ...account,
+                    name: form.name,
+                    email: form.email,
+                    password: form.password,
+                    recoveryEmail: form.recoveryEmail,
+                  });
+                }
+              } else {
+                setActiveDrawer('review');
+              }
+            }}
+            className="bg-primary text-primary-foreground h-10 px-6 rounded-md shadow-xl flex items-center justify-center text-sm font-bold z-[45] transform active:scale-95 transition-all"
+          >
+            {isCreating ? 'Create Account' : `Update ${pendingChanges.length}`}
+          </button>
+        )}
+      </div>
 
       <Drawer
         isOpen={!!activeDrawer}

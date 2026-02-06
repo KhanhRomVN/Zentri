@@ -37,7 +37,7 @@ if (process.contextIsolated) {
   }
 } else {
   // TypeScript now knows these properties exist on Window
-  ;(window as any).electron = electronAPI
+  (window as any).electron = electronAPI
   ;(window as any).api = api
   ;(window as any).electronAPI = api
 }

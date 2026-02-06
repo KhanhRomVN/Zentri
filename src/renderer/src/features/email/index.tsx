@@ -5,9 +5,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Plus,
-  Key,
   Mail,
-  X,
   Trash2,
   RefreshCw,
   AlertCircle,
@@ -52,13 +50,7 @@ const AccountManager = () => {
 
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newAccount, setNewAccount] = useState({
-    email: '',
-    password: '',
-    name: '',
-    provider: 'gmail' as Account['provider'],
-  });
+  const [isCreating, setIsCreating] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,97 +87,84 @@ const AccountManager = () => {
     return colors[index];
   }, []);
 
-  const loadData = useCallback(
-    async (forceCloud = false) => {
-      setLoading(true);
-      setError(null);
-      try {
-        if (!gitlabFolder) {
-          console.warn('[Email] No gitlabFolder found in localStorage');
-          setError('Please select a Git Repository Folder in Settings');
-          return;
-        }
-
-        console.log('[Email] Loading data from:', gitlabFolder);
-
-        // Load from physical files on disk
-        // @ts-ignore
-        let emailsData = await window.electron.ipcRenderer.invoke(
-          'git:read-data',
-          gitlabFolder,
-          'emails.json',
-        );
-
-        console.log('[Email] Raw emailsData:', emailsData);
-
-        if (!emailsData) {
-          console.log('[Email] emails.json not found, initializing empty array');
-          emailsData = [];
-          await window.electron.ipcRenderer.invoke('git:write-data', {
-            folderPath: gitlabFolder,
-            filename: 'emails.json',
-            data: [],
-          });
-        }
-        // @ts-ignore
-        const servicesData = await window.electron.ipcRenderer.invoke(
-          'git:read-data',
-          gitlabFolder,
-          'services.json',
-        );
-        console.log('[Email] servicesData:', servicesData);
-
-        // @ts-ignore
-        const activitiesData = await window.electron.ipcRenderer.invoke(
-          'git:read-data',
-          gitlabFolder,
-          'recent_activities.json',
-        );
-        console.log('[Email] activitiesData:', activitiesData);
-
-        // @ts-ignore
-        const profilesData = await window.electron.ipcRenderer.invoke(
-          'git:read-data',
-          gitlabFolder,
-          'profiles.json',
-        );
-        console.log('[Email] profilesData:', profilesData);
-
-        const extractData = (res: any) => {
-          if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
-            return Array.isArray(res.data)
-              ? res.data
-              : typeof res.data === 'object'
-                ? res.data
-                : [];
-          }
-          return Array.isArray(res) ? res : res && typeof res === 'object' ? res : null;
-        };
-
-        const loadedEmails = extractData(emailsData);
-        const loadedAccounts = Array.isArray(loadedEmails) ? loadedEmails : [];
-
-        console.log('[Email] Processed loadedAccounts:', loadedAccounts.length);
-
-        setAccounts(loadedAccounts);
-        setServices(Array.isArray(extractData(servicesData)) ? extractData(servicesData) : []);
-        setActivities(
-          Array.isArray(extractData(activitiesData)) ? extractData(activitiesData) : [],
-        );
-        setProfiles(Array.isArray(extractData(profilesData)) ? extractData(profilesData) : []);
-
-        if (loadedAccounts.length > 0 && !selectedAccount) {
-          setSelectedAccount(loadedAccounts[0]);
-        }
-      } catch (err: any) {
-        console.error('[Email] Load error:', err);
-        setError(`Failed to read data: ${err.message}`);
-      } finally {
-        setLoading(false);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!gitlabFolder) {
+        console.warn('[Email] No gitlabFolder found in localStorage');
+        setError('Please select a Git Repository Folder in Settings');
+        return;
       }
-    },
-    [gitlabFolder, selectedAccount],
-  );
+
+      console.log('[Email] Loading data from:', gitlabFolder);
+
+      // Load from physical files on disk
+      let emailsData = await window.electron.ipcRenderer.invoke(
+        'git:read-data',
+        gitlabFolder,
+        'emails.json',
+      );
+
+      console.log('[Email] Raw emailsData:', emailsData);
+
+      if (!emailsData) {
+        console.log('[Email] emails.json not found, initializing empty array');
+        emailsData = [];
+        await window.electron.ipcRenderer.invoke('git:write-data', {
+          folderPath: gitlabFolder,
+          filename: 'emails.json',
+          data: [],
+        });
+      }
+      const servicesData = await window.electron.ipcRenderer.invoke(
+        'git:read-data',
+        gitlabFolder,
+        'services.json',
+      );
+      console.log('[Email] servicesData:', servicesData);
+
+      const activitiesData = await window.electron.ipcRenderer.invoke(
+        'git:read-data',
+        gitlabFolder,
+        'recent_activities.json',
+      );
+      console.log('[Email] activitiesData:', activitiesData);
+
+      const profilesData = await window.electron.ipcRenderer.invoke(
+        'git:read-data',
+        gitlabFolder,
+        'profiles.json',
+      );
+      console.log('[Email] profilesData:', profilesData);
+
+      const extractData = (res: any) => {
+        if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
+          return Array.isArray(res.data) ? res.data : typeof res.data === 'object' ? res.data : [];
+        }
+        return Array.isArray(res) ? res : res && typeof res === 'object' ? res : null;
+      };
+
+      const loadedEmails = extractData(emailsData);
+      const loadedAccounts = Array.isArray(loadedEmails) ? loadedEmails : [];
+
+      console.log('[Email] Processed loadedAccounts:', loadedAccounts.length);
+
+      setAccounts(loadedAccounts);
+      setServices(Array.isArray(extractData(servicesData)) ? extractData(servicesData) : []);
+      setActivities(Array.isArray(extractData(activitiesData)) ? extractData(activitiesData) : []);
+      setProfiles(Array.isArray(extractData(profilesData)) ? extractData(profilesData) : []);
+
+      if (loadedAccounts.length > 0 && !selectedAccount) {
+        setSelectedAccount(loadedAccounts[0]);
+      }
+    } catch (err: any) {
+      console.error('[Email] Load error:', err);
+      setError(`Failed to read data: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [gitlabFolder, selectedAccount]);
 
   useEffect(() => {
     loadData();
@@ -218,7 +197,6 @@ const AccountManager = () => {
     };
 
     window.addEventListener('zentri:sync-status-changed', handleSyncComplete);
-    // @ts-ignore
     const removeBrowserListener = window.electron.ipcRenderer.on(
       'email:browser-closed',
       handleBrowserClosed,
@@ -239,25 +217,21 @@ const AccountManager = () => {
     ) => {
       // Write to physical files immediately
       if (gitlabFolder) {
-        // @ts-ignore
         await window.electron.ipcRenderer.invoke('git:write-data', {
           folderPath: gitlabFolder,
           filename: 'emails.json',
           data: updatedAccounts,
         });
-        // @ts-ignore
         await window.electron.ipcRenderer.invoke('git:write-data', {
           folderPath: gitlabFolder,
           filename: 'services.json',
           data: updatedServices,
         });
-        // @ts-ignore
         await window.electron.ipcRenderer.invoke('git:write-data', {
           folderPath: gitlabFolder,
           filename: 'recent_activities.json',
           data: updatedActivities,
         });
-        // @ts-ignore
         await window.electron.ipcRenderer.invoke('git:write-data', {
           folderPath: gitlabFolder,
           filename: 'profiles.json',
@@ -272,37 +246,39 @@ const AccountManager = () => {
     [gitlabFolder, profiles],
   );
 
-  const handleAddAccount = useCallback(async () => {
-    const account: Account = {
-      id: uuidv4(),
-      email: newAccount.email,
-      password: newAccount.password,
-      name: newAccount.name || '',
-      avatar: '',
-      provider: newAccount.provider,
-      recoveryEmail: '',
-      phone: '',
-      twoFactorEnabled: false,
-      status: 'active',
-    };
+  const handleAddAccount = useCallback(
+    async (accountData: Partial<Account>) => {
+      const account: Account = {
+        id: uuidv4(),
+        email: accountData.email || '',
+        password: accountData.password || '',
+        name: accountData.name || '',
+        avatar: '',
+        provider: (accountData.provider as Account['provider']) || 'gmail',
+        recoveryEmail: accountData.recoveryEmail || '',
+        phoneNumber: '',
+        twoFactorEnabled: false,
+        status: 'active',
+      };
 
-    const updatedAccounts = [...accounts, account];
-    setAccounts(updatedAccounts);
-    setSelectedAccount(account);
-    setIsModalOpen(false);
-    setNewAccount({ email: '', password: '', name: '', provider: 'gmail' });
-    markAsDirty(updatedAccounts, services, activities, profiles);
-  }, [newAccount, accounts, services, activities, profiles, markAsDirty]);
+      const updatedAccounts = [...accounts, account];
+      setAccounts(updatedAccounts);
+      setSelectedAccount(account);
+      setIsCreating(false);
+      markAsDirty(updatedAccounts, services, activities, profiles);
+    },
+    [accounts, services, activities, profiles, markAsDirty],
+  );
 
   const handleDeleteAccount = useCallback(
     async (id: string, e?: React.MouseEvent) => {
       if (e) e.stopPropagation();
       const updatedAccounts = (Array.isArray(accounts) ? accounts : []).filter((a) => a.id !== id);
       const updatedServices = (Array.isArray(services) ? services : []).filter(
-        (s) => s.accountId !== id,
+        (s) => s.emailId !== id,
       );
       const updatedActivities = (Array.isArray(activities) ? activities : []).filter(
-        (a) => a.accountId !== id,
+        (a) => a.emailId !== id,
       );
 
       setAccounts(updatedAccounts);
@@ -319,6 +295,10 @@ const AccountManager = () => {
 
   const handleUpdateAccount = useCallback(
     async (updatedAccount: Account) => {
+      if (isCreating) {
+        handleAddAccount(updatedAccount);
+        return;
+      }
       const updated = (Array.isArray(accounts) ? accounts : []).map((a) =>
         a.id === updatedAccount.id ? updatedAccount : a,
       );
@@ -326,51 +306,14 @@ const AccountManager = () => {
       setSelectedAccount(updatedAccount);
       markAsDirty(updated, services, activities, profiles);
     },
-    [accounts, services, activities, profiles, markAsDirty],
+    [accounts, services, activities, profiles, markAsDirty, isCreating, handleAddAccount],
   );
 
   const filteredAccounts = (Array.isArray(accounts) ? accounts : []).filter(
     (account) =>
-      account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      account.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       account.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-
-  const getProviderTheme = useCallback((provider: Account['provider']) => {
-    switch (provider) {
-      case 'gmail':
-        return {
-          color: 'text-red-600',
-          hex: '#dc2626',
-          bg: 'bg-gradient-to-br from-red-600/10 to-transparent',
-          border: 'border-red-600/20',
-          avatar: 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/20',
-        };
-      case 'hotmail':
-        return {
-          color: 'text-blue-600',
-          hex: '#2563eb',
-          bg: 'bg-gradient-to-br from-blue-600/10 to-transparent',
-          border: 'border-blue-600/20',
-          avatar: 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/20',
-        };
-      case 'protonmail':
-        return {
-          color: 'text-purple-600',
-          hex: '#9333ea',
-          bg: 'bg-gradient-to-br from-purple-600/10 to-transparent',
-          border: 'border-purple-600/20',
-          avatar: 'bg-gradient-to-br from-purple-600 to-indigo-700 shadow-purple-500/20',
-        };
-      default:
-        return {
-          color: 'text-gray-600',
-          hex: '#4b5563',
-          bg: 'bg-muted/30',
-          border: 'border-border',
-          avatar: 'bg-gradient-to-br from-gray-500 to-gray-600 shadow-gray-500/20',
-        };
-    }
-  }, []);
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
@@ -394,7 +337,7 @@ const AccountManager = () => {
               if (localStorage.getItem('zentri_is_dirty') === 'true') {
                 if (!confirm('You have unsaved changes. Overwrite with Cloud data?')) return;
               }
-              loadData(true);
+              loadData();
             }}
             disabled={loading}
             className={cn(
@@ -432,7 +375,6 @@ const AccountManager = () => {
               let domain = account.email.split('@')[1] || 'google.com';
               domain = DOMAIN_MAP[domain] || domain;
               const faviconUrl = `https://www.google.com/s2/favicons?domain=https://${domain}&sz=32`;
-              const theme = getProviderTheme(account.provider);
               const isSelected = selectedAccount?.id === account.id;
               const avatarColor = getAvatarColor(account.email);
 
@@ -533,8 +475,27 @@ const AccountManager = () => {
 
         {/* Sidebar Footer */}
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="w-full py-2.5 flex items-center justify-center gap-2 border-t border-border  backdrop-blur-md transition-all hover:bg-primary/10 text-muted-foreground hover:text-primary group"
+          onClick={() => {
+            setIsCreating(true);
+            const tempAccount: Account = {
+              id: 'temp',
+              email: '',
+              password: '',
+              name: '',
+              avatar: '',
+              provider: 'gmail',
+              recoveryEmail: '',
+              phoneNumber: '',
+              twoFactorEnabled: false,
+              status: 'active',
+            };
+            setSelectedAccount(tempAccount);
+          }}
+          disabled={isCreating}
+          className={cn(
+            'w-full py-2.5 flex items-center justify-center gap-2 border-t border-border  backdrop-blur-md transition-all hover:bg-primary/10 text-muted-foreground hover:text-primary group',
+            isCreating && 'opacity-50 cursor-not-allowed',
+          )}
         >
           <Plus className="h-4 w-4 transition-colors group-hover:text-primary" />
           <span className="font-bold text-sm">Add Account</span>
@@ -551,6 +512,11 @@ const AccountManager = () => {
             repoPath={gitlabFolder || undefined}
             onUpdate={handleUpdateAccount}
             onDelete={handleDeleteAccount}
+            isCreating={isCreating}
+            onCancelCreate={() => {
+              setIsCreating(false);
+              setSelectedAccount(accounts[0] || null);
+            }}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground grayscale opacity-20">
@@ -559,75 +525,6 @@ const AccountManager = () => {
           </div>
         )}
       </div>
-
-      {/* Add Account Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center animate-in fade-in duration-300">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            onClick={() => setIsModalOpen(false)}
-          />
-          <div className="relative w-full max-w-[600px] bg-background border border-border shadow-2xl rounded-md flex flex-col animate-in zoom-in-95 duration-300">
-            {/* Modal Header */}
-            <div className="px-6 py-4 flex items-center justify-between border-b border-border">
-              <h2 className="text-xl font-bold tracking-tight">Add New Account</h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="px-6 py-8 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Email Address</label>
-                <div className="relative group">
-                  <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="email"
-                    placeholder="name@example.com"
-                    className="w-full h-11 pl-11 pr-4 rounded-md bg-input border border-border focus:border-primary outline-none transition-all text-sm"
-                    value={newAccount.email}
-                    onChange={(e) => setNewAccount((p) => ({ ...p, email: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Password</label>
-                <div className="relative group">
-                  <Key className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full h-11 pl-11 pr-4 rounded-md bg-input border border-border focus:border-primary outline-none transition-all text-sm"
-                    value={newAccount.password}
-                    onChange={(e) => setNewAccount((p) => ({ ...p, password: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-border flex justify-end gap-3">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-6 h-10 rounded-md border border-border font-bold text-sm hover:bg-muted transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddAccount}
-                className="px-6 h-10 rounded-md bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-all border border-transparent hover:border-primary/10"
-              >
-                Create Account
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -105,7 +105,7 @@ function extractTag(
     const match = html.match(regex);
     if (!match) return undefined;
 
-    let content = match[1];
+    const content = match[1];
 
     if (isCountry) {
       const textMatch =
@@ -114,7 +114,7 @@ function extractTag(
       if (textMatch) return textMatch[1].replace(/<[^>]*>?/gm, '').trim();
     }
 
-    let value = content.replace(/<[^>]*>?/gm, '').trim();
+    const value = content.replace(/<[^>]*>?/gm, '').trim();
 
     if (isASN) {
       const asnMatch = value.match(/AS\d+/);
