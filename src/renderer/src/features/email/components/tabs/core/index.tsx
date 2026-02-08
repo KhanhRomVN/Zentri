@@ -1,6 +1,7 @@
 import { Email } from '../../../../../../../shared/types';
 import { useState, useMemo, useEffect } from 'react';
 import { User, Mail, Shield, Smartphone, Key, ScanLine, MessageSquare } from 'lucide-react';
+import { cn } from '../../../../../shared/lib/utils';
 import { Drawer } from '../../../../../shared/components/ui/drawer';
 
 import { InfoSection } from './components/InfoSection';
@@ -243,7 +244,13 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
   return (
     <div className="relative h-full overflow-hidden">
       <div className="h-full overflow-y-auto p-6 custom-scrollbar">
-        <div className="flex flex-col gap-10">
+        <div
+          className={cn(
+            'flex flex-col gap-10 transition-all duration-300',
+            isCreating &&
+              'bg-background shadow-[inset_0_0_20px_rgba(0,0,0,0.05)] rounded-xl p-6 border border-border/50',
+          )}
+        >
           <InfoSection
             form={form}
             onChange={handleChange}

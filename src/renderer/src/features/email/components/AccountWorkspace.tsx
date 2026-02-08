@@ -41,6 +41,7 @@ const AccountWorkspace = memo(
       }
     }, [isCreating]);
     const [isMonitorOpen, setIsMonitorOpen] = useState(false);
+    const [isAddingService, setIsAddingService] = useState(false);
 
     // Memoize tabs configuration
     const tabs = useMemo(
@@ -101,6 +102,7 @@ const AccountWorkspace = memo(
               services={accountServices}
               onUpdate={(updated) => onUpdateServices?.(updated)}
               currentAccountId={account.id}
+              onCreatingModeChange={setIsAddingService}
             />
           );
         }
@@ -158,16 +160,20 @@ const AccountWorkspace = memo(
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold text-foreground truncate">
-                  {isCreating ? 'Add new email' : account.email}
+                  {isCreating
+                    ? 'Add new email'
+                    : isAddingService
+                      ? 'Add new service'
+                      : account.email}
                 </h2>
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                {!isCreating && (
+                {!isCreating && !isAddingService && (
                   <span className="text-[10px] bg-emerald-500/10 text-emerald-600 px-1.5 rounded-sm font-medium">
                     Active
                   </span>
                 )}
-                {account.twoFactorEnabled && (
+                {!isAddingService && account.twoFactorEnabled && (
                   <span className="text-[10px] bg-blue-500/10 text-blue-600 px-1.5 rounded-sm font-medium">
                     2FA On
                   </span>
@@ -180,7 +186,8 @@ const AccountWorkspace = memo(
           <div className="flex items-center justify-center">
             <div className="flex items-center gap-1">
               {tabs.map((tab) => {
-                const disabled = isCreating && tab.id !== 'Core';
+                const disabled =
+                  (isCreating && tab.id !== 'Core') || (isAddingService && tab.id !== 'Service');
                 return (
                   <button
                     key={tab.id}
@@ -204,7 +211,7 @@ const AccountWorkspace = memo(
 
           {/* Right: Actions */}
           <div className="flex items-center justify-end gap-1">
-            {!isCreating && (
+            {!isCreating && !isAddingService && (
               <>
                 <button
                   onClick={() => onUpdate?.(account)}

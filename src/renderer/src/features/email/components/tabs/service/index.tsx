@@ -10,6 +10,7 @@ import {
   Shield,
   Smartphone,
 } from 'lucide-react';
+import { cn } from '../../../../../shared/lib/utils';
 import { ServiceItem } from '../../../mock/accounts';
 
 import { ServiceSidebar } from './components/ServiceSidebar';
@@ -23,9 +24,15 @@ interface ServiceTabProps {
   services: ServiceItem[];
   onUpdate?: (services: ServiceItem[]) => void;
   currentAccountId?: string;
+  onCreatingModeChange?: (isCreating: boolean) => void;
 }
 
-const ServiceTab = ({ services, onUpdate, currentAccountId }: ServiceTabProps) => {
+const ServiceTab = ({
+  services,
+  onUpdate,
+  currentAccountId,
+  onCreatingModeChange,
+}: ServiceTabProps) => {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(
     services && services.length > 0 ? services[0] : null,
   );
@@ -320,6 +327,7 @@ const ServiceTab = ({ services, onUpdate, currentAccountId }: ServiceTabProps) =
 
   const handleAddService = () => {
     setIsCreating(true);
+    onCreatingModeChange?.(true);
     setSelectedService(null);
     setNewServiceForm({
       id: Math.random().toString(36).substr(2, 9),
@@ -337,6 +345,7 @@ const ServiceTab = ({ services, onUpdate, currentAccountId }: ServiceTabProps) =
 
   const handleCancelCreate = () => {
     setIsCreating(false);
+    onCreatingModeChange?.(false);
     if (services.length > 0) {
       setSelectedService(services[0]);
     }
@@ -350,6 +359,7 @@ const ServiceTab = ({ services, onUpdate, currentAccountId }: ServiceTabProps) =
       onUpdate([...services, newServiceForm]);
     }
     setIsCreating(false);
+    onCreatingModeChange?.(false);
     // Select the new service or reset
     setSelectedService(newServiceForm);
   };
@@ -362,6 +372,7 @@ const ServiceTab = ({ services, onUpdate, currentAccountId }: ServiceTabProps) =
           selectedServiceId={selectedService?.id}
           onSelectService={(service) => {
             setIsCreating(false);
+            onCreatingModeChange?.(false);
             setSelectedService(service);
           }}
           searchQuery={searchQuery}
@@ -372,7 +383,13 @@ const ServiceTab = ({ services, onUpdate, currentAccountId }: ServiceTabProps) =
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-background relative">
           {isCreating || selectedService ? (
-            <div className="flex flex-col gap-10 max-w-5xl">
+            <div
+              className={cn(
+                'flex flex-col gap-10 max-w-5xl transition-all duration-300',
+                isCreating &&
+                  'bg-background shadow-[inset_0_0_20px_rgba(0,0,0,0.05)] rounded-xl p-6 border border-border/50',
+              )}
+            >
               <InformationSection
                 selectedService={isCreating ? newServiceForm : selectedService!}
                 showPassword={showPassword}

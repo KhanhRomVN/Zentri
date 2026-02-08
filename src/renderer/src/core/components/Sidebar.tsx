@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../../shared/lib/utils';
 import {
