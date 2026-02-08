@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Globe,
   ScanLine,
@@ -17,13 +17,15 @@ import { InformationSection } from './components/InformationSection';
 import { TwoFactorSection } from './components/TwoFactorSection';
 import { SecretsSection } from './components/SecretsSection';
 import { UnifiedDrawer } from './components/UnifiedDrawer';
+import { SERVICE_PROVIDERS } from './utils/servicePresets';
 
 interface ServiceTabProps {
   services: ServiceItem[];
   onUpdate?: (services: ServiceItem[]) => void;
+  currentAccountId?: string;
 }
 
-const ServiceTab = ({ services }: ServiceTabProps) => {
+const ServiceTab = ({ services, onUpdate, currentAccountId }: ServiceTabProps) => {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(
     services && services.length > 0 ? services[0] : null,
   );
@@ -43,14 +45,47 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
 
   // States for 2FA and Secrets
   const [activeMethods, setActiveMethods] = useState<string[]>([]);
-  const [initialActiveMethods] = useState<string[]>([]);
+  const [initialActiveMethods, setInitialActiveMethods] = useState<string[]>([]);
   const [methodValues, setMethodValues] = useState<Record<string, string>>({});
-  const [initialMethodValues] = useState<Record<string, string>>({});
+  const [initialMethodValues, setInitialMethodValues] = useState<Record<string, string>>({});
 
-  const [secrets, setSecrets] = useState<any[]>([]);
-  const [initialSecrets] = useState<any[]>([]);
+  const [secretKeys, setSecretKeys] = useState<any[]>([]);
+  const [initialSecretKeys, setInitialSecretKeys] = useState<any[]>([]);
   const [deletedMethods, setDeletedMethods] = useState<string[]>([]);
   const [deletedSecrets, setDeletedSecrets] = useState<string[]>([]);
+
+  // Creation Mode State
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Sync state when selected service changes
+  useEffect(() => {
+    if (selectedService) {
+      const methods = (selectedService.twoFactorMethods || []).map((m) => m.type as string);
+      const values = (selectedService.twoFactorMethods || []).reduce(
+        (acc, m) => ({ ...acc, [m.type as string]: m.value }),
+        {},
+      );
+      const secrets = selectedService.secretKeys || [];
+
+      setActiveMethods(methods);
+      setInitialActiveMethods(methods);
+      setMethodValues(values);
+      setInitialMethodValues(values);
+      setSecretKeys(secrets);
+      setInitialSecretKeys(secrets);
+      setDeletedMethods([]);
+      setDeletedSecrets([]);
+    } else if (isCreating) {
+      setActiveMethods([]);
+      setInitialActiveMethods([]);
+      setMethodValues({});
+      setInitialMethodValues({});
+      setSecretKeys([]);
+      setInitialSecretKeys([]);
+      setDeletedMethods([]);
+      setDeletedSecrets([]);
+    }
+  }, [selectedService?.id, isCreating]);
 
   // Unified Drawer State
   const [activeDrawer, setActiveDrawer] = useState<'2fa' | 'secret' | 'review' | null>(null);
@@ -60,6 +95,19 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
   const [newMethodTypeId, setNewMethodTypeId] = useState<string>('');
   const [drawer2FAValue, setDrawer2FAValue] = useState('');
+
+  // Creation Mode State
+  const [newServiceForm, setNewServiceForm] = useState<ServiceItem>({
+    id: '',
+    serviceProviderId: '',
+    emailId: '',
+    linkedServiceId: '',
+    tags: [],
+    categories: [],
+    metadata: {},
+    twoFactorMethods: [],
+    secretKeys: [],
+  });
 
   // Secret Drawer State
   const [secretDrawerMode, setSecretDrawerMode] = useState<'edit' | 'add'>('edit');
@@ -107,7 +155,7 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
   };
 
   const handleSecretClick = (id: string) => {
-    const secret = secrets.find((s) => s.id === id);
+    const secret = secretKeys.find((s) => s.id === id);
     if (secret) {
       setSelectedSecretId(id);
       setSecretForm({ key: secret.key, value: secret.value });
@@ -131,12 +179,12 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
         value: secretForm.value,
         active: true,
       };
-      setSecrets((prev) => [...prev, newSecret]);
+      setSecretKeys((prev) => [...prev, newSecret]);
     } else if (secretDrawerMode === 'edit' && selectedSecretId) {
       if (deletedSecrets.includes(selectedSecretId)) {
         setDeletedSecrets((prev) => prev.filter((id) => id !== selectedSecretId));
       }
-      setSecrets((prev) =>
+      setSecretKeys((prev) =>
         prev.map((s) =>
           s.id === selectedSecretId ? { ...s, key: secretForm.key, value: secretForm.value } : s,
         ),
@@ -147,12 +195,12 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
 
   const handleDeleteSecret = () => {
     if (selectedSecretId) {
-      const isInitial = initialSecrets.some((s) => s.id === selectedSecretId);
+      const isInitial = initialSecretKeys.some((s) => s.id === selectedSecretId);
       if (isInitial) {
         setDeletedSecrets((prev) => [...prev, selectedSecretId]);
-        setSecrets((prev) => prev.filter((s) => s.id !== selectedSecretId));
+        setSecretKeys((prev) => prev.filter((s) => s.id !== selectedSecretId));
       } else {
-        setSecrets((prev) => prev.filter((s) => s.id !== selectedSecretId));
+        setSecretKeys((prev) => prev.filter((s) => s.id !== selectedSecretId));
       }
       setActiveDrawer(null);
     }
@@ -194,8 +242,8 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
       });
     });
 
-    secrets.forEach((secret) => {
-      const initial = initialSecrets.find((s) => s.id === secret.id);
+    secretKeys.forEach((secret) => {
+      const initial = initialSecretKeys.find((s) => s.id === secret.id);
       if (!initial) {
         changes.push({
           type: 'add',
@@ -215,7 +263,7 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
     });
 
     deletedSecrets.forEach((id) => {
-      const initial = initialSecrets.find((s) => s.id === id);
+      const initial = initialSecretKeys.find((s) => s.id === id);
       changes.push({
         type: 'delete',
         area: 'Secrets & Keys',
@@ -260,15 +308,51 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
     }
   };
 
-  const filteredServices = services.filter(
-    (s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.username.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredServices = services.filter((s) => {
+    const provider = s.serviceProviderId ? SERVICE_PROVIDERS[s.serviceProviderId] : null;
+    const name = provider?.name || s.serviceProviderId || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
   const currentFocusedMethod =
     drawer2FAMode === 'edit'
       ? ALL_METHODS.find((m) => m.id === selectedMethodId)
       : ALL_METHODS.find((m) => m.id === newMethodTypeId);
+
+  const handleAddService = () => {
+    setIsCreating(true);
+    setSelectedService(null);
+    setNewServiceForm({
+      id: Math.random().toString(36).substr(2, 9),
+      serviceProviderId: '',
+      emailId: currentAccountId || '',
+      linkedServiceId: '',
+      tags: [],
+      categories: [],
+      metadata: {},
+      twoFactorMethods: [],
+      secretKeys: [],
+    });
+    // States will be reset by useEffect
+  };
+
+  const handleCancelCreate = () => {
+    setIsCreating(false);
+    if (services.length > 0) {
+      setSelectedService(services[0]);
+    }
+  };
+
+  const handleCreateService = () => {
+    if (onUpdate) {
+      // Here we would typically push the new service to the list
+      // For now just calling onUpdate with current list + new service is hypothetical
+      // since the signature is (services: ServiceItem[]) => void
+      onUpdate([...services, newServiceForm]);
+    }
+    setIsCreating(false);
+    // Select the new service or reset
+    setSelectedService(newServiceForm);
+  };
 
   return (
     <div className="relative h-full w-full overflow-hidden flex flex-col">
@@ -276,17 +360,21 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
         <ServiceSidebar
           services={filteredServices}
           selectedServiceId={selectedService?.id}
-          onSelectService={setSelectedService}
+          onSelectService={(service) => {
+            setIsCreating(false);
+            setSelectedService(service);
+          }}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           getFaviconUrl={getFaviconUrl}
+          onAddService={handleAddService}
         />
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-background relative">
-          {selectedService ? (
+          {isCreating || selectedService ? (
             <div className="flex flex-col gap-10 max-w-5xl">
               <InformationSection
-                selectedService={selectedService}
+                selectedService={isCreating ? newServiceForm : selectedService!}
                 showPassword={showPassword}
                 setShowPassword={setShowPassword}
                 onChange={(field, value) => {
@@ -296,35 +384,51 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
                       .split(',')
                       .map((s) => s.trim())
                       .filter(Boolean);
-                    setSelectedService({ ...selectedService, [field]: arrayVal });
+
+                    if (isCreating) {
+                      setNewServiceForm((prev) => ({ ...prev, [field]: arrayVal }));
+                    } else if (selectedService) {
+                      setSelectedService({ ...selectedService, [field]: arrayVal });
+                    }
                   } else {
-                    // For other fields if they become editable
-                    setSelectedService({ ...selectedService, [field]: value });
+                    if (isCreating) {
+                      setNewServiceForm((prev) => ({ ...prev, [field]: value }));
+                    } else if (selectedService) {
+                      setSelectedService({ ...selectedService, [field]: value });
+                    }
                   }
                 }}
               />
 
-              <TwoFactorSection
-                activeMethods={activeMethods}
-                deletedMethods={deletedMethods}
-                allMethods={ALL_METHODS}
-                methodValues={methodValues}
-                initialActiveMethods={initialActiveMethods}
-                initialMethodValues={initialMethodValues}
-                onMethodClick={handleMethodClick}
-                onAddClick={handleAdd2FAClick}
-                getFaviconUrl={getFaviconUrl}
-                websiteUrl={selectedService.websiteUrl}
-              />
+              {!isCreating && (
+                <>
+                  <TwoFactorSection
+                    activeMethods={activeMethods}
+                    deletedMethods={deletedMethods}
+                    allMethods={ALL_METHODS}
+                    methodValues={methodValues}
+                    initialActiveMethods={initialActiveMethods}
+                    initialMethodValues={initialMethodValues}
+                    onMethodClick={handleMethodClick}
+                    onAddClick={handleAdd2FAClick}
+                    getFaviconUrl={getFaviconUrl}
+                    websiteUrl={
+                      isCreating
+                        ? SERVICE_PROVIDERS[newServiceForm.serviceProviderId]?.websiteUrl || ''
+                        : SERVICE_PROVIDERS[selectedService!.serviceProviderId]?.websiteUrl || ''
+                    }
+                  />
 
-              <SecretsSection
-                secrets={secrets}
-                initialSecrets={initialSecrets}
-                deletedSecrets={deletedSecrets}
-                onSecretClick={handleSecretClick}
-                onAddClick={handleAddSecretClick}
-                selectedSecretId={selectedSecretId}
-              />
+                  <SecretsSection
+                    secrets={secretKeys}
+                    initialSecrets={initialSecretKeys}
+                    deletedSecrets={deletedSecrets}
+                    onSecretClick={handleSecretClick}
+                    onAddClick={handleAddSecretClick}
+                    selectedSecretId={selectedSecretId}
+                  />
+                </>
+              )}
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-4">
@@ -361,7 +465,25 @@ const ServiceTab = ({ services }: ServiceTabProps) => {
         }}
       />
 
-      {pendingChanges.length > 0 && (
+      {isCreating && (
+        <div className="absolute bottom-6 right-6 flex items-center gap-3 z-[45]">
+          <button
+            onClick={handleCancelCreate}
+            className="bg-button-secondBg text-button-text h-10 px-6 rounded-md flex items-center justify-center text-sm font-bold shadow-sm hover:bg-muted/80 active:scale-95 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreateService}
+            disabled={!newServiceForm.serviceProviderId.trim()}
+            className="bg-primary text-primary-foreground h-10 px-6 rounded-md shadow-xl flex items-center justify-center text-sm font-bold active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Create Service
+          </button>
+        </div>
+      )}
+
+      {!isCreating && pendingChanges.length > 0 && (
         <button
           onClick={() => setActiveDrawer('review')}
           className="absolute bottom-6 right-6 bg-primary text-primary-foreground h-10 px-6 rounded-md shadow-xl shadow-primary/30 flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all z-[45] text-sm font-bold animate-in slide-in-from-bottom-5 border border-primary/20"

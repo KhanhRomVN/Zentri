@@ -14,6 +14,7 @@ interface AccountWorkspaceProps {
   profiles?: ProfileMetadata[];
   repoPath?: string;
   onUpdate?: (account: Account) => void;
+  onUpdateServices?: (services: ServiceItem[]) => void;
   onDelete?: (id: string) => void;
   isCreating?: boolean;
   onCancelCreate?: () => void;
@@ -26,6 +27,7 @@ const AccountWorkspace = memo(
     profiles = [],
     repoPath,
     onUpdate,
+    onUpdateServices,
     onDelete,
     isCreating,
     onCancelCreate,
@@ -95,7 +97,11 @@ const AccountWorkspace = memo(
         case 'Service': {
           const accountServices = services.filter((s) => s.emailId === account.id);
           return (
-            <ServiceTab services={accountServices} onUpdate={(updated) => console.log(updated)} />
+            <ServiceTab
+              services={accountServices}
+              onUpdate={(updated) => onUpdateServices?.(updated)}
+              currentAccountId={account.id}
+            />
           );
         }
         default:

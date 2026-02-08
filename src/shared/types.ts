@@ -37,20 +37,18 @@ export interface ServiceProvider extends GlobalEntity {
 
 // --- Service ---
 export interface ServiceMetadata {
-  username?: string;
-  password?: string;
-  websiteUrl?: string;
   [key: string]: any;
 }
 
 export interface Service extends GlobalEntity {
   emailId?: string;
-  serviceProviderId: string; // Link to ServiceProvider
-  linkedServiceId?: string; // For syncing with other services
+  serviceProviderId: string;
+  linkedServiceId?: string;
   tags?: string[];
   categories?: string[];
   metadata?: ServiceMetadata;
   twoFactorMethods?: Service2FA[];
+  secretKeys?: SecretKey[];
 }
 
 // --- 2FA ---
@@ -66,6 +64,14 @@ export interface Service2FA extends GlobalEntity {
   serviceId: string;
   type: TwoFactorType;
   value: any;
+}
+
+// --- Secret Key ---
+export interface SecretKey extends GlobalEntity {
+  serviceId: string;
+  key: string;
+  value: string;
+  active?: boolean;
 }
 
 // --- Proxy ---

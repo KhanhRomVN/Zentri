@@ -2,7 +2,12 @@ import { Email, Service, ActivityItem, Cookie } from '../../../../../shared/type
 
 // Re-export specific types if needed by other files, or they should import from shared
 export type { Service, ActivityItem, Cookie };
-export type ServiceItem = Service;
+// export type ServiceItem = Service;
+
+// Redefining ServiceItem to match UI usage in ServiceTab
+export interface ServiceItem extends Service {
+  // We can add UI-only properties here if needed, but for now just extend Service
+}
 
 export interface Account extends Email {
   provider: 'gmail' | 'hotmail' | 'protonmail' | 'icloud' | 'yahoo';

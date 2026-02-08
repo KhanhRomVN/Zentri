@@ -309,6 +309,19 @@ const AccountManager = () => {
     [accounts, services, activities, profiles, markAsDirty, isCreating, handleAddAccount],
   );
 
+  const handleUpdateServices = useCallback(
+    async (updatedAccountServices: ServiceItem[]) => {
+      const updatedAllServices = (Array.isArray(services) ? services : []).filter(
+        (s) => s.emailId !== selectedAccount?.id,
+      );
+      updatedAllServices.push(...updatedAccountServices);
+
+      setServices(updatedAllServices);
+      markAsDirty(accounts, updatedAllServices, activities, profiles);
+    },
+    [accounts, services, activities, profiles, selectedAccount, markAsDirty],
+  );
+
   const filteredAccounts = (Array.isArray(accounts) ? accounts : []).filter(
     (account) =>
       account.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -511,6 +524,7 @@ const AccountManager = () => {
             profiles={profiles}
             repoPath={gitlabFolder || undefined}
             onUpdate={handleUpdateAccount}
+            onUpdateServices={handleUpdateServices}
             onDelete={handleDeleteAccount}
             isCreating={isCreating}
             onCancelCreate={() => {

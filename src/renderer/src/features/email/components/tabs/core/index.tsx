@@ -1,5 +1,5 @@
 import { Email } from '../../../../../../../shared/types';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { User, Mail, Shield, Smartphone, Key, ScanLine, MessageSquare } from 'lucide-react';
 import { Drawer } from '../../../../../shared/components/ui/drawer';
 
@@ -52,6 +52,28 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
     [account],
   );
 
+  useEffect(() => {
+    setForm(initialForm);
+
+    setMethodValues({
+      app: '',
+      sms: account.phoneNumber || '',
+      email: account.recoveryEmail || '',
+      key: '',
+      prompt: '',
+      codes: '',
+      hello: '',
+    });
+
+    // Reset other states
+    setActiveMethods([]);
+    setDeletedMethods([]);
+    setActiveDrawer(null);
+    setDrawerMode('edit');
+    setSelectedMethodId(null);
+    setNewMethodTypeId('');
+  }, [account, initialForm]);
+
   const [drawerForm, setDrawerForm] = useState({ value: '', label: '' });
 
   const handleChange = (field: string, value: string) => {
@@ -69,7 +91,7 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
   ];
 
   const [activeMethods, setActiveMethods] = useState<string[]>([]);
-  const [initialActiveMethods] = useState<string[]>([]);
+  const initialActiveMethods = useMemo<string[]>(() => [], [account]);
 
   const [methodValues, setMethodValues] = useState<Record<string, string>>({
     app: '',
@@ -80,15 +102,19 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
     codes: '',
     hello: '',
   });
-  const [initialMethodValues] = useState<Record<string, string>>({
-    app: '',
-    sms: account.phoneNumber || '',
-    email: account.recoveryEmail || '',
-    key: '',
-    prompt: '',
-    codes: '',
-    hello: '',
-  });
+
+  const initialMethodValues = useMemo<Record<string, string>>(
+    () => ({
+      app: '',
+      sms: account.phoneNumber || '',
+      email: account.recoveryEmail || '',
+      key: '',
+      prompt: '',
+      codes: '',
+      hello: '',
+    }),
+    [account],
+  );
 
   const [deletedMethods, setDeletedMethods] = useState<string[]>([]);
 
