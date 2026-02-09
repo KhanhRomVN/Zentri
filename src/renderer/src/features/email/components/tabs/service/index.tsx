@@ -18,13 +18,18 @@ import { InformationSection } from './components/InformationSection';
 import { TwoFactorSection } from './components/TwoFactorSection';
 import { SecretsSection } from './components/SecretsSection';
 import { UnifiedDrawer } from './components/UnifiedDrawer';
-import { SERVICE_PROVIDERS } from './utils/servicePresets';
+import { SERVICE_PROVIDERS, ServiceProviderConfig } from './utils/servicePresets';
+import { Email } from '../../../../../../../shared/types';
 
 interface ServiceTabProps {
   services: ServiceItem[];
   onUpdate?: (services: ServiceItem[]) => void;
   currentAccountId?: string;
   onCreatingModeChange?: (isCreating: boolean) => void;
+  availableEmails?: Email[];
+  availableServices?: ServiceItem[];
+  providers?: Record<string, ServiceProviderConfig>;
+  onSaveNewProvider?: (provider: ServiceProviderConfig) => void;
 }
 
 const ServiceTab = ({
@@ -32,6 +37,10 @@ const ServiceTab = ({
   onUpdate,
   currentAccountId,
   onCreatingModeChange,
+  availableEmails = [],
+  availableServices = [],
+  providers = SERVICE_PROVIDERS,
+  onSaveNewProvider,
 }: ServiceTabProps) => {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(
     services && services.length > 0 ? services[0] : null,
@@ -316,7 +325,7 @@ const ServiceTab = ({
   };
 
   const filteredServices = services.filter((s) => {
-    const provider = s.serviceProviderId ? SERVICE_PROVIDERS[s.serviceProviderId] : null;
+    const provider = s.serviceProviderId ? providers[s.serviceProviderId] : null;
     const name = provider?.name || s.serviceProviderId || '';
     return name.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -379,6 +388,7 @@ const ServiceTab = ({
           onSearchChange={setSearchQuery}
           getFaviconUrl={getFaviconUrl}
           onAddService={handleAddService}
+          providers={providers}
         />
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-background relative">
@@ -394,6 +404,10 @@ const ServiceTab = ({
                 selectedService={isCreating ? newServiceForm : selectedService!}
                 showPassword={showPassword}
                 setShowPassword={setShowPassword}
+                availableEmails={availableEmails}
+                availableServices={availableServices}
+                providers={providers}
+                onSaveNewProvider={onSaveNewProvider}
                 onChange={(field, value) => {
                   if (field === 'tags' || field === 'categories') {
                     // Split by comma
@@ -405,13 +419,13 @@ const ServiceTab = ({
                     if (isCreating) {
                       setNewServiceForm((prev) => ({ ...prev, [field]: arrayVal }));
                     } else if (selectedService) {
-                      setSelectedService({ ...selectedService, [field]: arrayVal });
+                      setSelectedService((prev) => (prev ? { ...prev, [field]: arrayVal } : null));
                     }
                   } else {
                     if (isCreating) {
                       setNewServiceForm((prev) => ({ ...prev, [field]: value }));
                     } else if (selectedService) {
-                      setSelectedService({ ...selectedService, [field]: value });
+                      setSelectedService((prev) => (prev ? { ...prev, [field]: value } : null));
                     }
                   }
                 }}
@@ -431,8 +445,8 @@ const ServiceTab = ({
                     getFaviconUrl={getFaviconUrl}
                     websiteUrl={
                       isCreating
-                        ? SERVICE_PROVIDERS[newServiceForm.serviceProviderId]?.websiteUrl || ''
-                        : SERVICE_PROVIDERS[selectedService!.serviceProviderId]?.websiteUrl || ''
+                        ? providers[newServiceForm.serviceProviderId]?.websiteUrl || ''
+                        : providers[selectedService!.serviceProviderId]?.websiteUrl || ''
                     }
                   />
 
@@ -503,7 +517,7 @@ const ServiceTab = ({
       {!isCreating && pendingChanges.length > 0 && (
         <button
           onClick={() => setActiveDrawer('review')}
-          className="absolute bottom-6 right-6 bg-primary text-primary-foreground h-10 px-6 rounded-md shadow-xl shadow-primary/30 flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all z-[45] text-sm font-bold animate-in slide-in-from-bottom-5 border border-primary/20"
+          className="bg-primary text-primary-foreground h-10 px-6 rounded-md shadow-xl shadow-primary/30 flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all z-[45] text-sm font-bold animate-in slide-in-from-bottom-5 border border-primary/20 absolute bottom-6 right-6"
         >
           Update {pendingChanges.length}
         </button>

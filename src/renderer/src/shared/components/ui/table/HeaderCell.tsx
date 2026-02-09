@@ -41,7 +41,7 @@ const HeaderCell: React.FC<HeaderCellProps> = ({
   return (
     <th
       className={cn(
-        'py-3 px-4 font-semibold',
+        'py-3 px-4 font-semibold text-xs',
         align === 'left' && 'text-left',
         align === 'center' && 'text-center',
         align === 'right' && 'text-right',

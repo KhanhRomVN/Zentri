@@ -143,6 +143,9 @@ const Combobox: React.FC<ComboboxProps> = ({
                   index === highlightedIndex && 'bg-dropdown-itemHover',
                 )}
                 onClick={() => !option.disabled && handleSelect(option)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
                 onMouseEnter={() => !option.disabled && setHighlightedIndex(index)}
               >
                 <div className="flex items-center gap-2">
@@ -174,6 +177,9 @@ const Combobox: React.FC<ComboboxProps> = ({
                   creatableClassName,
                 )}
                 onClick={handleCreate}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
                 onMouseEnter={() => setHighlightedIndex(filteredOptions.length)}
               >
                 {creatableIcon || (

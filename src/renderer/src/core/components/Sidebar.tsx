@@ -75,7 +75,6 @@ const NAV_ITEMS = [
     href: '/setting',
     icon: SettingsIcon,
     color: '#64748b', // slate-500
-    disabled: true,
   },
 ];
 

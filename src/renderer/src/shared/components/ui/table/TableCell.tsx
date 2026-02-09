@@ -15,7 +15,7 @@ const TableCell: React.FC<TableCellProps> = ({
   return (
     <td
       className={cn(
-        'py-3 px-4',
+        'py-3 px-4 text-xs',
         align === 'left' && 'text-left',
         align === 'center' && 'text-center',
         align === 'right' && 'text-right',

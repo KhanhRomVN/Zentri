@@ -235,6 +235,7 @@ const Input: React.FC<InputProps> = ({
                   ? {
                       backgroundColor: color.startsWith('#') ? color + '1a' : color, // Add 10% opacity if hex
                       color: color,
+                      border: `1px solid ${color.startsWith('#') ? color + '33' : color}`, // Add 20% opacity border
                     }
                   : { backgroundColor: color }
               }

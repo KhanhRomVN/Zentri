@@ -15,6 +15,10 @@ import {
 import { cn } from '../../shared/lib/utils';
 import { Account, ServiceItem, ActivityItem, ProfileMetadata } from './mock/accounts';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  SERVICE_PROVIDERS,
+  ServiceProviderConfig,
+} from './components/tabs/service/utils/servicePresets';
 
 // Domain mapping for email provider favicons
 const DOMAIN_MAP: Record<string, string> = {
@@ -35,6 +39,9 @@ const AccountManager = () => {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [profiles, setProfiles] = useState<ProfileMetadata[]>([]);
+
+  // Custom Providers State
+  const [customProviders, setCustomProviders] = useState<Record<string, ServiceProviderConfig>>({});
 
   // Use refs to avoid closure traps in listeners without triggering loops
   const accountsRef = useRef(accounts);
@@ -138,6 +145,13 @@ const AccountManager = () => {
       );
       console.log('[Email] profilesData:', profilesData);
 
+      // Load Custom Providers
+      const customProvidersData = await window.electron.ipcRenderer.invoke(
+        'git:read-data',
+        gitlabFolder,
+        'custom_providers.json',
+      );
+
       const extractData = (res: any) => {
         if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
           return Array.isArray(res.data) ? res.data : typeof res.data === 'object' ? res.data : [];
@@ -147,6 +161,7 @@ const AccountManager = () => {
 
       const loadedEmails = extractData(emailsData);
       const loadedAccounts = Array.isArray(loadedEmails) ? loadedEmails : [];
+      const loadedCustomProviders = extractData(customProvidersData);
 
       console.log('[Email] Processed loadedAccounts:', loadedAccounts.length);
 
@@ -154,6 +169,14 @@ const AccountManager = () => {
       setServices(Array.isArray(extractData(servicesData)) ? extractData(servicesData) : []);
       setActivities(Array.isArray(extractData(activitiesData)) ? extractData(activitiesData) : []);
       setProfiles(Array.isArray(extractData(profilesData)) ? extractData(profilesData) : []);
+
+      // Set custom providers if valid object
+      if (loadedCustomProviders && !Array.isArray(loadedCustomProviders)) {
+        // Expecting Record<string, Config>
+        setCustomProviders(loadedCustomProviders);
+      } else {
+        setCustomProviders({});
+      }
 
       if (loadedAccounts.length > 0 && !selectedAccount) {
         setSelectedAccount(loadedAccounts[0]);
@@ -321,6 +344,33 @@ const AccountManager = () => {
     },
     [accounts, services, activities, profiles, selectedAccount, markAsDirty],
   );
+
+  const handleSaveNewProvider = useCallback(
+    async (newProvider: ServiceProviderConfig) => {
+      const updatedCustom = { ...customProviders, [newProvider.id]: newProvider };
+      setCustomProviders(updatedCustom);
+
+      // Save to custom_providers.json
+      if (gitlabFolder) {
+        try {
+          await window.electron.ipcRenderer.invoke('git:write-data', {
+            folderPath: gitlabFolder,
+            filename: 'custom_providers.json',
+            data: updatedCustom,
+          });
+          console.log('[Email] Saved new custom provider:', newProvider.name);
+        } catch (e) {
+          console.error('[Email] Failed to save custom provider', e);
+        }
+      }
+    },
+    [customProviders, gitlabFolder],
+  );
+
+  // Merge default providers with custom providers
+  const allProviders = useMemo(() => {
+    return { ...SERVICE_PROVIDERS, ...customProviders };
+  }, [customProviders]);
 
   const filteredAccounts = (Array.isArray(accounts) ? accounts : []).filter(
     (account) =>
@@ -531,6 +581,9 @@ const AccountManager = () => {
               setIsCreating(false);
               setSelectedAccount(accounts[0] || null);
             }}
+            allAccounts={accounts}
+            providers={allProviders}
+            onSaveNewProvider={handleSaveNewProvider}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground grayscale opacity-20">

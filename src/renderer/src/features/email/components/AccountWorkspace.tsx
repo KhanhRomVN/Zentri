@@ -7,6 +7,7 @@ import ProfileTab from './tabs/profile';
 import MailTab from './tabs/mail';
 import ServiceTab from './tabs/service';
 import SessionMonitorModal from './SessionMonitorModal';
+import { ServiceProviderConfig } from './tabs/service/utils/servicePresets';
 
 interface AccountWorkspaceProps {
   account: Account | null;
@@ -18,6 +19,9 @@ interface AccountWorkspaceProps {
   onDelete?: (id: string) => void;
   isCreating?: boolean;
   onCancelCreate?: () => void;
+  allAccounts?: Account[];
+  providers?: Record<string, ServiceProviderConfig>;
+  onSaveNewProvider?: (provider: ServiceProviderConfig) => void;
 }
 
 const AccountWorkspace = memo(
@@ -31,6 +35,9 @@ const AccountWorkspace = memo(
     onDelete,
     isCreating,
     onCancelCreate,
+    allAccounts = [],
+    providers,
+    onSaveNewProvider,
   }: AccountWorkspaceProps) => {
     const [activeTab, setActiveTab] = useState<'Core' | 'Profile' | 'Mail' | 'Service'>('Core');
 
@@ -103,6 +110,10 @@ const AccountWorkspace = memo(
               onUpdate={(updated) => onUpdateServices?.(updated)}
               currentAccountId={account.id}
               onCreatingModeChange={setIsAddingService}
+              availableEmails={allAccounts}
+              availableServices={services}
+              providers={providers}
+              onSaveNewProvider={onSaveNewProvider}
             />
           );
         }

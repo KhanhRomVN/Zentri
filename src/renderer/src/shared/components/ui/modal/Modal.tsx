@@ -99,7 +99,7 @@ const Modal: React.FC<ModalProps> = ({
     >
       <div
         className={cn(
-          'modal-content bg-white rounded-lg shadow-2xl overflow-hidden max-h-[90vh]',
+          'modal-content bg-dialog-background text-text-primary rounded-xl shadow-dialog-shadow overflow-hidden max-h-[90vh] flex flex-col w-full mx-4 border border-border',
           contentClassName,
           className,
         )}
@@ -107,18 +107,22 @@ const Modal: React.FC<ModalProps> = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="modal-header">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
             {title && (
-              <div className="modal-title">
+              <div className="flex-1 min-w-0 mr-4">
                 {typeof title === 'string' ? (
-                  <h2 className="text-lg font-semibold">{title}</h2>
+                  <h2 className="text-lg font-semibold tracking-tight truncate">{title}</h2>
                 ) : (
                   title
                 )}
               </div>
             )}
             {showCloseButton && (
-              <button className="modal-close-button" onClick={onClose} aria-label="Close modal">
+              <button
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                onClick={onClose}
+                aria-label="Close modal"
+              >
                 <X size={20} />
               </button>
             )}
@@ -126,10 +130,12 @@ const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Body */}
-        <div className="modal-body">{children}</div>
+        <div className="p-6 overflow-y-auto">{children}</div>
 
         {/* Footer */}
-        {footer && <div className="modal-footer">{footer}</div>}
+        {footer && (
+          <div className="px-6 py-4 bg-muted/5 border-t border-border shrink-0">{footer}</div>
+        )}
       </div>
     </div>
   );
