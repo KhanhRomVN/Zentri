@@ -1,3 +1,4 @@
+import { cn } from '@renderer/shared/lib/utils';
 import React, { useEffect, useRef, useState } from 'react';
 
 // Define Window interface to include require for AMD loader
@@ -45,6 +46,7 @@ interface CodeBlockProps {
   editorOptions?: any; // Additional Monaco editor options
   disableClick?: boolean; // New prop to disable interaction
   decorations?: CodeBlockDecoration[];
+  themed?: boolean;
 }
 
 const SYSTEMA_THEME = {
@@ -59,7 +61,7 @@ const SYSTEMA_THEME = {
     { token: 'comment', foreground: '64748b', fontStyle: 'italic' }, // Slate for comments
   ],
   colors: {
-    'editor.background': '#020617', // Deep blue-black (slate-950)
+    'editor.background': '#131313', // Match sidebar-background/input-background in dark mode
     'editor.foreground': '#e2e8f0', // Slate-200
     'editorLineNumber.foreground': '#475569', // Slate-600
     'editor.lineHighlightBackground': '#1e293b', // Slate-800
@@ -82,6 +84,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
   editorOptions = {},
   disableClick = false,
   decorations,
+  themed = false,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const editorInstance = useRef<any>(null);
@@ -129,6 +132,12 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
             rules: [...SYSTEMA_THEME.rules, ...customRules], // Allow overrides
             colors: {
               ...SYSTEMA_THEME.colors,
+              ...(themed
+                ? {
+                    'editorCursor.foreground': 'rgb(var(--primary))',
+                    'editor.selectionBackground': 'rgba(var(--primary), 0.2)',
+                  }
+                : {}),
               ...(themeConfig?.background ? { 'editor.background': themeConfig.background } : {}),
               ...(themeConfig?.foreground ? { 'editor.foreground': themeConfig.foreground } : {}),
             },
@@ -275,7 +284,13 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
       }
     };
     // Use JSON.stringify for deep comparison of themeConfig to avoid re-init on every render if object reference changes but content doesn't
-  }, [JSON.stringify(themeConfig), wordWrap]); // Re-init if config/wrap changes
+  }, [
+    JSON.stringify(themeConfig),
+    wordWrap,
+    themed,
+    showLineNumbers,
+    JSON.stringify(editorOptions),
+  ]); // Re-init if config/wrap changes
 
   // Update value
   useEffect(() => {
@@ -284,12 +299,16 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
     }
   }, [code]);
 
-  // Update word wrap dynamically
+  // Update editor options dynamically
   useEffect(() => {
     if (editorInstance.current) {
-      editorInstance.current.updateOptions({ wordWrap });
+      editorInstance.current.updateOptions({
+        wordWrap,
+        lineNumbers: showLineNumbers ? 'on' : 'off',
+        ...editorOptions,
+      });
     }
-  }, [wordWrap]);
+  }, [wordWrap, showLineNumbers, JSON.stringify(editorOptions)]);
 
   // Handle decorations
   useEffect(() => {
@@ -315,7 +334,13 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
   return (
     <div
       ref={editorRef}
-      className={className}
+      className={cn(
+        'transition-all duration-200 border w-full rounded-md overflow-hidden',
+        themed
+          ? 'border-primary ring-1 ring-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.1)]'
+          : 'border-border/50',
+        className,
+      )}
       style={{
         height: `${currentHeight}px`,
         minHeight: '20px',

@@ -44,8 +44,17 @@ export default defineConfig({
       },
     },
     plugins: [react()],
+    optimizeDeps: {
+      include: [
+        'react-force-graph-2d',
+        'd3-force-3d',
+      ],
+    },
     build: {
       outDir: 'out/renderer',
+      commonjsOptions: {
+        include: [/node_modules/],
+      },
     },
   },
 });

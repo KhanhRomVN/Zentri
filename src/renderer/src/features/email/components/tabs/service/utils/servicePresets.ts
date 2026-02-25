@@ -9,7 +9,7 @@ export interface ServiceProviderConfig {
   commonFields?: {
     label: string;
     key: string;
-    type: 'string' | 'array' | 'object';
+    type: 'string' | 'array' | 'object' | 'text' | 'password';
     itemType?: 'string' | 'object'; // For array items
     children?: any[]; // For object fields or array of objects. Using any[] to avoid circular reference issues in TS for now, but logically it's the same structure.
     required?: boolean;

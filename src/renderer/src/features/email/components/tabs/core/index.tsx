@@ -1,5 +1,5 @@
 import { Email } from '../../../../../../../shared/types';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, memo, useCallback } from 'react';
 import { User, Mail, Shield, Smartphone, Key, ScanLine, MessageSquare } from 'lucide-react';
 import { cn } from '../../../../../shared/lib/utils';
 import { Drawer } from '../../../../../shared/components/ui/drawer';
@@ -23,7 +23,7 @@ interface TwoFactorOption {
   placeholder: string;
 }
 
-const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
+const CoreTab = memo(({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [activeDrawer, setActiveDrawer] = useState<'details' | 'review' | null>(null);
   const [drawerMode, setDrawerMode] = useState<'edit' | 'add'>('edit');
@@ -77,19 +77,22 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
 
   const [drawerForm, setDrawerForm] = useState({ value: '', label: '' });
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = useCallback((field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const ALL_METHODS: TwoFactorOption[] = [
-    { id: 'app', name: 'Authenticator App', type: 'app', placeholder: 'Not configured' },
-    { id: 'sms', name: 'Phone Verification', type: 'sms', placeholder: 'No phone linked' },
-    { id: 'email', name: 'Recovery Email', type: 'email', placeholder: 'No email added' },
-    { id: 'key', name: 'Security Key', type: 'key', placeholder: 'No key added' },
-    { id: 'prompt', name: 'Device Prompt', type: 'prompt', placeholder: 'Not set up' },
-    { id: 'hello', name: 'Windows Hello', type: 'hello', placeholder: 'Not set up' },
-    { id: 'codes', name: 'Backup Codes', type: 'codes', placeholder: 'Generate codes' },
-  ];
+  const ALL_METHODS = useMemo(
+    (): TwoFactorOption[] => [
+      { id: 'app', name: 'Authenticator App', type: 'app', placeholder: 'Not configured' },
+      { id: 'sms', name: 'Phone Verification', type: 'sms', placeholder: 'No phone linked' },
+      { id: 'email', name: 'Recovery Email', type: 'email', placeholder: 'No email added' },
+      { id: 'key', name: 'Security Key', type: 'key', placeholder: 'No key added' },
+      { id: 'prompt', name: 'Device Prompt', type: 'prompt', placeholder: 'Not set up' },
+      { id: 'hello', name: 'Windows Hello', type: 'hello', placeholder: 'Not set up' },
+      { id: 'codes', name: 'Backup Codes', type: 'codes', placeholder: 'Generate codes' },
+    ],
+    [],
+  );
 
   const [activeMethods, setActiveMethods] = useState<string[]>([]);
   const initialActiveMethods = useMemo<string[]>(() => [], [account]);
@@ -123,22 +126,25 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
     (m) => !activeMethods.includes(m.id) && !deletedMethods.includes(m.id),
   );
 
-  const handleMethodClick = (id: string) => {
-    setSelectedMethodId(id);
-    setDrawerMode('edit');
-    const method = ALL_METHODS.find((m) => m.id === id);
-    setDrawerForm({ value: methodValues[id] || '', label: method?.name || '' });
-    setActiveDrawer('details');
-  };
+  const handleMethodClick = useCallback(
+    (id: string) => {
+      setSelectedMethodId(id);
+      setDrawerMode('edit');
+      const method = ALL_METHODS.find((m) => m.id === id);
+      setDrawerForm({ value: methodValues[id] || '', label: method?.name || '' });
+      setActiveDrawer('details');
+    },
+    [ALL_METHODS, methodValues],
+  );
 
-  const handleAddClick = () => {
+  const handleAddClick = useCallback(() => {
     setDrawerMode('add');
     setNewMethodTypeId('');
     setDrawerForm({ value: '', label: '' });
     setActiveDrawer('details');
-  };
+  }, []);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (drawerMode === 'add' && newMethodTypeId) {
       if (deletedMethods.includes(newMethodTypeId)) {
         setDeletedMethods((prev) => prev.filter((id) => id !== newMethodTypeId));
@@ -149,9 +155,9 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
       setMethodValues((prev) => ({ ...prev, [selectedMethodId]: drawerForm.value }));
     }
     setActiveDrawer(null);
-  };
+  }, [drawerMode, newMethodTypeId, deletedMethods, selectedMethodId, drawerForm.value]);
 
-  const handleRemove = () => {
+  const handleRemove = useCallback(() => {
     if (selectedMethodId) {
       if (initialActiveMethods.includes(selectedMethodId)) {
         setDeletedMethods((prev) => [...prev, selectedMethodId]);
@@ -161,9 +167,9 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
       }
       setActiveDrawer(null);
     }
-  };
+  }, [selectedMethodId, initialActiveMethods]);
 
-  const getChanges = () => {
+  const pendingChanges = useMemo(() => {
     const changes: any[] = [];
     (Object.keys(form) as Array<keyof typeof form>).forEach((key) => {
       if (form[key] !== initialForm[key]) {
@@ -211,9 +217,16 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
       });
     });
     return changes;
-  };
-
-  const pendingChanges = getChanges();
+  }, [
+    form,
+    initialForm,
+    activeMethods,
+    initialActiveMethods,
+    methodValues,
+    initialMethodValues,
+    ALL_METHODS,
+    deletedMethods,
+  ]);
 
   const getMethodStyle = (type: string) => {
     switch (type) {
@@ -362,6 +375,6 @@ const CoreTab = ({ account, onUpdate, isCreating, onCancel }: CoreTabProps) => {
       </Drawer>
     </div>
   );
-};
+});
 
 export default CoreTab;

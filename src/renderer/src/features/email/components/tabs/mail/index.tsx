@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, memo, useMemo } from 'react';
 import { Mail } from '../../../mock/mails';
 import { MailSidebar } from './components/MailSidebar';
 import { MailContent } from './components/MailContent';
@@ -11,7 +11,7 @@ interface MailTabProps {
   repoPath?: string;
 }
 
-const MailTab = ({ account, repoPath }: MailTabProps) => {
+const MailTab = memo(({ account, repoPath }: MailTabProps) => {
   const [mails, setMails] = useState<Mail[]>([]);
   const [selectedMail, setSelectedMail] = useState<Mail | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,11 +85,15 @@ const MailTab = ({ account, repoPath }: MailTabProps) => {
     init();
   }, [account, repoPath]);
 
-  const filteredMails = mails.filter(
-    (mail) =>
-      mail.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mail.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mail.snippet.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredMails = useMemo(
+    () =>
+      mails.filter(
+        (mail) =>
+          mail.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          mail.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          mail.snippet.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [mails, searchQuery],
   );
 
   return (
@@ -196,6 +200,6 @@ const MailTab = ({ account, repoPath }: MailTabProps) => {
       </div>
     </div>
   );
-};
+});
 
 export default MailTab;

@@ -683,12 +683,6 @@ export const ServiceManager = () => {
                 setEditingService((prev) => ({ ...prev, commonFields: newFields as any }))
               }
             />
-
-            {(!editingService.commonFields || editingService.commonFields.length === 0) && (
-              <div className="mt-2 text-center text-xs text-muted-foreground italic opacity-50">
-                No custom fields defined.
-              </div>
-            )}
           </div>
         </div>
       </Modal>

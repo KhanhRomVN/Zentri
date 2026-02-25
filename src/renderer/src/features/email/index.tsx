@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import AccountWorkspace from './components/AccountWorkspace';
+import AccountItem from './components/AccountItem';
 import {
   Search,
   ShieldCheck,
@@ -106,51 +107,25 @@ const AccountManager = () => {
 
       console.log('[Email] Loading data from:', gitlabFolder);
 
-      // Load from physical files on disk
-      let emailsData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'emails.json',
-      );
+      console.log('[Email] Loading data in parallel from:', gitlabFolder);
 
-      console.log('[Email] Raw emailsData:', emailsData);
-
-      if (!emailsData) {
-        console.log('[Email] emails.json not found, initializing empty array');
-        emailsData = [];
-        await window.electron.ipcRenderer.invoke('git:write-data', {
-          folderPath: gitlabFolder,
-          filename: 'emails.json',
-          data: [],
-        });
-      }
-      const servicesData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'services.json',
-      );
-      console.log('[Email] servicesData:', servicesData);
-
-      const activitiesData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'recent_activities.json',
-      );
-      console.log('[Email] activitiesData:', activitiesData);
-
-      const profilesData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'profiles.json',
-      );
-      console.log('[Email] profilesData:', profilesData);
-
-      // Load Custom Providers
-      const customProvidersData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        'custom_providers.json',
-      );
+      // Load all physical files on disk in parallel
+      const [emailsRes, servicesRes, activitiesRes, profilesRes, customProvidersRes] =
+        await Promise.all([
+          window.electron.ipcRenderer.invoke('git:read-data', gitlabFolder, 'emails.json'),
+          window.electron.ipcRenderer.invoke('git:read-data', gitlabFolder, 'services.json'),
+          window.electron.ipcRenderer.invoke(
+            'git:read-data',
+            gitlabFolder,
+            'recent_activities.json',
+          ),
+          window.electron.ipcRenderer.invoke('git:read-data', gitlabFolder, 'profiles.json'),
+          window.electron.ipcRenderer.invoke(
+            'git:read-data',
+            gitlabFolder,
+            'custom_providers.json',
+          ),
+        ]);
 
       const extractData = (res: any) => {
         if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
@@ -159,24 +134,22 @@ const AccountManager = () => {
         return Array.isArray(res) ? res : res && typeof res === 'object' ? res : null;
       };
 
-      const loadedEmails = extractData(emailsData);
-      const loadedAccounts = Array.isArray(loadedEmails) ? loadedEmails : [];
-      const loadedCustomProviders = extractData(customProvidersData);
+      const loadedAccounts = extractData(emailsRes) || [];
+      const loadedServices = extractData(servicesRes) || [];
+      const loadedActivities = extractData(activitiesRes) || [];
+      const loadedProfiles = extractData(profilesRes) || [];
+      const loadedCustomProviders = extractData(customProvidersRes);
 
-      console.log('[Email] Processed loadedAccounts:', loadedAccounts.length);
+      console.log('[Email] Parallel load complete. Accounts:', loadedAccounts.length);
 
       setAccounts(loadedAccounts);
-      setServices(Array.isArray(extractData(servicesData)) ? extractData(servicesData) : []);
-      setActivities(Array.isArray(extractData(activitiesData)) ? extractData(activitiesData) : []);
-      setProfiles(Array.isArray(extractData(profilesData)) ? extractData(profilesData) : []);
+      setServices(loadedServices);
+      setActivities(loadedActivities);
+      setProfiles(loadedProfiles);
 
-      // Set custom providers if valid object
-      if (loadedCustomProviders && !Array.isArray(loadedCustomProviders)) {
-        // Expecting Record<string, Config>
-        setCustomProviders(loadedCustomProviders);
-      } else {
-        setCustomProviders({});
-      }
+      setCustomProviders(
+        loadedCustomProviders && !Array.isArray(loadedCustomProviders) ? loadedCustomProviders : {},
+      );
 
       if (loadedAccounts.length > 0 && !selectedAccount) {
         setSelectedAccount(loadedAccounts[0]);
@@ -189,13 +162,13 @@ const AccountManager = () => {
     }
   }, [gitlabFolder, selectedAccount]);
 
+  const handleSyncComplete = useCallback(() => {
+    setError(null);
+    loadData();
+  }, [loadData]);
+
   useEffect(() => {
     loadData();
-
-    const handleSyncComplete = () => {
-      setError(null);
-      loadData();
-    };
 
     const handleBrowserClosed = (_event: any, data: { accountId: string; stats: any }) => {
       const newProfile: ProfileMetadata = {
@@ -229,7 +202,7 @@ const AccountManager = () => {
       window.removeEventListener('zentri:sync-status-changed', handleSyncComplete);
       removeBrowserListener();
     };
-  }, [gitlabFolder]);
+  }, [gitlabFolder, loadData, handleSyncComplete]);
 
   const markAsDirty = useCallback(
     async (
@@ -238,28 +211,30 @@ const AccountManager = () => {
       updatedActivities: ActivityItem[],
       updatedProfiles: ProfileMetadata[] = profiles,
     ) => {
-      // Write to physical files immediately
+      // Write to physical files in parallel
       if (gitlabFolder) {
-        await window.electron.ipcRenderer.invoke('git:write-data', {
-          folderPath: gitlabFolder,
-          filename: 'emails.json',
-          data: updatedAccounts,
-        });
-        await window.electron.ipcRenderer.invoke('git:write-data', {
-          folderPath: gitlabFolder,
-          filename: 'services.json',
-          data: updatedServices,
-        });
-        await window.electron.ipcRenderer.invoke('git:write-data', {
-          folderPath: gitlabFolder,
-          filename: 'recent_activities.json',
-          data: updatedActivities,
-        });
-        await window.electron.ipcRenderer.invoke('git:write-data', {
-          folderPath: gitlabFolder,
-          filename: 'profiles.json',
-          data: updatedProfiles,
-        });
+        await Promise.all([
+          window.electron.ipcRenderer.invoke('git:write-data', {
+            folderPath: gitlabFolder,
+            filename: 'emails.json',
+            data: updatedAccounts,
+          }),
+          window.electron.ipcRenderer.invoke('git:write-data', {
+            folderPath: gitlabFolder,
+            filename: 'services.json',
+            data: updatedServices,
+          }),
+          window.electron.ipcRenderer.invoke('git:write-data', {
+            folderPath: gitlabFolder,
+            filename: 'recent_activities.json',
+            data: updatedActivities,
+          }),
+          window.electron.ipcRenderer.invoke('git:write-data', {
+            folderPath: gitlabFolder,
+            filename: 'profiles.json',
+            data: updatedProfiles,
+          }),
+        ]);
       }
 
       window.dispatchEvent(
@@ -372,18 +347,27 @@ const AccountManager = () => {
     return { ...SERVICE_PROVIDERS, ...customProviders };
   }, [customProviders]);
 
-  const filteredAccounts = (Array.isArray(accounts) ? accounts : []).filter(
-    (account) =>
-      account.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      account.email.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredAccounts = useMemo(
+    () =>
+      (Array.isArray(accounts) ? accounts : []).filter(
+        (account) =>
+          account.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          account.email.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [accounts, searchQuery],
   );
+
+  const handleSelectAccount = useCallback((account: Account) => {
+    setIsCreating(false);
+    setSelectedAccount(account);
+  }, []);
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       {/* Left Panel: Account List */}
-      <div className="w-[350px] flex flex-col border-r border-border h-full bg-muted/10 backdrop-blur-xl shrink-0">
+      <div className="w-[350px] flex flex-col border-r border-border h-full bg-background/50 shrink-0">
         {/* Header & Search */}
-        <div className="h-16 shrink-0 flex items-center gap-2 px-3 border-b border-border bg-card/20 relative">
+        <div className="h-16 shrink-0 flex items-center gap-2 px-3 border-b border-border bg-background relative">
           <div className="relative flex-1 group">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <input
@@ -434,105 +418,17 @@ const AccountManager = () => {
               <p className="text-xs">No accounts found. Click "Add Account" to start.</p>
             </div>
           ) : (
-            filteredAccounts.map((account) => {
-              let domain = account.email.split('@')[1] || 'google.com';
-              domain = DOMAIN_MAP[domain] || domain;
-              const faviconUrl = `https://www.google.com/s2/favicons?domain=https://${domain}&sz=32`;
-              const isSelected = selectedAccount?.id === account.id;
-              const avatarColor = getAvatarColor(account.email);
-
-              // Determine active color for gradient and border
-              const activeColor = avatarColor.hex;
-
-              return (
-                <div
-                  key={account.id}
-                  onClick={() => setSelectedAccount(account)}
-                  className={cn(
-                    'group relative flex flex-col gap-2 p-3 cursor-pointer transition-all duration-300',
-                    isSelected ? '' : 'hover:bg-muted/30',
-                  )}
-                  style={{
-                    background: isSelected
-                      ? `linear-gradient(to right, ${activeColor}15, transparent)`
-                      : undefined,
-                  }}
-                >
-                  {/* Custom Border Indicator */}
-                  {isSelected && (
-                    <div
-                      className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-lg"
-                      style={{ backgroundColor: activeColor }}
-                    />
-                  )}
-
-                  {/* Delete Icon */}
-                  <button
-                    onClick={(e) => handleDeleteAccount(account.id, e)}
-                    className="absolute top-3 right-3 p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md z-10 opacity-0 group-hover:opacity-100 transition-all active:scale-90"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-
-                  <div className="flex items-start gap-3 pl-2 relative z-10">
-                    <div className="relative shrink-0">
-                      <div
-                        className={cn(
-                          'h-10 w-10 rounded-md flex items-center justify-center text-sm font-bold shadow-lg transition-transform group-hover:scale-105 overflow-hidden',
-                          !account.avatar?.startsWith('http') && avatarColor.bg,
-                          account.avatar?.startsWith('http') &&
-                            'bg-background border border-border',
-                        )}
-                      >
-                        {account.avatar?.startsWith('http') ? (
-                          <img
-                            src={account.avatar}
-                            alt={account.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <User className={cn('w-5 h-5', avatarColor.text)} />
-                        )}
-                      </div>
-                      <div
-                        className={cn(
-                          'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background',
-                          account.status === 'active' ? 'bg-emerald-500' : 'bg-yellow-500',
-                        )}
-                      />
-                    </div>
-
-                    <div className="flex-1 overflow-hidden min-w-0 pr-6">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <img
-                          src={faviconUrl}
-                          alt="provider"
-                          className="w-3 h-3 rounded-full opacity-70"
-                        />
-                        <h4
-                          className={cn(
-                            'text-sm font-semibold truncate transition-colors',
-                            isSelected
-                              ? 'text-foreground'
-                              : 'text-muted-foreground group-hover:text-foreground',
-                          )}
-                        >
-                          {account.email}
-                        </h4>
-                      </div>
-                      <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-background/50 border border-border w-fit">
-                        {account.twoFactorEnabled ? (
-                          <ShieldCheck className="w-2.5 h-2.5 text-emerald-500" />
-                        ) : (
-                          <ShieldAlert className="w-2.5 h-2.5 text-red-500" />
-                        )}
-                        <span className="text-[9px] text-muted-foreground font-bold">2FA</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+            filteredAccounts.map((account) => (
+              <AccountItem
+                key={account.id}
+                account={account}
+                isSelected={selectedAccount?.id === account.id}
+                onSelect={handleSelectAccount}
+                onDelete={handleDeleteAccount}
+                getAvatarColor={getAvatarColor}
+                DOMAIN_MAP={DOMAIN_MAP}
+              />
+            ))
           )}
         </div>
 

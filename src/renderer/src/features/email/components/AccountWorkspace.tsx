@@ -1,11 +1,12 @@
-import { useState, memo, useMemo } from 'react';
+import { useState, memo, useMemo, useEffect, useCallback } from 'react';
 import { Account, ServiceItem, ProfileMetadata } from '../mock/accounts';
 import { cn } from '../../../shared/lib/utils';
-import { User, Mail, LayoutGrid, Globe, Trash2, RefreshCcw } from 'lucide-react';
+import { User, Mail, LayoutGrid, Globe, Trash2, RefreshCcw, Network } from 'lucide-react';
 import CoreTab from './tabs/core';
 import ProfileTab from './tabs/profile';
 import MailTab from './tabs/mail';
 import ServiceTab from './tabs/service';
+import DiagramTab from './tabs/diagram';
 import SessionMonitorModal from './SessionMonitorModal';
 import { ServiceProviderConfig } from './tabs/service/utils/servicePresets';
 
@@ -39,16 +40,42 @@ const AccountWorkspace = memo(
     providers,
     onSaveNewProvider,
   }: AccountWorkspaceProps) => {
-    const [activeTab, setActiveTab] = useState<'Core' | 'Profile' | 'Mail' | 'Service'>('Core');
+    const [activeTab, setActiveTab] = useState<'Core' | 'Profile' | 'Mail' | 'Service' | 'Diagram'>('Core');
 
     // Reset to Core tab when isCreating becomes true
-    useMemo(() => {
+    useEffect(() => {
       if (isCreating) {
         setActiveTab('Core');
       }
     }, [isCreating]);
     const [isMonitorOpen, setIsMonitorOpen] = useState(false);
     const [isAddingService, setIsAddingService] = useState(false);
+
+    // Memoize account-specific data
+    const accountServices = useMemo(
+      () => services.filter((s) => s.emailId === account?.id),
+      [services, account?.id],
+    );
+
+    const accountProfile = useMemo(
+      () => profiles.find((p) => p.accountId === account?.id),
+      [profiles, account?.id],
+    );
+
+    // Memoized handlers for child tabs
+    const handleUpdate = useCallback(
+      (updated: Partial<Account>) => {
+        onUpdate?.({ ...account, ...updated } as Account);
+      },
+      [onUpdate, account],
+    );
+
+    const handleUpdateServices = useCallback(
+      (updated: ServiceItem[]) => {
+        onUpdateServices?.(updated);
+      },
+      [onUpdateServices],
+    );
 
     // Memoize tabs configuration
     const tabs = useMemo(
@@ -73,6 +100,12 @@ const AccountWorkspace = memo(
             label: 'Service',
             activeClass: 'bg-orange-500/10 text-orange-600',
           },
+          {
+            id: 'Diagram',
+            icon: Network,
+            label: 'Diagram',
+            activeClass: 'bg-purple-500/10 text-purple-600',
+          },
         ] as const,
       [],
     );
@@ -91,29 +124,36 @@ const AccountWorkspace = memo(
           return (
             <CoreTab
               account={account}
-              onUpdate={(updated) => onUpdate?.({ ...account, ...updated } as Account)}
+              onUpdate={handleUpdate}
               isCreating={isCreating}
               onCancel={onCancelCreate}
             />
           );
         case 'Profile': {
-          const accountProfile = profiles.find((p) => p.accountId === account.id);
-          return <ProfileTab account={account} profile={accountProfile} repoPath={repoPath} />;
+          return <ProfileTab account={account} profile={accountProfile} />;
         }
         case 'Mail':
           return <MailTab account={account} repoPath={repoPath} />;
         case 'Service': {
-          const accountServices = services.filter((s) => s.emailId === account.id);
           return (
             <ServiceTab
               services={accountServices}
-              onUpdate={(updated) => onUpdateServices?.(updated)}
+              onUpdate={handleUpdateServices}
               currentAccountId={account.id}
               onCreatingModeChange={setIsAddingService}
               availableEmails={allAccounts}
               availableServices={services}
               providers={providers}
               onSaveNewProvider={onSaveNewProvider}
+            />
+          );
+        }
+        case 'Diagram': {
+          return (
+            <DiagramTab
+              account={account}
+              services={services}
+              profiles={profiles}
             />
           );
         }

@@ -1,6 +1,6 @@
 import { Account, ProfileMetadata, Cookie } from '../../../mock/accounts';
 import { cn } from '../../../../../shared/lib/utils';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Globe, Shield, RefreshCw } from 'lucide-react';
 
 import { CookieViewerModal } from './components/CookieViewerModal';
@@ -11,37 +11,22 @@ import { ProfileDetails } from './components/ProfileDetails';
 interface ProfileTabProps {
   account: Account;
   profile?: ProfileMetadata;
-  repoPath?: string;
 }
 
-const ProfileTab = ({ account, profile, repoPath }: ProfileTabProps) => {
+const ProfileTab = memo(({ account, profile }: ProfileTabProps) => {
   const [isCookieModalOpen, setIsCookieModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(0);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const [smartSyncEnabled, setSmartSyncEnabled] = useState(true);
   const [syncInterval, setSyncInterval] = useState('12'); // hours
 
-  const profilePath = repoPath ? `${repoPath}/profiles/${account.id}` : 'Local storage';
-
   const handleSyncNow = () => {
     setIsSyncing(true);
-    setSyncProgress(0);
 
     // Simulate a sync process
-    const interval = setInterval(() => {
-      setSyncProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setIsSyncing(false);
-            setSyncProgress(0);
-          }, 500);
-          return 100;
-        }
-        return prev + 5;
-      });
-    }, 100);
+    setTimeout(() => {
+      setIsSyncing(false);
+    }, 2000);
   };
 
   const statusConfig = {
@@ -110,8 +95,9 @@ const ProfileTab = ({ account, profile, repoPath }: ProfileTabProps) => {
     if (!smartSyncEnabled) return 0;
     const now = Date.now() / 1000;
     const threshold = 24 * 60 * 60; // 24 hours
-    return displayCookies.filter((c) => c.expires && c.expires > now && c.expires - now < threshold)
-      .length;
+    return displayCookies.filter(
+      (c) => c.expires !== undefined && c.expires > now && c.expires - now < threshold,
+    ).length;
   }, [displayCookies, smartSyncEnabled]);
 
   return (
@@ -130,11 +116,11 @@ const ProfileTab = ({ account, profile, repoPath }: ProfileTabProps) => {
               {account.avatar?.startsWith('http') ? (
                 <img
                   src={account.avatar}
-                  alt={account.name}
+                  alt={account.name || 'avatar'}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                account.avatar || account.name[0]
+                account.avatar || account.name?.[0] || '?'
               )}
             </div>
 
@@ -210,6 +196,6 @@ const ProfileTab = ({ account, profile, repoPath }: ProfileTabProps) => {
       </div>
     </div>
   );
-};
+});
 
 export default ProfileTab;

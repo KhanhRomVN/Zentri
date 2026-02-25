@@ -20,6 +20,7 @@ export interface ProfileMetadata {
   cookieCount: number;
   lastSync: string;
   status: 'active' | 'none' | 'expired';
+  cookies?: Cookie[];
 }
 
 export const mockAccounts: Email[] = [

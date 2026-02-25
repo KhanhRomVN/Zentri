@@ -116,8 +116,24 @@ export const SchemaBuilder: React.FC<SchemaBuilderProps> = ({ fields, onChange }
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Custom Service Schema
+          </label>
+          <div
+            className={cn(
+              'px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-1 border',
+              error
+                ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                : 'bg-green-500/10 text-green-500 border-green-500/20',
+            )}
+          >
+            <AlertCircle size={10} className={error ? '' : 'hidden'} />
+            {error ? 'Invalid' : 'Valid'}
+          </div>
+        </div>
         <button
           onClick={handleReset}
           className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground hover:text-primary transition-colors opacity-70 hover:opacity-100"
@@ -128,32 +144,30 @@ export const SchemaBuilder: React.FC<SchemaBuilderProps> = ({ fields, onChange }
         </button>
       </div>
 
-      <div className="relative group rounded-md overflow-hidden border border-border/50">
+      <div className="relative group overflow-hidden">
         <CodeBlock
           code={code}
           language="json"
           readOnly={false}
           onChange={handleCodeChange}
-          showLineNumbers={true}
+          showLineNumbers={false}
+          themed={true}
           editorOptions={{
             fontSize: 12,
             minimap: { enabled: false },
+            lineNumbers: 'off',
+            glyphMargin: false,
+            folding: false,
+            lineDecorationsWidth: 0,
+            lineNumbersMinChars: 0,
+            renderIndentGuides: false,
+            guides: {
+              bracketPairs: false,
+              indentation: false,
+            },
           }}
           className="min-h-[250px] w-full"
         />
-
-        {/* Validation Status */}
-        <div
-          className={cn(
-            'absolute bottom-2 right-2 px-3 py-1.5 rounded-full text-[10px] font-medium backdrop-blur-md transition-all duration-300 flex items-center gap-1.5 shadow-lg border',
-            error
-              ? 'bg-red-500/10 text-red-500 border-red-500/20 translate-y-0 opacity-100'
-              : 'bg-green-500/10 text-green-500 border-green-500/20 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100',
-          )}
-        >
-          <AlertCircle size={12} className={error ? '' : 'opacity-0 w-0'} />
-          {error ? error : 'Valid JSON'}
-        </div>
       </div>
 
       {error && (

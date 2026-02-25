@@ -4,37 +4,63 @@ import {
   ExternalLink,
   EyeOff,
   Eye,
-  AlertCircle,
   Mail,
   ScanLine,
   ChevronRight,
 } from 'lucide-react';
 import { ServiceItem, Email } from '../../../../mock/accounts';
-import { ReactNode, useState, useEffect, useMemo } from 'react';
+import { ReactNode, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import Input from '../../../../../../shared/components/ui/input/Input';
 import Combobox from '../../../../../../shared/components/ui/combobox/Combobox';
-import { DEFAULT_TAGS } from '../../../../../../../../shared/constant';
-import {
-  POPULAR_CATEGORIES,
-  SERVICE_PROVIDERS,
-  ServiceProviderConfig,
-} from '../utils/servicePresets';
+import { SERVICE_PROVIDERS, ServiceProviderConfig } from '../utils/servicePresets';
 import Modal from '../../../../../../shared/components/ui/modal/Modal';
 
-export const SectionHeader = ({ label }: { label: string }) => (
+// Static utility functions and components extracted to prevent re-creation
+const getFaviconUrl = (url: string) => {
+  if (!url) return '';
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  } catch {
+    return '';
+  }
+};
+
+const FaviconIcon = memo(({ url, DefaultIcon }: { url: string; DefaultIcon: any }) => {
+  const [error, setError] = useState(false);
+  const faviconUrl = useMemo(() => getFaviconUrl(url), [url]);
+
+  if (error || !faviconUrl) {
+    return <DefaultIcon className="h-4 w-4 text-muted-foreground" />;
+  }
+
+  return (
+    <img
+      src={faviconUrl}
+      alt="favicon"
+      className="w-4 h-4 object-contain"
+      onError={() => setError(true)}
+    />
+  );
+});
+FaviconIcon.displayName = 'FaviconIcon';
+
+export const SectionHeader = memo(({ label }: { label: string }) => (
   <div className="flex items-center gap-2 text-foreground/80 pb-4 border-b border-border/50 mb-6">
     <span className="text-base font-semibold tracking-tight">{label}</span>
   </div>
-);
+));
+SectionHeader.displayName = 'SectionHeader';
 
-export const InputGroup = ({ label, children }: { label: string; children: ReactNode }) => (
+export const InputGroup = memo(({ label, children }: { label: string; children: ReactNode }) => (
   <div className="flex flex-col gap-2">
     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
       {label}
     </label>
     {children}
   </div>
-);
+));
+InputGroup.displayName = 'InputGroup';
 
 interface InformationSectionProps {
   selectedService: ServiceItem;
@@ -47,7 +73,7 @@ interface InformationSectionProps {
   onSaveNewProvider?: (provider: ServiceProviderConfig) => void;
 }
 
-export const InformationSection = (props: InformationSectionProps) => {
+export const InformationSection = memo((props: InformationSectionProps) => {
   const {
     selectedService,
     showPassword,
@@ -58,6 +84,8 @@ export const InformationSection = (props: InformationSectionProps) => {
     providers = SERVICE_PROVIDERS,
     onSaveNewProvider,
   } = props;
+
+  // Input states
   const [serviceNameSearch, setServiceNameSearch] = useState('');
   const [serviceNameInputOpen, setServiceNameInputOpen] = useState(false);
   const [websiteUrlSearch, setWebsiteUrlSearch] = useState('');
@@ -68,24 +96,22 @@ export const InformationSection = (props: InformationSectionProps) => {
   const [categoryInputOpen, setCategoryInputOpen] = useState(false);
   const [emailSearch, setEmailSearch] = useState('');
   const [emailInputOpen, setEmailInputOpen] = useState(false);
-  const [linkedProviderId, setLinkedProviderId] = useState<string>(''); // Initialize with ID
+  const [linkedProviderId, setLinkedProviderId] = useState<string>('');
   const [linkedProviderSearch, setLinkedProviderSearch] = useState('');
   const [linkedProviderInputOpen, setLinkedProviderInputOpen] = useState(false);
   const [linkedAccountInputOpen, setLinkedAccountInputOpen] = useState(false);
 
-  // Modal Input States
-  const [modalTagSearch, setModalTagSearch] = useState('');
-  const [modalTagInputOpen, setModalTagInputOpen] = useState(false);
-  const [modalCategorySearch, setModalCategorySearch] = useState('');
-  const [modalCategoryInputOpen, setModalCategoryInputOpen] = useState(false);
   const [modalName, setModalName] = useState('');
   const [modalUrl, setModalUrl] = useState('');
-
-  // New Service Detection State
-  const [isUnknownUrl, setIsUnknownUrl] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [newProviderData, setNewProviderData] = useState<Partial<ServiceProviderConfig>>({});
 
+  // Detection states
+  const [isUnknownUrl, setIsUnknownUrl] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [suggestedCategories, setSuggestedCategories] = useState<string[]>([]);
+
+  // Sync modal values
   useEffect(() => {
     if (confirmModalOpen) {
       setModalName(newProviderData.name || '');
@@ -93,7 +119,7 @@ export const InformationSection = (props: InformationSectionProps) => {
     }
   }, [confirmModalOpen, newProviderData.name, newProviderData.websiteUrl]);
 
-  // Find linked provider if already has linkedServiceId
+  // Sync linked provider
   useEffect(() => {
     if (selectedService.linkedServiceId && !linkedProviderId) {
       const linkedService = availableServices.find((s) => s.id === selectedService.linkedServiceId);
@@ -102,103 +128,55 @@ export const InformationSection = (props: InformationSectionProps) => {
       }
     }
   }, [selectedService.linkedServiceId, availableServices, linkedProviderId]);
-  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
-  const [suggestedCategories, setSuggestedCategories] = useState<string[]>([]);
-
-  // Helper function to find service by name or ID
-  const findServiceByName = (name: string) => {
-    return Object.values(providers).find(
-      (service) => service.name.toLowerCase() === name.toLowerCase(),
-    );
-  };
 
   const currentProviderConfig = useMemo(() => {
-    return selectedService.serviceProviderId
-      ? providers[selectedService.serviceProviderId]
-      : (selectedService as any).name // Fallback for transition
-        ? findServiceByName((selectedService as any).name)
-        : null;
-  }, [selectedService.serviceProviderId, (selectedService as any).name, providers]);
+    if (!selectedService.serviceProviderId) return null;
+    return providers[selectedService.serviceProviderId] || null;
+  }, [selectedService.serviceProviderId, providers]);
 
-  // Auto-detect service and suggest tags/categories when URL changes
+  // Auto-detect service logic optimized with debounce
   useEffect(() => {
     const websiteUrl = currentProviderConfig?.websiteUrl || selectedService.metadata?.websiteUrl;
-    if (websiteUrl) {
-      // Logic for new detection
-      // Check if URL matches any known provider
-      let detectedService: ServiceProviderConfig | undefined;
+    if (!websiteUrl) {
+      setIsUnknownUrl(false);
+      return;
+    }
 
+    const timer = setTimeout(() => {
+      let detectedService: ServiceProviderConfig | undefined;
       try {
         const urlObj = new URL(websiteUrl);
         const host = urlObj.hostname.replace('www.', '');
-        detectedService = Object.values(providers).find((p) => {
-          try {
-            return p.websiteUrl.includes(host);
-          } catch {
-            return false;
-          }
-        });
+        detectedService = Object.values(providers).find((p) => p.websiteUrl.includes(host));
       } catch {
-        // Invalid URL
+        /* ignore invalid URL */
       }
 
       if (detectedService) {
         setSuggestedTags(detectedService.defaultTags || []);
         setSuggestedCategories(detectedService.defaultCategories || []);
         setIsUnknownUrl(false);
-
-        // Auto-fill serviceProviderId if empty
         if (!selectedService.serviceProviderId && onChange) {
           onChange('serviceProviderId', detectedService.id);
         }
       } else {
         setSuggestedTags([]);
         setSuggestedCategories([]);
-        // If has URL but no service found -> New Service Candidate
-        // Only mark unknown if user actively changing things
-        setIsUnknownUrl(!!websiteUrl && !selectedService.serviceProviderId);
+        setIsUnknownUrl(!selectedService.serviceProviderId);
       }
-    } else {
-      setIsUnknownUrl(false);
-    }
+    }, 600); // 600ms debounce
+
+    return () => clearTimeout(timer);
   }, [
     currentProviderConfig?.websiteUrl,
     selectedService.metadata?.websiteUrl,
     providers,
     selectedService.serviceProviderId,
+    onChange,
   ]);
 
-  // Helper function to get favicon URL
-  const getFaviconUrl = (url: string) => {
-    if (!url) return '';
-    try {
-      const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-    } catch {
-      return '';
-    }
-  };
-
-  // Helper component to render favicon with fallback
-  const FaviconIcon = ({ url, DefaultIcon }: { url: string; DefaultIcon: any }) => {
-    const [error, setError] = useState(false);
-    const faviconUrl = getFaviconUrl(url);
-
-    if (error || !faviconUrl) {
-      return <DefaultIcon className="h-4 w-4 text-muted-foreground" />;
-    }
-
-    return (
-      <img
-        src={faviconUrl}
-        alt="favicon"
-        className="w-4 h-4 object-contain"
-        onError={() => setError(true)}
-      />
-    );
-  };
-
-  const handleSaveConfirmed = () => {
+  // Memoized handlers
+  const handleSaveConfirmed = useCallback(() => {
     if (modalName && modalUrl && onSaveNewProvider) {
       const newConfig: ServiceProviderConfig = {
         id: modalName.toLowerCase().replace(/\s+/g, '-'),
@@ -211,28 +189,89 @@ export const InformationSection = (props: InformationSectionProps) => {
           { label: 'Password', key: 'password', type: 'password', placeholder: 'Password' },
         ],
       };
-      // Before calling onSave, ensure we set the provider ID in the selected service
       onChange?.('serviceProviderId', newConfig.id);
-
-      // Also update the service instance with the new tags/categories
       if (newProviderData.defaultTags) onChange?.('tags', newProviderData.defaultTags.join(', '));
       if (newProviderData.defaultCategories)
         onChange?.('categories', newProviderData.defaultCategories.join(', '));
-
       onSaveNewProvider(newConfig);
     }
     setConfirmModalOpen(false);
     setIsUnknownUrl(false);
-  };
+  }, [modalName, modalUrl, newProviderData, selectedService, onSaveNewProvider, onChange]);
 
-  // Logic to determine value for Service Name Input
-  const serviceNameValue = serviceNameInputOpen
-    ? serviceNameSearch
-    : currentProviderConfig?.name ||
-      selectedService.serviceProviderId ||
-      newProviderData.name ||
-      serviceNameSearch ||
-      '';
+  // Memoized Combobox Options - THE BIG PERFORMANCE WIN
+  // Removed JSX from options to keep them lightweight
+  const serviceNameOptions = useMemo(
+    () =>
+      Object.values(providers).map((service) => ({
+        value: service.name,
+        label: service.name,
+        websiteUrl: service.websiteUrl, // Store data instead of JSX
+      })),
+    [providers],
+  );
+
+  const websiteUrlOptions = useMemo(
+    () =>
+      Object.values(providers).map((service) => ({
+        value: service.websiteUrl,
+        label: service.websiteUrl,
+      })),
+    [providers],
+  );
+
+  // Tag & Category Options Calculation - Very Heavy otherwise
+  const allTagOptions = useMemo(() => {
+    const currentTags = selectedService.tags || [];
+    const existingTags = Array.from(
+      new Set(Object.values(providers).flatMap((p) => p.defaultTags || [])),
+    ).sort();
+
+    return [
+      ...suggestedTags.map((t) => ({ value: t, label: `${t} (suggested)` })),
+      ...existingTags.map((t) => ({ value: t, label: t })),
+    ].filter(
+      (option, index, self) =>
+        index === self.findIndex((o) => o.value === option.value) &&
+        !currentTags.includes(option.value),
+    );
+  }, [providers, suggestedTags, selectedService.tags]);
+
+  const allCategoryOptions = useMemo(() => {
+    const currentCats = selectedService.categories || [];
+    const existingCategories = Array.from(
+      new Set(Object.values(providers).flatMap((p) => p.defaultCategories || [])),
+    ).sort();
+
+    return [
+      ...suggestedCategories.map((c) => ({ value: c, label: `${c} (suggested)` })),
+      ...existingCategories.map((c) => ({ value: c, label: c })),
+    ].filter(
+      (option, index, self) =>
+        index === self.findIndex((o) => o.value === option.value) &&
+        !currentCats.includes(option.value),
+    );
+  }, [providers, suggestedCategories, selectedService.categories]);
+
+  const emailOptions = useMemo(
+    () =>
+      availableEmails.map((e) => ({
+        value: e.id,
+        label: e.email,
+        domain: e.email.split('@')[1],
+      })),
+    [availableEmails],
+  );
+
+  const linkedProviderOptions = useMemo(
+    () =>
+      Object.values(providers).map((p) => ({
+        value: p.id,
+        label: p.name,
+        websiteUrl: p.websiteUrl,
+      })),
+    [providers],
+  );
 
   return (
     <div>
@@ -243,14 +282,16 @@ export const InformationSection = (props: InformationSectionProps) => {
             type="combobox"
             className={isUnknownUrl ? 'ring-1 ring-red-500 rounded-md' : ''}
             placeholder="Enter service name..."
-            value={serviceNameValue}
+            value={
+              serviceNameInputOpen
+                ? serviceNameSearch
+                : currentProviderConfig?.name || selectedService.serviceProviderId || ''
+            }
             onChange={(e) => {
               setServiceNameSearch(e.target.value);
               setNewProviderData((prev) => ({ ...prev, name: e.target.value }));
             }}
             onBlur={() => {
-              // Trigger modal if unknown URL and name is provided
-              // Use settimeout to allow onCreate to fire if clicking option
               setTimeout(() => {
                 if (
                   isUnknownUrl &&
@@ -258,13 +299,12 @@ export const InformationSection = (props: InformationSectionProps) => {
                   !currentProviderConfig &&
                   !serviceNameInputOpen
                 ) {
-                  setNewProviderData((prev) => ({
-                    ...prev,
+                  setNewProviderData({
                     name: serviceNameSearch,
                     websiteUrl: selectedService.metadata?.websiteUrl,
                     defaultTags: selectedService.tags || [],
                     defaultCategories: selectedService.categories || [],
-                  }));
+                  });
                   setConfirmModalOpen(true);
                 }
               }, 200);
@@ -272,66 +312,24 @@ export const InformationSection = (props: InformationSectionProps) => {
             leftIcon={
               <FaviconIcon
                 url={
-                  currentProviderConfig?.websiteUrl ||
-                  selectedService.metadata?.websiteUrl ||
-                  newProviderData.websiteUrl ||
-                  ''
+                  currentProviderConfig?.websiteUrl || selectedService.metadata?.websiteUrl || ''
                 }
                 DefaultIcon={Database}
               />
             }
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === 'Enter' && serviceNameSearch.trim()) {
-                if (isUnknownUrl) {
-                  // Trigger new service flow
-                  setNewProviderData((prev) => ({
-                    ...prev,
-                    name: serviceNameSearch.trim(),
-                    websiteUrl: selectedService.metadata?.websiteUrl,
-                    defaultTags: selectedService.tags || [],
-                    defaultCategories: selectedService.categories || [],
-                  }));
-                  setConfirmModalOpen(true);
-                } else {
-                  onChange?.('serviceProviderId', serviceNameSearch.trim().toLowerCase());
-                }
-
-                setServiceNameSearch('');
-                setServiceNameInputOpen(false);
-              }
-            }}
             popoverOpen={serviceNameInputOpen}
             onPopoverOpenChange={setServiceNameInputOpen}
             popoverContent={
               <Combobox
                 searchQuery={serviceNameSearch}
-                options={Object.values(providers).map((service) => {
-                  return {
-                    value: service.name,
-                    label: service.name,
-                    icon: service?.websiteUrl ? (
-                      <img
-                        src={getFaviconUrl(service.websiteUrl)}
-                        alt={service.name}
-                        className="w-4 h-4 object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    ) : undefined,
-                  };
-                })}
+                options={serviceNameOptions}
                 creatable={true}
-                onCreate={(newName: string) => {
-                  // Start creation flow if unknown
+                onCreate={(newName) => {
                   if (isUnknownUrl) {
-                    setNewProviderData((prev) => ({
-                      ...prev,
+                    setNewProviderData({
                       name: newName,
                       websiteUrl: selectedService.metadata?.websiteUrl,
-                      defaultTags: selectedService.tags || [],
-                      defaultCategories: selectedService.categories || [],
-                    }));
+                    });
                     setConfirmModalOpen(true);
                   } else {
                     onChange?.('serviceProviderId', newName.toLowerCase());
@@ -339,17 +337,14 @@ export const InformationSection = (props: InformationSectionProps) => {
                   setServiceNameSearch('');
                   setServiceNameInputOpen(false);
                 }}
-                onChange={(val: string) => {
-                  const provider = findServiceByName(val);
+                onChange={(val) => {
+                  const provider = Object.values(providers).find((p) => p.name === val);
                   onChange?.('serviceProviderId', provider?.id || val.toLowerCase());
-
-                  // Auto-fill from provider config
                   if (provider) {
                     if (provider.defaultTags) onChange?.('tags', provider.defaultTags.join(', '));
                     if (provider.defaultCategories)
                       onChange?.('categories', provider.defaultCategories.join(', '));
                   }
-
                   setServiceNameSearch('');
                   setServiceNameInputOpen(false);
                 }}
@@ -357,6 +352,7 @@ export const InformationSection = (props: InformationSectionProps) => {
             }
           />
         </InputGroup>
+
         <InputGroup label="Website URL">
           <Input
             type="combobox"
@@ -378,89 +374,41 @@ export const InformationSection = (props: InformationSectionProps) => {
                 DefaultIcon={Globe}
               />
             }
-            multiValue={false}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === 'Enter' && websiteUrlSearch.trim()) {
-                const newMetadata = {
-                  ...(selectedService.metadata || {}),
-                  websiteUrl: websiteUrlSearch.trim(),
-                };
-
-                // Check if this URL deviates from current provider to clear it
-                if (
-                  currentProviderConfig &&
-                  websiteUrlSearch.trim() !== currentProviderConfig.websiteUrl
-                ) {
-                  onChange?.('serviceProviderId', '');
-                }
-
-                onChange?.('metadata', newMetadata as any);
-                setWebsiteUrlSearch('');
-                setWebsiteUrlInputOpen(false);
-              }
-            }}
-            rightIcon={
-              currentProviderConfig?.websiteUrl || selectedService.metadata?.websiteUrl ? (
-                <ExternalLink
-                  className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const url =
-                      currentProviderConfig?.websiteUrl || selectedService.metadata?.websiteUrl;
-                    if (url) window.open(url, '_blank');
-                  }}
-                />
-              ) : undefined
-            }
             popoverOpen={websiteUrlInputOpen}
             onPopoverOpenChange={setWebsiteUrlInputOpen}
             popoverContent={
               <Combobox
                 searchQuery={websiteUrlSearch}
-                options={Object.values(providers).map((service: any) => ({
-                  value: service.websiteUrl,
-                  label: service.websiteUrl,
-                  icon: (
-                    <img
-                      src={getFaviconUrl(service.websiteUrl)}
-                      alt={service.name}
-                      className="w-4 h-4 object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ),
-                }))}
+                options={websiteUrlOptions}
                 creatable={true}
-                onCreate={(newUrl: string) => {
-                  const newMetadata = {
-                    ...(selectedService.metadata || {}),
-                    websiteUrl: newUrl,
-                  };
-
-                  // Check if this URL deviates from current provider to clear it
-                  if (currentProviderConfig && newUrl !== currentProviderConfig.websiteUrl) {
+                onCreate={(newUrl) => {
+                  const newMetadata = { ...(selectedService.metadata || {}), websiteUrl: newUrl };
+                  if (currentProviderConfig && newUrl !== currentProviderConfig.websiteUrl)
                     onChange?.('serviceProviderId', '');
-                  }
-
                   onChange?.('metadata', newMetadata as any);
-                  setWebsiteUrlSearch('');
                   setWebsiteUrlInputOpen(false);
                 }}
-                onChange={(val: string) => {
-                  const newMetadata = {
-                    ...(selectedService.metadata || {}),
-                    websiteUrl: val,
-                  };
-                  // Check if this URL deviates from current provider to clear it
-                  if (currentProviderConfig && val !== currentProviderConfig.websiteUrl) {
+                onChange={(val) => {
+                  const newMetadata = { ...(selectedService.metadata || {}), websiteUrl: val };
+                  if (currentProviderConfig && val !== currentProviderConfig.websiteUrl)
                     onChange?.('serviceProviderId', '');
-                  }
                   onChange?.('metadata', newMetadata as any);
-                  setWebsiteUrlSearch('');
                   setWebsiteUrlInputOpen(false);
                 }}
               />
+            }
+            rightIcon={
+              currentProviderConfig?.websiteUrl || selectedService.metadata?.websiteUrl ? (
+                <ExternalLink
+                  className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer"
+                  onClick={() =>
+                    window.open(
+                      currentProviderConfig?.websiteUrl || selectedService.metadata?.websiteUrl,
+                      '_blank',
+                    )
+                  }
+                />
+              ) : undefined
             }
           />
         </InputGroup>
@@ -472,80 +420,34 @@ export const InformationSection = (props: InformationSectionProps) => {
             value={tagSearch}
             onChange={(e) => setTagSearch(e.target.value)}
             multiValue={true}
-            badgeVariant="neon"
-            badgeColorMode="diverse"
-            badges={(selectedService.tags || []).map((t: string) => ({ id: t, label: t }))}
-            onBadgeRemove={(id: string | number) => {
-              if (onChange) {
-                const newTags = (selectedService.tags || []).filter((t: string) => t !== id);
-                onChange('tags', newTags.join(', '));
-              }
-            }}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === 'Enter' && tagSearch.trim()) {
-                const currentTags = selectedService.tags || [];
-                const newTag = tagSearch.trim();
-
-                if (!currentTags.includes(newTag)) {
-                  onChange?.('tags', [...currentTags, newTag].join(', '));
-                }
-
-                setTagSearch('');
-                setTagInputOpen(false);
-              }
-            }}
+            badges={(selectedService.tags || []).map((t) => ({ id: t, label: t }))}
+            onBadgeRemove={(id) =>
+              onChange?.('tags', selectedService.tags!.filter((t) => t !== id).join(', '))
+            }
             popoverOpen={tagInputOpen}
             onPopoverOpenChange={setTagInputOpen}
-            popoverContent={(() => {
-              const currentTags = selectedService.tags || [];
-              const isDuplicate = currentTags.includes(tagSearch.trim());
-
-              // Merge suggested tags with DEFAULT_TAGS
-              // Calculate existing tags from providers
-              const existingTags = Array.from(
-                new Set(Object.values(providers).flatMap((p) => p.defaultTags || [])),
-              ).sort();
-
-              const allTagOptions = [
-                ...suggestedTags.map((t: string) => ({ value: t, label: `${t} (suggested)` })),
-                ...existingTags.map((t: string) => ({ value: t, label: t })),
-              ].filter(
-                (option, index, self) =>
-                  index === self.findIndex((o) => o.value === option.value) &&
-                  !currentTags.includes(option.value),
-              );
-
-              return (
-                <Combobox
-                  searchQuery={tagSearch}
-                  options={allTagOptions}
-                  creatable={true}
-                  creatableMessage={isDuplicate ? 'Tag "%s" already exists' : 'Create "%s"'}
-                  creatableClassName={isDuplicate ? 'text-red-500 bg-red-500/5' : ''}
-                  creatableIcon={
-                    isDuplicate ? (
-                      <AlertCircle size={16} className="flex-shrink-0 text-red-500" />
-                    ) : null
-                  }
-                  onCreate={(newTag: string) => {
-                    if (!currentTags.includes(newTag)) {
-                      onChange?.('tags', [...currentTags, newTag].join(', '));
-                    }
-                    setTagSearch('');
-                    setTagInputOpen(false);
-                  }}
-                  onChange={(val: string) => {
-                    if (!currentTags.includes(val)) {
-                      onChange?.('tags', [...currentTags, val].join(', '));
-                    }
-                    setTagSearch('');
-                    setTagInputOpen(false);
-                  }}
-                />
-              );
-            })()}
+            popoverContent={
+              <Combobox
+                searchQuery={tagSearch}
+                options={allTagOptions}
+                creatable={true}
+                onCreate={(newTag) => {
+                  if (!selectedService.tags?.includes(newTag))
+                    onChange?.('tags', [...(selectedService.tags || []), newTag].join(', '));
+                  setTagSearch('');
+                  setTagInputOpen(false);
+                }}
+                onChange={(val) => {
+                  if (!selectedService.tags?.includes(val))
+                    onChange?.('tags', [...(selectedService.tags || []), val].join(', '));
+                  setTagSearch('');
+                  setTagInputOpen(false);
+                }}
+              />
+            }
           />
         </InputGroup>
+
         <InputGroup label="Categories">
           <Input
             type="combobox"
@@ -553,81 +455,40 @@ export const InformationSection = (props: InformationSectionProps) => {
             value={categorySearch}
             onChange={(e) => setCategorySearch(e.target.value)}
             multiValue={true}
-            badgeVariant="neon"
-            badgeColorMode="diverse"
-            badges={(selectedService.categories || []).map((c: string) => ({ id: c, label: c }))}
-            onBadgeRemove={(id: string | number) => {
-              if (onChange) {
-                const newCats = (selectedService.categories || []).filter((c: string) => c !== id);
-                onChange('categories', newCats.join(', '));
-              }
-            }}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === 'Enter' && categorySearch.trim()) {
-                const currentCats = selectedService.categories || [];
-                const newCat = categorySearch.trim();
-
-                if (!currentCats.includes(newCat)) {
-                  onChange?.('categories', [...currentCats, newCat].join(', '));
-                }
-
-                setCategorySearch('');
-                setCategoryInputOpen(false);
-              }
-            }}
+            badges={(selectedService.categories || []).map((c) => ({ id: c, label: c }))}
+            onBadgeRemove={(id) =>
+              onChange?.(
+                'categories',
+                selectedService.categories!.filter((c) => c !== id).join(', '),
+              )
+            }
             popoverOpen={categoryInputOpen}
             onPopoverOpenChange={setCategoryInputOpen}
-            popoverContent={(() => {
-              const currentCats = selectedService.categories || [];
-              const isDuplicate = currentCats.includes(categorySearch.trim());
-
-              // Merge suggested categories with POPULAR_CATEGORIES
-              // Calculate existing categories from providers
-              const existingCategories = Array.from(
-                new Set(Object.values(providers).flatMap((p) => p.defaultCategories || [])),
-              ).sort();
-
-              const allCategoryOptions = [
-                ...suggestedCategories.map((c: string) => ({
-                  value: c,
-                  label: `${c} (suggested)`,
-                })),
-                ...existingCategories.map((c: string) => ({ value: c, label: c })),
-              ].filter(
-                (option, index, self) =>
-                  index === self.findIndex((o) => o.value === option.value) &&
-                  !currentCats.includes(option.value),
-              );
-
-              return (
-                <Combobox
-                  searchQuery={categorySearch}
-                  options={allCategoryOptions}
-                  creatable={true}
-                  creatableMessage={isDuplicate ? 'Category "%s" already exists' : 'Create "%s"'}
-                  creatableClassName={isDuplicate ? 'text-red-500 bg-red-500/5' : ''}
-                  creatableIcon={
-                    isDuplicate ? (
-                      <AlertCircle size={16} className="flex-shrink-0 text-red-500" />
-                    ) : null
-                  }
-                  onCreate={(newCat: string) => {
-                    if (!currentCats.includes(newCat)) {
-                      onChange?.('categories', [...currentCats, newCat].join(', '));
-                    }
-                    setCategorySearch('');
-                    setCategoryInputOpen(false);
-                  }}
-                  onChange={(val: string) => {
-                    if (!currentCats.includes(val)) {
-                      onChange?.('categories', [...currentCats, val].join(', '));
-                    }
-                    setCategorySearch('');
-                    setCategoryInputOpen(false);
-                  }}
-                />
-              );
-            })()}
+            popoverContent={
+              <Combobox
+                searchQuery={categorySearch}
+                options={allCategoryOptions}
+                creatable={true}
+                onCreate={(newCat) => {
+                  if (!selectedService.categories?.includes(newCat))
+                    onChange?.(
+                      'categories',
+                      [...(selectedService.categories || []), newCat].join(', '),
+                    );
+                  setCategorySearch('');
+                  setCategoryInputOpen(false);
+                }}
+                onChange={(val) => {
+                  if (!selectedService.categories?.includes(val))
+                    onChange?.(
+                      'categories',
+                      [...(selectedService.categories || []), val].join(', '),
+                    );
+                  setCategorySearch('');
+                  setCategoryInputOpen(false);
+                }}
+              />
+            }
           />
         </InputGroup>
 
@@ -647,21 +508,10 @@ export const InformationSection = (props: InformationSectionProps) => {
             popoverContent={
               <Combobox
                 searchQuery={emailSearch}
-                options={availableEmails.map((e) => ({
-                  value: e.id,
-                  label: e.email,
-                  icon: (
-                    <img
-                      src={`https://www.google.com/s2/favicons?domain=https://${e.email.split('@')[1]}&sz=32`}
-                      alt="provider"
-                      className="w-4 h-4 rounded-full opacity-70"
-                    />
-                  ),
-                }))}
+                options={emailOptions}
                 creatable={false}
-                onChange={(val: string) => {
+                onChange={(val) => {
                   onChange?.('emailId', val);
-                  setEmailSearch('');
                   setEmailInputOpen(false);
                 }}
               />
@@ -686,22 +536,11 @@ export const InformationSection = (props: InformationSectionProps) => {
               popoverContent={
                 <Combobox
                   searchQuery={linkedProviderSearch}
-                  options={Object.values(providers).map((p) => ({
-                    value: p.id,
-                    label: p.name,
-                    icon: (
-                      <img
-                        src={getFaviconUrl(p.websiteUrl)}
-                        alt={p.name}
-                        className="w-4 h-4 object-contain"
-                      />
-                    ),
-                  }))}
+                  options={linkedProviderOptions}
                   creatable={false}
-                  onChange={(val: string) => {
+                  onChange={(val) => {
                     setLinkedProviderId(val);
                     setLinkedProviderInputOpen(false);
-                    // Reset linked service if provider changes
                     onChange?.('linkedServiceId', '');
                   }}
                 />
@@ -730,29 +569,18 @@ export const InformationSection = (props: InformationSectionProps) => {
                   searchQuery=""
                   options={availableServices
                     .filter((s) => s.serviceProviderId === linkedProviderId)
-                    .sort((a, b) => {
-                      // Priority: accounts with same emailId
-                      const aMatch = a.emailId === selectedService.emailId ? 1 : 0;
-                      const bMatch = b.emailId === selectedService.emailId ? 1 : 0;
-                      return bMatch - aMatch;
-                    })
-                    .map((s) => {
-                      const email = availableEmails.find((e) => e.id === s.emailId)?.email;
-                      return {
-                        value: s.id,
-                        label: s.metadata?.username || s.id,
-                        description: email ? `Linked to ${email}` : undefined,
-                        icon: (
-                          <div className="w-4 h-4 flex items-center justify-center bg-primary/10 rounded overflow-hidden">
-                            <span className="text-[10px] uppercase font-bold text-primary">
-                              {(s.metadata?.username?.[0] || s.id[0]).toUpperCase()}
-                            </span>
-                          </div>
-                        ),
-                      };
-                    })}
+                    .map((s) => ({
+                      value: s.id,
+                      label: s.metadata?.username || s.id,
+                      description: availableEmails.find((e) => e.id === s.emailId)?.email,
+                      icon: (
+                        <div className="w-4 h-4 flex items-center justify-center bg-primary/10 rounded overflow-hidden text-primary text-[10px] font-bold">
+                          {(s.metadata?.username?.[0] || s.id[0]).toUpperCase()}
+                        </div>
+                      ),
+                    }))}
                   creatable={false}
-                  onChange={(val: string) => {
+                  onChange={(val) => {
                     onChange?.('linkedServiceId', val);
                     setLinkedAccountInputOpen(false);
                   }}
@@ -762,29 +590,35 @@ export const InformationSection = (props: InformationSectionProps) => {
           </InputGroup>
         </div>
 
-        {/* Dynamic Preset Fields */}
         {currentProviderConfig?.commonFields?.map((field) => (
           <InputGroup key={field.key} label={field.label}>
             <div className="relative group">
               <input
-                type={field.type === 'password' ? (showPassword ? 'text' : 'password') : field.type}
-                className="flex h-11 w-full rounded-lg border border-border bg-input px-4 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all font-mono"
+                type={
+                  field.type === 'password'
+                    ? showPassword
+                      ? 'text'
+                      : 'password'
+                    : field.type === 'text' || field.type === 'string'
+                      ? 'text'
+                      : 'text' // Fallback for array/object if they reach here
+                }
+                className="flex h-11 w-full rounded-lg border border-border bg-input px-4 pr-10 text-sm focus:border-primary/50 transition-all font-mono outline-none"
                 value={selectedService.metadata?.[field.key] || ''}
-                onChange={(e) => {
-                  const newMetadata = {
+                onChange={(e) =>
+                  onChange?.('metadata', {
                     ...(selectedService.metadata || {}),
                     [field.key]: e.target.value,
-                  };
-                  onChange?.('metadata', newMetadata as any);
-                }}
+                  } as any)
+                }
                 placeholder={field.placeholder}
               />
               {field.type === 'password' && (
                 <button
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               )}
             </div>
@@ -797,22 +631,6 @@ export const InformationSection = (props: InformationSectionProps) => {
         onClose={() => setConfirmModalOpen(false)}
         title="Save New Service Configuration"
         size="md"
-        footer={
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => setConfirmModalOpen(false)}
-              className="px-4 py-2 rounded-md hover:bg-muted text-sm font-medium transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveConfirmed}
-              className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-lg"
-            >
-              Save Configuration
-            </button>
-          </div>
-        }
       >
         <div className="py-2 space-y-4">
           <InputGroup label="Service Name">
@@ -824,161 +642,34 @@ export const InformationSection = (props: InformationSectionProps) => {
               leftIcon={<FaviconIcon url={modalUrl || ''} DefaultIcon={Database} />}
             />
           </InputGroup>
-
           <InputGroup label="Website URL">
             <Input
               type="text"
               value={modalUrl}
               onChange={(e) => setModalUrl(e.target.value)}
               placeholder="https://example.com"
-              leftIcon={<Globe className="h-4 w-4 text-muted-foreground" />}
+              leftIcon={<Globe size={16} className="text-muted-foreground" />}
             />
           </InputGroup>
-
-          <InputGroup label="Default Tags">
-            <Input
-              type="combobox"
-              placeholder="Add default tags..."
-              value={modalTagSearch}
-              onChange={(e) => setModalTagSearch(e.target.value)}
-              multiValue={true}
-              badgeVariant="neon"
-              badgeColorMode="diverse"
-              badges={(newProviderData.defaultTags || []).map((t) => ({
-                id: t,
-                label: t,
-              }))}
-              onBadgeRemove={(id) => {
-                setNewProviderData((prev) => ({
-                  ...prev,
-                  defaultTags: (prev.defaultTags || []).filter((t) => t !== id),
-                }));
-              }}
-              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                if (e.key === 'Enter' && modalTagSearch.trim()) {
-                  const currentTags = newProviderData.defaultTags || [];
-                  const newTag = modalTagSearch.trim();
-                  if (!currentTags.includes(newTag)) {
-                    setNewProviderData((prev) => ({
-                      ...prev,
-                      defaultTags: [...currentTags, newTag],
-                    }));
-                  }
-                  setModalTagSearch('');
-                  setModalTagInputOpen(false);
-                }
-              }}
-              popoverOpen={modalTagInputOpen}
-              onPopoverOpenChange={setModalTagInputOpen}
-              popoverContent={
-                <Combobox
-                  searchQuery={modalTagSearch}
-                  options={DEFAULT_TAGS.map((t) => ({ value: t, label: t })).filter(
-                    (o) => !(newProviderData.defaultTags || []).includes(o.value),
-                  )}
-                  creatable={true}
-                  onCreate={(newTag) => {
-                    const currentTags = newProviderData.defaultTags || [];
-                    if (!currentTags.includes(newTag)) {
-                      setNewProviderData((prev) => ({
-                        ...prev,
-                        defaultTags: [...currentTags, newTag],
-                      }));
-                    }
-                    setModalTagSearch('');
-                    setModalTagInputOpen(false);
-                  }}
-                  onChange={(val) => {
-                    const currentTags = newProviderData.defaultTags || [];
-                    if (!currentTags.includes(val)) {
-                      setNewProviderData((prev) => ({
-                        ...prev,
-                        defaultTags: [...currentTags, val],
-                      }));
-                    }
-                    setModalTagSearch('');
-                    setModalTagInputOpen(false);
-                  }}
-                />
-              }
-            />
-          </InputGroup>
-
-          <InputGroup label="Default Categories">
-            <Input
-              type="combobox"
-              placeholder="Select default categories..."
-              value={modalCategorySearch}
-              onChange={(e) => setModalCategorySearch(e.target.value)}
-              multiValue={true}
-              badgeVariant="neon"
-              badgeColorMode="diverse"
-              badges={(newProviderData.defaultCategories || []).map((c) => ({
-                id: c,
-                label: c,
-              }))}
-              onBadgeRemove={(id) => {
-                setNewProviderData((prev) => ({
-                  ...prev,
-                  defaultCategories: (prev.defaultCategories || []).filter((c) => c !== id),
-                }));
-              }}
-              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                if (e.key === 'Enter' && modalCategorySearch.trim()) {
-                  const currentCats = newProviderData.defaultCategories || [];
-                  const newCat = modalCategorySearch.trim();
-                  if (!currentCats.includes(newCat)) {
-                    setNewProviderData((prev) => ({
-                      ...prev,
-                      defaultCategories: [...currentCats, newCat],
-                    }));
-                  }
-                  setModalCategorySearch('');
-                  setModalCategoryInputOpen(false);
-                }
-              }}
-              popoverOpen={modalCategoryInputOpen}
-              onPopoverOpenChange={setModalCategoryInputOpen}
-              popoverContent={
-                <Combobox
-                  searchQuery={modalCategorySearch}
-                  options={POPULAR_CATEGORIES.map((c) => ({
-                    value: c,
-                    label: c,
-                  })).filter((o) => !(newProviderData.defaultCategories || []).includes(o.value))}
-                  creatable={true}
-                  onCreate={(newCat) => {
-                    const currentCats = newProviderData.defaultCategories || [];
-                    if (!currentCats.includes(newCat)) {
-                      setNewProviderData((prev) => ({
-                        ...prev,
-                        defaultCategories: [...currentCats, newCat],
-                      }));
-                    }
-                    setModalCategorySearch('');
-                    setModalCategoryInputOpen(false);
-                  }}
-                  onChange={(val) => {
-                    const currentCats = newProviderData.defaultCategories || [];
-                    if (!currentCats.includes(val)) {
-                      setNewProviderData((prev) => ({
-                        ...prev,
-                        defaultCategories: [...currentCats, val],
-                      }));
-                    }
-                    setModalCategorySearch('');
-                    setModalCategoryInputOpen(false);
-                  }}
-                />
-              }
-            />
-          </InputGroup>
-
-          <p className="text-muted-foreground text-xs pt-2">
-            This configuration will be saved for future use.
-          </p>
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => setConfirmModalOpen(false)}
+              className="px-4 py-2 rounded-md hover:bg-muted text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveConfirmed}
+              className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow-lg hover:bg-primary/90 transition-all"
+            >
+              Save Config
+            </button>
+          </div>
         </div>
       </Modal>
     </div>
   );
-};
+});
+
+InformationSection.displayName = 'InformationSection';
+export default InformationSection;
