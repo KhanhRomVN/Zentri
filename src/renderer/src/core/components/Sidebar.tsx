@@ -8,9 +8,6 @@ import {
   FoldHorizontal,
   UnfoldHorizontal,
   Settings as SettingsIcon,
-  UploadCloud,
-  AlertCircle,
-  Loader2,
   PlusCircle,
   Search,
   FileCode,
@@ -30,9 +27,10 @@ const NAV_ITEMS = [
     href: '/',
     icon: LayoutDashboard,
     color: '#3b82f6', // blue-500
+    disabled: true,
   },
   {
-    title: 'Email',
+    title: 'Emails',
     href: '/email',
     icon: Users,
     color: '#f59e0b', // amber-500
@@ -42,6 +40,7 @@ const NAV_ITEMS = [
     href: '/reg',
     icon: PlusCircle,
     color: '#22c55e', // green-500
+    disabled: true,
   },
   {
     title: 'Search',
@@ -69,6 +68,7 @@ const NAV_ITEMS = [
     href: '/proxy',
     icon: Network,
     color: '#06b6d4', // cyan-500
+    disabled: true,
   },
   {
     title: 'Settings',
@@ -80,47 +80,9 @@ const NAV_ITEMS = [
 
 const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
   const [isThemeDrawerOpen, setIsThemeDrawerOpen] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-
   useEffect(() => {
     // Check initial state
-    setIsDirty(localStorage.getItem('zentri_is_dirty') === 'true');
-
-    const handleStatusChange = (e: any) => {
-      setIsDirty(e.detail?.isDirty ?? localStorage.getItem('zentri_is_dirty') === 'true');
-    };
-
-    window.addEventListener('zentri:sync-status-changed', handleStatusChange);
-    return () => window.removeEventListener('zentri:sync-status-changed', handleStatusChange);
   }, []);
-
-  const handleSyncToCloud = async () => {
-    const folderPath = localStorage.getItem('gitlab_repo_folder');
-    if (!folderPath) return;
-
-    setSyncing(true);
-    try {
-      // @ts-ignore
-      const result = await window.electron.ipcRenderer.invoke('git:sync-repo', folderPath);
-
-      if (result && result.success) {
-        // Success
-        localStorage.setItem('zentri_is_dirty', 'false');
-        setIsDirty(false);
-        window.dispatchEvent(
-          new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: false } }),
-        );
-      } else {
-        throw new Error(result?.error || 'Unknown git error');
-      }
-    } catch (err: any) {
-      console.error('Local Git Sync Failed:', err);
-      alert(`Sync failed: ${err.message}. Make sure the folder is a valid Git repository.`);
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   return (
     <div
@@ -132,7 +94,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
       {/* Header */}
       <div
         className={cn(
-          'h-16 flex items-center border-b border-border/50 transition-[padding] duration-300 overflow-hidden shrink-0',
+          'h-14 flex items-center border-b border-border/50 transition-[padding] duration-300 overflow-hidden shrink-0',
           isCollapsed ? 'justify-center px-0' : 'px-4 justify-between',
         )}
       >
@@ -142,19 +104,10 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
             isCollapsed && 'hidden',
           )}
         >
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-lg shrink-0">
-            Z
-          </div>
           <span className="font-bold text-xl tracking-tight opacity-100 transition-opacity duration-300">
             Zentri
           </span>
         </div>
-
-        {isCollapsed && (
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-lg animate-in fade-in zoom-in duration-300">
-            Z
-          </div>
-        )}
 
         {!isCollapsed && (
           <div className="flex items-center gap-1 opacity-100 transition-opacity duration-300">
@@ -235,51 +188,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
         ))}
       </nav>
 
-      {/* Sync Footer */}
-      {isDirty && (
-        <div
-          className={cn(
-            'px-4 py-4 mb-2 mx-2 rounded-2xl border transition-all duration-300 animate-in slide-in-from-bottom-4',
-            'bg-amber-500/5 border-amber-500/20 shadow-lg shadow-amber-500/5',
-            isCollapsed && 'px-0 mx-2 p-3 justify-center border-amber-500/40 bg-amber-500/10',
-          )}
-        >
-          {!isCollapsed ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-amber-500">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Unsaved Changes</span>
-              </div>
-              <button
-                disabled={syncing}
-                onClick={handleSyncToCloud}
-                className="w-full h-10 rounded-md bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-600 transition-all active:scale-95 shadow-md shadow-amber-500/20"
-              >
-                {syncing ? (
-                  <Loader2 className="w-3.h-3 animate-spin" />
-                ) : (
-                  <UploadCloud className="w-3.5 h-3.5" />
-                )}
-                {syncing ? 'Syncing...' : 'Sync to Cloud'}
-              </button>
-            </div>
-          ) : (
-            <button
-              disabled={syncing}
-              onClick={handleSyncToCloud}
-              className="relative w-10 h-10 rounded-md bg-amber-500 text-white flex items-center justify-center hover:bg-amber-600 transition-all active:scale-90"
-              title="Unsaved Changes - Sync Now"
-            >
-              {syncing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <UploadCloud className="w-5 h-5" />
-              )}
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse" />
-            </button>
-          )}
-        </div>
-      )}
+      {/* Navigation */}
 
       {/* Settings/Collapse Footer (Only in Collapsed Mode) */}
       {isCollapsed && (

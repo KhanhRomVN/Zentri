@@ -11,6 +11,7 @@ const TableRow: React.FC<TableRowProps> = ({
   onMouseLeave,
   onFocus,
   onBlur,
+  onContextMenu,
   showHorizontalDivider = false,
 }) => {
   return (
@@ -26,6 +27,7 @@ const TableRow: React.FC<TableRowProps> = ({
       onMouseLeave={onMouseLeave}
       onFocus={onFocus}
       onBlur={onBlur}
+      onContextMenu={onContextMenu}
     >
       {children}
     </tr>

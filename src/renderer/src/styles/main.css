@@ -69,6 +69,7 @@
     --tab-item-hover-border: 203 213 225;
     --tab-item-focus-border: 54 134 255;
     --divider: 229 231 235;
+    --destructive: 239 68 68;
 
     /* Radius */
     --radius: 0.5rem;
@@ -129,6 +130,7 @@
     --tab-item-hover-border: 65 141 254;
     --tab-item-focus-border: 54 134 255;
     --divider: 53 53 53;
+    --destructive: 239 68 68;
   }
 }
 

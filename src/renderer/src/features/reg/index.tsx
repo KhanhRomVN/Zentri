@@ -53,7 +53,9 @@ const RegPage = () => {
   const [editingAccount, setEditingAccount] = useState<RegAccount | null>(null);
 
   const gitlabFolder = useMemo(() => {
-    return localStorage.getItem('gitlab_repo_folder');
+    return (
+      localStorage.getItem('zentri_storage_folder') || localStorage.getItem('gitlab_repo_folder')
+    );
   }, []);
 
   const dataPath = 'regs.json';
@@ -84,55 +86,53 @@ const RegPage = () => {
 
   const loadData = useCallback(async () => {
     if (!gitlabFolder) {
-      setError('Please select a Git Repository Folder in Settings');
+      setError('Please select a Data Storage Folder in Settings');
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      // Load Main Data (Sessions & Accounts)
-      // @ts-ignore
-      const rawData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
+      // 1. Try to read the main zentri-accounts.json
+      const mainRes = await window.electron.ipcRenderer.invoke(
+        'storage:read-data',
         gitlabFolder,
-        dataPath,
+        'zentri-accounts.json',
       );
-      let data = extractData(rawData);
 
-      if (!data) {
-        // Initialize if missing
-        data = { websites: [], sessions: [], accounts: [] };
-        // @ts-ignore
-        await window.electron.ipcRenderer.invoke('git:write-data', {
-          folderPath: gitlabFolder,
-          filename: dataPath,
-          data: data,
-        });
-      }
+      const mainData = extractData(mainRes);
+      let regAccounts = [];
+      let regSessions = [];
+      let agentsData = [];
 
-      // Load Agents
-      // @ts-ignore
-      const rawAgentsData = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
-        gitlabFolder,
-        agentsPath,
-      );
-      let agentsData = extractData(rawAgentsData);
+      if (mainData && typeof mainData === 'object' && !Array.isArray(mainData)) {
+        // New structure
+        regAccounts = mainData.regAccounts || [];
+        regSessions = mainData.regSessions || [];
+        agentsData = mainData.agents || [];
+      } else {
+        // Fallback to old separate files
+        console.log('[Reg] Main data not found, falling back to separate files');
+        const [rawData, rawAgentsData] = await Promise.all([
+          window.electron.ipcRenderer.invoke('storage:read-data', gitlabFolder, dataPath),
+          window.electron.ipcRenderer.invoke('storage:read-data', gitlabFolder, agentsPath),
+        ]);
 
-      if (!agentsData) {
-        agentsData = [];
+        const data = extractData(rawData) || { websites: [], sessions: [], accounts: [] };
+        regAccounts = Array.isArray(data.accounts) ? data.accounts : [];
+        regSessions = Array.isArray(data.sessions) ? data.sessions : [];
+        agentsData = extractData(rawAgentsData) || [];
       }
 
       setAllData({
         websites: [],
-        sessions: Array.isArray(data.sessions) ? data.sessions : [],
-        accounts: Array.isArray(data.accounts) ? data.accounts : [],
-        agents: Array.isArray(agentsData) ? agentsData : [],
+        sessions: regSessions,
+        accounts: regAccounts,
+        agents: agentsData,
       });
 
       // Update platform stats after loading all data
-      updateAllPlatformStats(Array.isArray(data.sessions) ? data.sessions : []);
+      updateAllPlatformStats(regSessions);
     } catch (err: any) {
       setError(`Failed to load registration data: ${err.message}`);
     } finally {
@@ -145,16 +145,24 @@ const RegPage = () => {
       if (!gitlabFolder) return;
 
       try {
-        const data = {
-          sessions: updatedSessions,
-          accounts: updatedAccounts,
+        // 1. Read existing to preserve emailAccounts, etc.
+        const mainRes = await window.electron.ipcRenderer.invoke(
+          'storage:read-data',
+          gitlabFolder,
+          'zentri-accounts.json',
+        );
+        const existingData = extractData(mainRes) || {};
+
+        const consolidatedData = {
+          ...existingData,
+          regAccounts: updatedAccounts,
+          regSessions: updatedSessions,
         };
 
-        // @ts-ignore
-        await window.electron.ipcRenderer.invoke('git:write-data', {
+        await window.electron.ipcRenderer.invoke('storage:write-data', {
           folderPath: gitlabFolder,
-          filename: dataPath,
-          data: data,
+          filename: 'zentri-accounts.json',
+          data: consolidatedData,
         });
 
         window.dispatchEvent(
@@ -166,25 +174,41 @@ const RegPage = () => {
         setError(`Failed to save data: ${err.message}`);
       }
     },
-    [gitlabFolder, dataPath, updateAllPlatformStats],
+    [gitlabFolder, updateAllPlatformStats],
   );
 
   const saveAgents = useCallback(
     async (updatedAgents: Agent[]) => {
       if (!gitlabFolder) return;
       try {
-        // @ts-ignore
-        await window.electron.ipcRenderer.invoke('git:write-data', {
+        const mainRes = await window.electron.ipcRenderer.invoke(
+          'storage:read-data',
+          gitlabFolder,
+          'zentri-accounts.json',
+        );
+        const existingData = extractData(mainRes) || {};
+
+        const consolidatedData = {
+          ...existingData,
+          agents: updatedAgents,
+        };
+
+        await window.electron.ipcRenderer.invoke('storage:write-data', {
           folderPath: gitlabFolder,
-          filename: agentsPath,
-          data: updatedAgents,
+          filename: 'zentri-accounts.json',
+          data: consolidatedData,
         });
+
+        window.dispatchEvent(
+          new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: true } }),
+        );
         setAllData((prev) => ({ ...prev, agents: updatedAgents }));
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to save agents', err);
+        setError(`Failed to save agents: ${err.message}`);
       }
     },
-    [gitlabFolder, agentsPath],
+    [gitlabFolder],
   );
 
   useEffect(() => {

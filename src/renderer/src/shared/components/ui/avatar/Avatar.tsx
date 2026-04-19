@@ -57,7 +57,7 @@ const Avatar: React.FC<AvatarProps> = ({
       const initials = getInitials(name);
       return (
         <span
-          className="avatar-initials font-semibold text-white uppercase"
+          className="avatar-initials font-semibold text-white uppercase drop-shadow-sm"
           style={{
             fontSize: `${Math.max(size * 0.4, 12)}px`,
           }}
@@ -68,26 +68,7 @@ const Avatar: React.FC<AvatarProps> = ({
     }
 
     // Fallback icon
-    return <User size={size * 0.5} className="text-white opacity-80" />;
-  };
-
-  // Render icon dot
-  const renderIconDot = () => {
-    if (!dotIcon) return null;
-
-    return (
-      <div
-        className="absolute rounded-full border flex items-center justify-center"
-        style={{
-          width: `${dotSize}px`,
-          height: `${dotSize}px`,
-          backgroundColor: dotBgColor || '#10B981',
-          ...dotPosition,
-        }}
-      >
-        {dotIcon}
-      </div>
-    );
+    return <User size={size * 0.5} className="text-white opacity-80 drop-shadow-sm" />;
   };
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -122,17 +103,16 @@ const Avatar: React.FC<AvatarProps> = ({
       {/* Fallback */}
       {(showFallback || showIcon) && (
         <div
-          className="w-full h-full rounded-[inherit] flex items-center justify-center"
+          className="w-full h-full rounded-[inherit] flex items-center justify-center relative overflow-hidden group animate-watercolor"
           style={{
-            backgroundColor: fallbackBackground,
+            background: fallbackBackground,
           }}
         >
-          {renderFallback()}
+          {/* Animated gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="relative z-10">{renderFallback()}</div>
         </div>
       )}
-
-      {/* Icon Dot */}
-      {renderIconDot()}
     </div>
   );
 };

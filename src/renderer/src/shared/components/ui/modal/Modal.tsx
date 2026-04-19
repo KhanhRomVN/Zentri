@@ -28,6 +28,8 @@ const Modal: React.FC<ModalProps> = ({
   style,
   overlayStyle,
   contentStyle,
+  bodyClassName = '',
+  bodyStyle,
 }) => {
   // Validate props
   const validation = validateModalProps({ open, onClose, children });
@@ -88,7 +90,7 @@ const Modal: React.FC<ModalProps> = ({
   return (
     <div
       className={cn(
-        'modal-overlay fixed inset-0 bg-black/50 z-[1000]',
+        'modal-overlay fixed inset-0 bg-black/60 backdrop-blur-xl z-[1000]',
         overlayClassName,
         animationClasses,
       )}
@@ -119,23 +121,26 @@ const Modal: React.FC<ModalProps> = ({
             )}
             {showCloseButton && (
               <button
-                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all active:scale-95 focus:outline-none"
                 onClick={onClose}
                 aria-label="Close modal"
               >
-                <X size={20} />
+                <X className="w-5 h-5" />
               </button>
             )}
           </div>
         )}
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto">{children}</div>
+        <div
+          className={cn('p-6 overflow-y-auto custom-scrollbar', bodyClassName)}
+          style={bodyStyle}
+        >
+          {children}
+        </div>
 
         {/* Footer */}
-        {footer && (
-          <div className="px-6 py-4 bg-muted/5 border-t border-border shrink-0">{footer}</div>
-        )}
+        {footer && <div className="px-6 py-4 border-t border-border shrink-0">{footer}</div>}
       </div>
     </div>
   );

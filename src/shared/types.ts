@@ -19,6 +19,10 @@ export interface Email extends GlobalEntity {
   phoneNumber?: string;
   status: string;
   tags?: string[];
+  lastUsedAt?: string;
+  scheduledDeletionAt?: string;
+  totpSecretKey?: string;
+  backupCodes?: string;
   metadata?: EmailMetadata;
 
   // Relations

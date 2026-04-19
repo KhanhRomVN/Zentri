@@ -10,7 +10,6 @@ export interface ServiceItem extends Service {
 }
 
 export interface Account extends Email {
-  provider: 'gmail' | 'hotmail' | 'protonmail' | 'icloud' | 'yahoo';
   avatar?: string;
   twoFactorEnabled?: boolean;
 }

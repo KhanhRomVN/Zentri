@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
 
 /**
  * Kích thước badge (percentage scale)
@@ -9,14 +9,18 @@ export type BadgeSize = number;
  * Variant của badge
  */
 export type BadgeVariant =
-  | "default"
-  | "primary"
-  | "secondary"
-  | "success"
-  | "warning"
-  | "error"
-  | "outline"
-  | "kbd";
+  | 'default'
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'outline'
+  | 'kbd'
+  | 'ghost-primary'
+  | 'ghost-success'
+  | 'ghost-warning'
+  | 'ghost-error';
 
 /**
  * Props chính của Badge component

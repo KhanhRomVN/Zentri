@@ -42,5 +42,6 @@ export interface InputProps {
   badgeColorMode?: 'uniform' | 'diverse';
   badgeColors?: string[];
   badgeVariant?: 'solid' | 'neon';
+  error?: string;
   [key: string]: any;
 }

@@ -59,6 +59,10 @@ module.exports = {
           DEFAULT: 'rgb(var(--button-second-bg) / <alpha-value>)',
           foreground: 'rgb(var(--text-primary) / <alpha-value>)',
         },
+        destructive: {
+          DEFAULT: 'rgb(var(--destructive) / <alpha-value>)',
+          foreground: 'rgb(255 255 255 / <alpha-value>)',
+        },
         muted: {
           DEFAULT: 'rgb(var(--text-secondary) / <alpha-value>)',
           foreground: 'rgb(var(--text-secondary) / <alpha-value>)',

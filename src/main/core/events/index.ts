@@ -2,13 +2,11 @@ import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
-import { Database } from 'sqlite3';
 import { setupEmailHandlers } from './email';
+import { dbManager } from '../database';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 const execAsync = promisify(exec);
-
-let db: Database | null = null;
 
 // Storage file path
 const getStorageFilePath = () => {
@@ -175,29 +173,7 @@ function setupDatabaseHandlers() {
   // SQLite handlers
   ipcMain.handle('sqlite:create', async (_event, dbPath: string) => {
     try {
-      // Close existing database if open
-      if (db) {
-        await new Promise<void>((resolve, reject) => {
-          db!.close((err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
-        db = null;
-      }
-
-      // Create new database with callback to ensure it's ready
-      return new Promise<void>((resolve, reject) => {
-        db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-          if (err) {
-            db = null;
-            reject(err);
-          } else {
-            // Database is successfully created and ready
-            resolve();
-          }
-        });
-      });
+      await dbManager.init(dbPath);
     } catch (error) {
       console.error('Error creating database:', error);
       throw error;
@@ -206,55 +182,16 @@ function setupDatabaseHandlers() {
 
   ipcMain.handle('sqlite:open', async (_event, dbPath: string) => {
     try {
-      // Close existing database if open
-      if (db) {
-        await new Promise<void>((resolve) => {
-          const dbToClose = db;
-          db = null; // Clear reference before close
-
-          dbToClose!.close((err) => {
-            if (err) {
-              console.warn('Warning: Error closing previous database:', err);
-              resolve();
-            } else {
-              resolve();
-            }
-          });
-        });
-      }
-
-      // Wait a bit after closing
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Open new database
-      return new Promise<void>((resolve, reject) => {
-        const newDb = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
-          if (err) {
-            reject(err);
-          } else {
-            db = newDb;
-            setTimeout(() => resolve(), 50);
-          }
-        });
-      });
+      await dbManager.init(dbPath);
     } catch (error) {
       console.error('Error opening database:', error);
-      db = null;
       throw error;
     }
   });
 
   ipcMain.handle('sqlite:close', async () => {
     try {
-      if (db) {
-        await new Promise<void>((resolve, reject) => {
-          db!.close((err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
-        db = null;
-      }
+      await dbManager.close();
     } catch (error) {
       console.error('Error closing database:', error);
       throw error;
@@ -263,20 +200,7 @@ function setupDatabaseHandlers() {
 
   ipcMain.handle('sqlite:run', async (_event, query: string, params: any[] = []) => {
     try {
-      if (!db) throw new Error('Database not connected');
-
-      return new Promise((resolve, reject) => {
-        db!.run(query, params, function (err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({
-              lastID: this.lastID,
-              changes: this.changes,
-            });
-          }
-        });
-      });
+      return await dbManager.run(query, params);
     } catch (error) {
       console.error('Error running query:', error);
       throw error;
@@ -285,17 +209,7 @@ function setupDatabaseHandlers() {
 
   ipcMain.handle('sqlite:all', async (_event, query: string, params: any[] = []) => {
     try {
-      if (!db) throw new Error('Database not connected');
-
-      return new Promise((resolve, reject) => {
-        db!.all(query, params, (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        });
-      });
+      return await dbManager.all(query, params);
     } catch (error) {
       console.error('Error running select query:', error);
       throw error;
@@ -304,17 +218,7 @@ function setupDatabaseHandlers() {
 
   ipcMain.handle('sqlite:get', async (_event, query: string, params: any[] = []) => {
     try {
-      if (!db) throw new Error('Database not connected');
-
-      return new Promise((resolve, reject) => {
-        db!.get(query, params, (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        });
-      });
+      return await dbManager.get(query, params);
     } catch (error) {
       console.error('Error running get query:', error);
       throw error;
@@ -328,25 +232,118 @@ export function setupEventHandlers() {
   setupDatabaseHandlers();
   setupEmailHandlers();
 
-  // Utility Fetch Handler to bypass CORS
-  ipcMain.handle('util:fetch', async (_event, url: string) => {
+  // Streaming Fetch Handler
+  ipcMain.handle('util:fetch-stream', async (event, input: any) => {
+    const webContents = event.sender;
+    let url: string;
+    let options: RequestInit = {};
+
+    if (typeof input === 'string') {
+      url = input;
+    } else if (input && typeof input === 'object' && input.url) {
+      url = input.url;
+      options = input.options || {};
+    } else {
+      return { success: false, error: 'Invalid fetch input' };
+    }
+
     try {
-      const response = await fetch(url);
-      const isJson = response.headers.get('content-type')?.includes('application/json');
-      return {
-        success: response.ok,
-        status: response.status,
-        data: isJson ? await response.json() : await response.text(),
-        headers: Object.fromEntries(response.headers.entries()),
-      };
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          Accept: 'text/event-stream',
+        },
+      });
+
+      if (!response.ok) {
+        let errorBody = '';
+        try {
+          const text = await response.text();
+          errorBody = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        } catch (e) {
+          errorBody = `HTTP ${response.status}`;
+        }
+        return {
+          success: false,
+          status: response.status,
+          error: errorBody || `HTTP ${response.status}`,
+        };
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        return { success: false, error: 'Response body is empty' };
+      }
+
+      const decoder = new TextDecoder();
+
+      // We return immediately to acknowledge the stream started.
+      // The actual data will come via webContents.send
+      (async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            if (!webContents.isDestroyed()) {
+              webContents.send('util:fetch-chunk', { chunk });
+            }
+          }
+          if (!webContents.isDestroyed()) {
+            webContents.send('util:fetch-end', { success: true });
+          }
+        } catch (streamError: any) {
+          console.error('[util:fetch-stream] Stream error:', streamError);
+          if (!webContents.isDestroyed()) {
+            webContents.send('util:fetch-end', { success: false, error: streamError.message });
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      })();
+
+      return { success: true };
     } catch (error: any) {
-      console.error(`Fetch error for ${url}:`, error);
+      console.error('[util:fetch-stream] FAILED:', error.message);
       return { success: false, error: error.message };
     }
   });
 
-  // 1. Select Git Folder
-  ipcMain.handle('git:select-folder', async () => {
+  // Utility Fetch Handler to bypass CORS
+  ipcMain.handle('util:fetch', async (_event, input: any) => {
+    let url: string;
+    let options: RequestInit = {};
+
+    if (typeof input === 'string') {
+      url = input;
+    } else if (input && typeof input === 'object' && input.url) {
+      url = input.url;
+      options = input.options || {};
+    } else {
+      return { success: false, error: 'Invalid fetch input' };
+    }
+
+    try {
+      const response = await fetch(url, options);
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await response.json() : await response.text();
+
+      return {
+        success: response.ok,
+        status: response.status,
+        data: data,
+        headers: Object.fromEntries(response.headers.entries()),
+      };
+    } catch (error: any) {
+      console.error('[util:fetch] FAILED:', error.message);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 1. Select Storage Folder
+  ipcMain.handle('storage:select-folder', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
       properties: ['openDirectory'],
     });
@@ -354,10 +351,10 @@ export function setupEventHandlers() {
     return filePaths[0];
   });
 
-  // 2. Read file data from git folder
+  // 2. Read file data from storage folder
   ipcMain.handle(
-    'git:read-data',
-    async (_event, folderPath: string, filename: string = 'emails.json') => {
+    'storage:read-data',
+    async (_event, folderPath: string, filename: string = 'zentri-accounts.json') => {
       const filePath = path.join(folderPath, filename);
       if (!fs.existsSync(filePath)) return { success: true, data: null };
       try {
@@ -370,15 +367,15 @@ export function setupEventHandlers() {
     },
   );
 
-  // 3. Write data to file in git folder
+  // 3. Write data to file in storage folder
   ipcMain.handle(
-    'git:write-data',
+    'storage:write-data',
     async (
       _event,
       {
         folderPath,
         data,
-        filename = 'emails.json',
+        filename = 'zentri-accounts.json',
       }: { folderPath: string; data: any; filename?: string },
     ) => {
       try {
@@ -392,48 +389,34 @@ export function setupEventHandlers() {
     },
   );
 
-  // 4. Git Sync (Add, Commit, Push)
-  ipcMain.handle('git:sync-repo', async (_event, folderPath: string) => {
-    try {
-      // Execute git commands sequentially
-      // Use bash explicitly to handle shell aliases or path issues if any
-      const commands = ['git add .', 'git commit -m "Zentri Sync: Updated data"', 'git push'];
+  // 4. Rename folder (for profile migration/rename)
+  ipcMain.handle(
+    'storage:rename-folder',
+    async (_event, { oldPath, newPath }: { oldPath: string; newPath: string }) => {
+      try {
+        if (!fs.existsSync(oldPath)) return { success: false, error: 'Source folder not found' };
+        if (fs.existsSync(newPath))
+          return { success: false, error: 'Target folder already exists' };
 
-      for (const cmd of commands) {
-        try {
-          const { stdout, stderr } = await execAsync(cmd, { cwd: folderPath });
-          console.log(`[Git Stdout]: ${stdout}`);
-          if (stderr) console.error(`[Git Stderr]: ${stderr}`);
-        } catch (e: any) {
-          // If already up-to-date or nothing to commit, commit might fail.
-          // Check for 'nothing to commit' in message if needed, or just warn for commit.
-          if (
-            cmd.includes('commit') &&
-            (e.message.includes('nothing to commit') || e.message.includes('up to date'))
-          ) {
-            console.log('Nothing to commit, skipping push might be better but we continue.');
-            continue;
-          }
-          if (cmd.includes('push') && e.message.includes('Everything up-to-date')) {
-            continue;
-          }
-          console.error(`Error executing git cmd: ${cmd}`, e);
-          throw e;
+        // Ensure parent directory of newPath exists
+        const parentDir = path.dirname(newPath);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
         }
+
+        await fs.promises.rename(oldPath, newPath);
+        return { success: true };
+      } catch (e: any) {
+        console.error('Error renaming folder:', e);
+        return { success: false, error: e.message };
       }
-      return { success: true };
-    } catch (error: any) {
-      console.error('Git Sync Error:', error);
-      return { success: false, error: error.message };
-    }
-  });
+    },
+  );
 }
 
 // Export for cleanup on app quit
 export function closeDatabase() {
-  if (db) {
-    db.close((err) => {
-      if (err) console.error('Error closing database on app quit:', err);
-    });
-  }
+  dbManager.close().catch((err) => {
+    console.error('Error closing database on app quit:', err);
+  });
 }

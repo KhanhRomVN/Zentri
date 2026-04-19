@@ -1,19 +1,19 @@
-import { ReactNode, CSSProperties } from "react";
+import { ReactNode, CSSProperties } from 'react';
 
 /**
  * Kích thước modal
  */
-export type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
 /**
  * Vị trí modal
  */
-export type ModalPosition = "center" | "top" | "bottom";
+export type ModalPosition = 'center' | 'top' | 'bottom';
 
 /**
  * Animation type
  */
-export type ModalAnimation = "fade" | "slide" | "scale" | "none";
+export type ModalAnimation = 'fade' | 'slide' | 'scale' | 'none';
 
 /**
  * Props chính của Modal component
@@ -49,6 +49,9 @@ export interface ModalProps {
   /** Custom content class */
   contentClassName?: string;
 
+  /** Custom body class */
+  bodyClassName?: string;
+
   /** Có đóng modal khi click overlay không */
   closeOnOverlayClick?: boolean;
 
@@ -69,6 +72,9 @@ export interface ModalProps {
 
   /** Custom content styles */
   contentStyle?: CSSProperties;
+
+  /** Custom body styles */
+  bodyStyle?: CSSProperties;
 }
 
 /**

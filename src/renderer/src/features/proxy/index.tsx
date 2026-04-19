@@ -70,7 +70,11 @@ const ProxyPage: React.FC = () => {
   });
   const [sortBy, setSortBy] = useState('stt_asc');
 
-  const gitlabFolder = useMemo(() => localStorage.getItem('gitlab_repo_folder'), []);
+  const gitlabFolder = useMemo(
+    () =>
+      localStorage.getItem('zentri_storage_folder') || localStorage.getItem('gitlab_repo_folder'),
+    [],
+  );
 
   const extractData = (res: any) => {
     if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
@@ -85,7 +89,7 @@ const ProxyPage: React.FC = () => {
     setLoading(true);
     try {
       const result = await window.electron.ipcRenderer.invoke(
-        'git:read-data',
+        'storage:read-data',
         gitlabFolder,
         'proxies.json',
       );
@@ -107,7 +111,7 @@ const ProxyPage: React.FC = () => {
       if (!gitlabFolder) return;
       try {
         // @ts-ignore
-        await window.electron.ipcRenderer.invoke('git:write-data', {
+        await window.electron.ipcRenderer.invoke('storage:write-data', {
           folderPath: gitlabFolder,
           filename: 'proxies.json',
           data: data,
@@ -287,7 +291,7 @@ const ProxyPage: React.FC = () => {
               className="h-10 px-4 border border-border rounded-md text-xs font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all flex items-center gap-2"
             >
               <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />{' '}
-              {loading ? 'Loading...' : 'Sync'}
+              {loading ? 'Loading...' : 'Refresh'}
             </button>
             <button className="h-10 px-4 border border-border rounded-md text-xs font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all flex items-center gap-2">
               <FileDown className="w-3.5 h-3.5" /> Export

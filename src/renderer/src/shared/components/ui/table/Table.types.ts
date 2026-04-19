@@ -1,10 +1,10 @@
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
 
 export interface TableColumn<T = any> {
   key: string;
   title: string;
   width?: string | number;
-  align?: "left" | "center" | "right";
+  align?: 'left' | 'center' | 'right';
   sortable?: boolean;
   sorter?: (a: T, b: T) => number;
   render?: (value: any, record: T, index: number) => ReactNode;
@@ -12,7 +12,7 @@ export interface TableColumn<T = any> {
 
 export interface TableSort {
   key: string;
-  direction: "asc" | "desc";
+  direction: 'asc' | 'desc';
 }
 
 export interface TablePagination {
@@ -24,7 +24,7 @@ export interface TablePagination {
   showQuickJumper?: boolean;
 }
 
-export type TableSize = "sm" | "md" | "lg";
+export type TableSize = 'sm' | 'md' | 'lg';
 
 export interface TableProps {
   children?: ReactNode;
@@ -63,6 +63,7 @@ export interface TableRowProps {
   onMouseLeave?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   showVerticalDivider?: boolean;
   showHorizontalDivider?: boolean;
 }
@@ -70,7 +71,7 @@ export interface TableRowProps {
 export interface TableCellProps {
   children?: ReactNode;
   className?: string;
-  align?: "left" | "center" | "right";
+  align?: 'left' | 'center' | 'right';
   colSpan?: number;
   style?: React.CSSProperties;
   onClick?: () => void;
@@ -81,13 +82,13 @@ export interface TableCellProps {
 export interface HeaderCellProps {
   children?: ReactNode;
   className?: string;
-  align?: "left" | "center" | "right";
+  align?: 'left' | 'center' | 'right';
   colSpan?: number;
   style?: React.CSSProperties;
   onClick?: () => void;
   showVerticalDivider?: boolean;
   showHorizontalDivider?: boolean;
   sortable?: boolean;
-  sortDirection?: "asc" | "desc" | null;
+  sortDirection?: 'asc' | 'desc' | null;
   onSort?: () => void;
 }

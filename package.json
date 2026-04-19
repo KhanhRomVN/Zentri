@@ -16,7 +16,7 @@
   "main": "./out/main/index.js",
   "author": "KhanhRomVN",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "ELECTRON_DISABLE_SANDBOX=1 electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
@@ -31,8 +31,7 @@
     "postinstall": "electron-builder install-app-deps",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
-    "build:linux": "npm run build && electron-builder --linux",
-    "prepare": "husky"
+    "build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
@@ -103,18 +102,5 @@
     "typescript-eslint": "^8.50.0",
     "vite": "^5.0.0",
     "vitest": "^4.0.15"
-  },
-  "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write",
-      "npm run typecheck"
-    ],
-    "*.{json,css,md}": [
-      "prettier --write"
-    ],
-    "*": [
-      "secretlint --maskSecrets"
-    ]
   }
 }

@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as sqlite3 from 'sqlite3';
 
 export function setupEmailHandlers() {
+  console.log('✅ Setting up Email Handlers...');
   ipcMain.handle(
     'email:open-login',
     async (
@@ -14,9 +15,18 @@ export function setupEmailHandlers() {
         accountId,
         url,
         profilePath,
-      }: { provider: string; accountId: string; url?: string; profilePath?: string },
+        email,
+      }: {
+        provider: string;
+        accountId: string;
+        url?: string;
+        profilePath?: string;
+        email?: string;
+      },
     ) => {
       try {
+        const userDataPath = app.getPath('userData');
+
         // 1. Determine executable path
         let executablePath = '';
         const possiblePaths = [
@@ -39,10 +49,29 @@ export function setupEmailHandlers() {
         }
 
         // 2. Setup Browser Profile Path
-        // Priority: custom profilePath from renderer (git repo) > default appData path
-        const userDataPath = app.getPath('userData');
-        const browserProfileDir =
-          profilePath || path.join(userDataPath, 'browser_profiles', accountId || provider);
+        let browserProfileDir = '';
+        if (profilePath) {
+          browserProfileDir = profilePath;
+        } else {
+          try {
+            // Get DB path to find profiles dir if we have an email
+            const { dbManager } = await import('../database');
+            if (dbManager.dbPath && email) {
+              const dbDir = path.dirname(dbManager.dbPath);
+              browserProfileDir = path.join(dbDir, 'profiles', email);
+            } else {
+              browserProfileDir = path.join(
+                userDataPath,
+                'browser_profiles',
+                accountId || provider,
+              );
+            }
+          } catch (e) {
+            browserProfileDir = path.join(userDataPath, 'browser_profiles', accountId || provider);
+          }
+        }
+
+        console.log(`[Chrome] Launching with profile: ${browserProfileDir}`);
 
         if (!fs.existsSync(browserProfileDir)) {
           fs.mkdirSync(browserProfileDir, { recursive: true });
@@ -191,4 +220,106 @@ export function setupEmailHandlers() {
       }
     },
   );
+
+  ipcMain.handle('email:create-profile', async (_event, { email }: { email: string }) => {
+    try {
+      const { dbManager } = await import('../database');
+      const dbDir = path.dirname(dbManager.dbPath);
+      const profileDir = path.join(dbDir, 'profiles', email);
+
+      if (!fs.existsSync(profileDir)) {
+        fs.mkdirSync(profileDir, { recursive: true });
+      }
+      return { success: true, path: profileDir };
+    } catch (error: any) {
+      console.error('Error creating profile directory:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('email:get-avatar', async (_event, { email }: { email: string }) => {
+    try {
+      const { dbManager } = await import('../database');
+      if (!dbManager.dbPath) return null;
+
+      const dbDir = path.dirname(dbManager.dbPath);
+      const avatarPath = path.join(
+        dbDir,
+        'profiles',
+        email,
+        'Default',
+        'Google Profile Picture.png',
+      );
+
+      if (fs.existsSync(avatarPath)) {
+        const imageBuffer = fs.readFileSync(avatarPath);
+        return `data:image/png;base64,${imageBuffer.toString('base64')}`;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error reading avatar:', error);
+      return null;
+    }
+  });
+
+  ipcMain.handle('email:get-services', async (_event, { email }: { email: string }) => {
+    try {
+      const { dbManager } = await import('../database');
+      if (!dbManager.dbPath) return [];
+
+      const dbDir = path.dirname(dbManager.dbPath);
+      const possiblePaths = [
+        path.join(dbDir, 'profiles', email, 'Default', 'Login Data For Account'),
+        path.join(dbDir, 'profiles', email, 'Default', 'Login Data'),
+      ];
+
+      const loginDataPath = possiblePaths.find((p) => fs.existsSync(p));
+      if (!loginDataPath) return [];
+
+      // Copy to temp file
+      const userDataPath = app.getPath('userData');
+      const tempPath = path.join(userDataPath, `temp_logins_${Date.now()}.db`);
+      fs.copyFileSync(loginDataPath, tempPath);
+
+      const db = new sqlite3.Database(tempPath);
+      const logins: any[] = await new Promise((resolve) => {
+        db.all(
+          'SELECT origin_url, action_url, username_value FROM logins WHERE blacklisted_by_user = 0',
+          (err, rows) => {
+            db.close();
+            if (err) resolve([]);
+            else resolve(rows || []);
+          },
+        );
+      });
+
+      fs.unlinkSync(tempPath);
+
+      // Unique by origin_url
+      const services = logins.map((l) => {
+        try {
+          return {
+            url: l.origin_url,
+            name: new URL(l.origin_url).hostname.replace('www.', ''),
+            username: l.username_value,
+          };
+        } catch (e) {
+          return {
+            url: l.origin_url,
+            name: l.origin_url,
+            username: l.username_value,
+          };
+        }
+      });
+
+      // Filter uniques
+      const uniqueServices = Array.from(new Map(services.map((s) => [s.url, s])).values());
+      console.log(`[Email] Extracted ${uniqueServices.length} services for ${email}`);
+
+      return uniqueServices;
+    } catch (error) {
+      console.error('Error extracting services:', error);
+      return [];
+    }
+  });
 }

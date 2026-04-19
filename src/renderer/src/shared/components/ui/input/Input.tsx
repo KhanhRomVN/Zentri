@@ -44,6 +44,7 @@ const Input: React.FC<InputProps> = ({
     '#b026ff', // neon purple
   ],
   badgeVariant = 'solid',
+  error,
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -130,12 +131,19 @@ const Input: React.FC<InputProps> = ({
 
     if (!leftIcon) return null;
 
-    if (typeof leftIcon === 'function') {
-      const IconComponent = leftIcon as LucideIcon;
+    if (
+      typeof leftIcon === 'function' ||
+      (typeof leftIcon === 'object' && leftIcon !== null && 'render' in leftIcon)
+    ) {
+      const IconComponent = leftIcon as any;
       return <IconComponent size={iconSize} />;
     }
 
-    return <span className="flex items-center justify-center">{leftIcon}</span>;
+    if (React.isValidElement(leftIcon)) {
+      return leftIcon;
+    }
+
+    return <span className="flex items-center justify-center">{leftIcon as any}</span>;
   };
 
   const renderRightIcons = () => {
@@ -148,13 +156,16 @@ const Input: React.FC<InputProps> = ({
         );
       }
 
-      if (typeof icon === 'function') {
-        const IconComponent = icon as LucideIcon;
+      if (
+        typeof icon === 'function' ||
+        (typeof icon === 'object' && icon !== null && 'render' in icon)
+      ) {
+        const IconComponent = icon as any;
         return <IconComponent key={index} size={iconSize} className="cursor-pointer" />;
       }
       return (
         <span key={index} className="cursor-pointer flex items-center justify-center">
-          {icon}
+          {icon as any}
         </span>
       );
     });
@@ -184,7 +195,10 @@ const Input: React.FC<InputProps> = ({
           onClick={() => {
             if (!popoverOpen) handlePopoverOpen();
           }}
-          onBlur={() => setIsFocused(false)}
+          onBlur={(e) => {
+            setIsFocused(false);
+            if (props.onBlur) props.onBlur(e);
+          }}
           className={cn(
             'flex-1 bg-transparent border-none outline-none',
             type === 'calendar' && 'cursor-pointer',
@@ -203,7 +217,10 @@ const Input: React.FC<InputProps> = ({
         disabled={isDisabled}
         onChange={handleChange}
         onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onBlur={(e) => {
+          setIsFocused(false);
+          if (props.onBlur) props.onBlur(e);
+        }}
         className="flex-1 bg-transparent border-none outline-none"
         {...props}
       />
@@ -267,6 +284,7 @@ const Input: React.FC<InputProps> = ({
           className={cn(
             'flex items-center w-full transition-all duration-200 rounded-md',
             'border bg-input',
+            error ? 'border-destructive' : 'border-border',
             'placeholder:text-gray-400',
             sizeClasses,
             isDisabled && 'opacity-50 cursor-not-allowed pointer-events-none',
@@ -310,6 +328,9 @@ const Input: React.FC<InputProps> = ({
 
       {/* Inline Panel */}
       {inlinePanel && <div className="w-full mt-2">{inlinePanel}</div>}
+
+      {/* Error Message */}
+      {error && <p className="mt-1.5 text-[11px] font-bold text-destructive ml-1">{error}</p>}
     </div>
   );
 };

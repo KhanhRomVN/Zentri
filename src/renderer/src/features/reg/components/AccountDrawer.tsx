@@ -92,7 +92,11 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
   const [profileViewMode, setProfileViewMode] = useState<'raw' | 'visual'>('visual');
   const [isCookieModalOpen, setIsCookieModalOpen] = useState(false);
 
-  const gitlabFolder = useMemo(() => localStorage.getItem('gitlab_repo_folder'), []);
+  const gitlabFolder = useMemo(
+    () =>
+      localStorage.getItem('zentri_storage_folder') || localStorage.getItem('gitlab_repo_folder'),
+    [],
+  );
 
   const extractData = (res: any) => {
     if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
@@ -106,7 +110,7 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
       if (!gitlabFolder) return;
       try {
         const result = await window.electron.ipcRenderer.invoke(
-          'git:read-data',
+          'storage:read-data',
           gitlabFolder,
           'proxies.json',
         );
@@ -205,7 +209,7 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
 
   // A helper to update metadata
   const updateMetadata = (key: string, value: any) => {
-    setFormData((prev) => ({
+    setFormData((prev: { metadata: any }) => ({
       ...prev,
       metadata: {
         ...prev.metadata!,
@@ -330,7 +334,7 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
                 value={formData.metadata?.email || ''}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setFormData((prev) => ({
+                  setFormData((prev: { metadata: any }) => ({
                     ...prev,
                     metadata: {
                       ...prev.metadata!,
@@ -507,7 +511,7 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
               {agents.map((agent) => (
                 <DropdownItem
                   key={agent.id}
-                  onClick={() => setFormData((prev) => ({ ...prev, agentId: agent.id }))}
+                  onClick={() => setFormData((prev: any) => ({ ...prev, agentId: agent.id }))}
                   className={cn(
                     'py-2',
                     formData.agentId === agent.id && 'bg-primary/10 text-primary',
@@ -551,7 +555,7 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
                 {proxies.map((p) => (
                   <DropdownItem
                     key={p.id}
-                    onClick={() => setFormData((prev) => ({ ...prev, proxyId: p.id }))}
+                    onClick={() => setFormData((prev: any) => ({ ...prev, proxyId: p.id }))}
                     className={cn(
                       'py-2',
                       formData.proxyId === p.id && 'bg-primary/10 text-primary',
@@ -585,7 +589,7 @@ const AccountDrawer = memo(({ isOpen, onClose, account, agents, onSave }: Accoun
                 ))}
                 {proxies.length === 0 && (
                   <div className="p-3 text-center text-muted-foreground text-xs">
-                    No proxies found via git sync
+                    No proxies found
                   </div>
                 )}
               </DropdownContent>

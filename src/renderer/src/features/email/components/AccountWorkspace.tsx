@@ -40,7 +40,9 @@ const AccountWorkspace = memo(
     providers,
     onSaveNewProvider,
   }: AccountWorkspaceProps) => {
-    const [activeTab, setActiveTab] = useState<'Core' | 'Profile' | 'Mail' | 'Service' | 'Diagram'>('Core');
+    const [activeTab, setActiveTab] = useState<'Core' | 'Profile' | 'Mail' | 'Service' | 'Diagram'>(
+      'Core',
+    );
 
     // Reset to Core tab when isCreating becomes true
     useEffect(() => {
@@ -149,13 +151,7 @@ const AccountWorkspace = memo(
           );
         }
         case 'Diagram': {
-          return (
-            <DiagramTab
-              account={account}
-              services={services}
-              profiles={profiles}
-            />
-          );
+          return <DiagramTab account={account} services={services} profiles={profiles} />;
         }
         default:
           return null;
@@ -280,7 +276,9 @@ const AccountWorkspace = memo(
                         provider: account.provider,
                         accountId: account.id,
                         url: 'https://mail.google.com',
-                        profilePath: repoPath ? `${repoPath}/profiles/${account.id}` : undefined,
+                        profilePath: repoPath
+                          ? `${repoPath}/profiles/${account.provider || 'default'}/${account.email || account.id}`
+                          : undefined,
                       });
                     } catch (error) {
                       console.error('Failed to launch browser', error);
