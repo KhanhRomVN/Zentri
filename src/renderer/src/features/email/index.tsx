@@ -15,7 +15,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { cn } from '../../shared/lib/utils';
-import { Account } from './mock/accounts';
+import { Account } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { Breadcrumb, BreadcrumbItem } from '../../shared/components/ui/breadcumb';
 import { Drawer } from '../../shared/components/ui/drawer';

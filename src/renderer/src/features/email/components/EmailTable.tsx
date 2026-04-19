@@ -9,7 +9,7 @@ import {
 } from '../../../shared/components/ui/table';
 import { Drawer } from '../../../shared/components/ui/drawer';
 import Combobox from '../../../shared/components/ui/combobox/Combobox';
-import { Account } from '../mock/accounts';
+import { Account } from '../types';
 import Badge from '../../../shared/components/ui/badge/Badge';
 import Avatar from '../../../shared/components/ui/avatar/Avatar';
 import Input from '../../../shared/components/ui/input/Input';
