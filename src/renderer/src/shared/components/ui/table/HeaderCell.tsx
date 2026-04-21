@@ -54,7 +54,14 @@ const HeaderCell: React.FC<HeaderCellProps> = ({
       style={style}
       onClick={handleClick}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div
+        className={cn(
+          'flex items-center gap-2',
+          align === 'left' && 'justify-start',
+          align === 'center' && 'justify-center',
+          align === 'right' && 'justify-end',
+        )}
+      >
         <span>{children}</span>
         {getSortIcon()}
       </div>

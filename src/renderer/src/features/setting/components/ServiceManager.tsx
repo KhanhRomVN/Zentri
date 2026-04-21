@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { SchemaField } from './SchemaBuilder';
 import {
   Table,
@@ -11,13 +11,13 @@ import {
 import { Drawer } from '../../../shared/components/ui/drawer';
 import Input from '../../../shared/components/ui/input/Input';
 import Combobox from '../../../shared/components/ui/combobox/Combobox';
-import { Database, Edit2, Check, X } from 'lucide-react';
-import { ServiceProviderConfig } from '../../email/components/tabs/service/utils/servicePresets';
+import { Database, Edit2, Check, X, Lock, Trash2, Loader2, Search } from 'lucide-react';
+import { ServiceProviderConfig } from '../../email/types';
+import ServiceMetadataBuilder from '../../../shared/components/ui/service/ServiceMetadataBuilder';
 import { cn } from '@renderer/shared/lib/utils';
-import { Modal } from '../../../shared/components/ui/modal';
 import { v4 as uuidv4 } from 'uuid';
 import { Badge } from '../../../shared/components/ui/badge';
-import Avatar from '../../../shared/components/ui/avatar/Avatar';
+import Portal from '../../../shared/components/ui/Portal';
 
 export const ServiceManager = () => {
   const [services, setServices] = useState<Record<string, ServiceProviderConfig>>({});
@@ -39,6 +39,18 @@ export const ServiceManager = () => {
   const [allDetectedServices, setAllDetectedServices] = useState<any[]>([]);
   const [isSyncView, setIsSyncView] = useState(false);
   const [pendingEditedValues, setPendingEditedValues] = useState<Record<string, any>>({});
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [focusedServiceId, setFocusedServiceId] = useState<string | null>(null);
+  const [secretSearch, setSecretSearch] = useState('');
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    serviceId: string;
+  } | null>(null);
+  const [serviceSecrets, setServiceSecrets] = useState<any[]>([]);
+  const [loadingSecrets, setLoadingSecrets] = useState(false);
 
   useEffect(() => {
     loadServices();
@@ -66,6 +78,45 @@ export const ServiceManager = () => {
     }
   }, [isModalOpen]);
 
+  useEffect(() => {
+    const fetchSecrets = async () => {
+      if (!focusedServiceId) {
+        setServiceSecrets([]);
+        return;
+      }
+      setLoadingSecrets(true);
+      try {
+        // Fetch all secrets associated with any account linked to this service
+        // @ts-ignore
+        const secrets = await window.electron.ipcRenderer.invoke(
+          'sqlite:all',
+          `SELECT ses.*, se.username, e.email as accountEmail 
+           FROM service_emails_secrets ses
+           JOIN service_emails se ON ses.service_email_id = se.id
+           JOIN emails e ON se.email_id = e.id
+           WHERE se.service_id = ?`,
+          [focusedServiceId],
+        );
+        setServiceSecrets(secrets || []);
+      } catch (err) {
+        console.error('Failed to load service secrets', err);
+      } finally {
+        setLoadingSecrets(false);
+      }
+    };
+    fetchSecrets();
+  }, [focusedServiceId]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const loadServices = async () => {
     setLoading(true);
     try {
@@ -87,6 +138,7 @@ export const ServiceManager = () => {
           websiteUrl: row.url || '',
           defaultTags: row.tags ? JSON.parse(row.tags) : [],
           defaultCategories: row.category ? JSON.parse(row.category) : [],
+          metadata: row.metadata ? JSON.parse(row.metadata) : [],
           ...config,
         } as ServiceProviderConfig;
       });
@@ -180,25 +232,6 @@ export const ServiceManager = () => {
     }
   };
 
-  // Helper component for favicon display with fallback
-  const FaviconIcon = ({ url }: { url: string }) => {
-    const [error, setError] = useState(false);
-    const faviconUrl = getFaviconUrl(url);
-
-    if (error || !faviconUrl) {
-      return <Database className="h-5 w-5 text-muted-foreground" />;
-    }
-
-    return (
-      <img
-        src={faviconUrl}
-        alt="favicon"
-        className="w-5 h-5 object-contain"
-        onError={() => setError(true)}
-      />
-    );
-  };
-
   // Validation function for individual fields
   const validateField = useCallback(
     (name: string, value: string) => {
@@ -290,8 +323,7 @@ export const ServiceManager = () => {
         editingService.name || '',
         editingService.websiteUrl || '',
         editingService.id,
-      ) ||
-      (editingService.commonFields && !validateSchema(editingService.commonFields as any))
+      )
     ) {
       return;
     }
@@ -302,8 +334,8 @@ export const ServiceManager = () => {
       // @ts-ignore
       await window.electron.ipcRenderer.invoke(
         'sqlite:run',
-        `INSERT OR REPLACE INTO services (id, name, url, tags, category, description, config_json, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        `INSERT OR REPLACE INTO services (id, name, url, tags, category, description, metadata, config_json, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
         [
           id,
           editingService.name,
@@ -311,6 +343,7 @@ export const ServiceManager = () => {
           JSON.stringify(editingService.defaultTags || []),
           JSON.stringify(editingService.defaultCategories || []),
           (editingService as any).description || '',
+          JSON.stringify(editingService.metadata || []),
           JSON.stringify({}), // Empty config for now as we simplified
         ],
       );
@@ -330,44 +363,6 @@ export const ServiceManager = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this service?')) return;
-
-    try {
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('sqlite:run', 'DELETE FROM services WHERE id = ?', [
-        id,
-      ]);
-
-      await loadServices();
-
-      // Trigger sync status change
-      window.dispatchEvent(
-        new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: true } }),
-      );
-
-      console.log('[ServiceManager] Deleted service from SQLite:', id);
-    } catch (error) {
-      console.error('Failed to delete service:', error);
-      alert('Failed to delete service. Please try again.');
-    }
-  };
-
-  const getBadgeColor = (text: string) => {
-    const colors = [
-      { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/20' },
-      { bg: 'bg-purple-500/10', text: 'text-purple-500', border: 'border-purple-500/20' },
-      { bg: 'bg-green-500/10', text: 'text-green-500', border: 'border-green-500/20' },
-      { bg: 'bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-500/20' },
-      { bg: 'bg-pink-500/10', text: 'text-pink-500', border: 'border-pink-500/20' },
-      { bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/20' },
-      { bg: 'bg-amber-500/10', text: 'text-amber-500', border: 'border-amber-500/20' },
-      { bg: 'bg-teal-500/10', text: 'text-teal-500', border: 'border-teal-500/20' },
-    ];
-    const hash = text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  };
-
   const handleRegisterAllGlobal = async () => {
     for (const service of allDetectedServices) {
       const edits = pendingEditedValues[service.url] || {
@@ -382,8 +377,8 @@ export const ServiceManager = () => {
         // @ts-ignore
         await window.electron.ipcRenderer.invoke(
           'sqlite:run',
-          `INSERT OR REPLACE INTO services (id, name, url, tags, category, description, config_json, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+          `INSERT OR REPLACE INTO services (id, name, url, tags, category, description, metadata, config_json, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
           [
             serviceId,
             edits.name,
@@ -391,6 +386,7 @@ export const ServiceManager = () => {
             JSON.stringify(edits.tags.split(',').map((t: string) => t.trim())),
             JSON.stringify([edits.category]),
             edits.description,
+            JSON.stringify([]),
             JSON.stringify({}),
           ],
         );
@@ -412,95 +408,351 @@ export const ServiceManager = () => {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative" ref={containerRef}>
       {/* Render Table or Sync View */}
       {!isSyncView ? (
-        <div className="flex-1 overflow-auto custom-scrollbar bg-card/10 backdrop-blur-md border-l border-border/50">
-          <Table className="border-collapse table-fixed w-full">
-            <TableHeader className="sticky top-0 z-30">
-              <TableRow className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
-                <HeaderCell className="pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-                  Service
-                </HeaderCell>
-                <HeaderCell className="w-[180px] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-                  Tags
-                </HeaderCell>
-                <HeaderCell className="w-[180px] pr-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-                  Categories
-                </HeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="text-center py-20 text-muted-foreground/30 font-mono text-xs"
-                  >
-                    Loading service registry...
-                  </TableCell>
+        <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            <Table className="border-collapse table-fixed w-full">
+              <TableHeader className="sticky top-0 z-30">
+                <TableRow className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
+                  <HeaderCell className="pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+                    Service
+                  </HeaderCell>
+                  <HeaderCell className="w-[180px] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+                    Tags
+                  </HeaderCell>
+                  <HeaderCell className="w-[180px] pr-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+                    Categories
+                  </HeaderCell>
                 </TableRow>
-              ) : rows.length === 0 ? (
-                <TableRow className="hover:bg-transparent border-none">
-                  <TableCell colSpan={4} className="h-64 text-center">
-                    <div className="flex flex-col items-center gap-4 opacity-20">
-                      <Database className="w-16 h-16" />
-                      <span className="text-[12px] font-black uppercase tracking-[0.3em]">
-                        No services found. Add one to get started.
-                      </span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                rows.map((service) => (
-                  <TableRow
-                    key={service.id}
-                    className="group transition-all cursor-pointer border-b border-border/20 h-[56px] hover:bg-table-hoverItemBodyBg/50"
-                    onClick={() => handleEdit(service)}
-                  >
-                    <TableCell className="pl-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-6 h-6 flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden shrink-0">
-                          <img
-                            src={getFaviconUrl(service.websiteUrl)}
-                            alt={service.name}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-foreground text-[14px] font-bold tracking-tight truncate">
-                            {service.name}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground/40 font-mono truncate">
-                            {service.websiteUrl}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 overflow-hidden">
-                        {(service.defaultTags || [])
-                          .filter((t) => t.trim())
-                          .slice(0, 3)
-                          .map((tag, idx) => (
-                            <Badge key={idx} variant="outline" className="text-[9px] uppercase">
-                              {tag}
-                            </Badge>
-                          ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="pr-6">
-                      {service.defaultCategories?.[0] && (
-                        <Badge variant="ghost-warning" className="text-[10px] uppercase font-black">
-                          {service.defaultCategories[0]}
-                        </Badge>
-                      )}
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="text-center py-20 text-muted-foreground/30 font-mono text-xs"
+                    >
+                      Loading service registry...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : rows.length === 0 ? (
+                  <TableRow className="hover:bg-transparent border-none">
+                    <TableCell colSpan={3} className="h-64 text-center">
+                      <div className="flex flex-col items-center gap-4 opacity-20">
+                        <Database className="w-16 h-16" />
+                        <span className="text-[12px] font-black uppercase tracking-[0.3em]">
+                          No services found. Add one to get started.
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows
+                    .filter((s) => !focusedServiceId || s.id === focusedServiceId)
+                    .map((service) => (
+                      <div key={service.id} className="contents">
+                        <TableRow
+                          className={cn(
+                            'group transition-all cursor-pointer border-b border-border/20 h-[56px] hover:bg-table-hoverItemBodyBg/50',
+                            focusedServiceId === service.id &&
+                              'bg-primary/5 sticky top-0 z-40 backdrop-blur-md border-b-primary/30',
+                          )}
+                          onClick={() =>
+                            setFocusedServiceId(focusedServiceId === service.id ? null : service.id)
+                          }
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setContextMenu({
+                              x: e.clientX,
+                              y: e.clientY,
+                              serviceId: service.id,
+                            });
+                          }}
+                        >
+                          <TableCell className="pl-6">
+                            <div className="flex items-center gap-4">
+                              {focusedServiceId === service.id && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFocusedServiceId(null);
+                                  }}
+                                  className="p-1 px-2 rounded-lg bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest hover:bg-primary/20 transition-all mr-2"
+                                >
+                                  Back
+                                </button>
+                              )}
+                              <div className="w-6 h-6 flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden shrink-0">
+                                <img
+                                  src={getFaviconUrl(service.websiteUrl)}
+                                  alt={service.name}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-foreground text-[14px] font-bold tracking-tight truncate">
+                                  {service.name}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground/40 font-mono truncate">
+                                  {service.websiteUrl}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 overflow-hidden">
+                              {(service.defaultTags || [])
+                                .filter((t) => t.trim())
+                                .slice(0, 3)
+                                .map((tag, idx) => (
+                                  <Badge
+                                    key={idx}
+                                    variant="outline"
+                                    className="text-[9px] uppercase"
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="pr-6">
+                            {service.defaultCategories?.[0] && (
+                              <Badge
+                                variant="ghost-warning"
+                                className="text-[10px] uppercase font-black"
+                              >
+                                {service.defaultCategories[0]}
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+
+                        {focusedServiceId === service.id && (
+                          <TableRow className="hover:bg-transparent border-none">
+                            <TableCell colSpan={3} className="p-0">
+                              <div className="bg-background/20 backdrop-blur-xl border-b border-border/10 animate-in fade-in duration-300">
+                                {/* Minimalism Navbar for Secrets */}
+                                <div className="h-12 px-10 flex items-center justify-between gap-4 border-b border-border/5 bg-white/[0.01]">
+                                  <div className="flex-1 max-w-sm">
+                                    <Input
+                                      size="sm"
+                                      placeholder={`Search registry vault for ${service.name}...`}
+                                      value={secretSearch}
+                                      onChange={(e) => setSecretSearch(e.target.value)}
+                                      leftIcon={Search}
+                                      className="!h-8 bg-muted/5 border-border/5 focus:bg-muted/10 rounded-lg text-[11px]"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      onClick={() => handleEdit(service)}
+                                      className="px-4 py-1.5 rounded-lg bg-muted/50 text-foreground text-[9px] font-black uppercase tracking-widest hover:bg-muted transition-all border border-border/50"
+                                    >
+                                      Configure
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="bg-transparent overflow-hidden">
+                                  <Table className="w-full border-collapse">
+                                    <TableHeader>
+                                      <TableRow className="bg-muted/5 hover:bg-muted/5 border-b border-border/10 h-10">
+                                        <HeaderCell className="text-[10px] font-black uppercase tracking-widest pl-10">
+                                          Account Identity
+                                        </HeaderCell>
+                                        <HeaderCell className="text-[10px] font-black uppercase tracking-widest">
+                                          Credential Key
+                                        </HeaderCell>
+                                        <HeaderCell className="text-[10px] font-black uppercase tracking-widest">
+                                          Value
+                                        </HeaderCell>
+                                        <HeaderCell className="text-[10px] font-black uppercase tracking-widest pr-10 text-right">
+                                          Actions
+                                        </HeaderCell>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {loadingSecrets ? (
+                                        <TableRow>
+                                          <TableCell
+                                            colSpan={4}
+                                            className="text-center py-16 opacity-30"
+                                          >
+                                            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+                                          </TableCell>
+                                        </TableRow>
+                                      ) : serviceSecrets.filter(
+                                          (s) =>
+                                            s.secret_name
+                                              .toLowerCase()
+                                              .includes(secretSearch.toLowerCase()) ||
+                                            s.username
+                                              .toLowerCase()
+                                              .includes(secretSearch.toLowerCase()) ||
+                                            s.accountEmail
+                                              .toLowerCase()
+                                              .includes(secretSearch.toLowerCase()),
+                                        ).length === 0 ? (
+                                        <TableRow>
+                                          <TableCell
+                                            colSpan={4}
+                                            className="text-center py-16 opacity-20"
+                                          >
+                                            <div className="flex flex-col items-center gap-2">
+                                              <Database className="w-8 h-8 mb-1 opacity-20" />
+                                              <p className="text-[10px] font-black uppercase tracking-widest">
+                                                {secretSearch
+                                                  ? 'No matching registry records'
+                                                  : 'No active links'}
+                                              </p>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      ) : (
+                                        serviceSecrets
+                                          .filter(
+                                            (s) =>
+                                              s.secret_name
+                                                .toLowerCase()
+                                                .includes(secretSearch.toLowerCase()) ||
+                                              s.username
+                                                .toLowerCase()
+                                                .includes(secretSearch.toLowerCase()) ||
+                                              s.accountEmail
+                                                .toLowerCase()
+                                                .includes(secretSearch.toLowerCase()),
+                                          )
+                                          .map((secret) => (
+                                            <TableRow
+                                              key={secret.id}
+                                              className="group/item border-b border-border/10 last:border-0 hover:bg-white/[0.03] transition-colors h-14"
+                                            >
+                                              <TableCell className="pl-10 font-mono text-[11px] py-3">
+                                                <div className="flex flex-col">
+                                                  <span className="text-foreground/90 font-bold leading-none">
+                                                    {secret.username}
+                                                  </span>
+                                                  <span className="text-muted-foreground/40 text-[9px] mt-1">
+                                                    {secret.accountEmail}
+                                                  </span>
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="font-mono text-[11px] py-3 text-primary/70">
+                                                {secret.secret_name}
+                                              </TableCell>
+                                              <TableCell className="font-mono text-[11px] py-3">
+                                                <div className="flex items-center gap-3">
+                                                  <span className="tracking-[0.3em] opacity-20 group-hover/item:opacity-60 transition-opacity">
+                                                    ••••••••
+                                                  </span>
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="pr-10 text-right py-3">
+                                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover/item:opacity-100 transition-all translate-x-2 group-hover/item:translate-x-0">
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      navigator.clipboard.writeText(
+                                                        secret.secret_value,
+                                                      );
+                                                    }}
+                                                    className="p-1.5 rounded-lg hover:bg-primary/20 text-primary transition-all"
+                                                    title="Copy secret value"
+                                                  >
+                                                    <Database className="w-4 h-4" />
+                                                  </button>
+                                                </div>
+                                              </TableCell>
+                                            </TableRow>
+                                          ))
+                                      )}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </div>
+                    ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Service Footer */}
+          <div className="h-12 border-t border-border/50 bg-table-headerBg/80 backdrop-blur-xl flex items-center px-6 shrink-0 z-40">
+            <div className="flex-1 text-[10px] text-muted-foreground/40 font-black uppercase tracking-[0.25em]">
+              Service Registry Capacity
+            </div>
+            <div className="text-[11px] text-foreground font-mono font-black tracking-tighter">
+              {rows.length}{' '}
+              <span className="text-[9px] text-primary/70 ml-1 tracking-widest font-black uppercase">
+                Registered
+              </span>
+            </div>
+          </div>
+
+          {/* Context Menu Component */}
+          {contextMenu && (
+            <Portal>
+              <div
+                ref={contextMenuRef}
+                className="fixed bg-popover border border-border/50 rounded-xl shadow-2xl py-1.5 z-[1000] min-w-[160px] animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl"
+                style={{ top: contextMenu.y, left: contextMenu.x }}
+              >
+                <button
+                  onClick={() => {
+                    handleEdit(services[contextMenu.serviceId]);
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-muted/50 flex items-center gap-3 transition-colors"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-primary" />
+                  Edit Configuration
+                </button>
+                <button
+                  onClick={() => {
+                    setFocusedServiceId(contextMenu.serviceId);
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-muted/50 flex items-center gap-3 transition-colors"
+                >
+                  <Lock className="w-3.5 h-3.5 text-orange-500" />
+                  Manage Secrets
+                </button>
+                <div className="h-px bg-border/30 my-1 mx-2" />
+                <button
+                  onClick={async () => {
+                    if (
+                      confirm(
+                        `Are you sure you want to remove "${services[contextMenu.serviceId].name}"?`,
+                      )
+                    ) {
+                      try {
+                        // @ts-ignore
+                        await window.electron.ipcRenderer.invoke(
+                          'sqlite:run',
+                          'DELETE FROM services WHERE id = ?',
+                          [contextMenu.serviceId],
+                        );
+                        await loadServices();
+                      } catch (e) {
+                        console.error('Delete failed', e);
+                      }
+                    }
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-destructive/10 text-destructive/80 hover:text-destructive flex items-center gap-3 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete Service
+                </button>
+              </div>
+            </Portal>
+          )}
         </div>
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden bg-background">
@@ -798,10 +1050,11 @@ export const ServiceManager = () => {
                 onBlur={() =>
                   validateField('category', editingService.defaultCategories?.[0] || '')
                 }
-                error={errors.category}
               />
             </div>
+          </div>
 
+          <div className="space-y-4">
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
                 Tags
@@ -880,29 +1133,42 @@ export const ServiceManager = () => {
             </div>
           </div>
 
-          {/* Description */}
-          <div className="space-y-2.5">
-            <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Description
-            </label>
-            <textarea
-              value={(editingService as any).description || ''}
-              onChange={(e) => {
-                setEditingService((prev) => ({ ...prev, description: e.target.value }));
-                if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
-              }}
-              onBlur={() => validateField('description', (editingService as any).description || '')}
-              placeholder="Detailed description of the service and its purpose..."
-              className={cn(
-                'w-full bg-input-background border rounded-xl px-4 py-3 text-sm focus:outline-none min-h-[120px] resize-none transition-all',
-                errors.description ? 'border-destructive' : 'border-border focus:border-primary/50',
+          <div className="space-y-4">
+            <div className="space-y-2.5">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                Description
+              </label>
+              <textarea
+                value={(editingService as any).description || ''}
+                onChange={(e) => {
+                  setEditingService((prev) => ({ ...prev, description: e.target.value }));
+                  if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
+                }}
+                onBlur={() =>
+                  validateField('description', (editingService as any).description || '')
+                }
+                placeholder="Detailed description of the service and its purpose..."
+                className={cn(
+                  'w-full bg-input-background border rounded-xi px-4 py-3 text-sm focus:outline-none min-h-[120px] resize-none transition-all',
+                  errors.description
+                    ? 'border-destructive'
+                    : 'border-border focus:border-primary/50',
+                )}
+              />
+              {errors.description && (
+                <p className="mt-1.5 text-[11px] font-bold text-destructive ml-1">
+                  {errors.description}
+                </p>
               )}
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <ServiceMetadataBuilder
+              definitionOnly={true}
+              metadata={editingService.metadata || []}
+              onChange={(metadata) => setEditingService((prev) => ({ ...prev, metadata }))}
             />
-            {errors.description && (
-              <p className="mt-1.5 text-[11px] font-bold text-destructive ml-1">
-                {errors.description}
-              </p>
-            )}
           </div>
         </div>
       </Drawer>

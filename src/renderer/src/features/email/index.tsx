@@ -109,6 +109,9 @@ const EmailManager = () => {
     message: '',
     type: 'info' as 'info' | 'success' | 'error' | 'warning',
   });
+  const [activeTab, setActiveTab] = useState<
+    'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions'
+  >('info');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [hardDeleteConfirmId, setHardDeleteConfirmId] = useState<string | null>(null);
   const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
@@ -127,26 +130,55 @@ const EmailManager = () => {
     setLoading(true);
     setError(null);
     try {
+      // Fetch both accounts and their linked services
       // @ts-ignore
-      const rows = await window.electron.ipcRenderer.invoke(
-        'sqlite:all',
-        'SELECT * FROM emails ORDER BY created_at DESC',
-      );
+      const [rows, serviceLinks] = await Promise.all([
+        window.electron.ipcRenderer.invoke(
+          'sqlite:all',
+          'SELECT * FROM emails ORDER BY created_at DESC',
+        ),
+        window.electron.ipcRenderer.invoke(
+          'sqlite:all',
+          `SELECT se.*, s.name as serviceName, s.url as serviceUrl, s.metadata as serviceMetadataDef,
+                  (SELECT COUNT(*) FROM service_emails_secrets ses WHERE ses.service_email_id = se.id) as secretCount
+           FROM service_emails se 
+           JOIN services s ON se.service_id = s.id`,
+        ),
+      ]);
 
-      const loadedAccounts: Account[] = rows.map((row: any) => ({
-        id: row.id,
-        email: row.email,
-        password: row.password || '',
-        status: row.status,
-        phoneNumber: row.phone_number,
-        recoveryEmail: row.recovery_email,
-        totpSecretKey: row.totp_secret_key,
-        backupCodes: row.backup_codes,
-        scheduledDeletionAt: row.scheduled_deletion_at,
-        lastUsedAt: row.last_used_at,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      }));
+      const loadedAccounts: Account[] = rows.map((row: any) => {
+        // Find services linked to this email
+        const linkedServices = serviceLinks
+          .filter((link: any) => link.email_id === row.id)
+          .map((link: any) => ({
+            id: link.id,
+            serviceId: link.service_id,
+            name: link.serviceName,
+            url: link.serviceUrl,
+            username: link.username,
+            password: link.password,
+            notes: link.notes,
+            status: link.status,
+            secretCount: link.secretCount || 0,
+            metadata: link.metadata ? JSON.parse(link.metadata) : {},
+          }));
+
+        return {
+          id: row.id,
+          email: row.email,
+          password: row.password || '',
+          status: row.status,
+          phoneNumber: row.phone_number,
+          recoveryEmail: row.recovery_email,
+          totpSecretKey: row.totp_secret_key,
+          backupCodes: row.backup_codes,
+          scheduledDeletionAt: row.scheduled_deletion_at,
+          lastUsedAt: row.last_used_at,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          services: linkedServices,
+        };
+      });
 
       setAccounts(loadedAccounts);
       console.log('[EmailManager] Data loaded successfully, count:', loadedAccounts.length);
@@ -432,7 +464,7 @@ const EmailManager = () => {
       {/* Main Content: Table */}
       <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
         <div className="flex-1 bg-card/30 border-b border-border/50 overflow-hidden flex flex-col">
-          {loading ? (
+          {loading && accounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground opacity-50">
               <Loader2 className="w-10 h-10 animate-spin text-primary" />
               <span className="text-[10px] font-bold tracking-[0.3em] uppercase">
@@ -488,6 +520,9 @@ const EmailManager = () => {
               onRestore={(id) => setRestoreConfirmId(id)}
               onHardDelete={(id) => setHardDeleteConfirmId(id)}
               onSaveChanges={(oldAcc, newAcc) => setDiffPayload({ old: oldAcc, new: newAcc })}
+              onRefreshData={loadData}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
             />
           )}
         </div>

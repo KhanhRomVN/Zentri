@@ -2,6 +2,7 @@ import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
+import * as crypto from 'crypto';
 import { setupEmailHandlers } from './email';
 import { dbManager } from '../database';
 import { exec } from 'child_process';
@@ -231,6 +232,7 @@ export function setupEventHandlers() {
   setupStorageHandlers();
   setupDatabaseHandlers();
   setupEmailHandlers();
+  setupServiceHandlers();
 
   // Streaming Fetch Handler
   ipcMain.handle('util:fetch-stream', async (event, input: any) => {
@@ -412,6 +414,48 @@ export function setupEventHandlers() {
       }
     },
   );
+}
+
+function setupServiceHandlers() {
+  ipcMain.handle('service:get-all', async () => {
+    try {
+      const services = await dbManager.all('SELECT * FROM services ORDER BY name ASC');
+      return services.map((s: any) => ({
+        ...s,
+        tags: s.tags ? JSON.parse(s.tags) : [],
+        category: s.category ? JSON.parse(s.category) : [],
+        metadata: s.metadata ? JSON.parse(s.metadata) : [],
+      }));
+    } catch (error) {
+      console.error('[service:get-all] FAILED:', error);
+      return [];
+    }
+  });
+
+  ipcMain.handle('service:create', async (_event, data: any) => {
+    try {
+      const id = crypto.randomUUID();
+      const query = `
+        INSERT INTO services (id, name, url, tags, category, description, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+      const params = [
+        id,
+        data.name,
+        data.url || null,
+        data.tags || '[]',
+        data.category || '[]',
+        data.description || null,
+        data.metadata || '[]',
+      ];
+      await dbManager.run(query, params);
+      const newService = await dbManager.get('SELECT * FROM services WHERE id = ?', [id]);
+      return newService;
+    } catch (error) {
+      console.error('[service:create] FAILED:', error);
+      throw error;
+    }
+  });
 }
 
 // Export for cleanup on app quit

@@ -1,12 +1,37 @@
 import { Email, Service, ActivityItem, Cookie } from '../../../../../shared/types';
+import { MetadataItem } from '../../../shared/components/ui/service/ServiceMetadataBuilder';
+
+export type { MetadataItem };
 
 export type { Service, ActivityItem, Cookie };
 
-export interface ServiceItem extends Service {}
+export interface ServiceProviderConfig {
+  id: string;
+  name: string;
+  websiteUrl: string;
+  defaultTags: string[];
+  defaultCategories: string[];
+  description: string;
+  metadata?: MetadataItem[];
+}
 
-export interface Account extends Email {
+export interface LinkedService {
+  id: string;
+  serviceId: string;
+  name: string;
+  url: string;
+  username?: string;
+  password?: string;
+  notes?: string;
+  status: string;
+  secretCount?: number;
+  metadata?: any;
+}
+
+export interface Account extends Omit<Email, 'services'> {
   avatar?: string;
   twoFactorEnabled?: boolean;
+  services?: LinkedService[];
 }
 
 export interface ProfileMetadata {

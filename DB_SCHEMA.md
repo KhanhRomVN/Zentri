@@ -48,7 +48,7 @@ Liên kết giữa Email và Dịch vụ.
 | `created_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP | Ngày tạo                            |
 | `updated_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP | Ngày cập nhật gần nhất              |
 
-### Bảng `service_secrets`
+### Bảng `service_emails_secrets`
 
 Lưu trữ các thông tin bí mật bổ sung cho mỗi dịch vụ của email.
 
@@ -58,6 +58,7 @@ Lưu trữ các thông tin bí mật bổ sung cho mỗi dịch vụ của email
 | `service_email_id` | TEXT     | REFERENCES service_emails(id) | Liên kết với dịch vụ   |
 | `secret_name`      | TEXT     | NOT NULL                      | Tên của thông tin mật  |
 | `secret_value`     | TEXT     |                               | Giá trị bí mật         |
+| `secret_type`      | TEXT     | DEFAULT 'password'            | Loại bí mật (totp,...) |
 | `created_at`       | DATETIME | DEFAULT CURRENT_TIMESTAMP     | Ngày tạo               |
 | `updated_at`       | DATETIME | DEFAULT CURRENT_TIMESTAMP     | Ngày cập nhật gần nhất |
 
