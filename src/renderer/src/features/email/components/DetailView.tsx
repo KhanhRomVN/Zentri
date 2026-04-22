@@ -324,7 +324,10 @@ const DetailView: FC<DetailViewProps> = ({
             ) : activeTab === 'fingerprint' ? (
               <FingerprintTab email={editedAccount?.email || ''} />
             ) : (
-              <SessionsTab email={editedAccount?.email || ''} />
+              <SessionsTab
+                email={editedAccount?.email || ''}
+                accountId={focusedAccount?.id || ''}
+              />
             )}
           </div>
         </div>

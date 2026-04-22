@@ -173,3 +173,12 @@
   scrollbar-width: thin;
   scrollbar-color: rgb(var(--border) / 0.5) transparent;
 }
+/* Hide number spinners */
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+}

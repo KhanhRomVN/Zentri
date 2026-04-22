@@ -68,7 +68,7 @@ const NAV_ITEMS = [
     href: '/proxy',
     icon: Network,
     color: '#06b6d4', // cyan-500
-    disabled: true,
+    disabled: false,
   },
   {
     title: 'Settings',

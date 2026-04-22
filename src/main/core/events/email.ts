@@ -370,8 +370,9 @@ export function setupEmailHandlers() {
     },
   );
 
-  // Global set to track active inbox fetches and prevent race conditions
+  // Global sets to track active fetches and prevent race conditions
   const activeInboxFetches = new Set<string>();
+  const activeFingerprintFetches = new Set<string>();
 
   ipcMain.handle('email:get-inbox', async (_event, { email }: { email: string }) => {
     if (activeInboxFetches.has(email)) {
@@ -385,13 +386,13 @@ export function setupEmailHandlers() {
       const userDataPath = app.getPath('userData');
 
       // 1. Determine executable path
-      let executablePath = '';
       const possiblePaths = [
         '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
         '/usr/bin/chromium',
         '/usr/bin/chromium-browser',
         '/snap/bin/chromium',
-        '/usr/bin/google-chrome-stable',
+        '/snap/bin/google-chrome',
       ];
       for (const p of possiblePaths) {
         if (fs.existsSync(p)) {
@@ -399,7 +400,11 @@ export function setupEmailHandlers() {
           break;
         }
       }
-      if (!executablePath) throw new Error('Browser not found');
+      if (!executablePath) {
+        throw new Error(
+          'Chromium/Chrome binary not found. Please install google-chrome-stable or chromium-browser.',
+        );
+      }
 
       // 2. Setup Real Profile Path
       const { dbManager } = await import('../database');
@@ -411,17 +416,12 @@ export function setupEmailHandlers() {
         realProfileDir = path.join(userDataPath, 'browser_profiles', email);
       }
 
-      // 3. Force Cleanup Blocker Processes (Real Profile needed for Cookie Encryption)
+      console.log(`[email:get-inbox] Executable: ${executablePath}, Profile: ${realProfileDir}`);
       const { execSync } = await import('child_process');
       try {
-        // pkill -f is very effective at catching any process using this profile path in its arguments
-        console.log(`[email:get-inbox] Terminating any orphan processes for ${email}`);
         execSync(`pkill -9 -f "${realProfileDir}"`, { stdio: 'ignore' });
-        // Mandatory sleep to let OS release the handles
         await new Promise((r) => setTimeout(r, 2000));
-      } catch (e) {
-        // No processes found
-      }
+      } catch (e) {}
 
       // Remove stale lock files
       const lockFile = path.join(realProfileDir, 'SingletonLock');
@@ -443,20 +443,26 @@ export function setupEmailHandlers() {
       browser = await puppeteer.launch({
         executablePath,
         userDataDir: realProfileDir,
-        headless: true, // Revert to standard headless
-        env: {
-          ...process.env,
-          DISPLAY: process.env.DISPLAY || ':0',
-        },
+        headless: true,
+        dumpio: true,
+        env: { ...process.env },
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
+          '--disable-gpu',
+          '--disable-vulkan',
+          '--disable-gpu-rasterization',
+          '--disable-software-rasterizer',
           '--no-first-run',
           '--no-default-browser-check',
           '--disable-dev-shm-usage',
           '--disable-features=LockProfile',
-          '--password-store=gnome-libsecret', // Use Linux keyring
+          '--password-store=gnome-libsecret',
           '--window-size=1280,720',
+          '--disable-breakpad',
+          '--disable-crash-reporter',
+          '--no-zygote',
+          '--ozone-platform=x11',
         ],
       });
 
@@ -704,18 +710,39 @@ export function setupEmailHandlers() {
         realProfileDir = path.join(userDataPath, 'browser_profiles', email);
       }
 
+      console.log(
+        `[email:open-inbox-debug] Executable: ${executablePath}, Profile: ${realProfileDir}`,
+      );
       const { execSync } = await import('child_process');
       try {
         execSync(`pkill -9 -f "${realProfileDir}"`, { stdio: 'ignore' });
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 2000));
       } catch (e) {}
 
       browser = await puppeteer.launch({
         executablePath,
         userDataDir: realProfileDir,
         headless: false, // Visible for debug
-        env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' },
-        args: ['--no-sandbox', '--password-store=gnome-libsecret', '--window-size=1280,720'],
+        dumpio: true,
+        env: { ...process.env },
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-gpu',
+          '--disable-vulkan',
+          '--disable-gpu-rasterization',
+          '--disable-software-rasterizer',
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--disable-dev-shm-usage',
+          '--disable-features=LockProfile',
+          '--password-store=gnome-libsecret',
+          '--window-size=1280,720',
+          '--disable-breakpad',
+          '--disable-crash-reporter',
+          '--no-zygote',
+          '--ozone-platform=x11',
+        ],
       });
 
       const page = await browser.newPage();
@@ -730,6 +757,12 @@ export function setupEmailHandlers() {
   });
 
   ipcMain.handle('email:get-fingerprint', async (_event, { email }: { email: string }) => {
+    if (activeFingerprintFetches.has(email)) {
+      console.log(`[email:get-fingerprint] Fetch already in progress for ${email}, skipping...`);
+      return { success: false, error: 'FETCH_IN_PROGRESS' };
+    }
+    activeFingerprintFetches.add(email);
+
     let browser;
     try {
       const userDataPath = app.getPath('userData');
@@ -754,46 +787,245 @@ export function setupEmailHandlers() {
         }
       }
 
+      console.log(
+        `[email:get-fingerprint] Executable: ${executablePath}, Profile: ${realProfileDir}`,
+      );
       try {
         const { execSync } = await import('child_process');
         execSync(`pkill -9 -f "${realProfileDir}"`, { stdio: 'ignore' });
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 2000));
       } catch (e) {}
+
+      // Remove stale lock files
+      const stalefiles = [
+        path.join(realProfileDir, 'SingletonLock'),
+        path.join(realProfileDir, 'DevToolsActivePort'),
+        path.join(realProfileDir, 'SingletonCookie'),
+        path.join(realProfileDir, 'SingletonSocket'),
+      ];
+      stalefiles.forEach((f) => {
+        if (fs.existsSync(f)) {
+          try {
+            fs.unlinkSync(f);
+          } catch (e) {}
+        }
+      });
 
       browser = await puppeteer.launch({
         executablePath,
         userDataDir: realProfileDir,
         headless: true,
-        env: {
-          ...process.env,
-          DISPLAY: process.env.DISPLAY || ':0',
-        },
+        dumpio: true, // PIPE BROWSER LOGS TO TERMINAL
+        env: { ...process.env },
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
+          '--disable-gpu',
+          '--disable-vulkan', // EXPLICIT
+          '--disable-gpu-rasterization', // EXPLICIT
+          '--disable-software-rasterizer',
           '--no-first-run',
           '--no-default-browser-check',
           '--disable-dev-shm-usage',
           '--disable-features=LockProfile',
           '--password-store=gnome-libsecret',
           '--window-size=1280,720',
+          '--disable-breakpad',
+          '--disable-crash-reporter',
+          '--no-zygote',
+          '--ozone-platform=x11',
         ],
       });
 
       const page = await browser.newPage();
 
-      // Probe Geolocation
-      let geoData = {};
+      // 1. Probe BrowserLeaks
+      await page.goto('https://browserleaks.com/ip', { waitUntil: 'networkidle2', timeout: 30000 });
+
+      const leaksData = await page.evaluate(() => {
+        const results: any = {
+          ip: {},
+          location: {},
+          connectivity: {},
+          webrtc: {},
+          dns: {},
+          fingerprint: {},
+          headers: {},
+        };
+
+        const tables = Array.from(document.querySelectorAll('table.wb'));
+
+        const getDataFromTable = (table: HTMLTableElement) => {
+          const rows = Array.from(table.querySelectorAll('tr'));
+          const tableData: any = {};
+          rows.forEach((row) => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 2) {
+              const key = cells[0].innerText.trim();
+              const value = cells[1].innerText.trim();
+              if (key) tableData[key] = value;
+            }
+          });
+          return tableData;
+        };
+
+        // Extract using specific IDs first (most reliable)
+        const getById = (id: string) => document.getElementById(id)?.innerText.trim() || 'N/A';
+
+        results.ip = {
+          address: getById('client-ipv4'),
+          hostname: getById('hostname'),
+          ipv6: getById('client-ipv6'),
+        };
+
+        results.webrtc = {
+          local: getById('rtc-local'),
+          public: getById('rtc-public'),
+        };
+
+        // Map all tables for general info
+        const allData: any = {};
+        tables.forEach((t) => {
+          Object.assign(allData, getDataFromTable(t as HTMLTableElement));
+        });
+
+        results.location = {
+          country: allData['Country'] || 'N/A',
+          region: allData['State/Region'] || 'N/A',
+          city: allData['City'] || 'N/A',
+          isp: allData['ISP'] || 'N/A',
+          organization: allData['Organization'] || 'N/A',
+          usageType: allData['Usage Type'] || 'N/A',
+          network: allData['Network'] || 'N/A',
+        };
+
+        results.connectivity = {
+          timezone: allData['Timezone'] || 'N/A',
+          localTime: allData['Local Time'] || 'N/A',
+          coords: document.getElementById('coords-data')?.getAttribute('data-lat')
+            ? {
+                lat: document.getElementById('coords-data')?.getAttribute('data-lat'),
+                lon: document.getElementById('coords-data')?.getAttribute('data-lon'),
+              }
+            : null,
+        };
+
+        results.fingerprint = {
+          tcp: allData['OS'] || 'N/A',
+          mtu: allData['MTU'] || 'N/A',
+          linkType: allData['Link Type'] || 'N/A',
+          ja4: getById('ja4'),
+          ja3: getById('ja3-hash'),
+          akamai: getById('akamai-hash'),
+        };
+
+        // Headers
+        const headerRows = Array.from(document.querySelectorAll('#headers tr'));
+        headerRows.forEach((row) => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length === 2) {
+            results.headers[cells[0].innerText.trim()] = cells[1].innerText.trim();
+          }
+        });
+
+        return results;
+      });
+
+      // 1.1 Probe WebRTC Detailed
       try {
-        await page.goto('http://ip-api.com/json', { waitUntil: 'networkidle2', timeout: 10000 });
-        geoData = JSON.parse(await page.evaluate(() => document.body.innerText));
+        await page.goto('https://browserleaks.com/webrtc', {
+          waitUntil: 'networkidle2',
+          timeout: 15000,
+        });
+
+        const webrtcDetails = await page.evaluate(() => {
+          const getById = (id: string) => document.getElementById(id)?.innerText.trim() || 'N/A';
+          const getValById = (id: string) =>
+            (document.getElementById(id) as HTMLTextAreaElement)?.value?.trim() || 'N/A';
+
+          return {
+            support: {
+              peerConnection: getById('rtc-peerconnection'),
+              dataChannel: getById('rtc-datachannel'),
+            },
+            leak: getById('rtc-leak'),
+            publicIp: getById('rtc-public'),
+            localIp: getById('rtc-local'),
+            sdp: getValById('rtc-sdp'),
+            devices: getById('rtc-device-ids'),
+          };
+        });
+
+        leaksData.webrtc = {
+          ...leaksData.webrtc,
+          ...webrtcDetails,
+        };
       } catch (e) {
-        console.warn('Geo lookup failed');
+        console.warn('[email:get-fingerprint] WebRTC probe failed, skipping detailed report');
       }
 
-      // Probe Fingerprint
+      // 1.2 Probe JavaScript Detailed
+      try {
+        await page.goto('https://browserleaks.com/javascript', {
+          waitUntil: 'networkidle2',
+          timeout: 15000,
+        });
+
+        const jsDetails = await page.evaluate(() => {
+          const getById = (id: string) => document.getElementById(id)?.innerText.trim() || 'N/A';
+
+          return {
+            screen: {
+              resolution: getById('screen-more'),
+              width: getById('js-width'),
+              height: getById('js-height'),
+              availWidth: getById('js-availWidth'),
+              availHeight: getById('js-availHeight'),
+              colorDepth: getById('js-colorDepth'),
+              pixelRatio: getById('js-devicePixelRatio'),
+              viewport: `${getById('js-innerWidth')}x${getById('js-innerHeight')}`,
+            },
+            navigator: {
+              platform: getById('js-platform'),
+              hardwareConcurrency: getById('js-hardwareConcurrency'),
+              deviceMemory: getById('js-deviceMemory'),
+              language: getById('js-language'),
+              languages: getById('js-languages'),
+              webdriver: getById('js-webdriver'),
+              pdfViewer: getById('js-pdfViewerEnabled'),
+            },
+            clientHints: {
+              brands: getById('js-uadata-brands'),
+              platform: getById('js-uadata-platform'),
+              architecture: getById('js-uadata-architecture'),
+              bitness: getById('js-uadata-bitness'),
+              fullVersion: getById('js-uadata-uaFullVersion'),
+            },
+            battery: {
+              status: getById('js-battery'),
+              level: getById('js-level'),
+              charging: getById('js-charging'),
+            },
+            network: {
+              type: getById('js-effectiveType'),
+              downlink: getById('js-downlink'),
+              rtt: getById('js-rtt'),
+            },
+            plugins: getById('js-plugins'),
+          };
+        });
+
+        leaksData.fingerprint = {
+          ...leaksData.fingerprint,
+          ...jsDetails,
+        };
+      } catch (e) {
+        console.warn('[email:get-fingerprint] JS probe failed, skipping detailed report');
+      }
+
+      // 2. Probe Local Fingerprint (Hardware)
       await page.goto('about:blank');
-      const fingerprint = await page.evaluate(() => {
+      const localFp = await page.evaluate(() => {
         const getCanvasFP = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
@@ -826,11 +1058,49 @@ export function setupEmailHandlers() {
         };
       });
 
-      return { success: true, fingerprint, geoData };
+      // 3. Calculate Health Score
+      const calculateScore = () => {
+        let score = 100;
+        const reasons: string[] = [];
+
+        if (leaksData.location.usageType?.toLowerCase().includes('data center')) {
+          score -= 40;
+          reasons.push('Data Center IP detected');
+        }
+
+        if (leaksData.webrtc.local && leaksData.webrtc.local !== 'n/a') {
+          score -= 15;
+          reasons.push('Internal IP leak (WebRTC)');
+        }
+
+        return { val: Math.max(0, score), reasons };
+      };
+
+      const health = calculateScore();
+
+      return {
+        success: true,
+        fingerprint: { ...localFp, ...leaksData.fingerprint },
+        geoData: {
+          ...leaksData.location,
+          query: leaksData.ip.address,
+          lat: leaksData.connectivity.coords?.lat,
+          lon: leaksData.connectivity.coords?.lon,
+          timezone: leaksData.connectivity.timezone,
+          localTime: leaksData.connectivity.localTime,
+          hostname: leaksData.ip.hostname,
+          ipv6: leaksData.ip.ipv6,
+        },
+        webrtc: leaksData.webrtc,
+        headers: leaksData.headers,
+        health: health,
+        rawLeakData: leaksData, // Keep for debugging if needed
+      };
     } catch (e: any) {
       console.error('[email:get-fingerprint] FAILED:', e);
       return { success: false, error: e.message };
     } finally {
+      activeFingerprintFetches.delete(email);
       if (browser) await browser.close();
     }
   });
@@ -846,10 +1116,19 @@ export function setupEmailHandlers() {
         realProfileDir = path.join(userDataPath, 'browser_profiles', email);
       }
 
-      const cookiesPath = path.join(realProfileDir, 'Default', 'Network', 'Cookies');
-      if (!fs.existsSync(cookiesPath)) {
+      const possibleCookiePaths = [
+        path.join(realProfileDir, 'Default', 'Network', 'Cookies'),
+        path.join(realProfileDir, 'Default', 'Cookies'),
+        path.join(realProfileDir, 'Cookies'),
+      ];
+      const cookiesPath = possibleCookiePaths.find((p) => fs.existsSync(p));
+
+      if (!cookiesPath) {
+        console.log(`[email:get-sessions] Cookies file not found for ${email}`);
         return { success: true, sessions: [] };
       }
+
+      console.log(`[email:get-sessions] Found cookies at: ${cookiesPath}`);
 
       return new Promise((resolve) => {
         const db = new sqlite3.Database(cookiesPath, sqlite3.OPEN_READONLY, (err) => {

@@ -1,4 +1,6 @@
 import { FC, useState, useCallback, useRef, useEffect } from 'react';
+import { useHealthCheck } from '../hooks/useHealthCheck';
+import HealthCheckModal from './modals/HealthCheckModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Chrome, Eye, Key, Undo2 } from 'lucide-react';
 import { Account, Service } from '../types';
@@ -59,6 +61,8 @@ const EmailTable: FC<EmailTableProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [backupCodeSearch, setBackupCodeSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
+  const { isOpen, options, launchWithCheck, closeHealthCheck } = useHealthCheck();
+
   const [serviceContextMenu, setServiceContextMenu] = useState<{
     x: number;
     y: number;
@@ -251,18 +255,13 @@ const EmailTable: FC<EmailTableProps> = ({
     );
     if (!link || !link.url) return;
 
-    try {
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke('email:open-login', {
-        accountId: focusedAccount.id,
-        provider: 'custom',
-        email: focusedAccount.email,
-        url: link.url,
-      });
-      setServiceContextMenu(null);
-    } catch (error) {
-      console.error('Failed to open service:', error);
-    }
+    launchWithCheck({
+      accountId: focusedAccount.id,
+      email: focusedAccount.email,
+      provider: 'custom',
+      url: link.url,
+    });
+    setServiceContextMenu(null);
   };
 
   const handleViewSecrets = async (linkId: string) => {
@@ -564,6 +563,13 @@ const EmailTable: FC<EmailTableProps> = ({
         onRestore={onRestore}
         onHardDelete={onHardDelete}
         onSoftDelete={onSoftDelete}
+        onOpenChromeWithCheck={(account) => {
+          launchWithCheck({
+            accountId: account.id,
+            email: account.email,
+            provider: 'google',
+          });
+        }}
       />
 
       {/* Service Context Menu */}
@@ -726,6 +732,27 @@ const EmailTable: FC<EmailTableProps> = ({
           </Modal>
         )}
       </Portal>
+      <HealthCheckModal
+        isOpen={isOpen}
+        onClose={closeHealthCheck}
+        email={options?.email || ''}
+        accountId={options?.accountId || ''}
+        url={options?.url}
+        onSuccess={async () => {
+          if (!options) return;
+          try {
+            // @ts-ignore
+            await window.electron.ipcRenderer.invoke('email:open-login', {
+              accountId: options.accountId,
+              email: options.email,
+              provider: 'custom',
+              url: options.url,
+            });
+          } catch (error) {
+            console.error('Failed to launch browser:', error);
+          }
+        }}
+      />
     </div>
   );
 };

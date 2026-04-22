@@ -79,21 +79,32 @@ export interface SecretKey extends GlobalEntity {
 }
 
 // --- Proxy ---
-export type ProxyType = 'HTTPS' | 'SOCKS4' | 'SOCKS5';
-export type ProxyStatus = 'active' | 'expired' | 'error';
-
-export interface ProxyMetadata {
-  country?: string;
-  countryCode?: string;
-  [key: string]: any;
-}
+export type ProxyType = 'private' | 'shared';
+export type ProxySourceType = 'datacenter' | 'residential' | 'mobile';
+export type ProxyRotationType = 'static' | 'rotating';
+export type ProxyPricingType = 'time' | 'bandwidth';
+export type ProxyProtocol = 'http' | 'https' | 'socks5';
+export type ProxyStatus = 'active' | 'expired' | 'disabled';
 
 export interface Proxy extends GlobalEntity {
-  proxy: string;
-  type: ProxyType;
-  expired?: string;
+  ipVersion: number;
+  proxyType: ProxyType;
+  sourceType: ProxySourceType;
+  rotationType: ProxyRotationType;
+  pricingType: ProxyPricingType;
+  protocol?: ProxyProtocol;
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  country?: string;
+  city?: string;
+  isp?: string;
+  durationDays?: number;
+  bandwidthGb?: number;
+  price?: number;
   status: ProxyStatus;
-  metadata?: ProxyMetadata;
+  metadata?: any;
 }
 
 // --- Reg (Registration) ---

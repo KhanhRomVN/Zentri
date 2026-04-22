@@ -62,6 +62,34 @@ Lưu trữ các thông tin bí mật bổ sung cho mỗi dịch vụ của email
 | `created_at`       | DATETIME | DEFAULT CURRENT_TIMESTAMP     | Ngày tạo               |
 | `updated_at`       | DATETIME | DEFAULT CURRENT_TIMESTAMP     | Ngày cập nhật gần nhất |
 
+### Bảng `proxies`
+
+Lưu trữ danh sách proxy quản lý.
+
+| Column          | Type     | Constraints               | Description                       |
+| :-------------- | :------- | :------------------------ | :-------------------------------- |
+| `id`            | TEXT     | PRIMARY KEY               | Định danh duy nhất (UUID)         |
+| `ip_version`    | INTEGER  | NOT NULL                  | 4 hoặc 6                          |
+| `proxy_type`    | TEXT     | NOT NULL                  | private / shared                  |
+| `source_type`   | TEXT     | NOT NULL                  | datacenter / residential / mobile |
+| `rotation_type` | TEXT     | NOT NULL                  | static / rotating                 |
+| `pricing_type`  | TEXT     | NOT NULL                  | time / bandwidth                  |
+| `protocol`      | TEXT     |                           | http / https / socks5             |
+| `host`          | TEXT     |                           | IP hoặc domain                    |
+| `port`          | INTEGER  |                           | Port                              |
+| `username`      | TEXT     |                           | User proxy                        |
+| `password`      | TEXT     |                           | Password proxy                    |
+| `country`       | TEXT     |                           | Quốc gia                          |
+| `city`          | TEXT     |                           | Thành phố                         |
+| `isp`           | TEXT     |                           | Nhà mạng                          |
+| `duration_days` | INTEGER  |                           | Số ngày (nếu tính theo time)      |
+| `bandwidth_gb`  | REAL     |                           | Dung lượng (nếu tính theo GB)     |
+| `price`         | NUMERIC  |                           | Giá                               |
+| `status`        | TEXT     | DEFAULT 'active'          | active / expired / disabled       |
+| `metadata`      | TEXT     |                           | Dữ liệu mở rộng (JSON)            |
+| `created_at`    | DATETIME | DEFAULT CURRENT_TIMESTAMP | Thời gian tạo                     |
+| `updated_at`    | DATETIME | DEFAULT CURRENT_TIMESTAMP | Thời gian cập nhật                |
+
 ---
 
 ### Bảng `sessions` (Tạm thời vô hiệu hóa ở UI)

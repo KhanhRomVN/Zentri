@@ -12,6 +12,7 @@ interface ContextMenuProps {
   onRestore: (id: string) => void;
   onHardDelete: (id: string) => void;
   onSoftDelete: (id: string) => void;
+  onOpenChromeWithCheck: (account: Account) => void;
 }
 
 const ContextMenu: FC<ContextMenuProps> = ({
@@ -23,6 +24,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
   onRestore,
   onHardDelete,
   onSoftDelete,
+  onOpenChromeWithCheck,
 }) => {
   if (!contextMenu) return null;
 
@@ -40,12 +42,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
           <>
             <button
               onClick={() => {
-                // @ts-ignore
-                window.electron.ipcRenderer.invoke('email:open-login', {
-                  accountId: targetAccount.id,
-                  provider: 'google',
-                  email: targetAccount.email,
-                });
+                onOpenChromeWithCheck(targetAccount);
                 setContextMenu(null);
               }}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-emerald-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all"

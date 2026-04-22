@@ -142,6 +142,30 @@ export class DbManager {
           status TEXT,
           FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS proxies (
+          id TEXT PRIMARY KEY,
+          ip_version INTEGER NOT NULL,
+          proxy_type TEXT NOT NULL,
+          source_type TEXT NOT NULL,
+          rotation_type TEXT NOT NULL,
+          pricing_type TEXT NOT NULL,
+          protocol TEXT,
+          host TEXT,
+          port INTEGER,
+          username TEXT,
+          password TEXT,
+          country TEXT,
+          city TEXT,
+          isp TEXT,
+          duration_days INTEGER,
+          bandwidth_gb REAL,
+          price NUMERIC,
+          status TEXT DEFAULT 'active',
+          metadata TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     return new Promise((resolve, reject) => {

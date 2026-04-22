@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 import * as crypto from 'crypto';
 import { setupEmailHandlers } from './email';
+import { setupProxyHandlers } from './proxy';
 import { dbManager } from '../database';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -233,6 +234,7 @@ export function setupEventHandlers() {
   setupDatabaseHandlers();
   setupEmailHandlers();
   setupServiceHandlers();
+  setupProxyHandlers();
 
   // Streaming Fetch Handler
   ipcMain.handle('util:fetch-stream', async (event, input: any) => {

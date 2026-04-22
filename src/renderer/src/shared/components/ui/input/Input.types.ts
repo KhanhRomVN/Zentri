@@ -10,7 +10,7 @@ export interface BadgeItem {
 }
 
 export type InputSize = 'sm' | 'md' | 'lg' | 'xl';
-export type InputType = 'text' | 'password' | 'combobox' | 'calendar';
+export type InputType = 'text' | 'password' | 'combobox' | 'calendar' | 'number';
 
 export type InputIcon = LucideIcon | ReactNode;
 
