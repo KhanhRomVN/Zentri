@@ -10,10 +10,11 @@ import {
   Settings as SettingsIcon,
   PlusCircle,
   Search,
-  FileCode,
+  Zap,
   FolderTree,
   Network,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import ThemeDrawer from '../theme/components/ThemeDrawer';
 
 interface SidebarProps {
@@ -23,55 +24,55 @@ interface SidebarProps {
 
 const NAV_ITEMS = [
   {
-    title: 'Dashboard',
+    title: 'common.dashboard',
     href: '/',
     icon: LayoutDashboard,
     color: '#3b82f6', // blue-500
     disabled: true,
   },
   {
-    title: 'Emails',
+    title: 'common.emails',
     href: '/email',
     icon: Users,
     color: '#f59e0b', // amber-500
   },
   {
-    title: 'Reg',
-    href: '/reg',
+    title: 'common.regis',
+    href: '/regis',
     icon: PlusCircle,
     color: '#22c55e', // green-500
-    disabled: true,
+    disabled: false,
   },
   {
-    title: 'Search',
+    title: 'common.search',
     href: '/search',
     icon: Search,
     color: '#eab308', // yellow-500
-    disabled: true,
+    disabled: false,
   },
   {
-    title: 'Script',
-    href: '/script',
-    icon: FileCode,
+    title: 'common.workflow',
+    href: '/workflow',
+    icon: Zap,
     color: '#6366f1', // indigo-500
-    disabled: true,
+    disabled: false,
   },
   {
-    title: 'Category',
+    title: 'common.category',
     href: '/category',
     icon: FolderTree,
     color: '#ec4899', // pink-500
     disabled: true,
   },
   {
-    title: 'Proxy',
+    title: 'common.proxy',
     href: '/proxy',
     icon: Network,
     color: '#06b6d4', // cyan-500
     disabled: false,
   },
   {
-    title: 'Settings',
+    title: 'common.settings',
     href: '/setting',
     icon: SettingsIcon,
     color: '#64748b', // slate-500
@@ -79,6 +80,7 @@ const NAV_ITEMS = [
 ];
 
 const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
+  const { t } = useTranslation();
   const [isThemeDrawerOpen, setIsThemeDrawerOpen] = useState(false);
   useEffect(() => {
     // Check initial state
@@ -114,14 +116,14 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
             <button
               onClick={() => setIsThemeDrawerOpen(true)}
               className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
-              title="Theme Settings"
+              title={t('common.themeSettings')}
             >
               <Palette className="w-5 h-5" />
             </button>
             <button
               onClick={() => setIsCollapsed(true)}
               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              title="Collapse Sidebar"
+              title={t('common.collapseSidebar')}
             >
               <FoldHorizontal className="w-5 h-5" />
             </button>
@@ -173,12 +175,12 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
                 />
                 {!isCollapsed && (
                   <span className="whitespace-nowrap overflow-hidden text-ellipsis">
-                    {item.title}
+                    {t(item.title)}
                   </span>
                 )}
                 {isCollapsed && (
                   <div className="absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-popover border border-border text-popover-foreground text-xs font-medium rounded-md shadow-lg z-[100] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    {item.title}
+                    {t(item.title)}
                     <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-popover border-l border-b border-border rotate-45 transform" />
                   </div>
                 )}
@@ -199,12 +201,14 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
             <button
               onClick={() => setIsThemeDrawerOpen(true)}
               className="w-10 h-10 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted transition-all"
+              title={t('common.themeSettings')}
             >
               <Palette className="w-5 h-5" />
             </button>
             <button
               onClick={() => setIsCollapsed(false)}
               className="w-10 h-10 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+              title={t('common.expandSidebar')}
             >
               <UnfoldHorizontal className="w-5 h-5" />
             </button>

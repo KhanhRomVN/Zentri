@@ -108,6 +108,7 @@ export class DbManager {
           password TEXT,
           username TEXT,
           notes TEXT,
+          last_used_at DATETIME,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
@@ -293,6 +294,16 @@ export class DbManager {
         );
       } catch (e) {
         console.error('[DB] Migration failed (status/deletion):', e);
+      }
+    }
+
+    const hasServiceLastUsed = serviceEmailColumns.some((c) => c.name === 'last_used_at');
+    if (!hasServiceLastUsed) {
+      try {
+        await this.rawRun('ALTER TABLE service_emails ADD COLUMN last_used_at DATETIME');
+        console.log('[DB] Migration: Added last_used_at to service_emails table');
+      } catch (e) {
+        console.error('[DB] Migration failed (service last_used_at):', e);
       }
     }
 

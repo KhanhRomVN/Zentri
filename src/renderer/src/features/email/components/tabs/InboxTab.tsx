@@ -1,4 +1,5 @@
 import { FC, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Mail,
   RefreshCw,
@@ -29,6 +30,7 @@ interface InboxTabProps {
 }
 
 const InboxTab: FC<InboxTabProps> = ({ email }) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -55,8 +57,12 @@ const InboxTab: FC<InboxTabProps> = ({ email }) => {
     setIsRefreshing(true);
     setError(null);
     try {
+      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
       // @ts-ignore
-      const result = await window.electron.ipcRenderer.invoke('email:get-inbox', { email });
+      const result = await window.electron.ipcRenderer.invoke('email:get-inbox', {
+        email,
+        browserPath,
+      });
       if (result.success) {
         setMessages(result.messages);
         setError(null);
@@ -66,14 +72,14 @@ const InboxTab: FC<InboxTabProps> = ({ email }) => {
         console.log('Fetch already in progress, ignoring duplicate signal.');
       } else {
         if (result.error === 'NOT_LOGGED_IN') {
-          setError('Vui lòng đăng nhập vào Gmail trên trình duyệt trước khi xem nhanh Inbox.');
+          setError(t('email.manager.tabs.inbox.authRequired'));
         } else {
-          setError('Không thể lấy thư. Vui lòng thử lại sau.');
+          setError(t('email.manager.tabs.inbox.noMessages'));
         }
       }
     } catch (err) {
       console.error('Failed to fetch inbox', err);
-      setError('Lỗi kết nối bộ phận Agent.');
+      setError('Agent connection error');
     } finally {
       setIsRefreshing(false);
     }
@@ -81,8 +87,9 @@ const InboxTab: FC<InboxTabProps> = ({ email }) => {
 
   const handleDebug = async () => {
     try {
+      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
       // @ts-ignore
-      await window.electron.ipcRenderer.invoke('email:open-inbox-debug', { email });
+      await window.electron.ipcRenderer.invoke('email:open-inbox-debug', { email, browserPath });
     } catch (err) {
       console.error('Failed to open debug inbox', err);
     }
@@ -121,7 +128,7 @@ const InboxTab: FC<InboxTabProps> = ({ email }) => {
         <div className="w-80 flex items-center">
           <Input
             size="sm"
-            placeholder="Search inbox..."
+            placeholder={t('email.manager.tabs.inbox.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             leftIcon={Search}
@@ -158,7 +165,7 @@ const InboxTab: FC<InboxTabProps> = ({ email }) => {
             </div>
             <div className="text-center max-w-[280px]">
               <h3 className="text-[14px] font-black uppercase tracking-widest text-foreground/90 mb-2">
-                Authentication Required
+                {t('email.manager.tabs.inbox.authRequired')}
               </h3>
               <p className="text-[11px] text-muted-foreground/60 leading-relaxed">{error}</p>
             </div>
@@ -172,7 +179,7 @@ const InboxTab: FC<InboxTabProps> = ({ email }) => {
               </div>
             </div>
             <p className="text-[10px] text-primary font-black uppercase tracking-[0.3em] animate-pulse">
-              Syncing Tactical Inbox...
+              {t('email.manager.tabs.inbox.syncing')}
             </p>
           </div>
         ) : (
@@ -181,7 +188,9 @@ const InboxTab: FC<InboxTabProps> = ({ email }) => {
               <div className="flex flex-col items-center justify-center py-20 opacity-20 gap-3">
                 <Mail className="w-12 h-12" />
                 <p className="text-[12px] font-black uppercase tracking-[0.2em]">
-                  {isRefreshing ? 'Refreshing...' : 'No Messages Found'}
+                  {isRefreshing
+                    ? t('email.manager.tabs.inbox.refreshing')
+                    : t('email.manager.tabs.inbox.noMessages')}
                 </p>
               </div>
             ) : (
@@ -279,8 +288,7 @@ const InboxTab: FC<InboxTabProps> = ({ email }) => {
         <div className="flex items-center gap-3 bg-muted/10 p-3 rounded-xl border border-border/20">
           <AlertCircle className="w-4 h-4 text-primary/50" />
           <p className="text-[10px] text-muted-foreground/60 font-medium leading-relaxed">
-            Dữ liệu được trích xuất từ giao diện Gmail Mobile thông qua Profile hiện có. Không yêu
-            cầu mật khẩu hoặc đăng nhập lại.
+            {t('email.manager.tabs.inbox.footerHint')}
           </p>
         </div>
       </div>

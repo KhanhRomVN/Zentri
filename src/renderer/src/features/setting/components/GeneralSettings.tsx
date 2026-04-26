@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Database, Info, FolderOpen, FilePlus, X, ChevronDown } from 'lucide-react';
+import { FolderOpen, FilePlus, X } from 'lucide-react';
+import LanguageSwitcher from '../../../shared/components/ui/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 export const GeneralSettings = () => {
+  const { t } = useTranslation();
   const [folderPath, setFolderPath] = useState('');
-  const [agentUrl, setAgentUrl] = useState('http://localhost:8888');
-  const [language, setLanguage] = useState('vi');
+  const [browserPath, setBrowserPath] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [tempPath, setTempPath] = useState('');
 
   useEffect(() => {
     const savedPath = localStorage.getItem('zentri_storage_folder') || '';
-    const savedUrl = localStorage.getItem('zentri_agent_url') || 'http://localhost:8888';
-    const savedLanguage = localStorage.getItem('zentri_agent_language') || 'vi';
+    const savedBrowserPath = localStorage.getItem('zentri_browser_path') || '';
     setFolderPath(savedPath);
-    setAgentUrl(savedUrl);
-    setLanguage(savedLanguage);
+    setBrowserPath(savedBrowserPath);
   }, []);
 
   const saveConfiguration = (path: string) => {
@@ -25,46 +25,26 @@ export const GeneralSettings = () => {
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const saveAgentUrl = (url: string) => {
-    setAgentUrl(url);
-    localStorage.setItem('zentri_agent_url', url);
+  const saveBrowserPath = (path: string) => {
+    setBrowserPath(path);
+    localStorage.setItem('zentri_browser_path', path);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
-  };
-
-  const saveLanguage = (lang: string) => {
-    setLanguage(lang);
-    localStorage.setItem('zentri_agent_language', lang);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
-  };
-
-  const extractData = (res: any) => {
-    if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
-      return res.data;
-    }
-    return res;
   };
 
   const handleSelectFolder = async () => {
     try {
-      // @ts-ignore
-      // @ts-ignore
       const result = await window.electron.ipcRenderer.invoke('storage:select-folder');
       if (result) {
-        // Check if zentri.db exists
-        // @ts-ignore
         const dbExists = await window.electron.ipcRenderer.invoke(
           'fs:exists',
           result + '/zentri.db',
         );
 
         if (!dbExists) {
-          // zentri.db not found, show modal
           setTempPath(result);
           setShowCreateModal(true);
         } else {
-          // zentri.db exists, save immediately
           saveConfiguration(result);
         }
       }
@@ -75,12 +55,7 @@ export const GeneralSettings = () => {
 
   const handleCreateFile = async () => {
     try {
-      // 1. Create profiles directory
-      // @ts-ignore
       await window.electron.ipcRenderer.invoke('fs:createDirectory', tempPath + '/profiles');
-
-      // 2. Initialize zentri.db (sqlite:create will open it as well)
-      // @ts-ignore
       await window.electron.ipcRenderer.invoke('sqlite:create', tempPath + '/zentri.db');
 
       saveConfiguration(tempPath);
@@ -96,11 +71,11 @@ export const GeneralSettings = () => {
       <div className="space-y-6">
         <div className="space-y-3">
           <label className="text-[14px] font-bold uppercase tracking-wider text-muted-foreground/70">
-            Data Storage Folder
+            {t('settings.storageFolder')}
           </label>
           <div className="flex gap-2">
             <div className="flex-1 h-11 rounded-xl border border-border bg-input-background px-4 text-sm flex items-center text-muted-foreground overflow-hidden font-mono truncate">
-              {folderPath || 'No folder selected'}
+              {folderPath || t('settings.noFolderSelected')}
             </div>
             <button
               onClick={handleSelectFolder}
@@ -112,46 +87,32 @@ export const GeneralSettings = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <label className="text-[12px] font-bold uppercase tracking-widest text-muted-foreground/50">
-              AI Agent URL
-            </label>
-            <input
-              type="text"
-              value={agentUrl}
-              onChange={(e) => saveAgentUrl(e.target.value)}
-              placeholder="http://localhost:8888"
-              className="w-full h-11 rounded-xl border border-border bg-input-background px-4 text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
-            />
-          </div>
+        <div className="space-y-3">
+          <label className="text-[12px] font-bold uppercase tracking-widest text-muted-foreground/50">
+            {t('settings.appLanguage')}
+          </label>
+          <LanguageSwitcher variant="field" />
+        </div>
 
-          <div className="space-y-3">
-            <label className="text-[12px] font-bold uppercase tracking-widest text-muted-foreground/50">
-              Agent Response Language
-            </label>
-            <div className="relative group">
-              <select
-                value={language}
-                onChange={(e) => saveLanguage(e.target.value)}
-                className="w-full h-11 rounded-xl border border-border bg-input-background px-4 text-[13px] focus:outline-none focus:border-primary/50 transition-all cursor-pointer appearance-none pr-10 font-medium"
-              >
-                <option value="vi">Tiếng Việt (Vietnamese)</option>
-                <option value="en">English (US)</option>
-                <option value="zh">中文 (Chinese)</option>
-                <option value="ja">日本語 (Japanese)</option>
-                <option value="ko">한국어 (Korean)</option>
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/40 group-hover:text-primary/50 transition-colors">
-                <ChevronDown className="w-4 h-4" />
-              </div>
-            </div>
-          </div>
+        <div className="space-y-3">
+          <label className="text-[14px] font-bold uppercase tracking-wider text-muted-foreground/70">
+            {t('settings.browserExecutablePath')}
+          </label>
+          <input
+            type="text"
+            value={browserPath}
+            onChange={(e) => saveBrowserPath(e.target.value)}
+            placeholder={t('settings.browserExecutablePlaceholder')}
+            className="w-full h-11 rounded-xl border border-border bg-input-background px-4 text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
+          />
+          <p className="text-[11px] text-muted-foreground/50">
+            {t('settings.browserExecutableHint')}
+          </p>
         </div>
 
         {isSaved && (
           <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-xs font-medium animate-in fade-in zoom-in duration-300 w-fit">
-            Settings updated successfully
+            {t('settings.savedSuccess')}
           </div>
         )}
       </div>
@@ -175,12 +136,13 @@ export const GeneralSettings = () => {
               <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6">
                 <FilePlus className="w-8 h-8" />
               </div>
-              <h2 className="text-xl font-bold mb-2">Initialize Storage?</h2>
+              <h2 className="text-xl font-bold mb-2">{t('settings.initializeTitle')}</h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-                The selected folder is missing database files. Would you like us to initialize{' '}
-                <code className="bg-muted px-1 rounded text-foreground">zentri.db</code> and{' '}
-                <code className="bg-muted px-1 rounded text-foreground">profiles/</code> folder for
-                you?
+                {t('settings.initializeDescPre')}{' '}
+                <code className="bg-muted px-1 rounded text-foreground">zentri.db</code>{' '}
+                {t('settings.initializeDescAnd')}{' '}
+                <code className="bg-muted px-1 rounded text-foreground">profiles/</code>{' '}
+                {t('settings.initializeDescPost')}
               </p>
 
               <div className="flex gap-3 w-full">
@@ -188,13 +150,13 @@ export const GeneralSettings = () => {
                   onClick={() => setShowCreateModal(false)}
                   className="flex-1 h-12 rounded-md border border-border font-bold text-sm hover:bg-muted transition-all"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleCreateFile}
                   className="flex-1 h-12 rounded-md bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
                 >
-                  Initialize & Save
+                  {t('settings.initializeAndSave')}
                 </button>
               </div>
             </div>

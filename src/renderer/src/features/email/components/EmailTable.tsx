@@ -1,8 +1,9 @@
 import { FC, useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHealthCheck } from '../hooks/useHealthCheck';
 import HealthCheckModal from './modals/HealthCheckModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Chrome, Eye, Key, Undo2 } from 'lucide-react';
+import { Trash2, Globe, Eye, Key, Undo2 } from 'lucide-react';
 import { Account, Service } from '../types';
 import ListView from './ListView';
 import DetailView from './DetailView';
@@ -11,6 +12,7 @@ import ServiceDrawers from './ServiceDrawers';
 import ServiceVaultDrawer from './ServiceVaultDrawer';
 import Portal from '../../../shared/components/ui/Portal';
 import Modal from '../../../shared/components/ui/modal/Modal';
+import ProfileLaunchModal from './modals/ProfileLaunchModal';
 
 interface EmailTableProps {
   accounts: Account[];
@@ -21,8 +23,10 @@ interface EmailTableProps {
   onHardDelete: (id: string) => void;
   onSaveChanges: (oldAccount: Account, newAccount: Account) => void;
   onRefreshData?: () => void;
-  activeTab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions';
-  setActiveTab: (tab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions') => void;
+  activeTab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions' | 'history';
+  setActiveTab: (
+    tab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions' | 'history',
+  ) => void;
 }
 
 interface LinkedService {
@@ -45,11 +49,11 @@ const EmailTable: FC<EmailTableProps> = ({
   onSoftDelete,
   onRestore,
   onHardDelete,
-  onSaveChanges,
   onRefreshData,
   activeTab,
   setActiveTab,
 }) => {
+  const { t } = useTranslation();
   // --- States ---
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const [contextMenu, setContextMenu] = useState<{
@@ -62,6 +66,13 @@ const EmailTable: FC<EmailTableProps> = ({
   const [backupCodeSearch, setBackupCodeSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
   const { isOpen, options, launchWithCheck, closeHealthCheck } = useHealthCheck();
+  const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
+  const [pendingLaunch, setPendingLaunch] = useState<{
+    accountId: string;
+    email: string;
+    provider?: string;
+    url?: string;
+  } | null>(null);
 
   const [serviceContextMenu, setServiceContextMenu] = useState<{
     x: number;
@@ -117,7 +128,6 @@ const EmailTable: FC<EmailTableProps> = ({
 
   // --- Derived ---
   const focusedAccount = accounts.find((a) => a.id === focusedAccountId) || null;
-  const isDirty = JSON.stringify(focusedAccount) !== JSON.stringify(editedAccount);
   const accountServices = focusedAccount?.services || [];
 
   // --- Effects ---
@@ -249,19 +259,40 @@ const EmailTable: FC<EmailTableProps> = ({
   };
 
   const handleOpenService = async (linkId: string) => {
-    if (!focusedAccount) return;
-    const link = (focusedAccount.services as unknown as LinkedService[])?.find(
-      (s) => s.id === linkId,
-    );
-    if (!link || !link.url) return;
-
-    launchWithCheck({
+    const link = accountServices.find((s) => s.id === linkId);
+    if (!link || !focusedAccount) return;
+    setPendingLaunch({
       accountId: focusedAccount.id,
       email: focusedAccount.email,
-      provider: 'custom',
       url: link.url,
+      provider: 'custom',
     });
-    setServiceContextMenu(null);
+    setIsLaunchModalOpen(true);
+  };
+
+  const handleExecuteLaunch = async (config: { checkHealth: boolean }) => {
+    if (!pendingLaunch) return;
+    const { accountId, email, provider, url } = pendingLaunch;
+    setIsLaunchModalOpen(false);
+
+    if (config.checkHealth) {
+      launchWithCheck({ accountId, email, provider, url });
+    } else {
+      try {
+        const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('email:open-login', {
+          accountId,
+          email,
+          provider: provider || 'custom',
+          url,
+          browserPath,
+        });
+      } catch (error) {
+        console.error('Failed to launch browser:', error);
+      }
+    }
+    setPendingLaunch(null);
   };
 
   const handleViewSecrets = async (linkId: string) => {
@@ -387,15 +418,16 @@ const EmailTable: FC<EmailTableProps> = ({
   const validateField = useCallback((name: string, value: string) => {
     let error = '';
     if (name === 'email') {
-      if (!value.trim()) error = 'Email is required';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Invalid email format';
+      if (!value.trim()) error = t('email.validation.emailRequired');
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+        error = t('email.validation.emailInvalid');
     } else if (name === 'password') {
-      if (!value.trim()) error = 'Password is required';
+      if (!value.trim()) error = t('email.validation.passwordRequired');
     } else if (name === 'recoveryEmail') {
       if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-        error = 'Invalid recovery email format';
+        error = t('email.validation.recoveryInvalid');
     } else if (name === 'phoneNumber') {
-      if (value && !/^\+?[0-9\s\-()]+$/.test(value)) error = 'Invalid phone number format';
+      if (value && !/^\+?[0-9\s\-()]+$/.test(value)) error = t('email.validation.phoneInvalid');
     }
     setErrors((prev) => ({ ...prev, [name]: error }));
   }, []);
@@ -484,8 +516,6 @@ const EmailTable: FC<EmailTableProps> = ({
     }
   };
 
-  const hasErrors = Object.values(errors).some((e) => !!e);
-
   // --- Render ---
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-background/30 transition-all duration-500 overflow-hidden">
@@ -508,12 +538,12 @@ const EmailTable: FC<EmailTableProps> = ({
 
             <div className="shrink-0 bg-table-headerBg/80 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_-12px_rgba(0,0,0,0.5)] z-40 h-12 flex items-center px-8">
               <div className="flex-1 text-[10px] text-muted-foreground/60 font-black uppercase tracking-[0.25em]">
-                Tactical Fleet Capacity
+                {t('email.manager.table.fleetCapacity')}
               </div>
               <div className="text-[11px] text-foreground font-mono font-black tracking-tighter">
                 {accounts.length}{' '}
                 <span className="text-[9px] text-primary/70 ml-1 tracking-widest font-black uppercase">
-                  Operational
+                  {t('email.manager.table.operational')}
                 </span>
               </div>
             </div>
@@ -563,12 +593,13 @@ const EmailTable: FC<EmailTableProps> = ({
         onRestore={onRestore}
         onHardDelete={onHardDelete}
         onSoftDelete={onSoftDelete}
-        onOpenChromeWithCheck={(account) => {
-          launchWithCheck({
+        onLaunchRequest={(account) => {
+          setPendingLaunch({
             accountId: account.id,
             email: account.email,
             provider: 'google',
           });
+          setIsLaunchModalOpen(true);
         }}
       />
 
@@ -585,8 +616,8 @@ const EmailTable: FC<EmailTableProps> = ({
               onClick={() => handleOpenService(serviceContextMenu.linkId)}
               className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all"
             >
-              <Chrome className="w-4 h-4" />
-              Open Service
+              <Globe className="w-4 h-4" />
+              {t('email.manager.table.openService')}
             </button>
             <div className="h-px bg-border/20 my-1 mx-2" />
 
@@ -595,7 +626,7 @@ const EmailTable: FC<EmailTableProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all"
             >
               <Eye className="w-4 h-4 text-blue-500/50" />
-              View
+              {t('email.manager.table.view')}
             </button>
 
             <button
@@ -603,7 +634,7 @@ const EmailTable: FC<EmailTableProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all"
             >
               <Key className="w-4 h-4 text-primary/50" />
-              Secrets Vault
+              {t('email.manager.table.secretsVault')}
             </button>
 
             <div className="h-px bg-border/20 my-1 mx-2" />
@@ -618,7 +649,9 @@ const EmailTable: FC<EmailTableProps> = ({
               }}
             >
               <Trash2 className="w-4 h-4" />
-              {serviceContextMenu.status === 'trash' ? 'Delete Permanently' : 'Delete'}
+              {serviceContextMenu.status === 'trash'
+                ? t('email.manager.table.deletePermanently')
+                : t('email.manager.table.delete')}
             </button>
 
             {serviceContextMenu.status === 'trash' && (
@@ -627,7 +660,7 @@ const EmailTable: FC<EmailTableProps> = ({
                 className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400/80 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all mt-1"
               >
                 <Undo2 className="w-4 h-4" />
-                Restore Service
+                {t('email.manager.table.restoreService')}
               </button>
             )}
           </div>
@@ -676,7 +709,7 @@ const EmailTable: FC<EmailTableProps> = ({
           <Modal
             open={!!serviceDeleteConfirmId}
             onClose={() => setServiceDeleteConfirmId(null)}
-            title="Move Service to Trash?"
+            title={t('email.manager.table.modals.trashTitle')}
             size="sm"
             footer={
               <div className="flex gap-3">
@@ -684,20 +717,19 @@ const EmailTable: FC<EmailTableProps> = ({
                   onClick={() => setServiceDeleteConfirmId(null)}
                   className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-muted/50 hover:bg-muted transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={() => handleUnlinkService(serviceDeleteConfirmId!)}
                   className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-red-500 text-white hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
                 >
-                  Move to Trash
+                  {t('email.manager.table.modals.trashTitle')}
                 </button>
               </div>
             }
           >
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Are you sure you want to move this service connection to the trash? It will be
-              automatically deleted after 30 days.
+              {t('email.manager.table.modals.trashDesc')}
             </p>
           </Modal>
         )}
@@ -706,7 +738,7 @@ const EmailTable: FC<EmailTableProps> = ({
           <Modal
             open={!!serviceHardDeleteConfirmId}
             onClose={() => setServiceHardDeleteConfirmId(null)}
-            title="Permanent Deletion"
+            title={t('email.manager.table.modals.deleteTitle')}
             size="sm"
             footer={
               <div className="flex gap-3">
@@ -714,24 +746,30 @@ const EmailTable: FC<EmailTableProps> = ({
                   onClick={() => setServiceHardDeleteConfirmId(null)}
                   className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-muted/50 hover:bg-muted transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={() => handlePermanentDeleteService(serviceHardDeleteConfirmId!)}
                   className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
                 >
-                  Delete Forever
+                  {t('email.manager.table.modals.deleteForever')}
                 </button>
               </div>
             }
           >
             <p className="text-xs text-muted-foreground leading-relaxed">
-              This action cannot be undone. The service connection and all its associated security
-              secrets will be permanently removed from the cloud indexing system.
+              {t('email.manager.table.modals.deleteDesc')}
             </p>
           </Modal>
         )}
       </Portal>
+      <ProfileLaunchModal
+        isOpen={isLaunchModalOpen}
+        onClose={() => setIsLaunchModalOpen(false)}
+        email={pendingLaunch?.email || ''}
+        onLaunch={handleExecuteLaunch}
+      />
+
       <HealthCheckModal
         isOpen={isOpen}
         onClose={closeHealthCheck}
@@ -741,12 +779,14 @@ const EmailTable: FC<EmailTableProps> = ({
         onSuccess={async () => {
           if (!options) return;
           try {
+            const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
             // @ts-ignore
             await window.electron.ipcRenderer.invoke('email:open-login', {
               accountId: options.accountId,
               email: options.email,
-              provider: 'custom',
+              provider: options.provider || 'custom',
               url: options.url,
+              browserPath,
             });
           } catch (error) {
             console.error('Failed to launch browser:', error);

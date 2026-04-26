@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import EmailTable from './components/EmailTable';
 import {
@@ -51,6 +52,7 @@ const diffChars = (oldStr: string, newStr: string) => {
 };
 
 const EmailManager = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [accounts, setAccounts] = useState<Account[]>([]);
 
@@ -110,7 +112,7 @@ const EmailManager = () => {
     type: 'info' as 'info' | 'success' | 'error' | 'warning',
   });
   const [activeTab, setActiveTab] = useState<
-    'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions'
+    'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions' | 'history'
   >('info');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [hardDeleteConfirmId, setHardDeleteConfirmId] = useState<string | null>(null);
@@ -159,6 +161,7 @@ const EmailManager = () => {
             password: link.password,
             notes: link.notes,
             status: link.status,
+            lastUsedAt: link.last_used_at,
             secretCount: link.secretCount || 0,
             metadata: link.metadata ? JSON.parse(link.metadata) : {},
           }));
@@ -179,6 +182,32 @@ const EmailManager = () => {
           services: linkedServices,
         };
       });
+
+      // Fetch Latest Activity for all accounts using the proven HistoryTab logic
+      try {
+        await Promise.all(
+          loadedAccounts.map(async (acc) => {
+            try {
+              const hResult = await window.electron.ipcRenderer.invoke('email:get-history', {
+                email: acc.email,
+              });
+              if (hResult?.success && hResult.history?.length > 0) {
+                // newest first because of reverse() in backend
+                const latest = hResult.history[0];
+                acc.lastActivity = {
+                  url: latest.url,
+                  title: latest.title,
+                  time: latest.time,
+                };
+              }
+            } catch (e) {
+              console.error(`Failed to fetch history for ${acc.email}`, e);
+            }
+          }),
+        );
+      } catch (e) {
+        console.error('Failed to fetch account activities', e);
+      }
 
       setAccounts(loadedAccounts);
       console.log('[EmailManager] Data loaded successfully, count:', loadedAccounts.length);
@@ -210,7 +239,7 @@ const EmailManager = () => {
 
         setToast({
           visible: true,
-          message: 'Account moved to trash. Permanent deletion in 7 days.',
+          message: t('email.toast.movedToTrash'),
           type: 'warning',
         });
 
@@ -219,7 +248,7 @@ const EmailManager = () => {
         console.error('[Email] Soft delete error:', e);
         setToast({
           visible: true,
-          message: 'Failed to move account to trash',
+          message: t('email.toast.trashFailed'),
           type: 'error',
         });
       }
@@ -236,11 +265,11 @@ const EmailManager = () => {
           'UPDATE emails SET status = ?, scheduled_deletion_at = NULL WHERE id = ?',
           ['active', id],
         );
-        setToast({ visible: true, message: 'Account restored successfully', type: 'success' });
+        setToast({ visible: true, message: t('email.toast.restored'), type: 'success' });
         await loadData();
       } catch (e) {
         console.error('[Email] Restore error:', e);
-        setToast({ visible: true, message: 'Failed to restore account', type: 'error' });
+        setToast({ visible: true, message: t('email.toast.restoreFailed'), type: 'error' });
       }
     },
     [loadData],
@@ -253,11 +282,11 @@ const EmailManager = () => {
         await window.electron.ipcRenderer.invoke('sqlite:run', 'DELETE FROM emails WHERE id = ?', [
           id,
         ]);
-        setToast({ visible: true, message: 'Account permanently deleted', type: 'info' });
+        setToast({ visible: true, message: t('email.toast.deleted'), type: 'info' });
         await loadData();
       } catch (e) {
         console.error('[Email] Hard delete error:', e);
-        setToast({ visible: true, message: 'Failed to delete account', type: 'error' });
+        setToast({ visible: true, message: t('email.toast.deleteFailed'), type: 'error' });
       }
     },
     [loadData],
@@ -280,11 +309,11 @@ const EmailManager = () => {
             updated.id,
           ],
         );
-        setToast({ visible: true, message: 'Account updated successfully', type: 'success' });
+        setToast({ visible: true, message: t('email.toast.updated'), type: 'success' });
         await loadData();
       } catch (e) {
         console.error('[Email] Update error:', e);
-        setToast({ visible: true, message: 'Failed to update account', type: 'error' });
+        setToast({ visible: true, message: t('email.toast.updateFailed'), type: 'error' });
       } finally {
         setLoading(false);
       }
@@ -295,15 +324,16 @@ const EmailManager = () => {
   const validateField = useCallback((name: string, value: string) => {
     let error = '';
     if (name === 'email') {
-      if (!value.trim()) error = 'Email is required';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Invalid email format';
+      if (!value.trim()) error = t('email.validation.emailRequired');
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+        error = t('email.validation.emailInvalid');
     } else if (name === 'password') {
-      if (!value.trim()) error = 'Password is required';
+      if (!value.trim()) error = t('email.validation.passwordRequired');
     } else if (name === 'recoveryEmail') {
       if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-        error = 'Invalid recovery email format';
+        error = t('email.validation.recoveryInvalid');
     } else if (name === 'phoneNumber') {
-      if (value && !/^\+?[0-9\s\-()]+$/.test(value)) error = 'Invalid phone number format';
+      if (value && !/^\+?[0-9\s\-()]+$/.test(value)) error = t('email.validation.phoneInvalid');
     }
     setErrors((prev) => ({ ...prev, [name]: error }));
   }, []);
@@ -313,24 +343,21 @@ const EmailManager = () => {
 
     // Use common validation logic
     if (!newEmailData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('email.validation.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmailData.email)) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = t('email.validation.emailInvalid');
     }
-
     if (!newEmailData.password.trim()) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('email.validation.passwordRequired');
     }
-
     if (
       newEmailData.recoveryEmail &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmailData.recoveryEmail)
     ) {
-      newErrors.recoveryEmail = 'Invalid recovery email format';
+      newErrors.recoveryEmail = t('email.validation.recoveryInvalid');
     }
-
     if (newEmailData.phoneNumber && !/^\+?[0-9\s\-()]+$/.test(newEmailData.phoneNumber)) {
-      newErrors.phoneNumber = 'Invalid phone number format';
+      newErrors.phoneNumber = t('email.validation.phoneInvalid');
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -414,7 +441,7 @@ const EmailManager = () => {
               className="hover:text-foreground text-muted-foreground/50 transition-colors"
               text={''}
             />
-            <BreadcrumbItem text="Emails" />
+            <BreadcrumbItem text={t('email.manager.email')} />
           </Breadcrumb>
         </div>
 
@@ -425,8 +452,8 @@ const EmailManager = () => {
               size="sm"
               placeholder={
                 focusedAccountId
-                  ? 'Search disabled while detail is active...'
-                  : 'Search identitites...'
+                  ? t('email.manager.searchDisabledPlaceholder')
+                  : t('email.manager.searchPlaceholder')
               }
               leftIcon={Search}
               value={searchQuery}
@@ -436,7 +463,7 @@ const EmailManager = () => {
                 if (focusedAccountId) {
                   setToast({
                     visible: true,
-                    message: 'Please close account detail to unlock search',
+                    message: t('email.toast.searchDisabled'),
                     type: 'warning',
                   });
                 }
@@ -454,7 +481,7 @@ const EmailManager = () => {
               setIsDrawerOpen(true);
             }}
             className="w-9 h-9 flex items-center justify-center bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all active:scale-90 border border-primary/20 group"
-            title="Add Email Account"
+            title={t('email.manager.addAccount')}
           >
             <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
           </button>
@@ -468,7 +495,7 @@ const EmailManager = () => {
             <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground opacity-50">
               <Loader2 className="w-10 h-10 animate-spin text-primary" />
               <span className="text-[10px] font-bold tracking-[0.3em] uppercase">
-                Indexing Cloud Repository...
+                {t('email.manager.indexing')}
               </span>
             </div>
           ) : error ? (
@@ -477,14 +504,16 @@ const EmailManager = () => {
                 <AlertCircle className="w-10 h-10" />
               </div>
               <div className="max-w-md space-y-2">
-                <h2 className="text-sm font-bold text-foreground">Sync Failure</h2>
+                <h2 className="text-sm font-bold text-foreground">
+                  {t('email.manager.syncFailure')}
+                </h2>
                 <p className="text-xs text-muted-foreground leading-relaxed">{error}</p>
               </div>
               <button
                 onClick={loadData}
                 className="px-6 py-2.5 bg-background border border-border hover:bg-muted rounded-xl text-xs font-bold transition-all active:scale-95"
               >
-                Restore Connection
+                {t('email.manager.restoreConnection')}
               </button>
             </div>
           ) : accounts.length === 0 ? (
@@ -496,9 +525,9 @@ const EmailManager = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-sm font-bold tracking-tight">Cloud Storage Empty</p>
+                <p className="text-sm font-bold tracking-tight">{t('email.manager.emptyTitle')}</p>
                 <p className="text-xs text-muted-foreground max-w-[240px] leading-relaxed mx-auto">
-                  No email accounts detected. Add your first connection to start managing.
+                  {t('email.manager.emptyDesc')}
                 </p>
               </div>
               <button
@@ -506,7 +535,7 @@ const EmailManager = () => {
                 className="flex items-center gap-2 bg-primary/10 text-primary px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                Add Account
+                {t('email.manager.addAccount')}
               </button>
             </div>
           ) : (
@@ -537,11 +566,9 @@ const EmailManager = () => {
         }}
         direction="right"
         width={500}
-        title={selectedAccount ? 'Cloud Connection Details' : 'Add Email Account'}
+        title={selectedAccount ? t('email.manager.detailsTitle') : t('email.manager.addTitle')}
         subtitle={
-          selectedAccount
-            ? 'Review and manage account security settings'
-            : 'Connect a new email account'
+          selectedAccount ? t('email.manager.detailsSubtitle') : t('email.manager.addSubtitle')
         }
         footerActions={
           <div className="flex gap-3 w-full">
@@ -549,7 +576,7 @@ const EmailManager = () => {
               onClick={() => setIsDrawerOpen(false)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors"
             >
-              Cancel
+              {t('email.serviceDrawer.cancel')}
             </button>
             <button
               onClick={handleAddEmail}
@@ -561,7 +588,7 @@ const EmailManager = () => {
                   : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
               )}
             >
-              Save
+              {t('email.quickCreate.save')}
             </button>
           </div>
         }
@@ -571,7 +598,7 @@ const EmailManager = () => {
           <div className="space-y-4">
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Email
+                {t('email.manager.email')}
                 <span className="text-destructive ml-1">*</span>
               </label>
               <Input
@@ -592,11 +619,10 @@ const EmailManager = () => {
                     <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                        Trash Conflict Detected
+                        {t('email.manager.trashConflict.title')}
                       </p>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        This email is currently in the trash. You must permanently delete it before
-                        connecting it again.
+                        {t('email.manager.trashConflict.desc')}
                       </p>
                     </div>
                   </div>
@@ -605,7 +631,7 @@ const EmailManager = () => {
                       onClick={() => handleHardDelete(trashConflict.id)}
                       className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
                     >
-                      Delete Permanently
+                      {t('email.manager.deletePermanently')}
                     </button>
                     <button
                       onClick={() => {
@@ -614,7 +640,7 @@ const EmailManager = () => {
                       }}
                       className="flex-1 py-2 rounded-xl bg-white/5 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider hover:bg-amber-500/5 transition-colors"
                     >
-                      View in Table
+                      {t('email.manager.trashConflict.viewInTable')}
                     </button>
                   </div>
                 </div>
@@ -622,7 +648,7 @@ const EmailManager = () => {
             </div>
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Password
+                {t('email.manager.password')}
                 <span className="text-destructive ml-1">*</span>
               </label>
               <Input
@@ -639,7 +665,7 @@ const EmailManager = () => {
             </div>
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Recovery Email
+                {t('email.manager.recoveryEmail')}
               </label>
               <Input
                 placeholder="backup@proton.me"
@@ -654,7 +680,7 @@ const EmailManager = () => {
             </div>
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Phone Number
+                {t('email.manager.phoneNumber')}
               </label>
               <Input
                 type="text"
@@ -675,16 +701,16 @@ const EmailManager = () => {
             <div className="flex items-center gap-2 mb-2">
               <Shield className="w-4 h-4 text-primary" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
-                Security Settings
+                {t('email.manager.securitySettings')}
               </h3>
             </div>
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                2FA Secret Key (TOTP)
+                {t('email.manager.totpKey')}
               </label>
               <Input
                 type="text"
-                placeholder="Optional 2FA Secret Key"
+                placeholder={t('email.manager.totpPlaceholder')}
                 leftIcon={Key}
                 value={newEmailData.totpSecretKey}
                 onChange={(e) => setNewEmailData((d) => ({ ...d, totpSecretKey: e.target.value }))}
@@ -693,11 +719,11 @@ const EmailManager = () => {
 
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Backup Codes
+                {t('email.manager.backupCodes')}
               </label>
               <Input
                 type="combobox"
-                placeholder="Type and press Enter to add..."
+                placeholder={t('email.manager.backupPlaceholder')}
                 value={backupCodeSearch}
                 onChange={(e) => setBackupCodeSearch(e.target.value)}
                 multiValue={true}
@@ -739,7 +765,7 @@ const EmailManager = () => {
       <Modal
         open={!!deleteConfirmId}
         onClose={() => setDeleteConfirmId(null)}
-        title="Move to Trash"
+        title={t('email.manager.trashTitle')}
         size="sm"
         footer={
           <div className="flex gap-3 w-full">
@@ -747,7 +773,7 @@ const EmailManager = () => {
               onClick={() => setDeleteConfirmId(null)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
             >
-              Cancel
+              {t('email.serviceDrawer.cancel')}
             </button>
             <button
               onClick={() => {
@@ -758,7 +784,7 @@ const EmailManager = () => {
               }}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all shadow-lg shadow-destructive/20"
             >
-              Confirm
+              {t('email.manager.confirm')}
             </button>
           </div>
         }
@@ -768,9 +794,11 @@ const EmailManager = () => {
             <Trash2 className="w-6 h-6" />
           </div>
           <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            Are you sure you want to move this account to the trash? It will be{' '}
-            <span className="text-foreground font-bold"> permanently deleted </span> after a 7-day
-            grace period.
+            <Trans i18nKey="email.manager.trashWarning">
+              Are you sure you want to move this account to the trash? It will be{' '}
+              <span className="text-foreground font-bold"> permanently deleted </span> after a 7-day
+              grace period.
+            </Trans>
           </p>
         </div>
       </Modal>
@@ -778,7 +806,7 @@ const EmailManager = () => {
       <Modal
         open={!!hardDeleteConfirmId}
         onClose={() => setHardDeleteConfirmId(null)}
-        title="Delete Permanently"
+        title={t('email.manager.deleteTitle')}
         size="sm"
         footer={
           <div className="flex gap-3 w-full">
@@ -786,7 +814,7 @@ const EmailManager = () => {
               onClick={() => setHardDeleteConfirmId(null)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
             >
-              Cancel
+              {t('email.serviceDrawer.cancel')}
             </button>
             <button
               onClick={() => {
@@ -797,7 +825,7 @@ const EmailManager = () => {
               }}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
             >
-              Delete
+              {t('email.manager.delete')}
             </button>
           </div>
         }
@@ -807,9 +835,11 @@ const EmailManager = () => {
             <AlertCircle className="w-6 h-6" />
           </div>
           <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            This action <span className="text-red-500 font-bold"> cannot be undone </span>. All
-            account data, profiles, and associated service links will be wiped from the local
-            repository.
+            <Trans i18nKey="email.manager.deleteWarning">
+              This action <span className="text-red-500 font-bold"> cannot be undone </span>. All
+              account data, profiles, and associated service links will be wiped from the local
+              repository.
+            </Trans>
           </p>
         </div>
       </Modal>
@@ -817,7 +847,7 @@ const EmailManager = () => {
       <Modal
         open={!!restoreConfirmId}
         onClose={() => setRestoreConfirmId(null)}
-        title="Restore Account"
+        title={t('email.manager.restoreTitle')}
         size="sm"
         footer={
           <div className="flex gap-3 w-full">
@@ -825,7 +855,7 @@ const EmailManager = () => {
               onClick={() => setRestoreConfirmId(null)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
             >
-              Cancel
+              {t('email.serviceDrawer.cancel')}
             </button>
             <button
               onClick={() => {
@@ -836,7 +866,7 @@ const EmailManager = () => {
               }}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
             >
-              Restore
+              {t('email.manager.restore')}
             </button>
           </div>
         }
@@ -846,9 +876,10 @@ const EmailManager = () => {
             <Undo2 className="w-6 h-6" />
           </div>
           <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            Bạn có chắc chắn muốn <span className="text-emerald-500 font-bold">khôi phục</span> tài
-            khoản này? Tài khoản sẽ quay lại trạng thái hoạt động bình thường và lịch trình xóa sẽ
-            bị hủy.
+            <Trans i18nKey="email.manager.restoreWarning">
+              Are you sure you want to <span className="text-emerald-500 font-bold">restore</span>{' '}
+              this account? Normal operations will resume and scheduled deletion will be cancelled.
+            </Trans>
           </p>
         </div>
       </Modal>
@@ -856,7 +887,7 @@ const EmailManager = () => {
       <Modal
         open={!!diffPayload}
         onClose={() => setDiffPayload(null)}
-        title="Review Changes"
+        title={t('email.manager.reviewChanges')}
         size="md"
         bodyClassName="h-[35vh] max-h-[35vh]"
         footer={
@@ -865,7 +896,7 @@ const EmailManager = () => {
               onClick={() => setDiffPayload(null)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
             >
-              Cancel
+              {t('email.serviceDrawer.cancel')}
             </button>
             <button
               onClick={() => {
@@ -876,7 +907,7 @@ const EmailManager = () => {
               }}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
             >
-              Confirm Changes
+              {t('email.manager.confirmChanges')}
             </button>
           </div>
         }

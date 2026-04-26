@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { User, LayoutGrid, Undo2, Trash, Clock, Mail, Shield, Database } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../../shared/lib/utils';
 import Avatar from '../../../shared/components/ui/avatar/Avatar';
 import Badge from '../../../shared/components/ui/badge/Badge';
@@ -10,11 +11,15 @@ import InboxTab from './tabs/InboxTab';
 import FingerprintTab from './tabs/FingerprintTab';
 import SessionsTab from './tabs/SessionsTab';
 
+import HistoryTab from './tabs/HistoryTab';
+
 interface DetailViewProps {
   focusedAccount: Account | null;
   accounts: Account[];
-  activeTab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions';
-  setActiveTab: (tab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions') => void;
+  activeTab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions' | 'history';
+  setActiveTab: (
+    tab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions' | 'history',
+  ) => void;
   avatars: Record<string, string>;
   onSelectAccount: (account: Account) => void;
   onContextMenu: (e: React.MouseEvent, accountId: string) => void;
@@ -57,17 +62,18 @@ const DetailView: FC<DetailViewProps> = ({
   onAddNewServiceLink,
   onEditServiceLink,
 }) => {
+  const { t } = useTranslation();
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
       <div className="grid grid-cols-[80px_1fr_140px] border-b border-border/50 bg-table-headerBg shadow-sm shrink-0">
         <div className="pl-6 h-10 flex items-center text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">
-          STT
+          {t('table.stt')}
         </div>
         <div className="h-10 flex items-center text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">
-          Email
+          {t('table.email')}
         </div>
         <div className="pr-6 h-10 flex items-center justify-end text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">
-          Status
+          {t('table.status')}
         </div>
       </div>
 
@@ -103,7 +109,7 @@ const DetailView: FC<DetailViewProps> = ({
               {focusedAccount?.email}
             </span>
             <span className="text-[10px] text-muted-foreground font-mono tracking-widest opacity-40 uppercase truncate">
-              {focusedAccount?.password || 'no password'}
+              {focusedAccount?.password || t('email.list.noPassword')}
             </span>
           </div>
         </div>
@@ -111,16 +117,22 @@ const DetailView: FC<DetailViewProps> = ({
           {focusedAccount?.status === 'active' ? (
             <Badge variant="ghost-success" className="gap-2 inline-flex items-center py-1 px-3">
               <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              <span className="text-[10px] uppercase tracking-[0.15em] font-black">Active</span>
+              <span className="text-[10px] uppercase tracking-[0.15em] font-black">
+                {t('email.list.active')}
+              </span>
             </Badge>
           ) : focusedAccount?.status === 'deleting' ? (
             <Badge variant="ghost-warning" className="gap-2 inline-flex items-center py-1 px-3">
               <Clock className="w-3 h-3 animate-spin-slow" />
-              <span className="text-[10px] uppercase tracking-[0.15em] font-black">In Trash</span>
+              <span className="text-[10px] uppercase tracking-[0.15em] font-black">
+                {t('email.detail.inTrash')}
+              </span>
             </Badge>
           ) : (
             <Badge variant="ghost-error" className="gap-2 inline-flex items-center py-1 px-3">
-              <span className="text-[10px] uppercase tracking-[0.15em] font-black">Disabled</span>
+              <span className="text-[10px] uppercase tracking-[0.15em] font-black">
+                {t('email.list.disabled')}
+              </span>
             </Badge>
           )}
         </div>
@@ -156,7 +168,7 @@ const DetailView: FC<DetailViewProps> = ({
                   activeTab === 'info' ? 'text-[#f59e0b]' : 'text-muted-foreground/50',
                 )}
               />
-              <span>Information</span>
+              <span>{t('email.detail.tabs.information')}</span>
             </button>
 
             <button
@@ -186,7 +198,7 @@ const DetailView: FC<DetailViewProps> = ({
                   activeTab === 'services' ? 'text-[#3b82f6]' : 'text-muted-foreground/50',
                 )}
               />
-              <span>Services</span>
+              <span>{t('email.detail.tabs.services')}</span>
             </button>
             <button
               onClick={(e) => {
@@ -215,7 +227,7 @@ const DetailView: FC<DetailViewProps> = ({
                   activeTab === 'inbox' ? 'text-[#10b981]' : 'text-muted-foreground/50',
                 )}
               />
-              <span>Inbox Preview</span>
+              <span>{t('email.detail.tabs.inbox')}</span>
             </button>
 
             <button
@@ -245,7 +257,7 @@ const DetailView: FC<DetailViewProps> = ({
                   activeTab === 'fingerprint' ? 'text-[#8b5cf6]' : 'text-muted-foreground/50',
                 )}
               />
-              <span>Health & Identity</span>
+              <span>{t('email.detail.tabs.healthIdentity')}</span>
             </button>
 
             <button
@@ -275,7 +287,37 @@ const DetailView: FC<DetailViewProps> = ({
                   activeTab === 'sessions' ? 'text-[#ec4899]' : 'text-muted-foreground/50',
                 )}
               />
-              <span>Website Sessions</span>
+              <span>{t('email.detail.tabs.sessions')}</span>
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('history');
+              }}
+              className={cn(
+                'w-full flex items-center gap-3 py-3 text-sm font-medium transition-all relative group',
+                activeTab === 'history'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+              style={{
+                background:
+                  activeTab === 'history'
+                    ? 'linear-gradient(to right, #6366f115, transparent)'
+                    : undefined,
+              }}
+            >
+              {activeTab === 'history' && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#6366f1] rounded-l-lg shadow-[0_0_12px_rgba(99,102,241,0.4)]" />
+              )}
+              <Clock
+                className={cn(
+                  'w-5 h-5 ml-6 transition-colors',
+                  activeTab === 'history' ? 'text-[#6366f1]' : 'text-muted-foreground/50',
+                )}
+              />
+              <span>{t('email.detail.tabs.history')}</span>
             </button>
           </div>
 
@@ -286,14 +328,14 @@ const DetailView: FC<DetailViewProps> = ({
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-wider hover:bg-emerald-500 hover:text-white transition-all border border-emerald-500/20"
               >
                 <Undo2 className="w-3.5 h-3.5" />
-                Restore Account
+                {t('email.detail.actions.restore')}
               </button>
               <button
                 onClick={() => onHardDelete(focusedAccount.id)}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
               >
                 <Trash className="w-3.5 h-3.5" />
-                Delete Permanently
+                {t('email.detail.actions.deletePermanently')}
               </button>
             </div>
           )}
@@ -323,11 +365,13 @@ const DetailView: FC<DetailViewProps> = ({
               <InboxTab email={editedAccount?.email || ''} />
             ) : activeTab === 'fingerprint' ? (
               <FingerprintTab email={editedAccount?.email || ''} />
-            ) : (
+            ) : activeTab === 'sessions' ? (
               <SessionsTab
                 email={editedAccount?.email || ''}
                 accountId={focusedAccount?.id || ''}
               />
+            ) : (
+              <HistoryTab email={editedAccount?.email || ''} />
             )}
           </div>
         </div>

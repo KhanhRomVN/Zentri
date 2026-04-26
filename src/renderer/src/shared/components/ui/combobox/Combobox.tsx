@@ -153,13 +153,21 @@ const Combobox: React.FC<ComboboxProps> = ({
                   {renderOption ? (
                     renderOption(option)
                   ) : (
-                    <span
-                      className={
-                        selectedOption?.value === option.value ? 'text-primary font-bold' : ''
-                      }
-                    >
-                      {option.label}
-                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span
+                        className={cn(
+                          'truncate',
+                          selectedOption?.value === option.value ? 'text-primary font-bold' : '',
+                        )}
+                      >
+                        {option.label}
+                      </span>
+                      {option.description && (
+                        <span className="text-[10px] text-muted-foreground/40 font-medium truncate mt-0.5">
+                          {option.description}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 {selectedOption?.value === option.value && (

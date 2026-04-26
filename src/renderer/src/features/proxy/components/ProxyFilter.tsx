@@ -2,11 +2,12 @@ import { FC } from 'react';
 import { ProxyFilterState } from '../types';
 import { Filter, RefreshCcw, Check } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface ProxyFilterProps {
   filters: ProxyFilterState;
   onFilterChange: (filters: ProxyFilterState) => void;
-  proxies: any[];
+  disabled?: boolean;
 }
 
 type ChipVariant = 'indigo' | 'emerald' | 'amber' | 'rose' | 'slate';
@@ -52,6 +53,7 @@ const FilterChip: FC<{
 };
 
 const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }) => {
+  const { t } = useTranslation();
   const updateFilter = (key: keyof ProxyFilterState, value: string) => {
     if (disabled) return;
     onFilterChange({ ...filters, [key]: value });
@@ -60,7 +62,7 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
   return (
     <div
       className={cn(
-        'w-80 border-r border-border/50 bg-muted/5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar transition-all duration-500',
+        'w-[360px] border-r border-border/50 bg-muted/5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar transition-all duration-500',
         disabled && 'opacity-50 pointer-events-none grayscale-[0.5]',
       )}
     >
@@ -69,7 +71,7 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
         <div className="flex items-center gap-2.5">
           <Filter className="w-3.5 h-3.5 text-primary" />
           <span className="text-xs font-black uppercase tracking-[0.25em] text-foreground/80">
-            Filter Controls
+            {t('proxy.filterControls')}
           </span>
         </div>
         {!disabled && (
@@ -85,7 +87,7 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
               })
             }
             className="p-1.5 hover:bg-primary/10 rounded-lg text-muted-foreground/50 hover:text-primary transition-all active:scale-95"
-            title="Reset Parameters"
+            title={t('proxy.resetParameters')}
           >
             <RefreshCcw className="w-3 h-3" />
           </button>
@@ -96,23 +98,23 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
         {/* Proxy Type - Indigo */}
         <div className="space-y-4">
           <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] ml-1">
-            Configuration Type
+            {t('proxy.configurationType')}
           </label>
           <div className="grid grid-cols-3 gap-2">
             <FilterChip
-              label="All"
+              label={t('proxy.all')}
               active={filters.proxyType === 'all'}
               onClick={() => updateFilter('proxyType', 'all')}
               variant="indigo"
             />
             <FilterChip
-              label="Private"
+              label={t('proxy.exclusive')}
               active={filters.proxyType === 'private'}
               onClick={() => updateFilter('proxyType', 'private')}
               variant="indigo"
             />
             <FilterChip
-              label="Shared"
+              label={t('proxy.shared')}
               active={filters.proxyType === 'shared'}
               onClick={() => updateFilter('proxyType', 'shared')}
               variant="indigo"
@@ -123,29 +125,29 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
         {/* Source Type - Emerald */}
         <div className="space-y-4">
           <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] ml-1">
-            Network Source
+            {t('proxy.networkSource')}
           </label>
           <div className="grid grid-cols-2 gap-2">
             <FilterChip
-              label="Any Source"
+              label={t('proxy.anySource')}
               active={filters.sourceType === 'all'}
               onClick={() => updateFilter('sourceType', 'all')}
               variant="emerald"
             />
             <FilterChip
-              label="Datacenter"
+              label={t('proxy.datacenter')}
               active={filters.sourceType === 'datacenter'}
               onClick={() => updateFilter('sourceType', 'datacenter')}
               variant="emerald"
             />
             <FilterChip
-              label="Residential"
+              label={t('proxy.residential')}
               active={filters.sourceType === 'residential'}
               onClick={() => updateFilter('sourceType', 'residential')}
               variant="emerald"
             />
             <FilterChip
-              label="Mobile"
+              label={t('proxy.carrier')}
               active={filters.sourceType === 'mobile'}
               onClick={() => updateFilter('sourceType', 'mobile')}
               variant="emerald"
@@ -156,11 +158,11 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
         {/* Protocol - Amber */}
         <div className="space-y-4">
           <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] ml-1">
-            Protocol Matrix
+            {t('proxy.protocolMatrix')}
           </label>
           <div className="grid grid-cols-2 gap-2">
             <FilterChip
-              label="All Protocols"
+              label={t('proxy.allProtocols')}
               active={filters.protocol === 'all'}
               onClick={() => updateFilter('protocol', 'all')}
               variant="amber"
@@ -183,29 +185,29 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
         {/* Status - Mixed Variants for semantic meaning */}
         <div className="space-y-4">
           <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] ml-1">
-            Node Vitality
+            {t('proxy.nodeVitality')}
           </label>
           <div className="grid grid-cols-2 gap-2">
             <FilterChip
-              label="Any Status"
+              label={t('proxy.anyStatus')}
               active={filters.status === 'all'}
               onClick={() => updateFilter('status', 'all')}
               variant="slate"
             />
             <FilterChip
-              label="Active Nodes"
+              label={t('proxy.activeNodes')}
               active={filters.status === 'active'}
               onClick={() => updateFilter('status', 'active')}
               variant="emerald"
             />
             <FilterChip
-              label="Expired"
+              label={t('proxy.expired')}
               active={filters.status === 'expired'}
               onClick={() => updateFilter('status', 'expired')}
               variant="amber"
             />
             <FilterChip
-              label="Disabled"
+              label={t('proxy.disabled')}
               active={filters.status === 'disabled'}
               onClick={() => updateFilter('status', 'disabled')}
               variant="rose"

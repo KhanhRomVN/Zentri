@@ -84,7 +84,7 @@ export type ProxySourceType = 'datacenter' | 'residential' | 'mobile';
 export type ProxyRotationType = 'static' | 'rotating';
 export type ProxyPricingType = 'time' | 'bandwidth';
 export type ProxyProtocol = 'http' | 'https' | 'socks5';
-export type ProxyStatus = 'active' | 'expired' | 'disabled';
+export type ProxyStatus = 'active' | 'expired' | 'disabled' | 'trash';
 
 export interface Proxy extends GlobalEntity {
   ipVersion: number;

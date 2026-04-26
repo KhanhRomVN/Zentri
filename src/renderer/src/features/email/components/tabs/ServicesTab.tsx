@@ -1,5 +1,6 @@
 import { Search, Plus, ShieldCheck, Lock, LayoutGrid } from 'lucide-react';
 import React, { useRef, FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../../../shared/lib/utils';
 import {
   Table,
@@ -28,6 +29,7 @@ const ServicesTab: FC<ServicesTabProps> = ({
   onEditServiceLink,
   onServiceContextMenu,
 }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Derived filtered services
@@ -45,7 +47,7 @@ const ServicesTab: FC<ServicesTabProps> = ({
         <div className="w-80 flex items-center transition-all duration-500">
           <Input
             size="sm"
-            placeholder="Search linked services..."
+            placeholder={t('email.manager.tabs.services.searchPlaceholder')}
             value={serviceSearch}
             onChange={(e) => setServiceSearch(e.target.value)}
             leftIcon={Search}
@@ -55,7 +57,7 @@ const ServicesTab: FC<ServicesTabProps> = ({
         <button
           onClick={onAddNewServiceLink}
           className="w-9 h-9 flex items-center justify-center bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all active:scale-90 border border-primary/20 group"
-          title="Link New Service"
+          title={t('email.manager.tabs.services.linkNewTooltip')}
         >
           <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
         </button>
@@ -67,45 +69,45 @@ const ServicesTab: FC<ServicesTabProps> = ({
             <TableHeader className="sticky top-0 z-30">
               <TableRow className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
                 <HeaderCell className="w-[60px] pl-8 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-                  STT
+                  {t('email.manager.tabs.services.headers.stt')}
                 </HeaderCell>
-                <HeaderCell className="w-[28%] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-                  Service
+                <HeaderCell className="w-[25%] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+                  {t('email.manager.tabs.services.headers.service')}
                 </HeaderCell>
                 <HeaderCell
                   align="center"
                   className="w-[22%] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
                 >
-                  Username
+                  {t('email.manager.tabs.services.headers.account')}
                 </HeaderCell>
                 <HeaderCell
                   align="center"
-                  className="w-[20%] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
+                  className="w-[18%] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
                 >
-                  Password
+                  {t('email.manager.tabs.services.headers.lastUsed')}
                 </HeaderCell>
                 <HeaderCell
                   align="center"
                   className="w-[110px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
                 >
-                  Status
+                  {t('email.manager.tabs.services.headers.status')}
                 </HeaderCell>
                 <HeaderCell
                   align="center"
                   className="w-[90px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
                 >
-                  Secrets
+                  {t('email.manager.tabs.services.headers.secrets')}
                 </HeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredServices.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="h-40">
+                  <TableCell colSpan={6} className="h-40">
                     <div className="flex flex-col items-center justify-center gap-3 opacity-20">
                       <LayoutGrid className="w-8 h-8" />
                       <p className="text-[11px] font-black uppercase tracking-widest">
-                        No Services Linked
+                        {t('email.manager.tabs.services.emptyTitle')}
                       </p>
                     </div>
                   </TableCell>
@@ -144,42 +146,58 @@ const ServicesTab: FC<ServicesTabProps> = ({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell
-                      align="center"
-                      className="py-2 text-[12px] font-medium text-foreground/70"
-                    >
-                      <span className={cn(!service.username && 'opacity-20 italic font-normal')}>
-                        {service.username || '—'}
-                      </span>
+                    <TableCell align="center" className="py-2">
+                      <div className="flex flex-col items-center gap-0.5 group/creds">
+                        <span
+                          className={cn(
+                            'text-[12px] font-bold text-foreground/80 leading-none',
+                            !service.username && 'opacity-20 italic font-normal',
+                          )}
+                        >
+                          {service.username || '—'}
+                        </span>
+                        {service.password ? (
+                          <div
+                            className="flex items-center gap-1 opacity-30 group-hover/creds:opacity-60 transition-opacity"
+                            title="Right click to copy password"
+                            onContextMenu={(e: React.MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(service.password);
+                            }}
+                          >
+                            <span className="font-mono text-[9px] tracking-tight truncate max-w-[100px]">
+                              {service.password.replace(/./g, '•')}
+                            </span>
+                            <Lock className="w-2 h-2" />
+                          </div>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell align="center" className="py-2">
-                      <div
-                        className="w-full h-full flex items-center justify-center gap-2 group/pass cursor-pointer"
-                        onContextMenu={(e: React.MouseEvent) => {
-                          if (service.password) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(service.password);
-                          }
-                        }}
-                      >
-                        {service.password ? (
-                          <>
-                            <span className="font-mono text-xs opacity-30 tracking-tight">
-                              ••••••••••••
-                            </span>
-                            <Lock className="w-2.5 h-2.5 text-muted-foreground/30 group-hover/pass:text-primary transition-colors" />
-                          </>
-                        ) : null}
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-[11px] font-medium text-foreground/60 leading-none">
+                          {service.lastUsedAt
+                            ? new Date(service.lastUsedAt).toLocaleDateString()
+                            : '—'}
+                        </span>
+                        {service.lastUsedAt && (
+                          <span className="text-[9px] text-muted-foreground/40 font-mono">
+                            {new Date(service.lastUsedAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell align="center" className="py-2">
                       <div className="flex justify-center">
                         <div
                           className={cn(
-                            'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border',
+                            'px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all duration-300',
                             service.status === 'active'
-                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-[0_0_12px_-4px_rgba(16,185,129,0.3)]'
                               : service.status === 'trash'
                                 ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                                 : 'bg-muted text-muted-foreground border-transparent',
@@ -190,9 +208,9 @@ const ServicesTab: FC<ServicesTabProps> = ({
                       </div>
                     </TableCell>
                     <TableCell align="center" className="py-2 font-bold">
-                      <div className="flex items-center justify-center gap-2 text-[11px] font-mono text-muted-foreground/60">
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/30 border border-border/10 font-bold group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                          <ShieldCheck className="w-3 h-3 opacity-40 group-hover:opacity-100" />
+                      <div className="flex items-center justify-center gap-2 text-[11px] font-mono">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-bold transition-all shadow-sm">
+                          <ShieldCheck className="w-3 h-3" />
                           {service.secretCount || 0}
                         </div>
                       </div>

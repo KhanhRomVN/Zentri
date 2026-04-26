@@ -1,16 +1,5 @@
 import React, { FC, useState, useEffect } from 'react';
-import {
-  Trash2,
-  Loader2,
-  ShieldCheck,
-  Key,
-  Lock,
-  Database,
-  Plus,
-  Copy,
-  Edit2,
-  RotateCcw,
-} from 'lucide-react';
+import { Trash2, Loader2, ShieldCheck, Database, Plus, Copy, Edit2, RotateCcw } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 import { Drawer } from '../../../shared/components/ui/drawer';
 import Input from '../../../shared/components/ui/input/Input';
@@ -55,7 +44,7 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
   );
 
   // TOTP Live States
-  const [totpTick, setTotpTick] = useState(0);
+  const [, setTotpTick] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(30);
 
   useEffect(() => {

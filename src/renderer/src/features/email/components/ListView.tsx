@@ -1,5 +1,7 @@
 import { FC } from 'react';
-import { Mail, Clock, ShieldCheck, Phone } from 'lucide-react';
+import { Mail, Clock, ShieldCheck, Phone, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../../../shared/lib/utils';
 import {
   Table,
@@ -20,28 +22,77 @@ interface ListViewProps {
 }
 
 const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onContextMenu }) => {
+  const { t } = useTranslation();
+
+  const renderLastActivity = (account: Account) => {
+    if (!account.lastActivity) {
+      return (
+        <div className="flex items-center gap-2 opacity-20">
+          <Globe className="w-3.5 h-3.5" />
+          <span className="text-[10px] italic">No activity yet</span>
+        </div>
+      );
+    }
+
+    const { url, title, time } = account.lastActivity;
+    let hostname = '';
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      hostname = url;
+    }
+
+    return (
+      <div className="flex items-center gap-3 group/act max-w-full">
+        <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0 group-hover/act:border-primary/30 transition-colors">
+          <img
+            src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+            className="w-5 h-5 opacity-70 group-hover/act:opacity-100 transition-opacity"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                'https://www.google.com/s2/favicons?domain=google.com&sz=32';
+            }}
+          />
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[11px] font-bold text-foreground/80 truncate group-hover/act:text-foreground transition-colors leading-tight">
+            {title || hostname}
+          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[9px] text-muted-foreground/40 font-mono tracking-tight group-hover/act:text-muted-foreground/60">
+              {formatDistanceToNow(new Date(time), { addSuffix: true })}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex-1 overflow-auto custom-scrollbar flex flex-col min-h-0">
       <Table className="border-collapse table-fixed w-full">
         <TableHeader className="sticky top-0 z-30">
           <TableRow className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
-            <HeaderCell className="w-[80px] pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-              STT
+            <HeaderCell className="w-[60px] pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+              {t('table.stt')}
             </HeaderCell>
-            <HeaderCell className="text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-              Email
+            <HeaderCell className="w-[300px] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+              {t('table.email')}
             </HeaderCell>
             <HeaderCell
               align="center"
-              className="w-[220px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
+              className="w-[200px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
             >
-              Recovery / Phone
+              {t('table.recoveryPhone')}
+            </HeaderCell>
+            <HeaderCell className="text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+              Hoạt động gần nhất
             </HeaderCell>
             <HeaderCell
               align="center"
               className="w-[140px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
             >
-              Status
+              {t('table.status')}
             </HeaderCell>
           </TableRow>
         </TableHeader>
@@ -61,7 +112,7 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
               </TableCell>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform overflow-hidden border border-primary/5">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform overflow-hidden border border-primary/5">
                     {avatars[account.email] ? (
                       <img
                         src={avatars[account.email]}
@@ -69,15 +120,15 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Mail className="w-5 h-5 opacity-40" />
+                      <Mail className="w-4 h-4 opacity-40" />
                     )}
                   </div>
                   <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-foreground text-[14px] font-bold tracking-tight truncate max-w-[250px]">
+                    <span className="text-foreground text-[14px] font-bold tracking-tight truncate">
                       {account.email}
                     </span>
                     <span className="text-[10px] text-muted-foreground/40 font-mono tracking-wider truncate uppercase">
-                      {account.password || 'no password'}
+                      {account.password || t('email.list.noPassword')}
                     </span>
                   </div>
                 </div>
@@ -103,6 +154,8 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
                 </div>
               </TableCell>
 
+              <TableCell>{renderLastActivity(account)}</TableCell>
+
               <TableCell align="center">
                 {account.status === 'active' ? (
                   <Badge
@@ -111,7 +164,7 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
                   >
                     <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                     <span className="text-[10px] uppercase tracking-[0.15em] font-black">
-                      Active
+                      {t('email.list.active')}
                     </span>
                   </Badge>
                 ) : account.status === 'deleting' ? (
@@ -121,13 +174,13 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
                   >
                     <Clock className="w-3 h-3" />
                     <span className="text-[10px] uppercase tracking-[0.15em] font-black">
-                      Trash
+                      {t('email.list.trash')}
                     </span>
                   </Badge>
                 ) : (
                   <Badge variant="ghost-error" className="gap-2 inline-flex items-center py-1 px-3">
                     <span className="text-[10px] uppercase tracking-[0.15em] font-black">
-                      Disabled
+                      {t('email.list.disabled')}
                     </span>
                   </Badge>
                 )}

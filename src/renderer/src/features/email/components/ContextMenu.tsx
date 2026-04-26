@@ -1,5 +1,6 @@
 import { FC, RefObject } from 'react';
-import { Chrome, Eye, Undo2, Trash, Trash2 } from 'lucide-react';
+import { Globe, Eye, Undo2, Trash, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Account } from '../types';
 import Portal from '../../../shared/components/ui/Portal';
 
@@ -12,7 +13,7 @@ interface ContextMenuProps {
   onRestore: (id: string) => void;
   onHardDelete: (id: string) => void;
   onSoftDelete: (id: string) => void;
-  onOpenChromeWithCheck: (account: Account) => void;
+  onLaunchRequest: (account: Account) => void;
 }
 
 const ContextMenu: FC<ContextMenuProps> = ({
@@ -24,8 +25,9 @@ const ContextMenu: FC<ContextMenuProps> = ({
   onRestore,
   onHardDelete,
   onSoftDelete,
-  onOpenChromeWithCheck,
+  onLaunchRequest,
 }) => {
+  const { t } = useTranslation();
   if (!contextMenu) return null;
 
   const targetAccount = accounts.find((a) => a.id === contextMenu.accountId);
@@ -42,13 +44,13 @@ const ContextMenu: FC<ContextMenuProps> = ({
           <>
             <button
               onClick={() => {
-                onOpenChromeWithCheck(targetAccount);
+                onLaunchRequest(targetAccount);
                 setContextMenu(null);
               }}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-emerald-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all"
             >
-              <Chrome className="w-4 h-4" />
-              Open Chrome
+              <Globe className="w-4 h-4" />
+              {t('email.contextMenu.openBrowser')}
             </button>
             <div className="h-px bg-border/30 my-1 mx-2" />
           </>
@@ -62,7 +64,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
           className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all"
         >
           <Eye className="w-4 h-4 text-blue-500/50" />
-          View
+          {t('email.contextMenu.view')}
         </button>
 
         <div className="h-px bg-border/30 my-1 mx-2" />
@@ -77,7 +79,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-emerald-500/70 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all"
             >
               <Undo2 className="w-4 h-4" />
-              Restore
+              {t('email.contextMenu.restore')}
             </button>
             <button
               onClick={() => {
@@ -87,7 +89,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500/70 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
             >
               <Trash className="w-4 h-4" />
-              Delete Permanently
+              {t('email.contextMenu.deletePermanently')}
             </button>
           </>
         ) : (
@@ -99,7 +101,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
             className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500/70 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
           >
             <Trash2 className="w-4 h-4" />
-            Delete
+            {t('email.contextMenu.delete')}
           </button>
         )}
       </div>

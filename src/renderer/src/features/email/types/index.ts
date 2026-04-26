@@ -32,6 +32,12 @@ export interface Account extends Omit<Email, 'services'> {
   avatar?: string;
   twoFactorEnabled?: boolean;
   services?: LinkedService[];
+  lastActivity?: {
+    title: string;
+    url: string;
+    time: number;
+    favicon?: string;
+  };
 }
 
 export interface ProfileMetadata {

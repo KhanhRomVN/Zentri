@@ -4,6 +4,59 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as sqlite3 from 'sqlite3';
 import * as puppeteer from 'puppeteer-core';
+import * as os from 'os';
+import { dbManager } from '../database';
+
+const POSSIBLE_BROWSER_PATHS = [
+  '/usr/bin/donutbrowser',
+  '/usr/bin/donut',
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+  '/snap/bin/chromium',
+  '/snap/bin/google-chrome',
+];
+
+const getDonutCorePath = () => {
+  const homeDir = os.homedir();
+  const basePath = path.join(homeDir, '.local/share/DonutBrowser/binaries/wayfern');
+  if (!fs.existsSync(basePath)) return null;
+
+  try {
+    const versions = fs.readdirSync(basePath);
+    if (!versions || versions.length === 0) return null;
+
+    // Sort versions descending (simple string sort for now, usually enough for these version strings)
+    versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
+
+    const latestVersion = versions[0];
+    const executablePath = path.join(basePath, latestVersion, 'chrome');
+    if (fs.existsSync(executablePath)) {
+      console.log(`[Donut] Found internal core: ${executablePath}`);
+      return executablePath;
+    }
+  } catch (e) {
+    console.error('Failed to find Donut Core:', e);
+  }
+  return null;
+};
+
+function getExecutablePath(customPath?: string) {
+  if (customPath && fs.existsSync(customPath)) {
+    return customPath;
+  }
+
+  // Primary: Try to find Donut's internal Wayfern core
+  const donutCore = getDonutCorePath();
+  if (donutCore) return donutCore;
+
+  // Fallback: System paths
+  for (const p of POSSIBLE_BROWSER_PATHS) {
+    if (fs.existsSync(p)) return p;
+  }
+  return '';
+}
 
 export function setupEmailHandlers() {
   console.log('✅ Setting up Email Handlers...');
@@ -17,36 +70,25 @@ export function setupEmailHandlers() {
         url,
         profilePath,
         email,
+        browserPath,
       }: {
         provider: string;
         accountId: string;
         url?: string;
         profilePath?: string;
         email?: string;
+        browserPath?: string;
       },
     ) => {
       try {
         const userDataPath = app.getPath('userData');
 
-        // 1. Determine executable path
-        let executablePath = '';
-        const possiblePaths = [
-          '/usr/bin/google-chrome',
-          '/usr/bin/chromium',
-          '/usr/bin/chromium-browser',
-          '/snap/bin/chromium',
-          '/usr/bin/google-chrome-stable',
-        ];
-
-        for (const p of possiblePaths) {
-          if (fs.existsSync(p)) {
-            executablePath = p;
-            break;
-          }
-        }
+        const executablePath = getExecutablePath(browserPath);
+        console.log(`[BrowserLaunch] CustomPath: ${browserPath || 'NONE'}`);
+        console.log(`[BrowserLaunch] Final Executable: ${executablePath}`);
 
         if (!executablePath) {
-          throw new Error('Browser (Chrome/Chromium) not found.');
+          throw new Error('Browser (Donut/Chromium) not found.');
         }
 
         // 2. Setup Browser Profile Path
@@ -56,7 +98,6 @@ export function setupEmailHandlers() {
         } else {
           try {
             // Get DB path to find profiles dir if we have an email
-            const { dbManager } = await import('../database');
             if (dbManager.dbPath && email) {
               const dbDir = path.dirname(dbManager.dbPath);
               browserProfileDir = path.join(dbDir, 'profiles', email);
@@ -64,29 +105,34 @@ export function setupEmailHandlers() {
               browserProfileDir = path.join(
                 userDataPath,
                 'browser_profiles',
-                accountId || provider,
+                email || accountId || provider,
               );
             }
           } catch (e) {
-            browserProfileDir = path.join(userDataPath, 'browser_profiles', accountId || provider);
+            browserProfileDir = path.join(
+              userDataPath,
+              'browser_profiles',
+              email || accountId || provider,
+            );
           }
         }
-
-        console.log(`[Chrome] Launching with profile: ${browserProfileDir}`);
 
         if (!fs.existsSync(browserProfileDir)) {
           fs.mkdirSync(browserProfileDir, { recursive: true });
         }
 
-        // 3. Spawn "Clean" Chrome (No automation flags)
-        console.log(`Spawning CLEAN Chrome with: ${executablePath}`);
+        // 3. Spawn "Clean" Donut Browser (No automation flags)
 
         const args = [
           `--user-data-dir=${browserProfileDir}`,
           '--no-first-run',
           '--no-default-browser-check',
           '--start-maximized',
-          '--no-sandbox', // Sometimes needed in Linux environments
+          '--no-sandbox',
+          '--password-store=basic',
+          '--ozone-platform=x11',
+          '--disable-gpu-vulkan',
+          '--disable-gpu',
         ];
 
         if (url) {
@@ -96,7 +142,7 @@ export function setupEmailHandlers() {
         }
 
         const chromeProcess = spawn(executablePath, args, {
-          detached: true, // Allow it to live independently if needed
+          detached: true,
         });
 
         // Notify Renderer that browser is opened
@@ -224,7 +270,6 @@ export function setupEmailHandlers() {
 
   ipcMain.handle('email:create-profile', async (_event, { email }: { email: string }) => {
     try {
-      const { dbManager } = await import('../database');
       const dbDir = path.dirname(dbManager.dbPath);
       const profileDir = path.join(dbDir, 'profiles', email);
 
@@ -240,7 +285,6 @@ export function setupEmailHandlers() {
 
   ipcMain.handle('email:get-avatar', async (_event, { email }: { email: string }) => {
     try {
-      const { dbManager } = await import('../database');
       if (!dbManager.dbPath) return null;
 
       const dbDir = path.dirname(dbManager.dbPath);
@@ -265,7 +309,6 @@ export function setupEmailHandlers() {
 
   ipcMain.handle('email:get-services', async (_event, { email }: { email: string }) => {
     try {
-      const { dbManager } = await import('../database');
       if (!dbManager.dbPath) return [];
 
       const dbDir = path.dirname(dbManager.dbPath);
@@ -345,7 +388,6 @@ export function setupEmailHandlers() {
       },
     ) => {
       try {
-        const { dbManager } = await import('../database');
         const crypto = await import('crypto');
         const id = crypto.randomUUID();
         const query = `
@@ -374,790 +416,624 @@ export function setupEmailHandlers() {
   const activeInboxFetches = new Set<string>();
   const activeFingerprintFetches = new Set<string>();
 
-  ipcMain.handle('email:get-inbox', async (_event, { email }: { email: string }) => {
-    if (activeInboxFetches.has(email)) {
-      console.log(`[email:get-inbox] Fetch already in progress for ${email}, skipping...`);
-      return { success: false, error: 'FETCH_IN_PROGRESS' };
-    }
-    activeInboxFetches.add(email);
-
-    let browser;
-    try {
-      const userDataPath = app.getPath('userData');
-
-      // 1. Determine executable path
-      const possiblePaths = [
-        '/usr/bin/google-chrome',
-        '/usr/bin/google-chrome-stable',
-        '/usr/bin/chromium',
-        '/usr/bin/chromium-browser',
-        '/snap/bin/chromium',
-        '/snap/bin/google-chrome',
-      ];
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-          executablePath = p;
-          break;
-        }
+  ipcMain.handle(
+    'email:get-inbox',
+    async (_event, { email, browserPath }: { email: string; browserPath?: string }) => {
+      if (activeInboxFetches.has(email)) {
+        console.log(`[email:get-inbox] Fetch already in progress for ${email}, skipping...`);
+        return { success: false, error: 'FETCH_IN_PROGRESS' };
       }
-      if (!executablePath) {
-        throw new Error(
-          'Chromium/Chrome binary not found. Please install google-chrome-stable or chromium-browser.',
-        );
-      }
+      activeInboxFetches.add(email);
 
-      // 2. Setup Real Profile Path
-      const { dbManager } = await import('../database');
-      let realProfileDir = '';
-      if (dbManager.dbPath && email) {
-        const dbDir = path.dirname(dbManager.dbPath);
-        realProfileDir = path.join(dbDir, 'profiles', email);
-      } else {
-        realProfileDir = path.join(userDataPath, 'browser_profiles', email);
-      }
-
-      console.log(`[email:get-inbox] Executable: ${executablePath}, Profile: ${realProfileDir}`);
-      const { execSync } = await import('child_process');
+      let browser;
       try {
-        execSync(`pkill -9 -f "${realProfileDir}"`, { stdio: 'ignore' });
+        const userDataPath = app.getPath('userData');
+
+        const executablePath = getExecutablePath(browserPath);
+        let realProfileDir = '';
+        if (dbManager.dbPath && email) {
+          const dbDir = path.dirname(dbManager.dbPath);
+          realProfileDir = path.join(dbDir, 'profiles', email);
+        } else {
+          realProfileDir = path.join(userDataPath, 'browser_profiles', email);
+        }
+
+        console.log(`[email:get-inbox] Executable: ${executablePath}, Profile: ${realProfileDir}`);
+        const { execSync } = await import('child_process');
+        try {
+          execSync(`pkill -9 -f "${realProfileDir}"`, { stdio: 'ignore' });
+          await new Promise((r) => setTimeout(r, 2000));
+        } catch (e) {}
+
+        // Remove stale lock files
+        const lockFile = path.join(realProfileDir, 'SingletonLock');
+        const stalefiles = [
+          lockFile,
+          path.join(realProfileDir, 'DevToolsActivePort'),
+          path.join(realProfileDir, 'SingletonCookie'),
+          path.join(realProfileDir, 'SingletonSocket'),
+        ];
+        stalefiles.forEach((f) => {
+          if (fs.existsSync(f)) {
+            try {
+              fs.unlinkSync(f);
+            } catch (e) {}
+          }
+        });
+
+        // 4. Launch Puppeteer on Real Profile
+        browser = await puppeteer.launch({
+          executablePath,
+          userDataDir: realProfileDir,
+          headless: true,
+          dumpio: true,
+          env: { ...process.env },
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--disable-vulkan',
+            '--disable-gpu-rasterization',
+            '--disable-software-rasterizer',
+            '--no-first-run',
+            '--no-default-browser-check',
+            '--disable-dev-shm-usage',
+            '--disable-features=LockProfile',
+            '--password-store=gnome-libsecret',
+            '--window-size=1280,720',
+            '--disable-breakpad',
+            '--disable-crash-reporter',
+            '--no-zygote',
+            '--ozone-platform=x11',
+          ],
+        });
+
+        const page = await browser.newPage();
+        await page.setUserAgent(
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        );
+
+        // Verify session data access
+        const cookies = await page.cookies();
+        console.log(`[email:get-inbox] Profile accessed. Cookies found: ${cookies.length}`);
+
+        // 5. Navigate to Gmail
+        console.log(`[email:get-inbox] Fetching inbox for ${email}...`);
+        await page.goto('https://mail.google.com/mail/u/0/h/', {
+          waitUntil: 'networkidle2',
+          timeout: 30000,
+        });
+
+        // 6. Check for Login Redirection
+        const currentUrl = page.url();
+        const pageTitle = await page.title();
+        console.log(`[email:get-inbox] Current URL: ${currentUrl}, Title: ${pageTitle}`);
+
+        if (
+          currentUrl.includes('accounts.google.com') ||
+          pageTitle.includes('Sign in') ||
+          pageTitle.includes('Đăng nhập')
+        ) {
+          console.warn(
+            `[email:get-inbox] Session invalid for ${email}. Please login via Open Browser.`,
+          );
+          return { success: false, error: 'NOT_LOGGED_IN' };
+        }
+
         await new Promise((r) => setTimeout(r, 2000));
-      } catch (e) {}
 
-      // Remove stale lock files
-      const lockFile = path.join(realProfileDir, 'SingletonLock');
-      const stalefiles = [
-        lockFile,
-        path.join(realProfileDir, 'DevToolsActivePort'),
-        path.join(realProfileDir, 'SingletonCookie'),
-        path.join(realProfileDir, 'SingletonSocket'),
-      ];
-      stalefiles.forEach((f) => {
-        if (fs.existsSync(f)) {
-          try {
-            fs.unlinkSync(f);
-          } catch (e) {}
-        }
-      });
+        // 7. Parse Inbox Table
+        const messages: any[] = await page.evaluate(() => {
+          const modernRows = Array.from(
+            // @ts-ignore
+            document.querySelectorAll('tr.zA, div[role="main"] tr[role="row"]'),
+          );
+          if (modernRows.length > 5) {
+            return modernRows
+              .slice(0, 15)
+              .map((row: any) => {
+                try {
+                  const senderSpan = row.querySelector('.zF, .bA4, .vY');
+                  const subjectSpan = row.querySelector('.bog');
+                  const snippetSpan = row.querySelector('.y2');
+                  const timeSpan = row.querySelector('.xW, .bq3');
 
-      // 4. Launch Puppeteer on Real Profile
-      browser = await puppeteer.launch({
-        executablePath,
-        userDataDir: realProfileDir,
-        headless: true,
-        dumpio: true,
-        env: { ...process.env },
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-gpu',
-          '--disable-vulkan',
-          '--disable-gpu-rasterization',
-          '--disable-software-rasterizer',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--disable-dev-shm-usage',
-          '--disable-features=LockProfile',
-          '--password-store=gnome-libsecret',
-          '--window-size=1280,720',
-          '--disable-breakpad',
-          '--disable-crash-reporter',
-          '--no-zygote',
-          '--ozone-platform=x11',
-        ],
-      });
+                  if (!subjectSpan) return null;
 
-      const page = await browser.newPage();
-      await page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      );
+                  const sender = senderSpan ? senderSpan.innerText.trim() : 'Unknown';
+                  const subject = subjectSpan.innerText.trim();
+                  const preview = snippetSpan
+                    ? snippetSpan.innerText.trim().replace(/^[\s\u00a0-]+/, '')
+                    : '';
+                  const time = timeSpan ? timeSpan.innerText.trim() : '';
+                  const isUnread = row.classList.contains('zE');
 
-      // Verify session data access
-      const cookies = await page.cookies();
-      console.log(`[email:get-inbox] Profile accessed. Cookies found: ${cookies.length}`);
-      if (cookies.length > 0) {
-        console.log(
-          `[email:get-inbox] Cookie names: ${cookies
-            .slice(0, 5)
-            .map((c) => c.name)
-            .join(', ')}`,
-        );
-      }
+                  return {
+                    id: Math.random().toString(36).substring(7),
+                    sender,
+                    subject,
+                    preview,
+                    time,
+                    isUnread,
+                  };
+                } catch (e) {
+                  return null;
+                }
+              })
+              .filter((m: any) => m !== null);
+          }
 
-      // 5. Navigate to Gmail
-      console.log(`[email:get-inbox] Fetching inbox for ${email}...`);
-      await page.goto('https://mail.google.com/mail/u/0/h/', {
-        waitUntil: 'networkidle2',
-        timeout: 30000,
-      });
-
-      // 6. Check for Login Redirection
-      const currentUrl = page.url();
-      const pageTitle = await page.title();
-      console.log(`[email:get-inbox] Current URL: ${currentUrl}, Title: ${pageTitle}`);
-
-      if (
-        currentUrl.includes('accounts.google.com') ||
-        pageTitle.includes('Sign in') ||
-        pageTitle.includes('Đăng nhập')
-      ) {
-        console.warn(
-          `[email:get-inbox] Session invalid for ${email}. Please login via Open Browser.`,
-        );
-        return { success: false, error: 'NOT_LOGGED_IN' };
-      }
-
-      await new Promise((r) => setTimeout(r, 2000));
-
-      // Wait for at least one message row to appear
-      try {
-        await page.waitForSelector('tr.zA, table.m tr, div[role="listitem"]', { timeout: 10000 });
-        console.log('[email:get-inbox] Confirmed rows found via waitForSelector.');
-      } catch (e) {
-        console.warn('[email:get-inbox] Wait for rows timed out.');
-      }
-
-      // 7. Parse Inbox Table
-      const messages: any[] = await page.evaluate(() => {
-        // 7.1 Detect and Parse Modern Gmail (Desktop UI) - Refined with user HTML
-        const modernRows = Array.from(
-          document.querySelectorAll('tr.zA, div[role="main"] tr[role="row"]'),
-        );
-        if (modernRows.length > 5) {
-          return modernRows
-            .slice(0, 15)
-            .map((row: any) => {
-              try {
-                // Selectors for Modern Gmail based on user HTML
-                const senderSpan = row.querySelector('.zF, .bA4, .vY');
-                const subjectSpan = row.querySelector('.bog');
-                const snippetSpan = row.querySelector('.y2');
-                const timeSpan = row.querySelector('.xW, .bq3');
-
-                if (!subjectSpan) return null;
-
-                const sender = senderSpan ? senderSpan.innerText.trim() : 'Unknown';
-                const subject = subjectSpan.innerText.trim();
-                const preview = snippetSpan
-                  ? snippetSpan.innerText.trim().replace(/^[\s\u00a0-]+/, '')
-                  : '';
-                const time = timeSpan ? timeSpan.innerText.trim() : '';
-
-                // 'zE' class = unread in Modern Gmail
-                const isUnread =
-                  row.classList.contains('zE') || row.innerText.toLowerCase().includes('chưa đọc');
-
+          // 7.2 Mobile UI
+          // @ts-ignore
+          const mobileItems = Array.from(document.querySelectorAll('div[role="listitem"], .v'));
+          if (mobileItems.length > 5) {
+            return mobileItems
+              .slice(0, 15)
+              .map((item: any) => {
+                const text = item.innerText || '';
+                const lines = text
+                  .split('\n')
+                  .map((l: string) => l.trim())
+                  .filter((l: string) => l.length > 0);
+                if (lines.length < 2) return null;
+                const sender = lines[0] || 'Unknown';
+                const subject = lines[1] || 'No Subject';
+                const isUnread = item.querySelector('b') !== null;
                 return {
                   id: Math.random().toString(36).substring(7),
                   sender,
                   subject,
-                  preview,
-                  time,
+                  preview: lines.slice(2).join(' ').substring(0, 100),
+                  time: '',
                   isUnread,
                 };
-              } catch (e) {
-                return null;
-              }
-            })
-            .filter((m: any) => m !== null);
-        }
+              })
+              .filter((m) => m !== null);
+          }
 
-        // 7.2 Detect and Parse Gmail Mobile / Basic Touch
-        const mobileItems = Array.from(document.querySelectorAll('div[role="listitem"], .v'));
-        if (mobileItems.length > 5) {
-          return mobileItems
-            .slice(0, 15)
-            .map((item: any) => {
-              const text = item.innerText || '';
-              const lines = text
-                .split('\n')
-                .map((l: string) => l.trim())
-                .filter((l: string) => l.length > 0);
-              if (lines.length < 2) return null;
-
-              const sender = lines[0] || 'Unknown';
-              const subject = lines[1] || 'No Subject';
-              const preview = lines.slice(2).join(' ').substring(0, 100);
-              const timeMatch = text.match(
-                /\d{1,2}:\d{2}\s?(?:AM|PM)?|\d+\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i,
-              );
-              const time = timeMatch ? timeMatch[0] : '';
-              const isUnread =
-                item.style?.fontWeight === 'bold' || item.querySelector('b') !== null;
-
+          // 7.3 Basic HTML
+          const rows = Array.from(
+            // @ts-ignore
+            document.querySelectorAll('table.m tr, table[bgcolor="#ffffff"] tr'),
+          );
+          return rows
+            .map((row: any) => {
+              const cells = row.querySelectorAll('td');
+              if (cells.length < 3) return null;
+              const sender = cells[1]?.innerText.trim();
+              const subject = cells[2]?.innerText.trim();
               return {
                 id: Math.random().toString(36).substring(7),
-                sender,
-                subject,
-                preview,
-                time,
-                isUnread,
+                sender: sender || 'Unknown',
+                subject: subject || 'No Subject',
+                preview: '',
+                time: cells[3]?.innerText.trim() || '',
+                isUnread: row.querySelector('b') !== null,
               };
             })
-            .filter((m) => m !== null);
-        }
+            .filter((m) => m !== null)
+            .slice(0, 10);
+        });
 
-        // 7.3 Detect and Parse Basic HTML Gmail
-        // @ts-ignore
-        const selectors = ['table.m tr', 'table[bgcolor="#ffffff"] tr', 'form[name="f"] table tr'];
-        let rows: any[] = [];
-        for (const selector of selectors) {
-          // @ts-ignore
-          const found = Array.from(document.querySelectorAll(selector));
-          if (found.length > 5) {
-            rows = found;
-            break;
-          }
-        }
+        console.log(`[email:get-inbox] Found ${messages.length} messages for ${email}`);
 
-        return rows
-          .map((row: any) => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length < 3) return null;
-            const senderCell = cells[1];
-            const subjectCell = cells[2];
-            if (!senderCell || !subjectCell) return null;
-            const sender = senderCell.innerText.trim();
-            const subjectLink = subjectCell.querySelector('a');
-            if (!subjectLink) return null;
-            const subject = subjectLink.innerText.trim();
-            const snippet = subjectCell.innerText.replace(subject, '').trim();
-            const time = cells[3]?.innerText.trim() || '';
-            const isUnread = row.querySelector('b') !== null;
-            return {
-              id: Math.random().toString(36).substring(7),
-              sender,
-              subject,
-              preview: snippet,
-              time,
-              isUnread,
-            };
-          })
-          .filter((m) => m !== null)
-          .slice(0, 10);
-      });
+        // Detect OTPs
+        const finalMessages = messages.map((m: any) => {
+          const otpRegex = /\b\d{4,8}\b|\b[A-Z0-9]{5,8}\b/;
+          const match = (m.subject + ' ' + m.preview).match(otpRegex);
+          return {
+            ...m,
+            hasOtp: !!match,
+            otpCode: match ? match[0] : undefined,
+          };
+        });
 
-      console.log(`[email:get-inbox] Found ${messages.length} messages for ${email}`);
+        // Save to cache
+        await dbManager.run(
+          'UPDATE emails SET inbox_cache = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?',
+          [JSON.stringify(finalMessages), email],
+        );
 
-      // Detect OTPs in results
-      const finalMessages = messages.map((m: any) => {
-        const otpRegex = /\b\d{4,8}\b|\b[A-Z0-9]{5,8}\b/;
-        const match = (m.subject + ' ' + m.preview).match(otpRegex);
-        return {
-          ...m,
-          hasOtp: !!match,
-          otpCode: match ? match[0] : undefined,
-        };
-      });
-      console.log(`[email:get-inbox] Final return count: ${finalMessages.length} for ${email}`);
-
-      // Save to cache
-      await dbManager.run(
-        'UPDATE emails SET inbox_cache = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?',
-        [JSON.stringify(finalMessages), email],
-      );
-
-      return { success: true, messages: finalMessages };
-    } catch (error: any) {
-      console.error('[email:get-inbox] FAILED:', error);
-      return { success: false, error: error.message };
-    } finally {
-      activeInboxFetches.delete(email);
-      if (browser) await browser.close();
-    }
-  });
+        return { success: true, messages: finalMessages };
+      } catch (error: any) {
+        console.error('[email:get-inbox] FAILED:', error);
+        return { success: false, error: error.message };
+      } finally {
+        activeInboxFetches.delete(email);
+        if (browser) await browser.close();
+      }
+    },
+  );
 
   ipcMain.handle('email:get-inbox-cache', async (_event, { email }: { email: string }) => {
     try {
-      const { dbManager } = await import('../database');
       const row = await dbManager.get<{ inbox_cache: string }>(
         'SELECT inbox_cache FROM emails WHERE email = ?',
         [email],
       );
-
       if (row && row.inbox_cache) {
         return { success: true, messages: JSON.parse(row.inbox_cache) };
       }
       return { success: true, messages: [] };
     } catch (e: any) {
-      console.error('[email:get-inbox-cache] FAILED:', e);
       return { success: false, error: e.message };
     }
   });
 
-  ipcMain.handle('email:open-inbox-debug', async (_event, { email }: { email: string }) => {
-    let browser;
-    try {
-      const userDataPath = app.getPath('userData');
-
-      let executablePath = '';
-      const possiblePaths = [
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium',
-        '/usr/bin/google-chrome-stable',
-      ];
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-          executablePath = p;
-          break;
-        }
-      }
-
-      const { dbManager } = await import('../database');
-      let realProfileDir = '';
-      if (dbManager.dbPath && email) {
-        realProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
-      } else {
-        realProfileDir = path.join(userDataPath, 'browser_profiles', email);
-      }
-
-      console.log(
-        `[email:open-inbox-debug] Executable: ${executablePath}, Profile: ${realProfileDir}`,
-      );
-      const { execSync } = await import('child_process');
+  ipcMain.handle(
+    'email:open-inbox-debug',
+    async (_event, { email, browserPath }: { email: string; browserPath?: string }) => {
       try {
-        execSync(`pkill -9 -f "${realProfileDir}"`, { stdio: 'ignore' });
-        await new Promise((r) => setTimeout(r, 2000));
-      } catch (e) {}
+        const userDataPath = app.getPath('userData');
+        const executablePath = getExecutablePath(browserPath);
+        console.log(`[InboxDebug] CustomPath: ${browserPath || 'NONE'}`);
+        console.log(`[InboxDebug] Final Executable: ${executablePath}`);
 
-      browser = await puppeteer.launch({
-        executablePath,
-        userDataDir: realProfileDir,
-        headless: false, // Visible for debug
-        dumpio: true,
-        env: { ...process.env },
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-gpu',
-          '--disable-vulkan',
-          '--disable-gpu-rasterization',
-          '--disable-software-rasterizer',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--disable-dev-shm-usage',
-          '--disable-features=LockProfile',
-          '--password-store=gnome-libsecret',
-          '--window-size=1280,720',
-          '--disable-breakpad',
-          '--disable-crash-reporter',
-          '--no-zygote',
-          '--ozone-platform=x11',
-        ],
-      });
-
-      const page = await browser.newPage();
-      await page.goto('https://mail.google.com/mail/u/0/h/', { waitUntil: 'networkidle2' });
-
-      // Keep open for user to inspect
-      return { success: true };
-    } catch (error: any) {
-      console.error('[email:open-inbox-debug] FAILED:', error);
-      return { success: false, error: error.message };
-    }
-  });
-
-  ipcMain.handle('email:get-fingerprint', async (_event, { email }: { email: string }) => {
-    if (activeFingerprintFetches.has(email)) {
-      console.log(`[email:get-fingerprint] Fetch already in progress for ${email}, skipping...`);
-      return { success: false, error: 'FETCH_IN_PROGRESS' };
-    }
-    activeFingerprintFetches.add(email);
-
-    let browser;
-    try {
-      const userDataPath = app.getPath('userData');
-      const { dbManager } = await import('../database');
-      let realProfileDir = '';
-      if (dbManager.dbPath && email) {
-        realProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
-      } else {
-        realProfileDir = path.join(userDataPath, 'browser_profiles', email);
-      }
-
-      let executablePath = '';
-      const possiblePaths = [
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium',
-        '/usr/bin/google-chrome-stable',
-      ];
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-          executablePath = p;
-          break;
+        let realProfileDir = '';
+        if (dbManager.dbPath && email) {
+          realProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
+        } else {
+          realProfileDir = path.join(userDataPath, 'browser_profiles', email);
         }
-      }
 
-      console.log(
-        `[email:get-fingerprint] Executable: ${executablePath}, Profile: ${realProfileDir}`,
-      );
+        await spawn(
+          executablePath,
+          [
+            `--user-data-dir=${realProfileDir}`,
+            '--no-first-run',
+            'https://mail.google.com/mail/u/0/h/',
+          ],
+          { detached: true },
+        );
+
+        return { success: true };
+      } catch (error: any) {
+        console.error('[email:open-inbox-debug] FAILED:', error);
+        return { success: false, error: error.message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'email:get-fingerprint',
+    async (_event, { email, browserPath }: { email: string; browserPath?: string }) => {
+      if (activeFingerprintFetches.has(email))
+        return { success: false, error: 'FETCH_IN_PROGRESS' };
+      activeFingerprintFetches.add(email);
+      let browser;
       try {
-        const { execSync } = await import('child_process');
-        execSync(`pkill -9 -f "${realProfileDir}"`, { stdio: 'ignore' });
-        await new Promise((r) => setTimeout(r, 2000));
-      } catch (e) {}
+        const userDataPath = app.getPath('userData');
 
-      // Remove stale lock files
-      const stalefiles = [
-        path.join(realProfileDir, 'SingletonLock'),
-        path.join(realProfileDir, 'DevToolsActivePort'),
-        path.join(realProfileDir, 'SingletonCookie'),
-        path.join(realProfileDir, 'SingletonSocket'),
-      ];
-      stalefiles.forEach((f) => {
-        if (fs.existsSync(f)) {
-          try {
-            fs.unlinkSync(f);
-          } catch (e) {}
+        let realProfileDir = '';
+        if (dbManager.dbPath && email) {
+          realProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
+        } else {
+          realProfileDir = path.join(userDataPath, 'browser_profiles', email);
         }
-      });
 
-      browser = await puppeteer.launch({
-        executablePath,
-        userDataDir: realProfileDir,
-        headless: true,
-        dumpio: true, // PIPE BROWSER LOGS TO TERMINAL
-        env: { ...process.env },
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-gpu',
-          '--disable-vulkan', // EXPLICIT
-          '--disable-gpu-rasterization', // EXPLICIT
-          '--disable-software-rasterizer',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--disable-dev-shm-usage',
-          '--disable-features=LockProfile',
-          '--password-store=gnome-libsecret',
-          '--window-size=1280,720',
-          '--disable-breakpad',
-          '--disable-crash-reporter',
-          '--no-zygote',
-          '--ozone-platform=x11',
-        ],
-      });
+        const executablePath = getExecutablePath(browserPath);
+        console.log(`[GetFingerprint] CustomPath: ${browserPath || 'NONE'}`);
+        console.log(`[GetFingerprint] Final Executable: ${executablePath}`);
+        browser = await puppeteer.launch({
+          executablePath,
+          userDataDir: realProfileDir,
+          headless: true,
+          args: ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11'],
+        });
 
-      const page = await browser.newPage();
+        const page = await browser.newPage();
 
-      // 1. Probe BrowserLeaks
-      await page.goto('https://browserleaks.com/ip', { waitUntil: 'networkidle2', timeout: 30000 });
-
-      const leaksData = await page.evaluate(() => {
-        const results: any = {
-          ip: {},
-          location: {},
-          connectivity: {},
-          webrtc: {},
-          dns: {},
-          fingerprint: {},
-          headers: {},
-        };
-
-        const tables = Array.from(document.querySelectorAll('table.wb'));
-
-        const getDataFromTable = (table: HTMLTableElement) => {
-          const rows = Array.from(table.querySelectorAll('tr'));
-          const tableData: any = {};
-          rows.forEach((row) => {
+        // 1. IP & GeoData
+        await page.goto('https://browserleaks.com/ip', {
+          waitUntil: 'networkidle2',
+          timeout: 30000,
+        });
+        const ipData = await page.evaluate(() => {
+          const data: any = {};
+          const documentAny = (globalThis as any).document;
+          documentAny.querySelectorAll('table.wb tr').forEach((row: any) => {
             const cells = row.querySelectorAll('td');
-            if (cells.length >= 2) {
-              const key = cells[0].innerText.trim();
-              const value = cells[1].innerText.trim();
-              if (key) tableData[key] = value;
-            }
+            if (cells.length >= 2) data[cells[0].innerText.trim()] = cells[1].innerText.trim();
           });
-          return tableData;
-        };
-
-        // Extract using specific IDs first (most reliable)
-        const getById = (id: string) => document.getElementById(id)?.innerText.trim() || 'N/A';
-
-        results.ip = {
-          address: getById('client-ipv4'),
-          hostname: getById('hostname'),
-          ipv6: getById('client-ipv6'),
-        };
-
-        results.webrtc = {
-          local: getById('rtc-local'),
-          public: getById('rtc-public'),
-        };
-
-        // Map all tables for general info
-        const allData: any = {};
-        tables.forEach((t) => {
-          Object.assign(allData, getDataFromTable(t as HTMLTableElement));
+          return {
+            ip: documentAny.getElementById('client-ipv4')?.innerText.trim() || 'N/A',
+            city: data['City'] || 'N/A',
+            country: data['Country'] || 'N/A',
+            isp: data['ISP'] || 'N/A',
+            usageType: data['Usage Type'] || 'Residential',
+            os: data['OS'] || 'N/A',
+          };
         });
 
-        results.location = {
-          country: allData['Country'] || 'N/A',
-          region: allData['State/Region'] || 'N/A',
-          city: allData['City'] || 'N/A',
-          isp: allData['ISP'] || 'N/A',
-          organization: allData['Organization'] || 'N/A',
-          usageType: allData['Usage Type'] || 'N/A',
-          network: allData['Network'] || 'N/A',
-        };
-
-        results.connectivity = {
-          timezone: allData['Timezone'] || 'N/A',
-          localTime: allData['Local Time'] || 'N/A',
-          coords: document.getElementById('coords-data')?.getAttribute('data-lat')
-            ? {
-                lat: document.getElementById('coords-data')?.getAttribute('data-lat'),
-                lon: document.getElementById('coords-data')?.getAttribute('data-lon'),
-              }
-            : null,
-        };
-
-        results.fingerprint = {
-          tcp: allData['OS'] || 'N/A',
-          mtu: allData['MTU'] || 'N/A',
-          linkType: allData['Link Type'] || 'N/A',
-          ja4: getById('ja4'),
-          ja3: getById('ja3-hash'),
-          akamai: getById('akamai-hash'),
-        };
-
-        // Headers
-        const headerRows = Array.from(document.querySelectorAll('#headers tr'));
-        headerRows.forEach((row) => {
-          const cells = row.querySelectorAll('td');
-          if (cells.length === 2) {
-            results.headers[cells[0].innerText.trim()] = cells[1].innerText.trim();
-          }
-        });
-
-        return results;
-      });
-
-      // 1.1 Probe WebRTC Detailed
-      try {
+        // 2. WebRTC
         await page.goto('https://browserleaks.com/webrtc', {
           waitUntil: 'networkidle2',
-          timeout: 15000,
+          timeout: 30000,
         });
-
-        const webrtcDetails = await page.evaluate(() => {
-          const getById = (id: string) => document.getElementById(id)?.innerText.trim() || 'N/A';
-          const getValById = (id: string) =>
-            (document.getElementById(id) as HTMLTextAreaElement)?.value?.trim() || 'N/A';
-
+        const webrtcData = await page.evaluate(() => {
+          const data: any = {};
+          const documentAny = (globalThis as any).document;
+          documentAny.querySelectorAll('table.wb tr').forEach((row: any) => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 2) data[cells[0].innerText.trim()] = cells[1].innerText.trim();
+          });
           return {
-            support: {
-              peerConnection: getById('rtc-peerconnection'),
-              dataChannel: getById('rtc-datachannel'),
-            },
-            leak: getById('rtc-leak'),
-            publicIp: getById('rtc-public'),
-            localIp: getById('rtc-local'),
-            sdp: getValById('rtc-sdp'),
-            devices: getById('rtc-device-ids'),
+            public: documentAny.getElementById('webrtc-ipv4')?.innerText.trim() || 'No Leak',
+            local: data['Local IP Address'] || 'N/A',
+            leak: data['WebRTC Leak Test'] || 'Secure',
           };
         });
 
-        leaksData.webrtc = {
-          ...leaksData.webrtc,
-          ...webrtcDetails,
-        };
-      } catch (e) {
-        console.warn('[email:get-fingerprint] WebRTC probe failed, skipping detailed report');
-      }
-
-      // 1.2 Probe JavaScript Detailed
-      try {
-        await page.goto('https://browserleaks.com/javascript', {
-          waitUntil: 'networkidle2',
-          timeout: 15000,
-        });
-
-        const jsDetails = await page.evaluate(() => {
-          const getById = (id: string) => document.getElementById(id)?.innerText.trim() || 'N/A';
-
-          return {
-            screen: {
-              resolution: getById('screen-more'),
-              width: getById('js-width'),
-              height: getById('js-height'),
-              availWidth: getById('js-availWidth'),
-              availHeight: getById('js-availHeight'),
-              colorDepth: getById('js-colorDepth'),
-              pixelRatio: getById('js-devicePixelRatio'),
-              viewport: `${getById('js-innerWidth')}x${getById('js-innerHeight')}`,
-            },
-            navigator: {
-              platform: getById('js-platform'),
-              hardwareConcurrency: getById('js-hardwareConcurrency'),
-              deviceMemory: getById('js-deviceMemory'),
-              language: getById('js-language'),
-              languages: getById('js-languages'),
-              webdriver: getById('js-webdriver'),
-              pdfViewer: getById('js-pdfViewerEnabled'),
-            },
-            clientHints: {
-              brands: getById('js-uadata-brands'),
-              platform: getById('js-uadata-platform'),
-              architecture: getById('js-uadata-architecture'),
-              bitness: getById('js-uadata-bitness'),
-              fullVersion: getById('js-uadata-uaFullVersion'),
-            },
-            battery: {
-              status: getById('js-battery'),
-              level: getById('js-level'),
-              charging: getById('js-charging'),
-            },
-            network: {
-              type: getById('js-effectiveType'),
-              downlink: getById('js-downlink'),
-              rtt: getById('js-rtt'),
-            },
-            plugins: getById('js-plugins'),
-          };
-        });
-
-        leaksData.fingerprint = {
-          ...leaksData.fingerprint,
-          ...jsDetails,
-        };
-      } catch (e) {
-        console.warn('[email:get-fingerprint] JS probe failed, skipping detailed report');
-      }
-
-      // 2. Probe Local Fingerprint (Hardware)
-      await page.goto('about:blank');
-      const localFp = await page.evaluate(() => {
-        const getCanvasFP = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return 'not supported';
-          ctx.textBaseline = 'top';
-          ctx.font = "14px 'Arial'";
-          ctx.fillStyle = '#f60';
-          ctx.fillRect(125, 1, 62, 20);
-          ctx.fillStyle = '#069';
-          ctx.fillText('Hello World', 2, 15);
-          return canvas.toDataURL();
-        };
-
-        const gl = document.createElement('canvas').getContext('webgl');
-        const debugInfo = gl ? gl.getExtension('WEBGL_debug_renderer_info') : null;
-        const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'unknown';
-        const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'unknown';
-
-        return {
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-          languages: navigator.languages,
-          webdriver: navigator.webdriver,
-          hardwareConcurrency: navigator.hardwareConcurrency,
-          canvasHash: getCanvasFP().substring(0, 100),
-          webglVendor: vendor,
-          webglRenderer: renderer,
-          screen: `${window.screen.width}x${window.screen.height}`,
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        };
-      });
-
-      // 3. Calculate Health Score
-      const calculateScore = () => {
+        // 3. Health Score Logic
         let score = 100;
         const reasons: string[] = [];
 
-        if (leaksData.location.usageType?.toLowerCase().includes('data center')) {
-          score -= 40;
+        if (webrtcData.public !== 'No Leak' && webrtcData.public !== ipData.ip) {
+          score -= 20;
+          reasons.push('WebRTC IP Leak detected');
+        }
+        if (ipData.usageType.toLowerCase().includes('data center')) {
+          score -= 15;
           reasons.push('Data Center IP detected');
         }
 
-        if (leaksData.webrtc.local && leaksData.webrtc.local !== 'n/a') {
-          score -= 15;
-          reasons.push('Internal IP leak (WebRTC)');
+        return {
+          success: true,
+          geoData: {
+            query: ipData.ip,
+            city: ipData.city,
+            country: ipData.country,
+            usageType: ipData.usageType,
+            isp: ipData.isp,
+          },
+          fingerprint: {
+            os: ipData.os,
+          },
+          webrtc: webrtcData,
+          health: {
+            val: score,
+            reasons,
+          },
+        };
+      } catch (e: any) {
+        return { success: false, error: e.message };
+      } finally {
+        activeFingerprintFetches.delete(email);
+        if (browser) await browser.close();
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'email:get-sessions',
+    async (_event, { email, browserPath }: { email: string; browserPath?: string }) => {
+      try {
+        const userDataPath = app.getPath('userData');
+
+        let realProfileDir = '';
+        if (dbManager.dbPath && email) {
+          realProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
+        } else {
+          realProfileDir = path.join(userDataPath, 'browser_profiles', email);
         }
 
-        return { val: Math.max(0, score), reasons };
-      };
+        const candidates = [
+          path.join(realProfileDir, 'Default', 'Network', 'Cookies'),
+          path.join(realProfileDir, 'Default', 'Cookies'),
+          path.join(realProfileDir, 'Network', 'Cookies'),
+          path.join(realProfileDir, 'Cookies'),
+        ];
 
-      const health = calculateScore();
+        let cookiesPath = '';
+        for (const p of candidates) {
+          if (fs.existsSync(p)) {
+            cookiesPath = p;
+            break;
+          }
+        }
 
-      return {
-        success: true,
-        fingerprint: { ...localFp, ...leaksData.fingerprint },
-        geoData: {
-          ...leaksData.location,
-          query: leaksData.ip.address,
-          lat: leaksData.connectivity.coords?.lat,
-          lon: leaksData.connectivity.coords?.lon,
-          timezone: leaksData.connectivity.timezone,
-          localTime: leaksData.connectivity.localTime,
-          hostname: leaksData.ip.hostname,
-          ipv6: leaksData.ip.ipv6,
-        },
-        webrtc: leaksData.webrtc,
-        headers: leaksData.headers,
-        health: health,
-        rawLeakData: leaksData, // Keep for debugging if needed
-      };
-    } catch (e: any) {
-      console.error('[email:get-fingerprint] FAILED:', e);
-      return { success: false, error: e.message };
-    } finally {
-      activeFingerprintFetches.delete(email);
-      if (browser) await browser.close();
-    }
-  });
+        console.log(`[Sessions] Profile: ${realProfileDir}`);
+        console.log(`[Sessions] Found Cookies at: ${cookiesPath || 'NONE'}`);
 
-  ipcMain.handle('email:get-sessions', async (_event, { email }: { email: string }) => {
-    try {
-      const userDataPath = app.getPath('userData');
-      const { dbManager } = await import('../database');
-      let realProfileDir = '';
-      if (dbManager.dbPath && email) {
-        realProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
-      } else {
-        realProfileDir = path.join(userDataPath, 'browser_profiles', email);
+        if (!cookiesPath) {
+          return { success: true, sessions: [] };
+        }
+
+        const tempPath = path.join(userDataPath, `temp_sess_${Date.now()}.db`);
+        try {
+          fs.copyFileSync(cookiesPath, tempPath);
+        } catch (copyErr: any) {
+          console.error(`[Sessions] Copy failed: ${copyErr.message}`);
+          return { success: false, error: `Failed to copy cookies: ${copyErr.message}` };
+        }
+
+        const db = new sqlite3.Database(tempPath);
+        const rows: any[] = await new Promise((resolve, reject) => {
+          db.all(
+            'SELECT host_key, count(*) as count, max(expires_utc) as exp FROM cookies GROUP BY host_key',
+            (err, rows) => {
+              db.close();
+              if (err) {
+                console.error(`[Sessions] DB Query error: ${err.message}`);
+                reject(err);
+              } else {
+                resolve(rows || []);
+              }
+            },
+          );
+        });
+
+        try {
+          fs.unlinkSync(tempPath);
+        } catch (unlinkErr) {
+          console.warn(`[Sessions] Failed to delete temp DB: ${unlinkErr}`);
+        }
+
+        console.log(`[Sessions] Successfully fetched ${rows.length} domain groups.`);
+
+        return {
+          success: true,
+          sessions: rows.map((r) => ({
+            domain: r.host_key,
+            count: r.count,
+            expiryDate: new Date((r.exp / 1000000 - 11644473600) * 1000).toISOString(),
+          })),
+        };
+      } catch (e: any) {
+        console.error(`[Sessions] FATAL ERROR: ${e.message}`);
+        return { success: false, error: e.message };
       }
+    },
+  );
 
-      const possibleCookiePaths = [
-        path.join(realProfileDir, 'Default', 'Network', 'Cookies'),
-        path.join(realProfileDir, 'Default', 'Cookies'),
-        path.join(realProfileDir, 'Cookies'),
-      ];
-      const cookiesPath = possibleCookiePaths.find((p) => fs.existsSync(p));
+  ipcMain.handle(
+    'email:get-history',
+    async (_event, { email, date }: { email: string; date?: string }) => {
+      try {
+        const dbDir = path.dirname(dbManager.dbPath);
+        const userDataPath = app.getPath('userData');
+        const profileDir = path.join(dbDir, 'profiles', email);
+        const historyPath = path.join(profileDir, 'Default', 'History');
 
-      if (!cookiesPath) {
-        console.log(`[email:get-sessions] Cookies file not found for ${email}`);
-        return { success: true, sessions: [] };
-      }
+        if (!fs.existsSync(historyPath))
+          return { success: true, history: [], stats: { topWebsites: [], intervals: [] } };
 
-      console.log(`[email:get-sessions] Found cookies at: ${cookiesPath}`);
+        const tempPath = path.join(userDataPath, `temp_hist_${Date.now()}.db`);
+        fs.copyFileSync(historyPath, tempPath);
+        const db = new sqlite3.Database(tempPath);
 
-      return new Promise((resolve) => {
-        const db = new sqlite3.Database(cookiesPath, sqlite3.OPEN_READONLY, (err) => {
-          if (err) resolve({ success: false, error: err.message });
+        const targetDate = date ? new Date(date) : new Date();
+        targetDate.setHours(0, 0, 0, 0);
+        const startTime = (targetDate.getTime() + 11644473600000) * 1000;
+        const endTime = startTime + 24 * 60 * 60 * 1000 * 1000;
 
-          const query = `
-            SELECT host_key, count(*) as count, max(expires_utc) as last_expiry 
-            FROM cookies 
-            GROUP BY host_key 
-            ORDER BY count DESC
-          `;
+        const query = `
+          SELECT urls.url, urls.title, visits.visit_time, visits.visit_duration
+          FROM visits JOIN urls ON visits.url = urls.id 
+          WHERE visits.visit_time >= ? AND visits.visit_time < ? 
+          ORDER BY visits.visit_time ASC
+        `;
 
-          db.all(query, [], (err, rows) => {
+        const rows: any[] = await new Promise((resolve) => {
+          db.all(query, [startTime, endTime], (_err, rows) => {
             db.close();
-            if (err) resolve({ success: false, error: err.message });
-
-            const sessions = rows.map((row: any) => ({
-              domain: row.host_key,
-              count: row.count,
-              expiryDate: new Date((row.last_expiry / 1000000 - 11644473600) * 1000).toISOString(),
-            }));
-
-            resolve({ success: true, sessions });
+            resolve(rows || []);
           });
         });
-      });
-    } catch (e: any) {
-      console.error('[email:get-sessions] FAILED:', e);
-      return { success: false, error: e.message };
-    }
-  });
+        fs.unlinkSync(tempPath);
+
+        const history = rows.map((r) => ({
+          url: r.url,
+          title: r.title,
+          time: Math.floor(r.visit_time / 1000 - 11644473600000),
+        }));
+
+        const domainCounts: Record<string, { count: number; duration: number; iconUrl: string }> =
+          {};
+        history.forEach((h, index) => {
+          try {
+            const urlObj = new URL(h.url);
+            const d = urlObj.hostname.replace('www.', '');
+            if (!domainCounts[d]) {
+              domainCounts[d] = { count: 0, duration: 0, iconUrl: h.url };
+            }
+            domainCounts[d].count++;
+            // visit_duration is in microseconds in Chrome
+            const duration = rows[index].visit_duration || 0;
+            domainCounts[d].duration += Math.floor(duration / 1000000); // convert to seconds
+          } catch {}
+        });
+
+        const topWebsites = Object.entries(domainCounts)
+          .map(([domain, data]) => ({
+            domain,
+            count: data.count,
+            duration: data.duration,
+            url: data.iconUrl,
+          }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+
+        // 4. Calculate Hourly Intervals
+        const intervals = Array.from({ length: 24 }, (_, hour) => ({ hour, count: 0 }));
+        history.forEach((h) => {
+          const hour = new Date(h.time).getHours();
+          if (hour >= 0 && hour < 24) {
+            intervals[hour].count++;
+          }
+        });
+
+        return {
+          success: true,
+          history: history.reverse(),
+          stats: { topWebsites, intervals, totalVisits: history.length },
+        };
+      } catch (e: any) {
+        return { success: false, error: e.message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'email:get-history-dates',
+    async (_event, { email, month, year }: { email: string; month: number; year: number }) => {
+      try {
+        const profileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
+        const historyPath = path.join(profileDir, 'Default', 'History');
+        if (!fs.existsSync(historyPath)) return { success: true, activity: {} };
+
+        const tempPath = path.join(app.getPath('userData'), `temp_hdates_${Date.now()}.db`);
+        fs.copyFileSync(historyPath, tempPath);
+        const db = new sqlite3.Database(tempPath);
+
+        const start = new Date(year, month, 1).getTime();
+        const end = new Date(year, month + 1, 1).getTime();
+        const startTime = (start + 11644473600000) * 1000;
+        const endTime = (end + 11644473600000) * 1000;
+
+        const query = `
+          SELECT 
+            CAST(((visit_time/1000000)-11644473600)/86400 AS INTEGER)*86400 as day,
+            urls.url
+          FROM visits
+          JOIN urls ON visits.url = urls.id
+          WHERE visit_time >= ? AND visit_time < ?
+        `;
+
+        const rows: any[] = await new Promise((resolve) => {
+          db.all(query, [startTime, endTime], (_err, rows) => {
+            db.close();
+            resolve(rows || []);
+          });
+        });
+        try {
+          if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        } catch (e) {}
+
+        const activity: Record<string, { domainCount: number }> = {};
+        rows.forEach((row) => {
+          const dateStr = new Date(row.day * 1000).toISOString().split('T')[0];
+          if (!activity[dateStr]) {
+            activity[dateStr] = { domains: new Set<string>() } as any;
+          }
+          try {
+            const hostname = new URL(row.url).hostname.replace('www.', '');
+            // Simple sub-domain stripping (one level)
+            const parts = hostname.split('.');
+            const domain = parts.length > 2 ? parts.slice(-2).join('.') : hostname;
+            (activity[dateStr] as any).domains.add(domain);
+          } catch (e) {}
+        });
+
+        const finalActivity: Record<string, { domainCount: number }> = {};
+        Object.entries(activity).forEach(([date, data]: [string, any]) => {
+          finalActivity[date] = { domainCount: data.domains.size };
+        });
+
+        return { success: true, activity: finalActivity };
+      } catch (e: any) {
+        return { success: false, error: e.message };
+      }
+    },
+  );
 }

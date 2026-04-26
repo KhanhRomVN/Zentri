@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react';
-import { Settings, Database, Plus, LayoutGrid } from 'lucide-react';
+import { Settings, Database, Plus, LayoutGrid, Shield } from 'lucide-react';
 import { GeneralSettings } from './components/GeneralSettings';
 import { ServiceManager } from './components/ServiceManager';
+import { FingerprintSettings } from './components/FingerprintSettings';
+import {
+  FingerprintPresets,
+  PRESETS,
+  FingerprintConfig,
+  INITIAL_CONFIG,
+} from './components/FingerprintPresets';
 import { cn } from '../../shared/lib/utils';
 import { Breadcrumb, BreadcrumbItem } from '../../shared/components/ui/breadcumb';
 
-type Tab = 'general' | 'services';
+type Tab = 'general' | 'services' | 'fingerprint';
 
 const SettingPage = () => {
   const [activeTab, setActiveTab] = useState<Tab>('general');
   const [pendingCount, setPendingCount] = useState(0);
+  const [activePresetId, setActivePresetId] = useState<string>(PRESETS[0]?.id || '');
+  const [fpConfig, setFpConfig] = useState<FingerprintConfig>(PRESETS[0]?.config || INITIAL_CONFIG);
+  const [activeStep, setActiveStep] = useState(1);
 
   useEffect(() => {
     const handleCount = (e: any) => setPendingCount(e.detail.count);
@@ -20,17 +30,24 @@ const SettingPage = () => {
   const tabs = [
     {
       id: 'general',
-      label: 'General',
+      label: 'Cài đặt chung',
       icon: Settings,
       description: 'Repository and storage settings',
       color: '#3b82f6', // blue-500
     },
     {
       id: 'services',
-      label: 'Services',
+      label: 'Dịch vụ',
       icon: Database,
       description: 'Manage custom service providers',
       color: '#f59e0b', // amber-500
+    },
+    {
+      id: 'fingerprint',
+      label: 'Fingerprint',
+      icon: Shield,
+      description: 'Global browser fingerprint templates',
+      color: '#8b5cf6', // violet-500
     },
   ];
 
@@ -138,6 +155,79 @@ const SettingPage = () => {
                 </div>
               )}
               {activeTab === 'services' && <ServiceManager />}
+              {activeTab === 'fingerprint' && (
+                <div className="flex h-full overflow-hidden relative">
+                  <FingerprintPresets
+                    currentId={activePresetId}
+                    onSelect={(config, id) => {
+                      setFpConfig(config);
+                      setActivePresetId(id);
+                    }}
+                    onAdd={() => {
+                      setFpConfig(INITIAL_CONFIG);
+                      setActivePresetId('new-' + Date.now());
+                    }}
+                  />
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 p-8 overflow-auto custom-scrollbar">
+                      {activePresetId ? (
+                        <div className="max-w-4xl mx-auto">
+                          <FingerprintSettings
+                            config={fpConfig}
+                            setConfig={setFpConfig}
+                            activeStep={activeStep}
+                            setActiveStep={setActiveStep}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-center p-12 space-y-6">
+                          <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
+                            <Shield className="w-10 h-10 text-primary/30" />
+                          </div>
+                          <div className="space-y-2">
+                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-foreground">
+                              Chưa chọn cấu hình
+                            </h3>
+                            <p className="text-xs text-muted-foreground/50 max-w-[280px] leading-relaxed">
+                              Vui lòng chọn một bản mẫu từ danh sách bên trái hoặc nhấn nút "+" để
+                              tạo cấu hình mới.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {activePresetId && (
+                      <div className="h-20 px-8 border-t border-border/50 bg-background/50 backdrop-blur-xl flex items-center justify-end gap-3 shrink-0">
+                        <button
+                          onClick={() => {
+                            setFpConfig(INITIAL_CONFIG);
+                            setActiveStep(1);
+                          }}
+                          className="px-6 h-10 rounded-xl bg-muted/10 text-muted-foreground font-bold text-[10px] uppercase tracking-widest hover:bg-muted/20 hover:text-foreground transition-all flex items-center gap-2 group border border-border/10"
+                        >
+                          Reset to Default
+                        </button>
+                        <button
+                          disabled={activeStep < 9}
+                          onClick={() => {
+                            const event = new CustomEvent('zentri:open-save-drawer');
+                            window.dispatchEvent(event);
+                          }}
+                          className={cn(
+                            'px-10 h-10 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 group border active:scale-[0.98]',
+                            activeStep < 9
+                              ? 'bg-muted/5 text-muted-foreground/30 border-border/20 cursor-not-allowed opacity-50'
+                              : 'bg-primary/20 text-primary border-primary/20 hover:bg-primary hover:text-button-bgText shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)]',
+                          )}
+                        >
+                          Save Configuration
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </main>

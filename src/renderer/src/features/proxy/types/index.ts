@@ -1,4 +1,4 @@
-import { Proxy } from '../../../../shared/types';
+import { Proxy } from '../../../../../shared/types';
 
 export interface ProxyFilterState {
   searchQuery: string;

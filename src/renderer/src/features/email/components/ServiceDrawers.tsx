@@ -1,4 +1,5 @@
 import { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, X, Check, Database } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 import { Drawer } from '../../../shared/components/ui/drawer';
@@ -57,6 +58,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
   isEditMode,
   onRestoreService,
 }) => {
+  const { t } = useTranslation();
   const [servicePopoverOpen, setServicePopoverOpen] = React.useState(false);
 
   return (
@@ -70,11 +72,15 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
         }}
         direction="right"
         width={500}
-        title={isEditMode ? 'Edit Service Connection' : 'Link Service Account'}
+        title={
+          isEditMode
+            ? t('email.serviceDrawer.editConnection')
+            : t('email.serviceDrawer.linkAccount')
+        }
         subtitle={
           isEditMode
-            ? `Update credentials and notes for ${newServiceData.serviceName || 'this service'}`
-            : `Associate a registered service with ${focusedAccount?.email || 'this account'}`
+            ? t('email.serviceDrawer.updateCredentials', { name: newServiceData.serviceName })
+            : t('email.serviceDrawer.associateService', { email: focusedAccount?.email || '' })
         }
         footerActions={
           <div className="flex gap-3 w-full">
@@ -82,7 +88,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
               onClick={() => setIsServiceDrawerOpen(false)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors border border-white/5"
             >
-              Cancel
+              {t('email.serviceDrawer.cancel')}
             </button>
             <button
               onClick={handleAddServiceLink}
@@ -94,7 +100,9 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
               )}
             >
-              {isEditMode ? 'Update Link' : 'Secure Connection'}
+              {isEditMode
+                ? t('email.serviceDrawer.updateLink')
+                : t('email.serviceDrawer.secureConnection')}
             </button>
           </div>
         }
@@ -104,14 +112,14 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Select Service
+                {t('email.serviceDrawer.selectService')}
               </label>
               {!isEditMode && (
                 <button
                   onClick={() => setIsQuickCreateModalOpen(true)}
                   className="text-[11px] font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors"
                 >
-                  New Service
+                  {t('email.serviceDrawer.newService')}
                 </button>
               )}
             </div>
@@ -121,7 +129,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   type={isEditMode ? 'text' : 'combobox'}
                   size="lg"
                   readOnly={isEditMode}
-                  placeholder={isEditMode ? '' : 'Search registered services...'}
+                  placeholder={isEditMode ? '' : t('email.serviceDrawer.searchServices')}
                   value={isEditMode ? newServiceData.serviceName : linkServiceSearchQuery}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     !isEditMode && setLinkServiceSearchQuery(e.target.value)
@@ -198,11 +206,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                       <Plus className="w-5 h-5 text-amber-500 shrink-0 mt-0.5 rotate-45" />
                       <div className="space-y-1">
                         <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                          Service Link in Trash
+                          {t('email.serviceDrawer.linkInTrash')}
                         </p>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          This connection is currently in the trash. Restore it to reactivate access
-                          without creating a duplicate.
+                          {t('email.serviceDrawer.trashHint')}
                         </p>
                       </div>
                     </div>
@@ -216,7 +223,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                       className="w-full py-2.5 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
                     >
                       <Database className="w-3.5 h-3.5" />
-                      Restore Connection
+                      {t('email.serviceDrawer.restoreConnection')}
                     </button>
                   </div>
                 );
@@ -229,7 +236,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
           <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-500">
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Username
+                {t('email.serviceDrawer.username')}
               </label>
               <Input
                 placeholder="identity@example.com"
@@ -242,7 +249,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
             </div>
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Password
+                {t('email.serviceDrawer.password')}
               </label>
               <Input
                 type="password"
@@ -257,10 +264,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
 
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Notes
+                {t('email.serviceDrawer.notes')}
               </label>
               <Textarea
-                placeholder="Specific instructions or environment details..."
+                placeholder={t('email.serviceDrawer.notesPlaceholder')}
                 value={newServiceData.notes}
                 onChange={(val) => setNewServiceData((prev: any) => ({ ...prev, notes: val }))}
                 className="bg-input-background border-border rounded-xl min-h-[100px]"
@@ -284,7 +291,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                 <div className="flex items-center gap-2 mb-2">
                   <Database className="w-4 h-4 text-primary" />
                   <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
-                    Service specific Metadata
+                    {t('email.serviceDrawer.specificMetadata')}
                   </h3>
                 </div>
                 {metadataDefinitions.map((item) => (
@@ -293,12 +300,14 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                       {item.key}{' '}
                       {item.type === 'array' && (
                         <span className="text-[10px] lowercase font-normal opacity-50">
-                          (comma separated)
+                          {t('email.serviceDrawer.commaSeparated')}
                         </span>
                       )}
                     </label>
                     <Input
-                      placeholder={`Enter ${item.key.toLowerCase()}...`}
+                      placeholder={t('email.serviceDrawer.enterKey', {
+                        key: item.key.toLowerCase(),
+                      })}
                       value={
                         item.type === 'array'
                           ? Array.isArray(newServiceData.metadata?.[item.key])
@@ -332,7 +341,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
       <Modal
         open={isQuickCreateModalOpen}
         onClose={() => setIsQuickCreateModalOpen(false)}
-        title="Initialize New Service"
+        title={t('email.quickCreate.title')}
         size="sm"
         footer={
           <div className="flex gap-3 w-full">
@@ -363,7 +372,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
               )}
             >
-              Save
+              {t('email.quickCreate.save')}
             </button>
           </div>
         }
@@ -371,10 +380,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
         <div className="py-4 space-y-5">
           <div className="space-y-2.5">
             <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Name <span className="text-destructive ml-1">*</span>
+              {t('email.quickCreate.name')} <span className="text-destructive ml-1">*</span>
             </label>
             <Input
-              placeholder="e.g. Google Cloud"
+              placeholder={t('email.quickCreate.namePlaceholder')}
               value={quickCreateData.name}
               onChange={(e) => setQuickCreateData((d: any) => ({ ...d, name: e.target.value }))}
               autoFocus
@@ -383,10 +392,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
 
           <div className="space-y-2.5">
             <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              URL
+              {t('email.quickCreate.url')}
             </label>
             <Input
-              placeholder="https://console.cloud.google.com"
+              placeholder={t('email.quickCreate.urlPlaceholder')}
               value={quickCreateData.url}
               onChange={(e) => setQuickCreateData((d: any) => ({ ...d, url: e.target.value }))}
             />
@@ -394,11 +403,11 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
 
           <div className="space-y-2.5">
             <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Category
+              {t('email.quickCreate.category')}
             </label>
             <Input
               type="combobox"
-              placeholder="Select or create category..."
+              placeholder={t('email.quickCreate.categoryPlaceholder')}
               value={categorySearch || quickCreateData.category}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setCategorySearch(e.target.value)
@@ -461,7 +470,9 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                         className="flex items-center gap-2 px-4 py-2.5 text-xs hover:bg-muted text-primary transition-colors text-left"
                       >
                         <Plus className="w-3 h-3" />
-                        <span>Create "{categorySearch}"</span>
+                        <span>
+                          {t('email.quickCreate.createCategory', { category: categorySearch })}
+                        </span>
                       </button>
                     )}
                   </div>
@@ -472,10 +483,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
 
           <div className="space-y-2.5">
             <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Tags
+              {t('email.quickCreate.tags')}
             </label>
             <Input
-              placeholder="Add tags (comma separated)..."
+              placeholder={t('email.quickCreate.tagsPlaceholder')}
               value={quickCreateData.tags}
               onChange={(e) => setQuickCreateData((d: any) => ({ ...d, tags: e.target.value }))}
             />
@@ -483,10 +494,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
 
           <div className="space-y-2.5">
             <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Description
+              {t('email.quickCreate.description')}
             </label>
             <textarea
-              placeholder="Detailed description of the service and its purpose..."
+              placeholder={t('email.quickCreate.descPlaceholder')}
               value={quickCreateData.description}
               onChange={(e) =>
                 setQuickCreateData((d: any) => ({ ...d, description: e.target.value }))

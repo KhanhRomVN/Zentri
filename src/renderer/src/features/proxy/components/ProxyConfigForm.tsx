@@ -7,12 +7,9 @@ import {
   Shield,
   Trash2,
   Activity,
-  ChevronLeft,
   CheckCircle2,
   AlertCircle,
   Navigation,
-  Lock,
-  Server,
   Globe,
   Loader2,
   CreditCard,
@@ -20,6 +17,7 @@ import {
 import { cn } from '../../../shared/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const FORM_CACHE_KEY = 'zentri_proxy_form_cache';
 
@@ -44,12 +42,26 @@ const CURRENCY_OPTIONS = [
 
 interface DiagnosticResult {
   success: boolean;
-  ip?: string;
-  country?: string;
-  isp?: string;
+  proxy?: {
+    ip: string;
+    country: string;
+    region: string;
+    city: string;
+    isp: string;
+    org: string;
+  };
+  direct?: {
+    ip: string;
+    country: string;
+    region: string;
+    city: string;
+    isp: string;
+    org: string;
+  };
   isBlacklisted?: boolean;
   isProxyDetected?: boolean;
   webrtcLeak?: boolean;
+  latency?: number;
   error?: string;
 }
 
@@ -118,64 +130,68 @@ const SelectionGroup: FC<{
 };
 
 const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }) => {
-  const [formData, setFormData] = useState<Partial<Proxy>>({
-    ipVersion: 4,
-    proxyType: 'private',
-    sourceType: 'datacenter',
-    rotationType: 'static',
-    pricingType: 'time',
-    protocol: 'http',
-    host: '',
-    port: undefined,
-    username: '',
-    password: '',
-    country: '',
-    status: 'active',
-    durationDays: 30,
-    bandwidthGb: 0,
-    price: 0,
+  const { t } = useTranslation();
+  const [formData, setFormData] = useState<Partial<Proxy>>(() => {
+    const initial = {
+      ipVersion: 4,
+      proxyType: 'private',
+      sourceType: 'datacenter',
+      rotationType: 'static',
+      pricingType: 'time',
+      protocol: 'http',
+      host: '',
+      password: '',
+      status: 'active',
+      durationDays: 30,
+      bandwidthGb: 0,
+      price: 0,
+    };
+
+    if (proxy) return proxy;
+
+    const cached = localStorage.getItem(FORM_CACHE_KEY);
+    if (cached) {
+      try {
+        return {
+          ...initial,
+          ...JSON.parse(cached),
+          host: '',
+          port: undefined,
+          username: '',
+          password: '',
+        };
+      } catch (e) {
+        return initial;
+      }
+    }
+    return initial;
   });
 
   const [loading, setLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [importString, setImportString] = useState('');
-  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
   const [currencyPopoverOpen, setCurrencyPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (proxy) {
       setFormData(proxy);
-    } else {
-      const cached = localStorage.getItem(FORM_CACHE_KEY);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          setFormData((prev) => ({
-            ...prev,
-            ...parsed,
-            // Never cache these
-            host: '',
-            port: undefined,
-            username: '',
-            password: '',
-          }));
-        } catch (e) {
-          console.error('Failed to parse form cache', e);
-        }
-      }
     }
   }, [proxy]);
 
-  const saveToCache = (data: Partial<Proxy>) => {
-    const toCache = { ...data };
-    delete toCache.host;
-    delete toCache.port;
-    delete toCache.username;
-    delete toCache.password;
-    delete toCache.id;
-    localStorage.setItem(FORM_CACHE_KEY, JSON.stringify(toCache));
-  };
+  // Real-time persistence for selections
+  useEffect(() => {
+    if (!proxy) {
+      const toCache = { ...formData };
+      delete toCache.host;
+      delete toCache.port;
+      delete toCache.username;
+      delete toCache.password;
+      delete toCache.id;
+      localStorage.setItem(FORM_CACHE_KEY, JSON.stringify(toCache));
+    }
+  }, [formData, proxy]);
 
   const handleCheckProxy = async () => {
     if (!formData.host || !formData.port) {
@@ -209,9 +225,9 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
       // Merge diagnostic data into formData
       const finalData = {
         ...formData,
-        isp: diagnosticResult?.isp || formData.isp,
-        country: diagnosticResult?.country || formData.country,
-        city: diagnosticResult?.country || formData.city, // If diagnosticResult doesn't have city, use existing
+        isp: diagnosticResult?.proxy?.isp || formData.isp,
+        country: diagnosticResult?.proxy?.country || formData.country,
+        city: diagnosticResult?.proxy?.city || formData.city,
       };
 
       if (proxy) {
@@ -221,7 +237,6 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
         // @ts-ignore
         await window.electron.ipcRenderer.invoke('proxy:create', { ...finalData, id: uuidv4() });
       }
-      saveToCache(finalData);
       onSuccess();
       setShowResultModal(false);
     } catch (error) {
@@ -251,35 +266,65 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
       {/* Header Bar */}
       <div className="h-[57px] shrink-0 border-b border-border bg-card/10 backdrop-blur-xl px-6 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-4">
-          <button
-            onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center bg-muted/10 hover:bg-muted/20 border border-border rounded-xl transition-all active:scale-95 group"
-          >
-            <ChevronLeft className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-          </button>
           <div className="flex flex-col">
             <h2 className="text-sm font-black uppercase tracking-[0.2em] text-foreground/90 leading-none text-glow-primary">
-              {proxy ? 'Update Infrastructure' : 'Add New Proxy Node'}
+              {proxy ? t('proxy.updateInfrastructure') : t('proxy.addNewNode')}
             </h2>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-auto custom-scrollbar p-10">
-        <div className="max-w-3xl mx-auto space-y-12 pb-20">
+        <div className="max-w-5xl mx-auto space-y-12 pb-20">
           {/* Section 1: Registry Metadata */}
           <section className="space-y-6">
             <div className="flex items-center gap-3 border-b border-border/10 pb-4">
               <Shield className="w-4 h-4 text-indigo-400" />
               <h3 className="text-[12px] font-black uppercase tracking-widest text-foreground/70">
-                Registry Metadata
+                {t('proxy.registryMetadata')}
               </h3>
+            </div>
+
+            {/* Quick Import Bar */}
+            <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-500">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2.5">
+                  <Activity className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/80">
+                    {t('proxy.quickImport')}
+                  </span>
+                </div>
+                <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+                  {t('proxy.formatHint')}
+                </span>
+              </div>
+              <div className="relative group">
+                <Input
+                  placeholder={t('proxy.importPlaceholder')}
+                  value={importString}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setImportString(val);
+                    const parts = val.trim().split(':');
+                    if (parts.length >= 2) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        host: parts[0],
+                        port: parseInt(parts[1]) || prev.port,
+                        username: parts[2] || prev.username,
+                        password: parts[3] || prev.password,
+                      }));
+                    }
+                  }}
+                  className="bg-background/50 border-primary/20 focus:border-primary/50 rounded-2xl h-12 text-sm font-mono transition-all group-hover:bg-background"
+                />
+              </div>
             </div>
 
             <div className="space-y-5 animate-in slide-in-from-bottom-2 duration-500">
               <div className="space-y-2.5">
                 <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                  Host
+                  {t('proxy.host')}
                 </label>
                 <Input
                   placeholder="e.g. 45.2.x.x or gate.network.com"
@@ -292,7 +337,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2.5">
                   <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                    Port
+                    {t('proxy.port')}
                   </label>
                   <Input
                     type="number"
@@ -306,7 +351,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                 </div>
                 <div className="space-y-2.5">
                   <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                    Username
+                    {t('proxy.username')}
                   </label>
                   <Input
                     placeholder="Username"
@@ -319,7 +364,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
 
               <div className="space-y-2.5">
                 <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                  Password
+                  {t('proxy.password')}
                 </label>
                 <Input
                   type="password"
@@ -338,27 +383,27 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
             <div className="flex items-center gap-3 border-b border-border/10 pb-4">
               <CreditCard className="w-4 h-4 text-amber-400" />
               <h3 className="text-[12px] font-black uppercase tracking-widest text-foreground/70">
-                Commercial Matrix
+                {t('proxy.commercialMatrix')}
               </h3>
             </div>
 
             <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500 delay-100">
               <div className="grid grid-cols-2 gap-6">
                 <SelectionGroup
-                  label="Billing Cycle"
+                  label={t('proxy.billingCycle')}
                   value={formData.pricingType}
                   variant="amber"
                   columns={2}
                   onChange={(v) => setFormData((d) => ({ ...d, pricingType: v }))}
                   options={[
-                    { label: 'Time Based', value: 'time' },
-                    { label: 'Data Based', value: 'bandwidth' },
+                    { label: t('proxy.timeBased'), value: 'time' },
+                    { label: t('proxy.dataBased'), value: 'bandwidth' },
                   ]}
                 />
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2.5">
                     <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                      Unit Price
+                      {t('proxy.unitPrice')}
                     </label>
                     <Input
                       type="number"
@@ -372,7 +417,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                   </div>
                   <div className="space-y-2.5">
                     <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                      Currency
+                      {t('proxy.currency')}
                     </label>
                     <Input
                       type="combobox"
@@ -405,7 +450,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                 {formData.pricingType === 'time' ? (
                   <div className="space-y-2.5">
                     <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                      Lifecycle (Days)
+                      {t('proxy.lifecycle')}
                     </label>
                     <Input
                       type="number"
@@ -425,7 +470,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                 ) : (
                   <div className="space-y-2.5">
                     <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                      Transit Quota (GB)
+                      {t('proxy.transitQuota')}
                     </label>
                     <Input
                       type="number"
@@ -443,7 +488,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                 )}
                 <div className="space-y-2.5">
                   <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                    Region Assignment
+                    {t('proxy.regionAssignment')}
                   </label>
                   <Input
                     placeholder="GLOBAL / USA"
@@ -461,13 +506,13 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
             <div className="flex items-center gap-3 border-b border-border/10 pb-4">
               <Activity className="w-4 h-4 text-emerald-400" />
               <h3 className="text-[12px] font-black uppercase tracking-widest text-foreground/70">
-                Hyper-Tuning
+                {t('proxy.hyperTuning')}
               </h3>
             </div>
 
             <div className="grid grid-cols-2 gap-x-10 gap-y-8 animate-in slide-in-from-bottom-2 duration-500 delay-200">
               <SelectionGroup
-                label="Data Protocol"
+                label={t('proxy.dataProtocol')}
                 value={formData.protocol}
                 variant="amber"
                 onChange={(v) => setFormData((d) => ({ ...d, protocol: v }))}
@@ -478,7 +523,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                 ]}
               />
               <SelectionGroup
-                label="IP Stack"
+                label={t('proxy.ipStack')}
                 value={formData.ipVersion}
                 variant="blue"
                 columns={2}
@@ -489,46 +534,46 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                 ]}
               />
               <SelectionGroup
-                label="Privacy Tier"
+                label={t('proxy.privacyTier')}
                 value={formData.proxyType}
                 variant="indigo"
                 columns={2}
                 onChange={(v) => setFormData((d) => ({ ...d, proxyType: v }))}
                 options={[
-                  { label: 'Exclusive', value: 'private' },
-                  { label: 'Shared', value: 'shared' },
+                  { label: t('proxy.exclusive'), value: 'private' },
+                  { label: t('proxy.shared'), value: 'shared' },
                 ]}
               />
               <SelectionGroup
-                label="Origin Source"
+                label={t('proxy.originSource')}
                 value={formData.sourceType}
                 variant="emerald"
                 onChange={(v) => setFormData((d) => ({ ...d, sourceType: v }))}
                 options={[
-                  { label: 'Datacenter', value: 'datacenter' },
-                  { label: 'Residential', value: 'residential' },
-                  { label: 'Carrier', value: 'mobile' },
+                  { label: t('proxy.datacenter'), value: 'datacenter' },
+                  { label: t('proxy.residential'), value: 'residential' },
+                  { label: t('proxy.carrier'), value: 'mobile' },
                 ]}
               />
               <SelectionGroup
-                label="Routing Mode"
+                label={t('proxy.routingMode')}
                 value={formData.rotationType}
                 variant="slate"
                 columns={2}
                 onChange={(v) => setFormData((d) => ({ ...d, rotationType: v }))}
                 options={[
-                  { label: 'Static Bound', value: 'static' },
-                  { label: 'Active Mesh', value: 'rotating' },
+                  { label: t('proxy.staticBound'), value: 'static' },
+                  { label: t('proxy.activeMesh'), value: 'rotating' },
                 ]}
               />
               <SelectionGroup
-                label="Node Status"
+                label={t('proxy.nodeStatus')}
                 value={formData.status}
                 onChange={(v) => setFormData((d) => ({ ...d, status: v }))}
                 options={[
-                  { label: 'Active', value: 'active', color: 'emerald' },
-                  { label: 'Critical', value: 'expired', color: 'amber' },
-                  { label: 'Decommission', value: 'disabled', color: 'rose' },
+                  { label: t('proxy.active'), value: 'active', color: 'emerald' },
+                  { label: t('proxy.critical'), value: 'expired', color: 'amber' },
+                  { label: t('proxy.decommission'), value: 'disabled', color: 'rose' },
                 ]}
               />
             </div>
@@ -549,7 +594,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
           onClick={onClose}
           className="px-8 h-11 bg-muted/10 hover:bg-muted/20 text-muted-foreground text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all border border-border/50 active:scale-95"
         >
-          Cancel
+          {t('proxy.cancel')}
         </button>
 
         <button
@@ -565,12 +610,12 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
           {isChecking ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Checking Node...
+              {t('proxy.checkingNode')}
             </>
           ) : (
             <>
               <Navigation className="w-4 h-4" />
-              Check Proxy
+              {t('proxy.checkProxy')}
             </>
           )}
         </button>
@@ -580,154 +625,163 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
       <Modal
         open={showResultModal}
         onClose={() => setShowResultModal(false)}
-        title="Diagnostic Identity Report"
-        size="md"
-        className="w-[500px]"
+        title={t('proxy.diagnosticReport')}
+        size="lg"
+        style={{ width: '580px' }}
       >
         <div className="space-y-6">
           {diagnosticResult?.success ? (
             <>
-              <div className="flex flex-col items-center justify-center p-8 bg-emerald-500/[0.03] border border-emerald-500/10 rounded-3xl space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+              <div className="flex flex-col items-center justify-center p-6 bg-emerald-500/[0.03] border border-emerald-500/10 rounded-3xl space-y-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                 </div>
                 <div className="text-center">
                   <h3 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-400">
-                    Node Authenticated
+                    {t('proxy.nodeAuthenticated')}
                   </h3>
                   <p className="text-[11px] text-muted-foreground/60 mt-1 uppercase tracking-wider">
-                    Infrastructure is healthy and secure
+                    {t('proxy.infraHealthy')}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
-                <div className="flex items-center justify-between p-4 bg-muted/5 border border-border/40 rounded-2xl">
-                  <div className="flex items-center gap-3">
-                    <Globe className="w-4 h-4 text-blue-400" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Detected IP
+              {/* Symmetric Comparison Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Left: Direct */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <Shield className="w-3.5 h-3.5 text-muted-foreground/40" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">
+                      {t('proxy.directConnection')}
                     </span>
                   </div>
-                  <span className="text-xs font-mono font-bold text-foreground">
-                    {diagnosticResult.ip}
-                  </span>
+                  <div className="space-y-2">
+                    {[
+                      { label: 'IP', value: diagnosticResult.direct?.ip },
+                      { label: t('proxy.location'), value: diagnosticResult.direct?.country },
+                      { label: t('proxy.region'), value: diagnosticResult.direct?.region },
+                      { label: t('proxy.ispProvider'), value: diagnosticResult.direct?.isp },
+                      { label: t('proxy.organization'), value: diagnosticResult.direct?.org },
+                    ].map((row, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-col p-2.5 bg-muted/5 border border-border/20 rounded-xl transition-all hover:bg-muted/10"
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 mb-0.5">
+                          {row.label}
+                        </span>
+                        <span className="text-[11px] font-bold text-foreground/70 truncate">
+                          {row.value || 'N/A'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-muted/5 border border-border/40 rounded-2xl">
-                  <div className="flex items-center gap-3">
-                    <Navigation className="w-4 h-4 text-amber-400" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Location
+
+                {/* Right: Proxy */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <Globe className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                      {t('proxy.proxyConnection')}
                     </span>
                   </div>
-                  <span
-                    className={cn(
-                      'text-[11px] font-black uppercase tracking-widest',
-                      diagnosticResult.country?.toLowerCase().includes('vietnam') ||
-                        diagnosticResult.country?.toLowerCase().includes('vn')
-                        ? 'text-rose-500'
-                        : 'text-emerald-400',
-                    )}
-                  >
-                    {diagnosticResult.country || 'Global'}
-                    {(diagnosticResult.country?.toLowerCase().includes('vietnam') ||
-                      diagnosticResult.country?.toLowerCase().includes('vn')) && (
-                      <span className="ml-2 px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/20 rounded text-[9px]">
-                        CAUTION
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-muted/5 border border-border/40 rounded-2xl">
-                  <div className="flex items-center gap-3">
-                    <Server className="w-4 h-4 text-indigo-400" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      ISP/Provider
-                    </span>
+                  <div className="space-y-2">
+                    {[
+                      { label: 'IP', value: diagnosticResult.proxy?.ip, primary: true },
+                      { label: t('proxy.location'), value: diagnosticResult.proxy?.country },
+                      { label: t('proxy.region'), value: diagnosticResult.proxy?.region },
+                      { label: t('proxy.ispProvider'), value: diagnosticResult.proxy?.isp },
+                      { label: t('proxy.organization'), value: diagnosticResult.proxy?.org },
+                    ].map((row, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-col p-2.5 bg-primary/5 border border-primary/20 rounded-xl shadow-sm transition-all hover:bg-primary/10"
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-primary/40 mb-0.5">
+                          {row.label}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-[11px] font-bold truncate',
+                            row.primary
+                              ? 'text-primary font-black scale-105 origin-left'
+                              : 'text-primary/90',
+                          )}
+                        >
+                          {row.value || 'N/A'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-[10px] font-bold text-foreground/80 truncate max-w-[200px]">
-                    {diagnosticResult.isp}
-                  </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div
                   className={cn(
-                    'flex flex-col gap-2 p-4 rounded-2xl border',
+                    'flex flex-col gap-1.5 p-3 rounded-2xl border',
                     diagnosticResult.isBlacklisted
                       ? 'bg-rose-500/5 border-rose-500/20'
                       : 'bg-emerald-500/5 border-emerald-500/20',
                   )}
                 >
-                  <div className="flex items-center gap-2">
-                    <AlertCircle
-                      className={cn(
-                        'w-3.5 h-3.5',
-                        diagnosticResult.isBlacklisted ? 'text-rose-400' : 'text-emerald-400',
-                      )}
-                    />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">
-                      Reputation
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-black uppercase font-mono">
-                    {diagnosticResult.isBlacklisted ? 'Blacklisted' : 'Pristine'}
+                  <span className="text-[10px] font-black uppercase text-muted-foreground/60">
+                    {t('proxy.reputation')}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-[11px] font-black uppercase',
+                      diagnosticResult.isBlacklisted ? 'text-rose-400' : 'text-emerald-400',
+                    )}
+                  >
+                    {diagnosticResult.isBlacklisted ? t('proxy.blacklisted') : t('proxy.pristine')}
                   </span>
                 </div>
                 <div
                   className={cn(
-                    'flex flex-col gap-2 p-4 rounded-2xl border',
+                    'flex flex-col gap-1.5 p-3 rounded-2xl border',
                     diagnosticResult.webrtcLeak
                       ? 'bg-rose-500/5 border-rose-500/20'
                       : 'bg-emerald-500/5 border-emerald-500/20',
                   )}
                 >
-                  <div className="flex items-center gap-2">
-                    <Lock
-                      className={cn(
-                        'w-3.5 h-3.5',
-                        diagnosticResult.webrtcLeak ? 'text-rose-400' : 'text-emerald-400',
-                      )}
-                    />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">
-                      WebRTC Leak
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-black uppercase font-mono">
-                    {diagnosticResult.webrtcLeak ? 'Leak Detected' : 'No Leaks'}
+                  <span className="text-[10px] font-black uppercase text-muted-foreground/60">
+                    {t('proxy.webrtcLeak')}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-[11px] font-black uppercase',
+                      diagnosticResult.webrtcLeak ? 'text-rose-400' : 'text-emerald-400',
+                    )}
+                  >
+                    {diagnosticResult.webrtcLeak ? t('proxy.leakDetected') : t('proxy.noLeaks')}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1.5 p-3 rounded-2xl border bg-muted/5 border-border/20">
+                  <span className="text-[10px] font-black uppercase text-muted-foreground/60">
+                    {t('proxy.latency')}
+                  </span>
+                  <span className="text-[11px] font-black uppercase font-mono text-emerald-400">
+                    {diagnosticResult.latency}ms
                   </span>
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setShowResultModal(false)}
-                  className="flex-1 h-12 bg-muted/10 hover:bg-muted/20 text-muted-foreground text-[11px] font-bold uppercase tracking-widest rounded-2xl transition-all border border-border/50"
+                  onClick={() => handleCheckProxy()}
+                  className="flex-1 h-12 bg-muted/10 hover:bg-muted/20 text-muted-foreground text-xs font-bold uppercase tracking-widest rounded-2xl transition-all border border-border/50"
                 >
-                  Retry Diagnostic
+                  {t('proxy.retryDiagnostic')}
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={
-                    loading ||
-                    diagnosticResult.country?.toLowerCase().includes('vietnam') ||
-                    diagnosticResult.country?.toLowerCase().includes('vn')
-                  }
-                  className={cn(
-                    'flex-1 h-12 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20',
-                    diagnosticResult.country?.toLowerCase().includes('vietnam') ||
-                      diagnosticResult.country?.toLowerCase().includes('vn')
-                      ? 'bg-rose-500/20 text-rose-500 border border-rose-500/20 cursor-not-allowed'
-                      : 'bg-primary text-white hover:bg-primary/90 border border-primary/50',
-                  )}
+                  disabled={loading}
+                  className="flex-1 h-12 bg-primary text-white hover:bg-primary/90 border border-primary/50 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
                 >
-                  {diagnosticResult.country?.toLowerCase().includes('vietnam') ||
-                  diagnosticResult.country?.toLowerCase().includes('vn')
-                    ? 'Vứt đi (Vietnam IP)'
-                    : proxy
-                      ? 'Commit Update'
-                      : 'Provision Gateway'}
+                  {proxy ? t('proxy.commitUpdate') : t('proxy.useProxy')}
                 </button>
               </div>
             </>
@@ -738,20 +792,17 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
               </div>
               <div className="text-center space-y-2">
                 <h3 className="text-sm font-black uppercase tracking-[0.2em] text-rose-400">
-                  Diagnostic Failed
+                  {t('proxy.diagnosticFailed')}
                 </h3>
-                <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider max-w-[300px]">
-                  Node is unresponsive or credentials invalid
+                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider max-w-[300px] leading-relaxed">
+                  {diagnosticResult?.error || t('proxy.unknownHandshakeError')}
                 </p>
-              </div>
-              <div className="p-4 w-full bg-black/20 rounded-2xl border border-white/5 font-mono text-[10px] text-rose-300">
-                Error: {diagnosticResult?.error || 'Unknown network error'}
               </div>
               <button
                 onClick={() => setShowResultModal(false)}
-                className="w-full h-12 bg-rose-500 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20"
+                className="w-full h-12 bg-rose-500 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20"
               >
-                Re-check Settings
+                {t('proxy.recheckSettings')}
               </button>
             </div>
           )}

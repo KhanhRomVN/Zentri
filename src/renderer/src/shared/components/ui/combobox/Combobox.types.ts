@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 export interface ComboboxOption {
   value: string;
   label: string;
+  description?: string;
   disabled?: boolean;
   icon?: ReactNode;
   className?: string;

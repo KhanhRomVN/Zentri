@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Network, Plus, Search, LayoutGrid, Loader2, AlertCircle } from 'lucide-react';
-import { cn } from '../../shared/lib/utils';
+import { useState, useEffect, useCallback, useMemo, SetStateAction } from 'react';
+import { Plus, Search, LayoutGrid, Loader2, AlertCircle } from 'lucide-react';
 import { Proxy, ProxyFilterState } from './types';
 import ProxyTable from './components/ProxyTable';
 import ProxyFilter from './components/ProxyFilter';
@@ -120,13 +119,7 @@ const ProxyManager = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
         {/* Sidebar Filter with Status Control */}
-        <ProxyFilter
-          filters={filters}
-          onFilterChange={setFilters}
-          proxies={proxies}
-          disabled={isConfiguring}
-        />
-
+        <ProxyFilter filters={filters} onFilterChange={setFilters} disabled={isConfiguring} />
         {/* Dynamic Content Panel */}
         <div className="flex-1 bg-card/30 overflow-hidden flex flex-col relative transition-all duration-700">
           {isConfiguring ? (
@@ -171,7 +164,7 @@ const ProxyManager = () => {
           ) : (
             <ProxyTable
               proxies={filteredProxies}
-              onEdit={(p) => {
+              onEdit={(p: SetStateAction<Proxy | null>) => {
                 setSelectedProxy(p);
                 setIsConfiguring(true);
               }}

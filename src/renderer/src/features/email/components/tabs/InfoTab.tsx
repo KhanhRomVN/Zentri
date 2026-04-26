@@ -1,4 +1,5 @@
 import { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Shield, Key, Hash, Activity } from 'lucide-react';
 import { cn } from '../../../../shared/lib/utils';
 import Input from '../../../../shared/components/ui/input/Input';
@@ -21,13 +22,14 @@ const InfoTab: FC<InfoTabProps> = ({
   backupCodeSearch,
   setBackupCodeSearch,
 }) => {
+  const { t } = useTranslation();
   return (
     <div className="w-full p-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="space-y-8">
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] ml-1">
-              Email
+              {t('email.manager.tabs.info.email')}
             </label>
             <Input
               value={editedAccount?.email || ''}
@@ -44,7 +46,7 @@ const InfoTab: FC<InfoTabProps> = ({
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] ml-1">
-              Password
+              {t('email.manager.tabs.info.password')}
             </label>
             <Input
               type="password"
@@ -65,7 +67,7 @@ const InfoTab: FC<InfoTabProps> = ({
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] ml-1">
-              Recovery Email
+              {t('email.manager.tabs.info.recoveryEmail')}
             </label>
             <Input
               value={editedAccount?.recoveryEmail || ''}
@@ -84,7 +86,7 @@ const InfoTab: FC<InfoTabProps> = ({
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] ml-1">
-              Phone Number
+              {t('email.manager.tabs.info.phoneNumber')}
             </label>
             <Input
               value={editedAccount?.phoneNumber || ''}
@@ -106,17 +108,17 @@ const InfoTab: FC<InfoTabProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <Shield className="w-4 h-4 text-primary" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
-              Security Settings
+              {t('email.manager.tabs.info.securitySettings')}
             </h3>
           </div>
 
           <div className="space-y-2.5">
             <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              2FA Secret Key (TOTP)
+              {t('email.manager.tabs.info.totpKey')}
             </label>
             <Input
               type="text"
-              placeholder="Optional 2FA Secret Key"
+              placeholder={t('email.manager.tabs.info.totpPlaceholder')}
               leftIcon={Key}
               value={editedAccount?.totpSecretKey || ''}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -148,11 +150,11 @@ const InfoTab: FC<InfoTabProps> = ({
 
           <div className="space-y-2.5">
             <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Backup Codes
+              {t('email.manager.tabs.info.backupCodes')}
             </label>
             <Input
               type="combobox"
-              placeholder="Type and press Enter to add..."
+              placeholder={t('email.manager.tabs.info.backupPlaceholder')}
               value={backupCodeSearch}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setBackupCodeSearch(e.target.value)

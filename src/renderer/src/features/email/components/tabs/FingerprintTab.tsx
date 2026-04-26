@@ -1,4 +1,5 @@
 import { FC, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Shield,
   Globe,
@@ -34,6 +35,7 @@ const HealthStatusItem = ({
   icon: any;
   onDetailClick?: () => void;
 }) => {
+  const { t } = useTranslation();
   const colors = {
     success: {
       bg: 'bg-emerald-500/5',
@@ -84,7 +86,7 @@ const HealthStatusItem = ({
         </p>
         {onDetailClick && (
           <span className="text-[8px] font-black uppercase text-[#8b5cf6]/50 group-hover/item:text-[#8b5cf6] transition-colors ml-2">
-            Details
+            {t('email.manager.tabs.fingerprint.details')}
           </span>
         )}
       </div>
@@ -93,6 +95,7 @@ const HealthStatusItem = ({
 };
 
 const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +111,11 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await window.electron.ipcRenderer.invoke('email:get-fingerprint', { email });
+      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
+      const result = await window.electron.ipcRenderer.invoke('email:get-fingerprint', {
+        email,
+        browserPath,
+      });
       if (result.success) {
         setData(result);
         setLoading(false);
@@ -132,7 +139,9 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4">
         <RefreshCw className="w-8 h-8 text-[#8b5cf6] animate-spin" />
-        <p className="text-zinc-400 animate-pulse text-sm">Scanning browser fingerprint...</p>
+        <p className="text-zinc-400 animate-pulse text-sm">
+          {t('email.manager.tabs.fingerprint.loading')}
+        </p>
       </div>
     );
   }
@@ -141,13 +150,17 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-center">
         <Shield className="w-12 h-12 text-zinc-600 mb-4" />
-        <p className="text-red-400 mb-2 font-bold">Diagnostic Error</p>
-        <p className="text-zinc-500 text-sm max-w-xs">{error || 'No diagnostic data available'}</p>
+        <p className="text-red-400 mb-2 font-bold">
+          {t('email.manager.tabs.fingerprint.errorTitle')}
+        </p>
+        <p className="text-zinc-500 text-sm max-w-xs">
+          {error || t('email.manager.tabs.fingerprint.noData')}
+        </p>
         <button
           onClick={fetchFingerprint}
           className="mt-4 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider"
         >
-          Retry Scan
+          {t('email.manager.tabs.fingerprint.retry')}
         </button>
       </div>
     );
@@ -160,11 +173,13 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
     <div className="flex flex-col h-full overflow-hidden bg-black/20">
       {/* Breadcrumb Header */}
       <div className="px-5 py-3 border-b border-zinc-800/50 flex items-center space-x-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 select-none">
-        <span>Accounts</span>
+        <span>{t('email.manager.tabs.fingerprint.breadcrumb.accounts')}</span>
         <span className="text-zinc-700">/</span>
         <span className="text-zinc-300">{email}</span>
         <span className="text-zinc-700">/</span>
-        <span className="text-[#8b5cf6]">Fingerprint Diagnostics</span>
+        <span className="text-[#8b5cf6]">
+          {t('email.manager.tabs.fingerprint.breadcrumb.diagnostics')}
+        </span>
       </div>
 
       <div className="flex-1 p-5 space-y-5 overflow-auto custom-scrollbar">
@@ -207,18 +222,22 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
               </div>
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">Profile Trust Score</h3>
+              <h3 className="text-base font-bold text-white tracking-tight">
+                {t('email.manager.tabs.fingerprint.trustScore')}
+              </h3>
               <p className="text-zinc-400 text-[11px] leading-relaxed mt-0.5 max-w-sm">
                 {reasons.length > 0
-                  ? `Security Warning: ${reasons.join(', ')}`
-                  : 'Profile is highly secure. Browser fingerprints appear natural.'}
+                  ? t('email.manager.tabs.fingerprint.warningMessage', {
+                      reasons: reasons.join(', '),
+                    })
+                  : t('email.manager.tabs.fingerprint.secureMessage')}
               </p>
             </div>
           </div>
           <button
             onClick={fetchFingerprint}
             className="p-2.5 bg-zinc-800/80 hover:bg-zinc-700 rounded-xl text-zinc-100 transition-all hover:scale-105 active:scale-95 border border-zinc-700/50"
-            title="REFRESH DIAGNOSTICS"
+            title={t('email.manager.tabs.fingerprint.refreshTooltip')}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -229,13 +248,13 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
           <div className="space-y-4 lg:col-span-7">
             <SectionHeader
               icon={<Shield className="w-3.5 h-3.5" />}
-              title="Identity Protection & Network Health"
+              title={t('email.manager.tabs.fingerprint.sections.network')}
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" id="section-health">
               <div id="section-ip">
                 <HealthStatusItem
-                  title="IP & Provider"
+                  title={t('email.manager.tabs.fingerprint.labels.ipProvider')}
                   status={healthScore > 50 ? 'success' : 'warning'}
                   value={geoData.query}
                   subValue={geoData.isp}
@@ -245,19 +264,19 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
               </div>
 
               <HealthStatusItem
-                title="Anonymity Level"
+                title={t('email.manager.tabs.fingerprint.labels.anonymity')}
                 status={geoData.usageType?.includes('Residential') ? 'success' : 'warning'}
                 value={geoData.usageType || 'Detection Failed'}
                 subValue={
                   geoData.usageType?.includes('Residential')
-                    ? 'Residential IP (Clean)'
-                    : 'Proxy/Data Center Detected'
+                    ? t('email.manager.tabs.fingerprint.status.residential')
+                    : t('email.manager.tabs.fingerprint.status.proxy')
                 }
                 icon={<Shield className="w-3.5 h-3.5" />}
               />
 
               <HealthStatusItem
-                title="WebRTC Shield"
+                title={t('email.manager.tabs.fingerprint.labels.webrtc')}
                 status={
                   webrtc?.leak && webrtc.leak.includes('No Leak')
                     ? 'success'
@@ -268,25 +287,25 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
                 value={webrtc?.leak || 'N/A'}
                 subValue={
                   webrtc?.local && webrtc.local !== 'n/a'
-                    ? `Local IP Leak: ${webrtc.local}`
-                    : 'No WebRTC leaks detected'
+                    ? t('email.manager.tabs.fingerprint.status.webrtcLeak', { ip: webrtc.local })
+                    : t('email.manager.tabs.fingerprint.status.webrtcSafe')
                 }
                 icon={<Activity className="w-3.5 h-3.5" />}
                 onDetailClick={() => openDrawer('webrtc')}
               />
 
               <HealthStatusItem
-                title="DNS Security"
+                title={t('email.manager.tabs.fingerprint.labels.dns')}
                 status="success"
-                value="Secure"
-                subValue="No DNS leaks detected"
+                value={t('email.manager.tabs.fingerprint.status.secure')}
+                subValue={t('email.manager.tabs.fingerprint.status.dnsSafe')}
                 icon={<Shield className="w-3.5 h-3.5" />}
               />
             </div>
 
             <SectionHeader
               icon={<Cpu className="w-3.5 h-3.5" />}
-              title="Advanced Signatures (TLS / HTTP2)"
+              title={t('email.manager.tabs.fingerprint.sections.signatures')}
             />
             <div
               className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden divide-y divide-zinc-800/30"
@@ -306,7 +325,10 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
           {/* Secondary Data Column */}
           <div className="space-y-4 lg:col-span-5">
             <div id="section-location" className="space-y-4">
-              <SectionHeader icon={<MapPin className="w-3.5 h-3.5" />} title="Location & Context" />
+              <SectionHeader
+                icon={<MapPin className="w-3.5 h-3.5" />}
+                title={t('email.manager.tabs.fingerprint.sections.location')}
+              />
               <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-4 space-y-4">
                 <div className="flex items-center space-x-3 p-3 bg-zinc-800/30 rounded-xl border border-zinc-700/30">
                   <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20">
@@ -322,11 +344,15 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-2.5 bg-zinc-800/30 rounded-xl border border-zinc-700/30">
-                    <p className="text-[9px] text-zinc-500 uppercase font-black mb-1">Timezone</p>
+                    <p className="text-[9px] text-zinc-500 uppercase font-black mb-1">
+                      {t('email.manager.tabs.fingerprint.labels.timezone')}
+                    </p>
                     <p className="text-[11px] text-zinc-300 truncate">{geoData.timezone}</p>
                   </div>
                   <div className="p-2.5 bg-zinc-800/30 rounded-xl border border-zinc-700/30">
-                    <p className="text-[9px] text-zinc-500 uppercase font-black mb-1">Local Time</p>
+                    <p className="text-[9px] text-zinc-500 uppercase font-black mb-1">
+                      {t('email.manager.tabs.fingerprint.labels.localTime')}
+                    </p>
                     <p className="text-[11px] text-zinc-300 truncate">{geoData.localTime}</p>
                   </div>
                 </div>
@@ -351,22 +377,32 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
             <div className="flex items-center justify-between px-1">
               <SectionHeader
                 icon={<Monitor className="w-3.5 h-3.5" />}
-                title="Hardware Signatures"
+                title={t('email.manager.tabs.fingerprint.sections.hardware')}
               />
               <button
                 onClick={() => openDrawer('js')}
                 className="text-[9px] font-black uppercase text-[#8b5cf6] hover:text-[#a78bfa] transition-colors flex items-center gap-1 group/btn"
               >
-                <span>Full JS Context</span>
+                <span>{t('email.manager.tabs.fingerprint.fullJsContext')}</span>
                 <ChevronRight className="w-2 h-2 group-hover/btn:translate-x-0.5 transition-transform" />
               </button>
             </div>
             <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden divide-y divide-zinc-800/30">
-              <DetailRow label="User Agent" value={fingerprint.userAgent} />
-              <DetailRow label="WebGL Engine" value={fingerprint.webglRenderer} />
               <DetailRow
-                label="Canvas Hash"
-                value={fingerprint.canvasHash.substring(0, 32) + '...'}
+                label={t('email.manager.tabs.fingerprint.labels.userAgent')}
+                value={fingerprint.userAgent}
+              />
+              <DetailRow
+                label={t('email.manager.tabs.fingerprint.labels.webgl')}
+                value={fingerprint.webglRenderer}
+              />
+              <DetailRow
+                label={t('email.manager.tabs.fingerprint.labels.canvas')}
+                value={
+                  fingerprint.canvasHash
+                    ? fingerprint.canvasHash.substring(0, 32) + '...'
+                    : 'Not Detected'
+                }
               />
             </div>
           </div>
@@ -378,17 +414,17 @@ const FingerprintTab: FC<FingerprintTabProps> = ({ email }) => {
         onClose={() => setIsRawDrawerOpen(false)}
         title={
           drawerType === 'ip'
-            ? 'IP Diagnostic Report'
+            ? t('email.manager.tabs.fingerprint.drawers.ipTitle')
             : drawerType === 'webrtc'
-              ? 'WebRTC Safety Report'
-              : 'JavaScript & Hardware Context'
+              ? t('email.manager.tabs.fingerprint.drawers.webrtcTitle')
+              : t('email.manager.tabs.fingerprint.drawers.jsTitle')
         }
         subtitle={
           drawerType === 'ip'
-            ? `Network analysis for ${geoData.query}`
+            ? t('email.manager.tabs.fingerprint.drawers.ipSubtitle', { query: geoData.query })
             : drawerType === 'webrtc'
-              ? 'Detailed WebRTC & Media Device Leak Test'
-              : 'Comprehensive DOM & Hardware API diagnostics'
+              ? t('email.manager.tabs.fingerprint.drawers.webrtcSubtitle')
+              : t('email.manager.tabs.fingerprint.drawers.jsSubtitle')
         }
         width="600px"
         className="!bg-[#0c0c0c] border-l border-zinc-800 shadow-2xl"

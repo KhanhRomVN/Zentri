@@ -1,4 +1,5 @@
 import { FC, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Shield,
   Globe,
@@ -22,6 +23,7 @@ interface HealthCheckModalProps {
 }
 
 const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, onSuccess }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +137,11 @@ const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, o
             </div>
 
             <h2 className="mt-6 text-lg font-bold tracking-tight text-white uppercase italic">
-              {loading ? 'Analyzing Profile...' : error ? 'Diagnostic Failed' : 'System Secure'}
+              {loading
+                ? t('email.table.modals.healthCheck.analyzing')
+                : error
+                  ? t('email.table.modals.healthCheck.failed')
+                  : t('email.table.modals.healthCheck.secure')}
             </h2>
             <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mt-1">
               {email}
@@ -168,13 +174,15 @@ const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, o
             ) : error ? (
               <div className="flex flex-col items-center py-6 text-center">
                 <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-                <p className="text-zinc-300 font-medium mb-1">Could not verify environment</p>
+                <p className="text-zinc-300 font-medium mb-1">
+                  {t('email.table.modals.healthCheck.unverifiedTitle')}
+                </p>
                 <p className="text-zinc-500 text-xs mb-6">{error}</p>
                 <button
                   onClick={performCheck}
                   className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-sm font-bold transition-all"
                 >
-                  Retry Diagnostics
+                  {t('email.table.modals.healthCheck.retry')}
                 </button>
               </div>
             ) : (
@@ -197,12 +205,12 @@ const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, o
                       <p
                         className={`text-xs font-bold ${score > 80 ? 'text-emerald-500' : 'text-amber-500'} uppercase tracking-wider`}
                       >
-                        Cleanliness Score
+                        {t('email.table.modals.healthCheck.cleanlinessScore')}
                       </p>
                       <p className="text-[10px] text-zinc-500 italic">
-                        {data.health?.reasons?.length > 0
+                        {data?.health?.reasons?.length > 0
                           ? data.health.reasons[0]
-                          : 'Environment is healthy and safe for browsing.'}
+                          : t('email.table.modals.healthCheck.safeMessage')}
                       </p>
                     </div>
                   </div>
@@ -217,26 +225,30 @@ const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, o
                 <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                   <DiagnosticItem
                     icon={<Globe className="w-3.5 h-3.5" />}
-                    label="IP Address"
-                    value={data.geoData.query}
+                    label={t('email.table.modals.healthCheck.labels.ip')}
+                    value={data?.geoData?.query || data?.geoData?.ip || 'N/A'}
                     color="text-blue-400"
                   />
                   <DiagnosticItem
                     icon={<MapPin className="w-3.5 h-3.5" />}
-                    label="Location"
-                    value={`${data.geoData.city}, ${data.geoData.country}`}
+                    label={t('email.table.modals.healthCheck.labels.location')}
+                    value={
+                      data?.geoData?.city
+                        ? `${data.geoData.city}, ${data.geoData.country || ''}`
+                        : data?.geoData?.country || 'N/A'
+                    }
                     color="text-red-400"
                   />
                   <DiagnosticItem
                     icon={<Activity className="w-3.5 h-3.5" />}
-                    label="Connection Type"
-                    value={data.geoData.usageType}
+                    label={t('email.table.modals.healthCheck.labels.connection')}
+                    value={data?.geoData?.usageType || data?.geoData?.isp || 'N/A'}
                     color="text-emerald-400"
                   />
                   <DiagnosticItem
                     icon={<Shield className="w-3.5 h-3.5" />}
-                    label="WebRTC Public"
-                    value={data.webrtc.public}
+                    label={t('email.table.modals.healthCheck.labels.webrtc')}
+                    value={data?.webrtc?.public || 'N/A'}
                     color="text-amber-400"
                   />
                 </div>
@@ -247,7 +259,7 @@ const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, o
                     onClick={onClose}
                     className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-bold transition-all uppercase tracking-widest"
                   >
-                    Discard
+                    {t('email.table.modals.healthCheck.discard')}
                   </button>
                   <button
                     onClick={() => {
@@ -257,7 +269,7 @@ const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, o
                     className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all uppercase tracking-widest flex items-center justify-center space-x-2 shadow-lg shadow-emerald-500/20"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    <span>Launch Anyway</span>
+                    <span>{t('email.table.modals.healthCheck.launchAnyway')}</span>
                   </button>
                 </div>
               </>

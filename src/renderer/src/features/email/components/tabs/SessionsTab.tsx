@@ -1,6 +1,8 @@
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHealthCheck } from '../../hooks/useHealthCheck';
 import HealthCheckModal from '../modals/HealthCheckModal';
+import ProfileLaunchModal from '../modals/ProfileLaunchModal';
 import {
   Database,
   Clock,
@@ -64,6 +66,7 @@ const getBaseDomain = (domain: string): string => {
 };
 
 const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<RAW_SessionData[]>([]);
   const [search, setSearch] = useState('');
@@ -75,12 +78,23 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
   const [menu, setMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { isOpen, options, launchWithCheck, closeHealthCheck } = useHealthCheck();
+  const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
+  const [pendingLaunch, setPendingLaunch] = useState<{
+    accountId: string;
+    email: string;
+    provider?: string;
+    url?: string;
+  } | null>(null);
 
   const fetchSessions = async () => {
     setLoading(true);
     try {
+      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
       // @ts-ignore
-      const result = await window.electron.ipcRenderer.invoke('email:get-sessions', { email });
+      const result = await window.electron.ipcRenderer.invoke('email:get-sessions', {
+        email,
+        browserPath,
+      });
       if (result.success) {
         setSessions(result.sessions);
       }
@@ -89,6 +103,31 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExecuteLaunch = async (config: { checkHealth: boolean }) => {
+    if (!pendingLaunch) return;
+    const { accountId, email, provider, url } = pendingLaunch;
+    setIsLaunchModalOpen(false);
+
+    if (config.checkHealth) {
+      launchWithCheck({ accountId, email, provider, url });
+    } else {
+      try {
+        const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('email:open-login', {
+          accountId,
+          email,
+          provider: provider || 'custom',
+          url,
+          browserPath,
+        });
+      } catch (error) {
+        console.error('Failed to launch browser:', error);
+      }
+    }
+    setPendingLaunch(null);
   };
 
   useEffect(() => {
@@ -176,12 +215,13 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
     setMenu(null);
 
     if (action === 'launch') {
-      launchWithCheck({
+      setPendingLaunch({
         accountId,
         email,
         provider: 'custom',
         url: `https://${targetDomain}`,
       });
+      setIsLaunchModalOpen(true);
     } else if (action === 'refresh') {
       fetchSessions();
     } else if (action === 'delete') {
@@ -194,7 +234,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
     return (
       <div className="p-8 flex flex-col items-center justify-center h-full">
         <Database className="w-8 h-8 text-zinc-700 animate-pulse mb-4" />
-        <p className="text-zinc-500 text-sm">Loading session data...</p>
+        <p className="text-zinc-500 text-sm">{t('email.manager.tabs.sessions.loading')}</p>
       </div>
     );
   }
@@ -202,22 +242,19 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
   return (
     <div ref={containerRef} className="flex flex-col h-full bg-zinc-950 relative overflow-hidden">
       {/* Search Header */}
-      <div className="p-4 border-b border-zinc-900 bg-zinc-900/20 flex items-center justify-between">
+      <div className="p-4 border-b border-zinc-900 bg-zinc-900/20 flex items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
           <input
             type="text"
-            placeholder="Search domain or website..."
+            placeholder={t('email.manager.tabs.sessions.searchPlaceholder')}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-1.5 pl-10 pr-4 text-xs text-zinc-300 focus:outline-none"
+            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-xs text-zinc-300 focus:outline-none focus:border-zinc-700 transition-colors"
           />
-        </div>
-        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest px-4">
-          SESSION ANALYSIS
         </div>
       </div>
 
@@ -227,19 +264,19 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
           <thead className="sticky top-0 z-10">
             <tr className="bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800 shadow-sm">
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase w-12 text-center">
-                STT
+                {t('email.manager.tabs.sessions.headers.stt')}
               </th>
-              <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase w-20 text-center">
-                STATUS
+              <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase w-28 whitespace-nowrap text-center">
+                {t('email.manager.tabs.sessions.headers.status')}
               </th>
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase text-left">
-                WEBSITE
+                {t('email.manager.tabs.sessions.headers.website')}
               </th>
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase text-center">
-                COOKIES
+                {t('email.manager.tabs.sessions.headers.cookies')}
               </th>
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase text-center">
-                LATEST EXPIRY
+                {t('email.manager.tabs.sessions.headers.expiry')}
               </th>
             </tr>
           </thead>
@@ -247,7 +284,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
             {paginatedGroups.length === 0 ? (
               <tr>
                 <td colSpan={5} className="p-12 text-center text-zinc-600 italic text-sm">
-                  No session data found.
+                  {t('email.manager.tabs.sessions.empty')}
                 </td>
               </tr>
             ) : (
@@ -275,7 +312,9 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
                           </span>
                           {group.subdomains.length > 1 && (
                             <span className="text-[10px] text-blue-400/80 font-bold">
-                              {group.subdomains.length - 1} subdomains available
+                              {t('email.manager.tabs.sessions.subdomains', {
+                                count: group.subdomains.length - 1,
+                              })}
                             </span>
                           )}
                         </div>
@@ -327,10 +366,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
       </div>
 
       {/* Pagination Footer */}
-      <div className="p-3 bg-zinc-900/40 border-t border-zinc-900 flex items-center justify-between">
-        <div className="text-[10px] text-zinc-500 font-medium ml-4">
-          Showing {paginatedGroups.length} / {filteredGroups.length} websites
-        </div>
+      <div className="p-3 bg-zinc-900/40 border-t border-zinc-900 flex items-center justify-end">
         <div className="flex items-center space-x-2 mr-4">
           <button
             disabled={currentPage === 1}
@@ -355,32 +391,39 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
         <div
           ref={menuRef}
           className="absolute z-[100] w-72 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden py-1.5 ring-1 ring-white/5"
-          style={{ top: menu.y, left: menu.x }}
+          style={{ top: menu?.y, left: menu?.x }}
         >
           <div className="px-4 py-2 bg-zinc-800/30 border-b border-zinc-800/50 mb-1">
             <p className="text-[10px] font-bold text-zinc-500 uppercase truncate">
-              {menu.item.domain || menu.item.baseDomain}
+              {menu?.item.domain || menu?.item.baseDomain}
             </p>
           </div>
           <MenuAction
             icon={<RefreshCw className="w-3.5 h-3.5" />}
-            label="Refresh session"
+            label={t('email.manager.tabs.sessions.context.refresh')}
             onClick={() => handleAction('refresh')}
           />
           <MenuAction
             icon={<Trash2 className="w-3.5 h-3.5" />}
-            label="Delete session"
+            label={t('email.manager.tabs.sessions.context.delete')}
             onClick={() => handleAction('delete')}
             danger
           />
           <div className="h-px bg-zinc-800/50 my-1.5" />
           <MenuAction
             icon={<ExternalLink className="w-3.5 h-3.5" />}
-            label="Launch and load profile"
+            label={t('email.manager.tabs.sessions.context.launch')}
             onClick={() => handleAction('launch')}
           />
         </div>
       )}
+      <ProfileLaunchModal
+        isOpen={isLaunchModalOpen}
+        onClose={() => setIsLaunchModalOpen(false)}
+        email={email}
+        onLaunch={handleExecuteLaunch}
+      />
+
       {isOpen && (
         <HealthCheckModal
           isOpen={isOpen}
@@ -390,12 +433,14 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
           url={options?.url}
           onSuccess={async () => {
             try {
+              const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
               // @ts-ignore
               await window.electron.ipcRenderer.invoke('email:open-login', {
                 accountId,
                 email,
                 provider: 'custom',
                 url: options?.url,
+                browserPath,
               });
             } catch (error) {
               console.error('Failed to launch browser:', error);
@@ -433,6 +478,7 @@ const MenuAction = ({
 );
 
 const StatusBadge = ({ expiry }: { expiry: string }) => {
+  const { t } = useTranslation();
   const isExpired = new Date(expiry).getTime() < new Date().getTime();
   return (
     <span
@@ -442,7 +488,9 @@ const StatusBadge = ({ expiry }: { expiry: string }) => {
           : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
       }`}
     >
-      {isExpired ? 'EXPIRED' : 'ACTIVE'}
+      {isExpired
+        ? t('email.manager.tabs.sessions.status.expired')
+        : t('email.manager.tabs.sessions.status.active')}
     </span>
   );
 };
