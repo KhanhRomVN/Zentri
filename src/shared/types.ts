@@ -103,6 +103,9 @@ export interface Proxy extends GlobalEntity {
   durationDays?: number;
   bandwidthGb?: number;
   price?: number;
+  expiredAt?: string;
+  purchaseUrl?: string;
+  lastCheckedAt?: string;
   status: ProxyStatus;
   metadata?: any;
 }

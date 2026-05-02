@@ -12,7 +12,11 @@
       "themeSettings": "Cài đặt giao diện",
       "collapseSidebar": "Thu gọn thanh bên",
       "expandSidebar": "Mở rộng thanh bên",
-      "cancel": "Hủy"
+      "updateAvailable": "Có bản cập nhật Wayfern",
+      "updating": "Đang cập nhật Wayfern...",
+      "updateComplete": "Đã cập nhật Wayfern",
+      "cancel": "Hủy",
+      "confirm": "Xác nhận"
     },
     "proxy": {
       "quickImport": "Cấu hình nhanh Proxy",
@@ -34,6 +38,9 @@
       "unitPrice": "Đơn giá",
       "currency": "Tiền tệ",
       "lifecycle": "Vòng đời (Ngày)",
+      "expirationDate": "Ngày hết hạn",
+      "expirationPlaceholder": "Chọn ngày hoặc nhập timestamp",
+      "purchaseUrl": "Nơi mua Proxy",
       "transitQuota": "Hạn mức băng thông (GB)",
       "regionAssignment": "Chỉ định khu vực",
       "hyperTuning": "Cấu hình nâng cao",
@@ -86,7 +93,11 @@
       "recheckSettings": "Kiểm tra lại cài đặt",
       "view": "Xem",
       "delete": "Chuyển vào thùng rác",
+      "confirmDecommissionTitle": "Xác nhận ngừng hoạt động",
+      "confirmDecommissionDescription": "Bạn có chắc chắn muốn ngừng hoạt động nút proxy này? Nút này sẽ được gỡ khỏi danh sách hạ tầng.",
       "deleteForever": "Xóa vĩnh viễn",
+      "confirmDeleteTitle": "Xác nhận xóa vĩnh viễn",
+      "confirmDeleteDescription": "Hành động này không thể hoàn tác. Proxy này sẽ bị xóa vĩnh viễn khỏi hệ thống.",
       "check": "Kiểm tra chẩn đoán",
       "moveTrash": "Bỏ vào thùng rác",
       "editInline": "Chỉnh sửa nhanh",
@@ -101,9 +112,11 @@
       "allProtocols": "Mọi giao thức",
       "nodeVitality": "Sức sống của nút",
       "anyStatus": "Mọi trạng thái",
+      "active": "Hoạt động",
       "activeNodes": "Nút đang hoạt động",
       "expired": "Hết hạn",
       "disabled": "Đã tắt",
+      "trash": "Thùng rác",
       "days": "ngày"
     },
     "table": {
@@ -114,9 +127,12 @@
       "source": "Nguồn",
       "location": "Vị trí",
       "price": "Giá",
+      "expiration": "Ngày hết hạn",
+      "lastCheck": "Check gần nhất",
       "status": "Trạng thái",
       "quota": "Thời gian | Dung Lượng còn lại",
       "recoveryPhone": "Recovery / Phone",
+      "lastUsedProxy": "Proxy dùng gần đây",
       "email": "Email",
       "actions": "Thao tác",
       "noData": "Không có dữ liệu"
@@ -146,7 +162,9 @@
         }
       },
       "contextMenu": {
-        "openBrowser": "Chạy Donut",
+        "openBrowser": "Chạy Wayfern(v{{version}})",
+        "launchNormal": "Chạy bình thường",
+        "launchSecure": "Chạy bảo mật danh tính",
         "view": "Xem",
         "restore": "Khôi phục",
         "deletePermanently": "Xóa vĩnh viễn",
@@ -231,7 +249,7 @@
         "table": {
           "fleetCapacity": "Khả năng đội ngũ tác chiến",
           "operational": "Đang hoạt động",
-          "openService": "Chạy Donut",
+          "openService": "Chạy Wayfern(v{{version}})",
           "view": "Xem",
           "secretsVault": "Kho bảo mật",
           "restoreService": "Khôi phục dịch vụ",
@@ -253,7 +271,7 @@
             "cleanlinessScore": "Điểm độ sạch",
             "safeMessage": "Môi trường khỏe mạnh và an toàn để truy cập.",
             "discard": "Hủy bỏ",
-            "launchAnyway": "Vẫn khởi chạy Donut",
+            "launchAnyway": "Vẫn khởi chạy Wayfern",
             "labels": {
               "ip": "Địa chỉ IP",
               "location": "Vị trí",
@@ -312,7 +330,7 @@
             "context": {
               "refresh": "Làm mới phiên",
               "delete": "Xóa phiên",
-              "launch": "Khởi chạy Donut"
+              "launch": "Khởi chạy Wayfern"
             },
             "status": {
               "expired": "HẾT HẠN",
@@ -409,8 +427,8 @@
       "appLanguage": "Ngôn ngữ giao diện ứng dụng",
       "agentLanguage": "Ngôn ngữ phản hồi của Agent",
       "browserExecutablePath": "Trình duyệt (Executable Path)",
-      "browserExecutablePlaceholder": "Đường dẫn đến Donut Browser",
-      "browserExecutableHint": "Để trống để tự động tìm kiếm Donut/Chromium trên hệ thống.",
+      "browserExecutablePlaceholder": "Đường dẫn đến Wayfern Browser",
+      "browserExecutableHint": "Để trống để tự động tìm kiếm Wayfern/Chromium trên hệ thống.",
       "noFolderSelected": "Chưa chọn thư mục",
       "initializeTitle": "Khởi tạo kho lưu trữ?",
       "initializeDescPre": "Thư mục đã chọn thiếu các tệp cơ sở dữ liệu. Bạn có muốn chúng tôi khởi tạo tệp",

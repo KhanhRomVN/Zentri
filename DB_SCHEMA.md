@@ -1,117 +1,150 @@
-# Database Schema Zentri
+# 💎 Zentri Database Schema
 
-### Bảng `emails`
-
-Lưu trữ thông tin chính của thực thể Email.
-
-| Column                  | Type     | Constraints               | Description                                                                    |
-| :---------------------- | :------- | :------------------------ | :----------------------------------------------------------------------------- | --- |
-| `id`                    | TEXT     | PRIMARY KEY               | Định danh duy nhất (UUID)                                                      |
-| `email`                 | TEXT     | NOT NULL                  | Địa chỉ email                                                                  |
-| `password`              | TEXT     |                           | Mật khẩu của email                                                             |
-| `status`                | TEXT     | DEFAULT 'active'          | Trạng thái (active, banned)                                                    |
-| `phone_number`          | TEXT     |                           | Số điện thoại liên kết (Tùy chọn)                                              |
-| `recovery_email`        | TEXT     |                           | Email khôi phục (Tùy chọn)                                                     |
-| `totp_secret_key`       | TEXT     |                           | Mã bí mật 2FA/TOTP (Tùy chọn)                                                  |
-| `backup_codes`          | TEXT     |                           | Mã dự phòng (Tùy chọn)                                                         |     |
-| `scheduled_deletion_at` | DATETIME |                           | Ngày dự kiến xóa vĩnh viễn (cho Soft Delete)                                   |     |
-| `profile_folder_id`     | TEXT     |                           | ID của thư mục profile Chrome tương ứng                                        |
-| `last_used_at`          | DATETIME |                           | Lần cuối sử dụng email này với tool                                            |
-| `created_at`            | DATETIME | DEFAULT CURRENT_TIMESTAMP | Ngày thêm vào tool                                                             |
-| `updated_at`            | DATETIME | DEFAULT CURRENT_TIMESTAMP | Ngày cập nhật gần nhất (bao gồm cả các thay đổi ở các bảng liên kết liên quan) |
-
-### Bảng `services`
-
-Lưu trữ thông tin các dịch vụ thường dùng.
-
-| Column        | Type     | Constraints               | Description                |
-| :------------ | :------- | :------------------------ | :------------------------- |
-| `id`          | TEXT     | PRIMARY KEY               | Định danh duy nhất         |
-| `name`        | TEXT     | NOT NULL                  | Tên dịch vụ                |
-| `url`         | TEXT     |                           | URL của dịch vụ (Tùy chọn) |
-| `tags`        | TEXT     |                           | Nhãn phân loại (Tùy chọn)  |
-| `category`    | TEXT     |                           | Hạng mục (Tùy chọn)        |
-| `description` | TEXT     |                           | Mô tả dịch vụ              |
-| `created_at`  | DATETIME | DEFAULT CURRENT_TIMESTAMP | Ngày tạo                   |
-| `updated_at`  | DATETIME | DEFAULT CURRENT_TIMESTAMP | Ngày cập nhật gần nhất     |
-
-### Bảng `service_emails`
-
-Liên kết giữa Email và Dịch vụ.
-
-| Column       | Type     | Constraints               | Description                         |
-| :----------- | :------- | :------------------------ | :---------------------------------- |
-| `id`         | TEXT     | PRIMARY KEY               | Định danh duy nhất                  |
-| `email_id`   | TEXT     | REFERENCES emails(id)     | Liên kết với bảng emails            |
-| `service_id` | TEXT     | REFERENCES services(id)   | Liên kết với bảng services          |
-| `password`   | TEXT     |                           | Mật khẩu dùng riêng cho dịch vụ này |
-| `created_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP | Ngày tạo                            |
-| `updated_at` | DATETIME | DEFAULT CURRENT_TIMESTAMP | Ngày cập nhật gần nhất              |
-
-### Bảng `service_emails_secrets`
-
-Lưu trữ các thông tin bí mật bổ sung cho mỗi dịch vụ của email.
-
-| Column             | Type     | Constraints                   | Description            |
-| :----------------- | :------- | :---------------------------- | :--------------------- |
-| `id`               | TEXT     | PRIMARY KEY                   | Định danh duy nhất     |
-| `service_email_id` | TEXT     | REFERENCES service_emails(id) | Liên kết với dịch vụ   |
-| `secret_name`      | TEXT     | NOT NULL                      | Tên của thông tin mật  |
-| `secret_value`     | TEXT     |                               | Giá trị bí mật         |
-| `secret_type`      | TEXT     | DEFAULT 'password'            | Loại bí mật (totp,...) |
-| `created_at`       | DATETIME | DEFAULT CURRENT_TIMESTAMP     | Ngày tạo               |
-| `updated_at`       | DATETIME | DEFAULT CURRENT_TIMESTAMP     | Ngày cập nhật gần nhất |
-
-### Bảng `proxies`
-
-Lưu trữ danh sách proxy quản lý.
-
-| Column          | Type     | Constraints               | Description                       |
-| :-------------- | :------- | :------------------------ | :-------------------------------- |
-| `id`            | TEXT     | PRIMARY KEY               | Định danh duy nhất (UUID)         |
-| `ip_version`    | INTEGER  | NOT NULL                  | 4 hoặc 6                          |
-| `proxy_type`    | TEXT     | NOT NULL                  | private / shared                  |
-| `source_type`   | TEXT     | NOT NULL                  | datacenter / residential / mobile |
-| `rotation_type` | TEXT     | NOT NULL                  | static / rotating                 |
-| `pricing_type`  | TEXT     | NOT NULL                  | time / bandwidth                  |
-| `protocol`      | TEXT     |                           | http / https / socks5             |
-| `host`          | TEXT     |                           | IP hoặc domain                    |
-| `port`          | INTEGER  |                           | Port                              |
-| `username`      | TEXT     |                           | User proxy                        |
-| `password`      | TEXT     |                           | Password proxy                    |
-| `country`       | TEXT     |                           | Quốc gia                          |
-| `city`          | TEXT     |                           | Thành phố                         |
-| `isp`           | TEXT     |                           | Nhà mạng                          |
-| `duration_days` | INTEGER  |                           | Số ngày (nếu tính theo time)      |
-| `bandwidth_gb`  | REAL     |                           | Dung lượng (nếu tính theo GB)     |
-| `price`         | NUMERIC  |                           | Giá                               |
-| `status`        | TEXT     | DEFAULT 'active'          | active / expired / disabled       |
-| `metadata`      | TEXT     |                           | Dữ liệu mở rộng (JSON)            |
-| `created_at`    | DATETIME | DEFAULT CURRENT_TIMESTAMP | Thời gian tạo                     |
-| `updated_at`    | DATETIME | DEFAULT CURRENT_TIMESTAMP | Thời gian cập nhật                |
+Tài liệu cấu trúc dữ liệu hệ thống Zentri. Thiết kế tối ưu cho hiệu năng và khả năng mở rộng.
 
 ---
 
-### Bảng `sessions` (Tạm thời vô hiệu hóa ở UI)
+### 📧 Bảng `emails`
+*Lưu trữ thông tin định danh và bảo mật cốt lõi của tài khoản Email.*
 
-Lưu trữ lịch sử các phiên làm việc.
+- **`id`** [TEXT] `PRIMARY KEY`
+  - Định danh duy nhất (UUID).
+- **`email`** [TEXT] `NOT NULL`
+  - Địa chỉ email chính.
+- **`password`** [TEXT]
+  - Mật khẩu truy cập.
+- **`status`** [TEXT] `DEFAULT 'active'`
+  - Trạng thái vận hành (`active`, `banned`).
+- **`phone_number`** [TEXT]
+  - Số điện thoại liên kết (Tùy chọn).
+- **`recovery_email`** [TEXT]
+  - Email khôi phục dự phòng.
+- **`totp_secret_key`** [TEXT]
+  - Mã bí mật 2FA/TOTP phục vụ tự động hóa.
+- **`backup_codes`** [TEXT]
+  - Danh sách mã dự phòng.
+- **`profile_folder_id`** [TEXT]
+  - ID định danh thư mục profile browser.
+- **`scheduled_deletion_at`** [DATETIME]
+  - Thời gian dự kiến xóa vĩnh viễn (Soft Delete).
+- **`last_used_at`** [DATETIME]
+  - Ghi nhận lần cuối khởi chạy.
+- **`created_at`** | **`updated_at`** [DATETIME]
+  - Dấu thời gian hệ thống.
 
-| Column       | Type     | Constraints           | Description                        |
-| :----------- | :------- | :-------------------- | :--------------------------------- |
-| `id`         | TEXT     | PRIMARY KEY           |                                    |
-| `account_id` | TEXT     | REFERENCES emails(id) | Liên kết với email                 |
-| `user_agent` | TEXT     |                       | User Agent được sử dụng            |
-| `proxy_id`   | TEXT     |                       | ID của Proxy được sử dụng          |
-| `started_at` | DATETIME |                       | Thời gian bắt đầu                  |
-| `ended_at`   | DATETIME |                       | Thời gian kết thúc                 |
-| `status`     | TEXT     |                       | Trạng thái phiên (success, failed) |
+---
 
-### Bảng `agents` (Tạm thời vô hiệu hóa ở UI)
+### 🌐 Bảng `proxies`
+*Hệ thống quản lý hạ tầng mạng và định danh IP.*
 
-Lưu trữ cấu hình các script hoặc bot.
+- **`id`** [TEXT] `PRIMARY KEY`
+  - Định danh duy nhất (UUID).
+- **`protocol`** [TEXT]
+  - Giao thức (`http`, `socks5`).
+- **`host`** | **`port`** [TEXT|INT]
+  - Thông tin kết nối mạng.
+- **`username`** | **`password`** [TEXT]
+  - Thông tin xác thực proxy.
+- **`ip_version`** [INT]
+  - Phiên bản IP (`4` hoặc `6`).
+- **`proxy_type`** [TEXT]
+  - Phân loại sở hữu (`private`, `shared`).
+- **`source_type`** [TEXT]
+  - Loại node (`datacenter`, `residential`, `mobile`).
+- **`rotation_type`** [TEXT]
+  - Cơ chế IP (`static`, `rotating`).
+- **`pricing_type`** [TEXT]
+  - Hình thức thanh toán (`time`, `bandwidth`).
+- **`country`** | **`city`** | **`isp`** [TEXT]
+  - Thông tin địa lý và nhà mạng.
+- **`expired_at`** [DATETIME]
+  - Timestamp ngày hết hạn chính xác.
+- **`last_checked_at`** [DATETIME]
+  - Lần cuối kiểm tra sức khỏe (Healthy Check).
+- **`purchase_url`** [TEXT]
+  - Đường dẫn gia hạn hoặc mua mới.
+- **`status`** [TEXT] `DEFAULT 'active'`
+  - Trạng thái quản lý (`active`, `expired`, `disabled`, `error`).
+- **`created_at`** | **`updated_at`** [DATETIME]
+  - Dấu thời gian hệ thống.
 
-| Column        | Type | Constraints | Description                 |
-| :------------ | :--- | :---------- | :-------------------------- |
-| `id`          | TEXT | PRIMARY KEY |                             |
-| `name`        | TEXT |             | Tên Agent                   |
-| `config_json` | TEXT |             | Lưu config dạng JSON string |
+---
+
+### 📜 Bảng `proxy_history`
+*Nhật ký sử dụng Proxy để tránh xung đột và cảnh báo bảo mật.*
+
+- **`id`** [TEXT] `PRIMARY KEY`
+  - Định danh bản ghi.
+- **`proxy_id`** [TEXT] `REFERENCES proxies(id)`
+  - Proxy được sử dụng.
+- **`email_id`** [TEXT] `REFERENCES emails(id)`
+  - Tài khoản email thực hiện kết nối.
+- **`target_site`** [TEXT]
+  - Tên miền/Website mục tiêu (Domain).
+- **`used_at`** [DATETIME] `DEFAULT CURRENT_TIMESTAMP`
+  - Thời điểm bắt đầu phiên làm việc.
+
+---
+
+### 🛠️ Bảng `services`
+*Thư viện các dịch vụ và nền tảng hỗ trợ.*
+
+- **`id`** [TEXT] `PRIMARY KEY`
+- **`name`** [TEXT] `NOT NULL`
+  - Tên hiển thị của dịch vụ.
+- **`url`** [TEXT]
+  - Link gốc của nền tảng.
+- **`category`** | **`tags`** [TEXT]
+  - Phân loại và nhãn tìm kiếm (JSON).
+- **`description`** [TEXT]
+  - Mô tả chi tiết.
+
+---
+
+### 🔗 Bảng `service_emails`
+*Mối liên kết giữa Tài khoản và Dịch vụ cụ thể.*
+
+- **`id`** [TEXT] `PRIMARY KEY`
+- **`email_id`** [TEXT] `REFERENCES emails(id)`
+- **`service_id`** [TEXT] `REFERENCES services(id)`
+- **`username`** | **`password`** [TEXT]
+  - Thông tin đăng nhập riêng biệt cho dịch vụ này.
+- **`notes`** [TEXT]
+  - Ghi chú riêng cho tài khoản tại dịch vụ này.
+- **`metadata`** [TEXT]
+  - Dữ liệu cấu hình bổ sung (JSON).
+
+---
+
+### 🔑 Bảng `service_emails_secrets`
+*Kho lưu trữ bí mật (Secret Vault) cho từng dịch vụ.*
+
+- **`id`** [TEXT] `PRIMARY KEY`
+- **`service_email_id`** [TEXT] `REFERENCES service_emails(id)`
+- **`secret_name`** [TEXT] `NOT NULL`
+  - Tên loại bí mật (ví dụ: `App Password`, `Recovery Code`).
+- **`secret_value`** [TEXT]
+  - Nội dung bí mật.
+- **`secret_type`** [TEXT] `DEFAULT 'password'`
+  - Định dạng (`password`, `totp`, `text`).
+
+---
+
+### 👤 Bảng `fingerprints`
+*Lưu trữ cấu hình dấu vân tay trình duyệt.*
+
+- **`id`** [TEXT] `PRIMARY KEY`
+- **`name`** [TEXT]
+  - Tên cấu hình.
+- **`description`** [TEXT]
+  - Mô tả.
+- **`config_json`** [TEXT]
+  - Toàn bộ tham số kỹ thuật (UA, WebGL, Canvas, v.v.) dạng JSON.
+
+---
+
+### 🚀 Bảng `sessions` & `agents`
+*Hệ thống nhật ký và cấu hình tự động hóa (Hiện đang tạm ẩn).*
+
+- **Sessions**: Lưu trữ lịch sử `started_at`, `ended_at`, `user_agent`, `proxy_id`.
+- **Agents**: Lưu trữ `name` và `config_json` cho các kịch bản bot.

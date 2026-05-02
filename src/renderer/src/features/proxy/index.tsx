@@ -36,6 +36,7 @@ const ProxyManager = () => {
     try {
       // @ts-ignore
       const data = await window.electron.ipcRenderer.invoke('proxy:get-all');
+      console.log('[ProxyManager] Loaded Data:', data);
       setProxies(data);
     } catch (err: any) {
       console.error('[Proxy] Load error:', err);
@@ -48,6 +49,61 @@ const ProxyManager = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Automated Background Health Check
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (proxies.length === 0 || isConfiguring) return;
+
+      const now = Date.now();
+      proxies.forEach(async (proxy) => {
+        if (!proxy.host || proxy.status === 'trash' || proxy.status === 'disabled') return;
+
+        const timeToExpiration = proxy.expirationDate ? proxy.expirationDate - now : Infinity;
+        const lastCheck = proxy.lastCheckedAt || 0;
+        const timeSinceLastCheck = now - lastCheck;
+
+        let shouldCheck = false;
+
+        // Logic as requested by user
+        if (timeToExpiration > 12 * 60 * 60 * 1000) { // > 12h
+          if (timeSinceLastCheck > 6 * 60 * 60 * 1000) shouldCheck = true; // > 6h
+        } else if (timeToExpiration > 1 * 60 * 60 * 1000) { // 1h - 12h
+          if (timeSinceLastCheck > 1 * 60 * 60 * 1000) shouldCheck = true; // > 1h
+        } else if (timeToExpiration > 10 * 60 * 1000) { // 10m - 1h
+          if (timeSinceLastCheck > 15 * 60 * 1000) shouldCheck = true; // > 15m
+        } else if (timeToExpiration > 0) { // < 10m
+          if (timeSinceLastCheck > 1 * 60 * 1000) shouldCheck = true; // > 1m
+        }
+
+        if (shouldCheck) {
+          try {
+            // @ts-ignore
+            const result = await window.electron.ipcRenderer.invoke('proxy:check', proxy);
+            const isHealthy = result?.isHealthy ?? false;
+            
+            // @ts-ignore
+            await window.electron.ipcRenderer.invoke('proxy:update', { 
+              id: proxy.id, 
+              data: { 
+                lastCheckedAt: now,
+                isHealthy: isHealthy
+              } 
+            });
+
+            // Update local state to show results immediately
+            setProxies(prev => prev.map(p => 
+              p.id === proxy.id ? { ...p, lastCheckedAt: now, isHealthy: isHealthy } : p
+            ));
+          } catch (e) {
+            console.error('[Proxy] Health Check Error:', e);
+          }
+        }
+      });
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(checkInterval);
+  }, [proxies, isConfiguring]);
 
   const filteredProxies = useMemo(() => {
     return proxies.filter((p) => {

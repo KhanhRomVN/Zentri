@@ -3,6 +3,7 @@ import { Proxy } from '../types';
 import Combobox from '../../../shared/components/ui/combobox/Combobox';
 import Input from '../../../shared/components/ui/input/Input';
 import Modal from '../../../shared/components/ui/modal/Modal';
+import DateTimePicker from '../../../shared/components/ui/datetimepicker/DateTimePicker';
 import {
   Shield,
   Trash2,
@@ -13,6 +14,8 @@ import {
   Globe,
   Loader2,
   CreditCard,
+  CalendarDays,
+  Hash,
 } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -145,6 +148,8 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
       durationDays: 30,
       bandwidthGb: 0,
       price: 0,
+      expiredAt: undefined,
+      purchaseUrl: '',
     };
 
     if (proxy) return proxy;
@@ -152,13 +157,18 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
     const cached = localStorage.getItem(FORM_CACHE_KEY);
     if (cached) {
       try {
+        const parsed = JSON.parse(cached);
         return {
           ...initial,
-          ...JSON.parse(cached),
+          ...parsed,
           host: '',
           port: undefined,
           username: '',
           password: '',
+          expiredAt: undefined,
+          price: 0,
+          bandwidthGb: 0,
+          purchaseUrl: '',
         };
       } catch (e) {
         return initial;
@@ -173,6 +183,10 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
   const [showResultModal, setShowResultModal] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
   const [currencyPopoverOpen, setCurrencyPopoverOpen] = useState(false);
+  const [expirationPopoverOpen, setExpirationPopoverOpen] = useState(false);
+  const [activePicker, setActivePicker] = useState<'calendar' | 'timestamp'>('calendar');
+  const [timestampInput, setTimestampInput] = useState('');
+  const [isDecommissionModalOpen, setIsDecommissionModalOpen] = useState(false);
 
   useEffect(() => {
     if (proxy) {
@@ -225,17 +239,22 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
       // Merge diagnostic data into formData
       const finalData = {
         ...formData,
+        expiredAt: formData.expiredAt || new Date(Date.now() + (formData.durationDays || 30) * 24 * 60 * 60 * 1000).toISOString(),
         isp: diagnosticResult?.proxy?.isp || formData.isp,
         country: diagnosticResult?.proxy?.country || formData.country,
         city: diagnosticResult?.proxy?.city || formData.city,
       };
 
+      console.log('[ProxyForm] Saving Data:', finalData);
+
       if (proxy) {
         // @ts-ignore
         await window.electron.ipcRenderer.invoke('proxy:update', { id: proxy.id, data: finalData });
+        console.log('[ProxyForm] Update Success');
       } else {
         // @ts-ignore
         await window.electron.ipcRenderer.invoke('proxy:create', { ...finalData, id: uuidv4() });
+        console.log('[ProxyForm] Add Success');
       }
       onSuccess();
       setShowResultModal(false);
@@ -247,17 +266,23 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
     }
   };
 
-  const handleDelete = async () => {
-    if (!proxy || !confirm('Confirm decommission of this node?')) return;
-    setLoading(true);
+  const handleDelete = () => {
+    if (!proxy) return;
+    setIsDecommissionModalOpen(true);
+  };
+
+  const confirmDecommission = async () => {
     try {
+      setIsChecking(true);
       // @ts-ignore
-      await window.electron.ipcRenderer.invoke('proxy:delete', proxy.id);
+      await window.electron.ipcRenderer.invoke('proxy:delete', proxy!.id);
+      toast.success('Node decommissioned');
       onSuccess();
-    } catch (error) {
-      console.error('Failed to delete proxy:', error);
+    } catch (e) {
+      toast.error('Decommission failed');
     } finally {
-      setLoading(false);
+      setIsChecking(false);
+      setIsDecommissionModalOpen(false);
     }
   };
 
@@ -362,18 +387,31 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                 </div>
               </div>
 
-              <div className="space-y-2.5">
-                <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                  {t('proxy.password')}
-                </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  password
-                  value={formData.password || ''}
-                  className="bg-input-background border-border rounded-xl h-11 text-sm font-mono"
-                  onChange={(e) => setFormData((d) => ({ ...d, password: e.target.value }))}
-                />
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
+                    {t('proxy.password')}
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="••••••••"
+                    password
+                    value={formData.password || ''}
+                    className="bg-input-background border-border rounded-xl h-11 text-sm font-mono"
+                    onChange={(e) => setFormData((d) => ({ ...d, password: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
+                    {t('proxy.purchaseUrl')}
+                  </label>
+                  <Input
+                    placeholder="https://..."
+                    value={formData.purchaseUrl || ''}
+                    className="bg-input-background border-border rounded-xl h-11 text-sm"
+                    onChange={(e) => setFormData((d) => ({ ...d, purchaseUrl: e.target.value }))}
+                  />
+                </div>
               </div>
             </div>
           </section>
@@ -447,45 +485,130 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
               </div>
 
               <div className="grid grid-cols-2 gap-6">
-                {formData.pricingType === 'time' ? (
-                  <div className="space-y-2.5">
-                    <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                      {t('proxy.lifecycle')}
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="30"
-                      value={
-                        formData.durationDays !== undefined ? String(formData.durationDays) : ''
-                      }
-                      className="bg-input-background border-border rounded-xl h-11 text-sm font-mono no-spinner"
-                      onChange={(e) =>
-                        setFormData((d) => ({
-                          ...d,
-                          durationDays: parseInt(e.target.value) || undefined,
-                        }))
-                      }
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                      {t('proxy.transitQuota')}
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="10"
-                      value={formData.bandwidthGb !== undefined ? String(formData.bandwidthGb) : ''}
-                      className="bg-input-background border-border rounded-xl h-11 text-sm font-mono no-spinner"
-                      onChange={(e) =>
-                        setFormData((d) => ({
-                          ...d,
-                          bandwidthGb: parseFloat(e.target.value) || undefined,
-                        }))
-                      }
-                    />
-                  </div>
-                )}
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
+                    {t('proxy.expirationDate')}
+                  </label>
+                  <Input
+                    placeholder={t('proxy.expirationPlaceholder')}
+                    value={
+                      formData.expiredAt
+                        ? new Date(formData.expiredAt).toLocaleString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : ''
+                    }
+                    readOnly
+                    className="bg-input-background border-border rounded-xl h-11 text-sm font-mono cursor-default"
+                    popoverClassName={cn(
+                      '!w-max transition-all duration-300',
+                      activePicker === 'calendar' ? '!min-w-[480px]' : '!min-w-[320px]',
+                    )}
+                    popoverOpen={expirationPopoverOpen}
+                    onPopoverOpenChange={setExpirationPopoverOpen}
+                    rightIcon={[
+                      <button
+                        key="calendar"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActivePicker('calendar');
+                          setExpirationPopoverOpen(true);
+                        }}
+                        className={cn(
+                          'p-1.5 rounded-lg transition-all hover:bg-primary/10',
+                          activePicker === 'calendar' && expirationPopoverOpen
+                            ? 'text-primary bg-primary/10'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarDays className="w-4 h-4" />
+                      </button>,
+                      <button
+                        key="timestamp"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActivePicker('timestamp');
+                          setTimestampInput(
+                            formData.expiredAt ? String(new Date(formData.expiredAt).getTime()) : '',
+                          );
+                          setExpirationPopoverOpen(true);
+                        }}
+                        className={cn(
+                          'p-1.5 rounded-lg transition-all hover:bg-primary/10',
+                          activePicker === 'timestamp' && expirationPopoverOpen
+                            ? 'text-primary bg-primary/10'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        <Hash className="w-4 h-4" />
+                      </button>,
+                    ]}
+                    popoverContent={
+                      <div className="bg-popover border border-border/50 rounded-2xl shadow-2xl overflow-hidden">
+                        {activePicker === 'calendar' ? (
+                          <div className="p-1">
+                            <DateTimePicker
+                              mode="datetime"
+                              value={
+                                formData.expiredAt ? new Date(formData.expiredAt) : null
+                              }
+                              onChange={(date) => {
+                                if (date) {
+                                  setFormData((d) => ({ ...d, expiredAt: date.toISOString() }));
+                                }
+                                setExpirationPopoverOpen(false);
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="p-5 w-[320px] space-y-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 ml-1">
+                                Unix Timestamp (ms)
+                              </label>
+                              <Input
+                                value={timestampInput}
+                                onChange={(e) => setTimestampInput(e.target.value)}
+                                placeholder="e.g. 1776272400000"
+                                className="bg-input-background border-border/50 h-10 text-sm font-mono"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setExpirationPopoverOpen(false)}
+                                className="flex-1 h-9 bg-muted/10 hover:bg-muted/20 text-muted-foreground text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all border border-border/50"
+                              >
+                                {t('common.cancel')}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const ts = parseInt(timestampInput);
+                                  if (!isNaN(ts)) {
+                                    // Auto-detect seconds (10 digits) vs milliseconds (13 digits)
+                                    const finalTs = ts < 10000000000 ? ts * 1000 : ts;
+                                    setFormData((d) => ({ ...d, expiredAt: new Date(finalTs).toISOString() }));
+                                    setExpirationPopoverOpen(false);
+                                  }
+                                }}
+                                className="flex-1 h-9 bg-primary hover:bg-primary/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-primary/20"
+                              >
+                                {t('common.confirm')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    }
+                  />
+                </div>
+
                 <div className="space-y-2.5">
                   <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
                     {t('proxy.regionAssignment')}
@@ -497,6 +620,30 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                     onChange={(e) => setFormData((d) => ({ ...d, country: e.target.value }))}
                   />
                 </div>
+              </div>
+
+              <div className={cn('grid gap-6', formData.pricingType === 'bandwidth' ? 'grid-cols-2' : 'grid-cols-1')}>
+                {formData.pricingType === 'bandwidth' && (
+                  <div className="space-y-2.5">
+                    <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
+                      {t('proxy.transitQuota')}
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder="10"
+                      value={
+                        formData.bandwidthGb !== undefined ? String(formData.bandwidthGb) : ''
+                      }
+                      className="bg-input-background border-border rounded-xl h-11 text-sm font-mono no-spinner"
+                      onChange={(e) =>
+                        setFormData((d) => ({
+                          ...d,
+                          bandwidthGb: parseFloat(e.target.value) || undefined,
+                        }))
+                      }
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -806,6 +953,43 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
               </button>
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* Decommission Confirmation Modal */}
+      <Modal
+        open={isDecommissionModalOpen}
+        onClose={() => setIsDecommissionModalOpen(false)}
+        title={t('proxy.confirmDecommissionTitle')}
+        size="sm"
+        className="max-w-[400px]"
+      >
+        <div className="space-y-6">
+          <div className="flex flex-col items-center justify-center pt-4 pb-2 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-rose-500" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
+                {t('proxy.confirmDecommissionDescription')}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setIsDecommissionModalOpen(false)}
+              className="flex-1 h-11 bg-muted/10 hover:bg-muted/20 text-muted-foreground text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all border border-border/50"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={confirmDecommission}
+              className="flex-1 h-11 bg-rose-500 text-white hover:bg-rose-600 border border-rose-500/50 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-rose-500/20"
+            >
+              {t('proxy.decommission')}
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

@@ -164,8 +164,34 @@ export class DbManager {
           price NUMERIC,
           status TEXT DEFAULT 'active',
           metadata TEXT,
+          expiration_date INTEGER,
+          last_checked_at INTEGER,
+          is_healthy INTEGER,
+          purchase_url TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS fingerprints (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          ua TEXT,
+          os TEXT,
+          os_version TEXT,
+          config_json TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS proxy_history (
+          id TEXT PRIMARY KEY,
+          proxy_id TEXT NOT NULL,
+          email_id TEXT NOT NULL,
+          target_site TEXT,
+          used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (proxy_id) REFERENCES proxies(id) ON DELETE CASCADE,
+          FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
       );
     `;
 
@@ -338,6 +364,60 @@ export class DbManager {
         console.log('[DB] Migration: Added secret_type to service_emails_secrets table');
       } catch (e) {
         console.error('[DB] Migration failed (secret_type):', e);
+      }
+    }
+
+    // Migration for proxies new fields (Version 2)
+    const proxyColumns = await this.rawAll<{ name: string }>(
+      "PRAGMA table_info('proxies')",
+    );
+    const hasExpiredAt = proxyColumns.some((c) => c.name === 'expired_at');
+
+    if (!hasExpiredAt) {
+      try {
+        // Add expired_at and last_checked_at as DATETIME
+        await this.rawRun('ALTER TABLE proxies ADD COLUMN expired_at DATETIME');
+        await this.rawRun('ALTER TABLE proxies ADD COLUMN last_checked_at DATETIME');
+        await this.rawRun('ALTER TABLE proxies ADD COLUMN purchase_url TEXT');
+        
+        // If old expiration_date exists, we could try to migrate it, 
+        // but since we are in dev, we can just ensure the column is there.
+        const hasOldExp = proxyColumns.some((c) => c.name === 'expiration_date');
+        if (hasOldExp) {
+          // Attempt migration of data from expiration_date (timestamp) to expired_at (DATETIME)
+          await this.rawRun("UPDATE proxies SET expired_at = datetime(expiration_date / 1000, 'unixepoch') WHERE expiration_date IS NOT NULL");
+        }
+
+        console.log('[DB] Migration: Updated proxies with new DATETIME fields');
+      } catch (e) {
+        console.error('[DB] Migration failed (proxies refactor):', e);
+      }
+    }
+
+    // Remove is_healthy if it exists (SQLite doesn't support DROP COLUMN easily before 3.35.0, 
+    // but we can just ignore it or do a more complex migration if really needed.
+    // For now, let's just make sure we don't use it in code.)
+
+    // Migration for proxy_history table
+    const historyExists = await this.rawAll<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='proxy_history'",
+    );
+    if (historyExists.length === 0) {
+      try {
+        await this.rawRun(`
+          CREATE TABLE IF NOT EXISTS proxy_history (
+            id TEXT PRIMARY KEY,
+            proxy_id TEXT NOT NULL,
+            email_id TEXT NOT NULL,
+            target_site TEXT,
+            used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (proxy_id) REFERENCES proxies(id) ON DELETE CASCADE,
+            FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
+          )
+        `);
+        console.log('[DB] Migration: Created proxy_history table');
+      } catch (e) {
+        console.error('[DB] Migration failed (proxy_history):', e);
       }
     }
   }

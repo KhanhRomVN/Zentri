@@ -1,7 +1,5 @@
 import { FC, useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHealthCheck } from '../hooks/useHealthCheck';
-import HealthCheckModal from './modals/HealthCheckModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Globe, Eye, Key, Undo2 } from 'lucide-react';
 import { Account, Service } from '../types';
@@ -65,8 +63,8 @@ const EmailTable: FC<EmailTableProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [backupCodeSearch, setBackupCodeSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
-  const { isOpen, options, launchWithCheck, closeHealthCheck } = useHealthCheck();
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
+  const [browserVersion, setBrowserVersion] = useState('...');
   const [pendingLaunch, setPendingLaunch] = useState<{
     accountId: string;
     email: string;
@@ -199,6 +197,19 @@ const EmailTable: FC<EmailTableProps> = ({
     loadGlobalServices();
   }, [isServiceDrawerOpen, accountServices]);
 
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        // @ts-ignore
+        const version = await window.electron.ipcRenderer.invoke('browser:get-version');
+        setBrowserVersion(version || '0.0.0');
+      } catch (err) {
+        console.error('Failed to fetch browser version', err);
+      }
+    };
+    fetchVersion();
+  }, []);
+
   // --- Handlers ---
   const handleContextMenu = (e: React.MouseEvent, accountId: string) => {
     e.preventDefault();
@@ -270,27 +281,46 @@ const EmailTable: FC<EmailTableProps> = ({
     setIsLaunchModalOpen(true);
   };
 
-  const handleExecuteLaunch = async (config: { checkHealth: boolean }) => {
-    if (!pendingLaunch) return;
-    const { accountId, email, provider, url } = pendingLaunch;
+  const handleExecuteLaunch = async (config: { 
+    fingerprintId?: string;
+    proxyId?: string;
+    launchMode?: 'normal' | 'secure';
+  }, overrideLaunch?: {
+    accountId: string;
+    email: string;
+    provider?: string;
+    url?: string;
+  }) => {
+    const launchData = overrideLaunch || pendingLaunch;
+    if (!launchData) return;
+    const { accountId, email, provider, url } = launchData;
     setIsLaunchModalOpen(false);
 
-    if (config.checkHealth) {
-      launchWithCheck({ accountId, email, provider, url });
-    } else {
-      try {
-        const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
+    try {
+      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
+      // @ts-ignore
+      await window.electron.ipcRenderer.invoke('email:open-login', {
+        accountId,
+        email,
+        provider: provider || 'custom',
+        url,
+        browserPath,
+        fingerprintId: config.fingerprintId,
+        proxyId: config.proxyId,
+        launchMode: config.launchMode || 'secure',
+      });
+
+      // Log proxy usage if a proxy was selected
+      if (config.proxyId) {
         // @ts-ignore
-        await window.electron.ipcRenderer.invoke('email:open-login', {
-          accountId,
-          email,
-          provider: provider || 'custom',
-          url,
-          browserPath,
+        await window.electron.ipcRenderer.invoke('proxy:log-usage', {
+          proxyId: config.proxyId,
+          emailId: accountId,
+          targetSite: url ? new URL(url).hostname : undefined,
         });
-      } catch (error) {
-        console.error('Failed to launch browser:', error);
       }
+    } catch (error) {
+      console.error('Failed to launch browser:', error);
     }
     setPendingLaunch(null);
   };
@@ -593,14 +623,28 @@ const EmailTable: FC<EmailTableProps> = ({
         onRestore={onRestore}
         onHardDelete={onHardDelete}
         onSoftDelete={onSoftDelete}
-        onLaunchRequest={(account) => {
-          setPendingLaunch({
-            accountId: account.id,
-            email: account.email,
-            provider: 'google',
-          });
-          setIsLaunchModalOpen(true);
+        onLaunchRequest={(account, mode) => {
+          if (mode === 'secure') {
+            setPendingLaunch({
+              accountId: account.id,
+              email: account.email,
+              provider: 'google',
+            });
+            setIsLaunchModalOpen(true);
+          } else {
+            // Normal launch: skip modal and use default/last settings
+            handleExecuteLaunch({
+              fingerprintId: undefined,
+              proxyId: undefined,
+              launchMode: 'normal'
+            }, {
+              accountId: account.id,
+              email: account.email,
+              provider: 'google'
+            });
+          }
         }}
+        browserVersion={browserVersion}
       />
 
       {/* Service Context Menu */}
@@ -608,22 +652,22 @@ const EmailTable: FC<EmailTableProps> = ({
         <Portal>
           <div
             ref={serviceMenuRef}
-            className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl py-1.5 z-[1000] min-w-[200px] animate-in fade-in zoom-in-95 duration-100 p-1"
+            className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl py-1.5 z-[1000] min-w-[200px] w-max animate-in fade-in zoom-in-95 duration-100 p-1"
             style={{ top: serviceContextMenu.y, left: serviceContextMenu.x }}
             onClick={() => setServiceContextMenu(null)}
           >
             <button
               onClick={() => handleOpenService(serviceContextMenu.linkId)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all whitespace-nowrap"
             >
               <Globe className="w-4 h-4" />
-              {t('email.manager.table.openService')}
+              {t('email.manager.table.openService', { version: browserVersion })}
             </button>
             <div className="h-px bg-border/20 my-1 mx-2" />
 
             <button
               onClick={() => handleEditServiceLink(serviceContextMenu.linkId)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap"
             >
               <Eye className="w-4 h-4 text-blue-500/50" />
               {t('email.manager.table.view')}
@@ -631,7 +675,7 @@ const EmailTable: FC<EmailTableProps> = ({
 
             <button
               onClick={() => handleViewSecrets(serviceContextMenu.linkId)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap"
             >
               <Key className="w-4 h-4 text-primary/50" />
               {t('email.manager.table.secretsVault')}
@@ -639,7 +683,7 @@ const EmailTable: FC<EmailTableProps> = ({
 
             <div className="h-px bg-border/20 my-1 mx-2" />
             <button
-              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all whitespace-nowrap"
               onClick={() => {
                 if (serviceContextMenu.status === 'trash') {
                   setServiceHardDeleteConfirmId(serviceContextMenu.linkId);
@@ -657,7 +701,7 @@ const EmailTable: FC<EmailTableProps> = ({
             {serviceContextMenu.status === 'trash' && (
               <button
                 onClick={() => handleRestoreService(serviceContextMenu.linkId)}
-                className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400/80 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all mt-1"
+                className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400/80 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all mt-1 whitespace-nowrap"
               >
                 <Undo2 className="w-4 h-4" />
                 {t('email.manager.table.restoreService')}
@@ -767,31 +811,8 @@ const EmailTable: FC<EmailTableProps> = ({
         isOpen={isLaunchModalOpen}
         onClose={() => setIsLaunchModalOpen(false)}
         email={pendingLaunch?.email || ''}
+        accountId={pendingLaunch?.accountId || ''}
         onLaunch={handleExecuteLaunch}
-      />
-
-      <HealthCheckModal
-        isOpen={isOpen}
-        onClose={closeHealthCheck}
-        email={options?.email || ''}
-        accountId={options?.accountId || ''}
-        url={options?.url}
-        onSuccess={async () => {
-          if (!options) return;
-          try {
-            const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
-            // @ts-ignore
-            await window.electron.ipcRenderer.invoke('email:open-login', {
-              accountId: options.accountId,
-              email: options.email,
-              provider: options.provider || 'custom',
-              url: options.url,
-              browserPath,
-            });
-          } catch (error) {
-            console.error('Failed to launch browser:', error);
-          }
-        }}
       />
     </div>
   );

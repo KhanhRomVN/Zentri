@@ -1,7 +1,5 @@
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHealthCheck } from '../../hooks/useHealthCheck';
-import HealthCheckModal from '../modals/HealthCheckModal';
 import ProfileLaunchModal from '../modals/ProfileLaunchModal';
 import {
   Database,
@@ -77,7 +75,6 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { isOpen, options, launchWithCheck, closeHealthCheck } = useHealthCheck();
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [pendingLaunch, setPendingLaunch] = useState<{
     accountId: string;
@@ -105,27 +102,23 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
     }
   };
 
-  const handleExecuteLaunch = async (config: { checkHealth: boolean }) => {
+  const handleExecuteLaunch = async () => {
     if (!pendingLaunch) return;
     const { accountId, email, provider, url } = pendingLaunch;
     setIsLaunchModalOpen(false);
 
-    if (config.checkHealth) {
-      launchWithCheck({ accountId, email, provider, url });
-    } else {
-      try {
-        const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
-        // @ts-ignore
-        await window.electron.ipcRenderer.invoke('email:open-login', {
-          accountId,
-          email,
-          provider: provider || 'custom',
-          url,
-          browserPath,
-        });
-      } catch (error) {
-        console.error('Failed to launch browser:', error);
-      }
+    try {
+      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
+      // @ts-ignore
+      await window.electron.ipcRenderer.invoke('email:open-login', {
+        accountId,
+        email,
+        provider: provider || 'custom',
+        url,
+        browserPath,
+      });
+    } catch (error) {
+      console.error('Failed to launch browser:', error);
     }
     setPendingLaunch(null);
   };
@@ -421,33 +414,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
         isOpen={isLaunchModalOpen}
         onClose={() => setIsLaunchModalOpen(false)}
         email={email}
-        onLaunch={handleExecuteLaunch}
-      />
-
-      {isOpen && (
-        <HealthCheckModal
-          isOpen={isOpen}
-          onClose={closeHealthCheck}
-          email={email}
-          accountId={accountId}
-          url={options?.url}
-          onSuccess={async () => {
-            try {
-              const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
-              // @ts-ignore
-              await window.electron.ipcRenderer.invoke('email:open-login', {
-                accountId,
-                email,
-                provider: 'custom',
-                url: options?.url,
-                browserPath,
-              });
-            } catch (error) {
-              console.error('Failed to launch browser:', error);
-            }
-          }}
-        />
-      )}
+        onLaunch={handleExecuteLaunch} accountId={''}      />
     </div>
   );
 };

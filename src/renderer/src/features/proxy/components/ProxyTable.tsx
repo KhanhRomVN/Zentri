@@ -9,8 +9,9 @@ import {
   TableCell,
   HeaderCell,
 } from '../../../shared/components/ui/table';
-import { Globe, Shield, Zap, Info, Network, Trash2, Check, Eye } from 'lucide-react';
+import { Globe, Shield, Zap, Info, Network, Trash2, Check, Eye, AlertCircle } from 'lucide-react';
 import Portal from '../../../shared/components/ui/Portal';
+import Modal from '../../../shared/components/ui/modal/Modal';
 import InlineProxyForm from './InlineProxyForm';
 import { toast } from 'sonner';
 import { cn } from '../../../shared/lib/utils';
@@ -31,6 +32,8 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
   const [menuConfig, setMenuConfig] = useState<{ x: number; y: number; proxyId: string } | null>(
     null,
   );
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [targetDeleteId, setTargetDeleteId] = useState<string | null>(null);
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -88,15 +91,23 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
     }
   };
 
-  const handleHardDelete = async (id: string) => {
-    if (!confirm('Permanently delete this node?')) return;
+  const handleHardDelete = (id: string) => {
+    setTargetDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmHardDelete = async () => {
+    if (!targetDeleteId) return;
     try {
       // @ts-ignore
-      await window.electron.ipcRenderer.invoke('proxy:delete', id);
+      await window.electron.ipcRenderer.invoke('proxy:delete', targetDeleteId);
       toast.success('Deleted permanently');
       onRefresh();
     } catch (e) {
       toast.error('Hard delete failed');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setTargetDeleteId(null);
     }
   };
 
@@ -123,28 +134,16 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
               <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 w-[80px] text-left">
                 {t('table.stt')}
               </HeaderCell>
-              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 w-[220px] text-left">
+              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 w-[280px] text-left">
                 {t('table.hostIp')}
               </HeaderCell>
-              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 w-[140px] text-center">
-                {t('table.protocol')}
-              </HeaderCell>
-              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 w-[120px] text-center">
-                {t('table.type')}
-              </HeaderCell>
-              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 w-[120px] text-center">
-                {t('table.source')}
-              </HeaderCell>
-              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 text-center">
+              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 text-left">
                 {t('table.location')}
               </HeaderCell>
-              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 w-[120px] text-center">
-                {t('table.price')}
-              </HeaderCell>
-              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 text-center w-[140px]">
+              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 text-center w-[160px] whitespace-nowrap">
                 {t('table.status')}
               </HeaderCell>
-              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 text-right w-[160px]">
+              <HeaderCell className="text-[11px] font-black uppercase tracking-widest h-[57px] px-3 text-muted-foreground/50 text-center w-[280px] whitespace-nowrap">
                 {t('table.quota')}
               </HeaderCell>
             </TableRow>
@@ -153,7 +152,7 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
           <TableBody>
             {isEmpty ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={8} className="h-[400px] text-center border-none">
+                <TableCell colSpan={5} className="h-[400px] text-center border-none">
                   <div className="flex flex-col items-center justify-center gap-4 py-20">
                     <div className="relative">
                       <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full" />
@@ -190,83 +189,77 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                           'bg-primary/[0.05] border-primary/20 sticky top-[57px] z-20 shadow-xl backdrop-blur-xl',
                       )}
                     >
-                      <TableCell className="py-4 px-3 text-[12px] font-black text-muted-foreground/40 font-mono text-left">
+                      <TableCell className="py-4 px-3 text-[14px] font-black text-muted-foreground/40 font-mono text-left">
                         {String((validCurrentPage - 1) * PAGE_SIZE + index + 1).padStart(2, '0')}
                       </TableCell>
                       <TableCell className="py-4 px-3 overflow-hidden text-left">
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col min-w-0">
-                            <span className="text-[13px] font-bold font-mono tracking-tight text-foreground/90 truncate">
-                              {proxy.host}:{proxy.port}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground/50 truncate tracking-tight">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[15px] font-bold font-mono tracking-tight text-foreground/90 truncate">
+                                {proxy.host}:{proxy.port}
+                              </span>
+                              <span
+                                className={cn(
+                                  'px-1.5 py-0.5 rounded bg-muted/10 text-[9px] font-black uppercase tracking-widest',
+                                  getProtocolColor(proxy.protocol),
+                                )}
+                              >
+                                {proxy.protocol?.toUpperCase() || 'HTTP'}
+                              </span>
+                            </div>
+                            <span className="text-[12px] text-muted-foreground/50 truncate tracking-tight">
                               {proxy.username || 'Anonymous Access'}
                             </span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 px-3 text-center">
-                        <span
-                          className={cn(
-                            'text-[11px] font-black uppercase tracking-widest',
-                            getProtocolColor(proxy.protocol),
-                          )}
-                        >
-                          {proxy.protocol?.toUpperCase() || 'HTTP'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-4 px-3 text-center">
-                        <div className="flex items-center gap-2 justify-center">
-                          <Zap
-                            className={cn(
-                              'w-3 h-3',
-                              proxy.proxyType === 'private' ? 'text-indigo-400' : 'text-blue-400',
-                            )}
-                          />
-                          <span className="text-[11px] font-bold uppercase tracking-tight opacity-70">
-                            {proxy.proxyType}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4 px-3 text-[11px] font-bold uppercase tracking-tight text-muted-foreground/60 text-center">
-                        {proxy.sourceType}
-                      </TableCell>
-                      <TableCell className="py-4 px-3 text-center">
-                        <div className="flex items-center gap-2 justify-center">
-                          <Globe className="w-3 h-3 text-muted-foreground/30" />
-                          <span className="text-[11px] font-bold text-muted-foreground/80">
-                            {proxy.country || 'GLOBAL'}
-                          </span>
-                          {proxy.city && (
-                            <span className="text-[10px] text-muted-foreground/30">
-                              / {proxy.city}
+                      <TableCell className="py-4 px-3 text-left">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <div className="flex items-center gap-2 justify-start">
+                            <span className="text-[15px] font-bold text-foreground/90 tracking-tight">
+                              {proxy.country || 'GLOBAL'}
                             </span>
-                          )}
+                            {proxy.city && (
+                              <span className="text-[14px] text-muted-foreground/60 truncate">
+                                / {proxy.city}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[13px] text-muted-foreground/70 font-medium truncate uppercase tracking-tight">
+                            {proxy.isp || 'N/A Provider'}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 px-3 font-mono text-[11px] font-bold text-center">
-                        <div className="flex items-center gap-1.5 justify-center">
-                          <span className="text-foreground/90">{proxy.price || 0}</span>
-                          <span className="text-muted-foreground/40 text-[10px]">
-                            {proxy.metadata?.currency || 'USD'}
-                          </span>
+                      <TableCell className="py-4 px-3 w-[160px]">
+                        <div className="flex items-center justify-center w-full">
+                          <div
+                            className={cn(
+                              'inline-flex items-center px-4 py-1.5 rounded-xl border text-[11px] font-black uppercase tracking-widest whitespace-nowrap shadow-sm transition-all hover:scale-105',
+                              getStatusStyle(proxy.status),
+                            )}
+                          >
+                            {t(`proxy.${proxy.status}`)}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="py-4 px-3 text-center">
-                        <div
-                          className={cn(
-                            'inline-flex items-center px-2 py-0.5 rounded-lg border text-[10px] font-black uppercase tracking-widest',
-                            getStatusStyle(proxy.status),
-                          )}
-                        >
-                          <div className="w-1 h-1 rounded-full bg-current mr-1.5 animate-pulse" />
-                          {proxy.status}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4 px-3 text-right">
-                        <span className="text-[11px] font-bold font-mono text-muted-foreground/40">
+                        <span className="text-[13px] font-bold font-mono text-muted-foreground/40 whitespace-nowrap">
                           {proxy.pricingType === 'time'
-                            ? `${proxy.durationDays || 0} ${t('proxy.days')}`
+                            ? (() => {
+                                if (!proxy.expiredAt) return `${proxy.durationDays || 0} ${t('proxy.days')}`;
+                                const expiry = new Date(proxy.expiredAt).getTime();
+                                const diff = expiry - Date.now();
+                                if (diff <= 0) return t('proxy.expired');
+                                
+                                const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+                                const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+                                const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+                                
+                                if (days > 0) return `${days} ngày ${hours} giờ`;
+                                if (hours > 0) return `${hours} giờ ${minutes} phút`;
+                                return `${minutes} phút`;
+                              })()
                             : `${proxy.bandwidthGb || 0} GB`}
                         </span>
                       </TableCell>
@@ -274,7 +267,7 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
 
                     {focusRowId === proxy.id && (
                       <TableRow className="hover:bg-transparent bg-background/20">
-                        <TableCell colSpan={9} className="p-0 border-none">
+                        <TableCell colSpan={5} className="p-0 border-none">
                           <div className="w-full min-h-[calc(100vh-220px)] animate-in slide-in-from-top-4 duration-700">
                             <InlineProxyForm
                               proxy={proxy}
@@ -396,6 +389,42 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
           </div>
         </Portal>
       )}
+      {/* Permanent Delete Confirmation Modal */}
+      <Modal
+        open={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title={t('proxy.confirmDeleteTitle')}
+        size="sm"
+        className="max-w-[400px]"
+      >
+        <div className="space-y-6">
+          <div className="flex flex-col items-center justify-center pt-4 pb-2 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-rose-500" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
+                {t('proxy.confirmDeleteDescription')}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1 h-11 bg-muted/10 hover:bg-muted/20 text-muted-foreground text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all border border-border/50"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={confirmHardDelete}
+              className="flex-1 h-11 bg-rose-500 text-white hover:bg-rose-600 border border-rose-500/50 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-rose-500/20"
+            >
+              {t('proxy.deleteForever')}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

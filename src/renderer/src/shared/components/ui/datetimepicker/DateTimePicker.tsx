@@ -139,11 +139,11 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
     );
 
   return (
-    <div ref={containerRef} className={cn('w-full bg-gray-900/50', className)}>
+    <div ref={containerRef} className={cn('w-full bg-popover', className)}>
       {mode === 'datetime' && showTimePicker ? (
         <div className="flex w-full">
           {/* Calendar Section */}
-          <div className="p-4 border-r border-border-default flex-1 bg-gray-800/30">
+          <div className="p-4 border-r border-border-default flex-1 min-w-[280px]">
             {/* Calendar Header */}
             <div className="flex items-center justify-between mb-4">
               <button onClick={prevMonth} className="p-1 rounded">
@@ -177,7 +177,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
                     ${day.isSelected ? 'bg-blue-600 text-white' : ''}
                     ${
                       !day.isSelected && !day.isToday && day.isCurrentMonth
-                        ? 'hover:bg-sidebar-item-hover'
+                        ? 'hover:bg-primary/20 hover:text-primary transition-all'
                         : ''
                     }
                     ${day.isDisabled ? 'opacity-30 cursor-not-allowed' : ''}
@@ -189,7 +189,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
             </div>
           </div>
           {/* Time Section - Dual Scroll */}
-          <div className="p-4 flex-shrink-0 relative flex flex-col">
+          <div className="p-4 flex-shrink-0 relative flex flex-col w-[180px]">
             <div className="font-semibold mb-3 text-center">Select Time</div>
             <div className="flex gap-2 items-start relative flex-1">
               {/* Hour Selector */}
@@ -251,23 +251,23 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
             </div>
             {/* Action Buttons */}
             <div className="flex gap-2 justify-end mt-4 pt-3 border-t border-border-default">
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 text-sm rounded bg-gray-700 hover:bg-gray-600  transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                className="px-4 py-2 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-              >
-                Select
-              </button>
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-xl bg-muted/10 hover:bg-muted/20 text-muted-foreground transition-all active:scale-95 border border-border/50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl bg-primary hover:bg-primary/90 text-white transition-all shadow-lg shadow-primary/20 border border-primary/50 active:scale-95"
+            >
+              Select
+            </button>
             </div>
           </div>
         </div>
       ) : mode === 'date' ? (
-        <div className="p-4 bg-gray-800/30">
+        <div className="p-4">
           {/* Calendar Header */}
           <div className="flex items-center justify-between mb-4">
             <button onClick={prevMonth} className="p-1  rounded">
@@ -302,7 +302,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
                   ${day.isSelected ? 'bg-blue-600 text-white' : ''}
                   ${
                     !day.isSelected && !day.isToday && day.isCurrentMonth
-                      ? 'hover:bg-sidebar-item-hover'
+                      ? 'hover:bg-primary/20 hover:text-primary transition-all'
                       : ''
                   }
                   ${day.isDisabled ? 'opacity-30 cursor-not-allowed' : ''}
@@ -316,13 +316,13 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <div className="flex gap-2 justify-end mt-4 pt-3 border-t border-border-default">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 text-sm rounded bg-gray-700 hover:bg-gray-600  transition-colors"
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-xl bg-muted/10 hover:bg-muted/20 text-muted-foreground transition-all active:scale-95 border border-border/50"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
-              className="px-4 py-2 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl bg-primary hover:bg-primary/90 text-white transition-all shadow-lg shadow-primary/20 border border-primary/50 active:scale-95"
             >
               Select
             </button>
@@ -395,13 +395,13 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
           <div className="flex gap-2 justify-end mt-4 pt-3 border-t border-border-default">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 text-sm rounded bg-gray-700 hover:bg-gray-600  transition-colors"
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-xl bg-muted/10 hover:bg-muted/20 text-muted-foreground transition-all active:scale-95 border border-border/50"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
-              className="px-4 py-2 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl bg-primary hover:bg-primary/90 text-white transition-all shadow-lg shadow-primary/20 border border-primary/50 active:scale-95"
             >
               Select
             </button>

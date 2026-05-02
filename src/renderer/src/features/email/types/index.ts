@@ -38,6 +38,15 @@ export interface Account extends Omit<Email, 'services'> {
     time: number;
     favicon?: string;
   };
+  lastProxy?: {
+    host: string;
+    port: number;
+    protocol: string;
+    proxyType?: string;
+    sourceType?: string;
+    country?: string;
+    city?: string;
+  };
 }
 
 export interface ProfileMetadata {

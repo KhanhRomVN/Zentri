@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ThemeDrawer from '../theme/components/ThemeDrawer';
+import { useBrowserUpdate } from '../../shared/hooks/useBrowserUpdate';
+import { DownloadCloud, Loader2 } from 'lucide-react';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -82,6 +84,7 @@ const NAV_ITEMS = [
 const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
   const { t } = useTranslation();
   const [isThemeDrawerOpen, setIsThemeDrawerOpen] = useState(false);
+  const { updateInfo, isUpdating, progress, stage, downloadUpdate } = useBrowserUpdate();
   useEffect(() => {
     // Check initial state
   }, []);
@@ -193,24 +196,85 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed }: SidebarProps) => {
       {/* Navigation */}
 
       {/* Settings/Collapse Footer (Only in Collapsed Mode) */}
-      {isCollapsed && (
+      {(isCollapsed || (updateInfo?.hasUpdate && !isCollapsed)) && (
         <div
-          className={cn('mt-auto transition-all duration-300 flex flex-col items-center gap-2 p-2')}
+          className={cn(
+            'mt-auto transition-all duration-300 flex flex-col items-center gap-2 p-2',
+            !isCollapsed && 'items-stretch px-4 pb-4',
+          )}
         >
-          <div className="flex flex-col gap-2">
+          {updateInfo?.hasUpdate && !isCollapsed && (
+            <div className="mb-2 p-3 bg-primary/10 border border-primary/20 rounded-lg flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                <DownloadCloud className="w-4 h-4" />
+                {isUpdating ? t('common.updating') : t('common.updateAvailable')}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                {updateInfo.currentVersion} → {updateInfo.latestVersion}
+              </div>
+              {isUpdating ? (
+                <div className="space-y-1.5">
+                  <div className="h-1.5 w-full bg-primary/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[9px] text-muted-foreground uppercase font-black tracking-widest">
+                    <span>{stage === 'downloading' ? 'DOWNLOADING' : 'EXTRACTING'}</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={downloadUpdate}
+                  className="w-full py-1.5 bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                >
+                  UPDATE NOW
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className={cn('flex gap-2', isCollapsed ? 'flex-col' : 'flex-row')}>
+            {updateInfo?.hasUpdate && isCollapsed && (
+              <button
+                onClick={downloadUpdate}
+                disabled={isUpdating}
+                className="w-10 h-10 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 animate-pulse"
+                title={`${t('common.updateAvailable')} (${updateInfo.latestVersion})`}
+              >
+                {isUpdating ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <DownloadCloud className="w-5 h-5" />
+                )}
+              </button>
+            )}
             <button
               onClick={() => setIsThemeDrawerOpen(true)}
-              className="w-10 h-10 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted transition-all"
+              className={cn(
+                'rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted transition-all',
+                isCollapsed ? 'w-10 h-10' : 'flex-1 py-2 gap-2 text-xs font-medium',
+              )}
               title={t('common.themeSettings')}
             >
               <Palette className="w-5 h-5" />
+              {!isCollapsed && <span>{t('common.themeSettings')}</span>}
             </button>
             <button
-              onClick={() => setIsCollapsed(false)}
-              className="w-10 h-10 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
-              title={t('common.expandSidebar')}
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className={cn(
+                'rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all',
+                isCollapsed ? 'w-10 h-10' : 'p-2',
+              )}
+              title={isCollapsed ? t('common.expandSidebar') : t('common.collapseSidebar')}
             >
-              <UnfoldHorizontal className="w-5 h-5" />
+              {isCollapsed ? (
+                <UnfoldHorizontal className="w-5 h-5" />
+              ) : (
+                <FoldHorizontal className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>

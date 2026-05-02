@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Zentri Dashboard",
+  "version": "1.0.0",
+  "description": "Custom dashboard for Zentri Browser sessions",
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "permissions": ["storage", "tabs"]
+}

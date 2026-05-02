@@ -5,6 +5,8 @@ interface LaunchOptions {
   email: string;
   url?: string;
   provider?: string;
+  fingerprintId?: string;
+  proxyId?: string;
 }
 
 export const useHealthCheck = () => {

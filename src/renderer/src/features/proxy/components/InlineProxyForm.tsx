@@ -11,7 +11,10 @@ import {
   CreditCard,
   Activity,
   Globe,
+  CalendarDays,
+  Hash,
 } from 'lucide-react';
+import DateTimePicker from '../../../shared/components/ui/datetimepicker/DateTimePicker';
 import { cn } from '../../../shared/lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -114,6 +117,10 @@ const InlineProxyForm: FC<InlineProxyFormProps> = ({ proxy, onClose, onSuccess }
   const [isChecking, setIsChecking] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
+  
+  const [expirationPopoverOpen, setExpirationPopoverOpen] = useState(false);
+  const [activePicker, setActivePicker] = useState<'calendar' | 'timestamp'>('calendar');
+  const [timestampInput, setTimestampInput] = useState('');
 
   const handleCheckProxy = async () => {
     if (!formData.host || !formData.port) {
@@ -141,12 +148,15 @@ const InlineProxyForm: FC<InlineProxyFormProps> = ({ proxy, onClose, onSuccess }
     try {
       const finalData = {
         ...formData,
+        expiredAt: formData.expiredAt || new Date(Date.now() + (formData.durationDays || 30) * 24 * 60 * 60 * 1000).toISOString(),
         isp: diagnosticResult?.proxy?.isp || formData.isp,
         country: diagnosticResult?.proxy?.country || formData.country,
         city: diagnosticResult?.proxy?.city || formData.city,
       };
+      console.log('[InlineProxyForm] Updating Data:', finalData);
       // @ts-ignore
       await window.electron.ipcRenderer.invoke('proxy:update', { id: proxy.id, data: finalData });
+      console.log('[InlineProxyForm] Update Success');
       onSuccess();
       setShowResultModal(false);
       onClose();
@@ -208,17 +218,30 @@ const InlineProxyForm: FC<InlineProxyFormProps> = ({ proxy, onClose, onSuccess }
                 </div>
               </div>
 
-              <div className="space-y-2.5">
-                <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                  {t('proxy.password')}
-                </label>
-                <Input
-                  type="password"
-                  password
-                  value={formData.password || ''}
-                  className="bg-input-background border-border rounded-xl h-11 text-sm font-mono"
-                  onChange={(e) => setFormData((d) => ({ ...d, password: e.target.value }))}
-                />
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
+                    {t('proxy.password')}
+                  </label>
+                  <Input
+                    type="password"
+                    password
+                    value={formData.password || ''}
+                    className="bg-input-background border-border rounded-xl h-11 text-sm font-mono"
+                    onChange={(e) => setFormData((d) => ({ ...d, password: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
+                    {t('proxy.purchaseUrl')}
+                  </label>
+                  <Input
+                    placeholder="https://..."
+                    value={formData.purchaseUrl || ''}
+                    className="bg-input-background border-border rounded-xl h-11 text-sm"
+                    onChange={(e) => setFormData((d) => ({ ...d, purchaseUrl: e.target.value }))}
+                  />
+                </div>
               </div>
             </div>
           </section>
@@ -270,24 +293,119 @@ const InlineProxyForm: FC<InlineProxyFormProps> = ({ proxy, onClose, onSuccess }
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2.5">
                   <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">
-                    {formData.pricingType === 'time'
-                      ? t('proxy.lifecycle')
-                      : t('proxy.transitQuota')}
+                    {t('proxy.expirationDate')}
                   </label>
                   <Input
-                    type="number"
                     value={
-                      formData.pricingType === 'time'
-                        ? String(formData.durationDays || '')
-                        : String(formData.bandwidthGb || '')
+                      formData.expiredAt
+                        ? new Date(formData.expiredAt).toLocaleString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : ''
                     }
-                    className="bg-input-background border-border rounded-xl h-11 text-sm font-mono no-spinner"
-                    onChange={(e) =>
-                      setFormData((d) =>
-                        formData.pricingType === 'time'
-                          ? { ...d, durationDays: parseInt(e.target.value) }
-                          : { ...d, bandwidthGb: parseFloat(e.target.value) },
-                      )
+                    readOnly
+                    className="bg-input-background border-border rounded-xl h-11 text-sm font-mono cursor-default"
+                    popoverClassName={cn(
+                      '!w-max transition-all duration-300',
+                      activePicker === 'calendar' ? '!min-w-[480px]' : '!min-w-[320px]',
+                    )}
+                    popoverOpen={expirationPopoverOpen}
+                    onPopoverOpenChange={setExpirationPopoverOpen}
+                    rightIcon={[
+                      <button
+                        key="calendar"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActivePicker('calendar');
+                          setExpirationPopoverOpen(true);
+                        }}
+                        className={cn(
+                          'p-1.5 rounded-lg transition-all active:scale-90',
+                          activePicker === 'calendar' && expirationPopoverOpen
+                            ? 'bg-primary text-white'
+                            : 'text-muted-foreground hover:bg-muted/20',
+                        )}
+                      >
+                        <CalendarDays className="w-4 h-4" />
+                      </button>,
+                      <button
+                        key="timestamp"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActivePicker('timestamp');
+                          setExpirationPopoverOpen(true);
+                        }}
+                        className={cn(
+                          'p-1.5 rounded-lg transition-all active:scale-90',
+                          activePicker === 'timestamp' && expirationPopoverOpen
+                            ? 'bg-primary text-white'
+                            : 'text-muted-foreground hover:bg-muted/20',
+                        )}
+                      >
+                        <Hash className="w-4 h-4" />
+                      </button>,
+                    ]}
+                    popoverContent={
+                      <div className="p-1">
+                        {activePicker === 'calendar' ? (
+                          <div className="p-1">
+                            <DateTimePicker
+                              mode="datetime"
+                              value={
+                                formData.expiredAt ? new Date(formData.expiredAt) : null
+                              }
+                              onChange={(date) => {
+                                if (date) {
+                                  setFormData((d) => ({ ...d, expiredAt: date.toISOString() }));
+                                }
+                                setExpirationPopoverOpen(false);
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="p-5 w-[320px] space-y-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 ml-1">
+                                Unix Timestamp (ms/s)
+                              </label>
+                              <Input
+                                value={timestampInput}
+                                onChange={(e) => setTimestampInput(e.target.value)}
+                                placeholder="e.g. 1776272400000"
+                                className="bg-input-background border-border/50 h-10 text-sm font-mono"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setExpirationPopoverOpen(false)}
+                                className="flex-1 h-9 bg-muted/10 hover:bg-muted/20 text-muted-foreground text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all border border-border/50"
+                              >
+                                {t('common.cancel')}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const ts = parseInt(timestampInput);
+                                  if (!isNaN(ts)) {
+                                    const finalTs = ts < 10000000000 ? ts * 1000 : ts;
+                                    setFormData((d) => ({ ...d, expiredAt: new Date(finalTs).toISOString() }));
+                                    setExpirationPopoverOpen(false);
+                                  }
+                                }}
+                                className="flex-1 h-9 bg-primary hover:bg-primary/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-primary/20"
+                              >
+                                {t('common.confirm')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     }
                   />
                 </div>
@@ -296,6 +414,7 @@ const InlineProxyForm: FC<InlineProxyFormProps> = ({ proxy, onClose, onSuccess }
                     {t('proxy.regionAssignment')}
                   </label>
                   <Input
+                    placeholder="GLOBAL / USA"
                     value={formData.country || ''}
                     className="bg-input-background border-border rounded-xl h-11 text-sm"
                     onChange={(e) => setFormData((d) => ({ ...d, country: e.target.value }))}

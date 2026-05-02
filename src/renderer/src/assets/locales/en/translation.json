@@ -12,7 +12,11 @@
       "themeSettings": "Theme Settings",
       "collapseSidebar": "Collapse Sidebar",
       "expandSidebar": "Expand Sidebar",
-      "cancel": "Cancel"
+      "updateAvailable": "Wayfern Update Available",
+      "updating": "Updating Wayfern...",
+      "updateComplete": "Wayfern Updated",
+      "cancel": "Cancel",
+      "confirm": "Confirm"
     },
     "proxy": {
       "quickImport": "Quick Batch Provisioning",
@@ -34,6 +38,9 @@
       "unitPrice": "Unit Price",
       "currency": "Currency",
       "lifecycle": "Lifecycle (Days)",
+      "expirationDate": "Expiration Date",
+      "expirationPlaceholder": "Select date or enter timestamp",
+      "purchaseUrl": "Proxy Source URL",
       "transitQuota": "Transit Quota (GB)",
       "regionAssignment": "Region Assignment",
       "hyperTuning": "Hyper-Tuning",
@@ -86,7 +93,11 @@
       "recheckSettings": "Re-check Settings",
       "view": "View",
       "delete": "Move to Trash",
+      "confirmDecommissionTitle": "Confirm Decommission",
+      "confirmDecommissionDescription": "Are you sure you want to decommission this proxy node? It will be removed from the active infrastructure.",
       "deleteForever": "Delete Forever",
+      "confirmDeleteTitle": "Confirm Permanent Deletion",
+      "confirmDeleteDescription": "This action cannot be undone. This proxy will be permanently removed from the system.",
       "check": "Diagnostic Check",
       "moveTrash": "Move to Trash",
       "editInline": "Edit Info",
@@ -101,9 +112,11 @@
       "allProtocols": "All Protocols",
       "nodeVitality": "Node Vitality",
       "anyStatus": "Any Status",
+      "active": "Active",
       "activeNodes": "Active Nodes",
       "expired": "Expired",
       "disabled": "Disabled",
+      "trash": "Trash",
       "days": "days"
     },
     "table": {
@@ -114,9 +127,12 @@
       "source": "Source",
       "location": "Location",
       "price": "Price",
+      "expiration": "Expiration",
+      "lastCheck": "Last Check",
       "status": "Status",
       "quota": "Time / Quota Remaining",
       "recoveryPhone": "Recovery / Phone",
+      "lastUsedProxy": "Last Proxy",
       "email": "Email",
       "actions": "Actions",
       "noData": "No Data Available"
@@ -146,7 +162,9 @@
         }
       },
       "contextMenu": {
-        "openBrowser": "Run Donut",
+        "openBrowser": "Run Wayfern(v{{version}})",
+        "launchNormal": "Normal Launch",
+        "launchSecure": "Secure Identity Launch",
         "view": "View",
         "restore": "Restore",
         "deletePermanently": "Delete Permanently",
@@ -231,7 +249,7 @@
         "table": {
           "fleetCapacity": "Tactical Fleet Capacity",
           "operational": "Operational",
-          "openService": "Run Donut",
+          "openService": "Run Wayfern(v{{version}})",
           "view": "View",
           "secretsVault": "Secrets Vault",
           "restoreService": "Restore Service",
@@ -253,7 +271,7 @@
             "cleanlinessScore": "Cleanliness Score",
             "safeMessage": "Environment is healthy and safe for browsing.",
             "discard": "Discard",
-            "launchAnyway": "Launch Donut Anyway",
+            "launchAnyway": "Launch Wayfern Anyway",
             "labels": {
               "ip": "IP Address",
               "location": "Location",
@@ -312,7 +330,7 @@
             "context": {
               "refresh": "Refresh session",
               "delete": "Delete session",
-              "launch": "Launch Donut"
+              "launch": "Launch Wayfern"
             },
             "status": {
               "expired": "EXPIRED",
@@ -409,8 +427,8 @@
       "appLanguage": "Application Interface Language",
       "agentLanguage": "Agent Response Language",
       "browserExecutablePath": "Browser (Executable Path)",
-      "browserExecutablePlaceholder": "Path to Donut Browser",
-      "browserExecutableHint": "Leave blank to automatically find Donut/Chromium on the system.",
+      "browserExecutablePlaceholder": "Path to Wayfern Browser",
+      "browserExecutableHint": "Leave blank to automatically find Wayfern/Chromium on the system.",
       "noFolderSelected": "No folder selected",
       "initializeTitle": "Initialize Storage?",
       "initializeDescPre": "The selected folder is missing database files. Would you like us to initialize",

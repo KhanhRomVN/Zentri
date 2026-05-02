@@ -98,3 +98,5 @@ Please read [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for details on our code of
 ## License
 
 MIT
+
+Linux, Chrome 147, Auto Language & TimeZone, 1920x1080

@@ -33,6 +33,7 @@ export interface InputProps {
   popoverOpen?: boolean;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   popoverContent?: ReactNode;
+  popoverClassName?: string;
   onPopoverOpenChange?: (open: boolean) => void;
   inlinePanel?: ReactNode;
   // Multi-value props

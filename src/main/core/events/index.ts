@@ -1,14 +1,11 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as sqlite3 from 'sqlite3';
 import * as crypto from 'crypto';
-import { setupEmailHandlers } from './email';
+import { setupBrowserHandlers } from './browser';
+import { setupAccountHandlers } from './account';
 import { setupProxyHandlers } from './proxy';
 import { dbManager } from '../database';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-const execAsync = promisify(exec);
 
 // Storage file path
 const getStorageFilePath = () => {
@@ -232,7 +229,8 @@ export function setupEventHandlers() {
   ipcMain.handle('ping', () => 'pong');
   setupStorageHandlers();
   setupDatabaseHandlers();
-  setupEmailHandlers();
+  setupBrowserHandlers();
+  setupAccountHandlers();
   setupServiceHandlers();
   setupProxyHandlers();
 

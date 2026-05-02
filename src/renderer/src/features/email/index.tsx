@@ -183,30 +183,53 @@ const EmailManager = () => {
         };
       });
 
-      // Fetch Latest Activity for all accounts using the proven HistoryTab logic
+      // Fetch Latest Activity and Last Proxy for all accounts
       try {
         await Promise.all(
           loadedAccounts.map(async (acc) => {
             try {
-              const hResult = await window.electron.ipcRenderer.invoke('email:get-history', {
-                email: acc.email,
-              });
-              if (hResult?.success && hResult.history?.length > 0) {
-                // newest first because of reverse() in backend
-                const latest = hResult.history[0];
+              const [hResult, pResult] = await Promise.all([
+                window.electron.ipcRenderer.invoke('email:get-latest-activity', {
+                  email: acc.email,
+                }),
+                window.electron.ipcRenderer.invoke(
+                  'sqlite:get',
+                  `SELECT p.host, p.port, p.protocol, p.proxy_type, p.source_type, p.country, p.city 
+                   FROM proxy_history ph
+                   JOIN proxies p ON ph.proxy_id = p.id
+                   WHERE ph.email_id = ?
+                   ORDER BY ph.used_at DESC LIMIT 1`,
+                  [acc.id],
+                ),
+              ]);
+
+              if (hResult?.success && hResult.latest) {
+                const latest = hResult.latest;
                 acc.lastActivity = {
                   url: latest.url,
                   title: latest.title,
                   time: latest.time,
                 };
               }
+
+              if (pResult) {
+                acc.lastProxy = {
+                  host: pResult.host,
+                  port: pResult.port,
+                  protocol: pResult.protocol,
+                  proxyType: pResult.proxy_type,
+                  sourceType: pResult.source_type,
+                  country: pResult.country,
+                  city: pResult.city,
+                };
+              }
             } catch (e) {
-              console.error(`Failed to fetch history for ${acc.email}`, e);
+              console.error(`Failed to fetch history/proxy for ${acc.email}`, e);
             }
           }),
         );
       } catch (e) {
-        console.error('Failed to fetch account activities', e);
+        console.error('Failed to fetch account activities/proxies', e);
       }
 
       setAccounts(loadedAccounts);

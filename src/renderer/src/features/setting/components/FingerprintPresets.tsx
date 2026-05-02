@@ -1,6 +1,6 @@
 import { cn } from '@renderer/shared/lib/utils';
 import { Plus, Shield } from 'lucide-react';
-import { FC } from 'react';
+import React, { FC } from 'react';
 
 export interface FingerprintConfig {
   // Identity
@@ -11,6 +11,8 @@ export interface FingerprintConfig {
   osVersion: string;
   // User Agent
   ua: string;
+  brand: string;
+  brandVersion: string;
   // Hardware
   hardwareConcurrency: number;
   deviceMemory: number;
@@ -63,11 +65,13 @@ export interface FingerprintConfig {
 }
 
 export const INITIAL_CONFIG: FingerprintConfig = {
-  profileName: 'New Fingerprint Profile',
-  profileDescription: 'Custom fingerprint configuration created from scratch.',
+  profileName: '',
+  profileDescription: '',
   os: 'Windows',
   osVersion: '10.0.0',
   ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  brand: 'Google Chrome',
+  brandVersion: '131',
   hardwareConcurrency: 16,
   deviceMemory: 8,
   maxTouchPoints: 0,
@@ -123,6 +127,40 @@ interface FingerprintPresetsProps {
 }
 
 export const FingerprintPresets: FC<FingerprintPresetsProps> = ({ currentId, onSelect, onAdd }) => {
+  const [dbPresets, setDbPresets] = React.useState<any[]>([]);
+
+  const loadPresets = async () => {
+    try {
+      // @ts-ignore
+      const rows = await window.electron.ipcRenderer.invoke(
+        'sqlite:all',
+        'SELECT * FROM fingerprints ORDER BY created_at DESC',
+      );
+      setDbPresets(
+        rows.map((r: { id: any; name: any; description: any; config_json: string }) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          config: JSON.parse(r.config_json),
+          icon: Shield,
+          color: '#4f46e5', // Default primary color
+        })),
+      );
+    } catch (error) {
+      console.error('Failed to load presets:', error);
+    }
+  };
+
+  React.useEffect(() => {
+    loadPresets();
+
+    const handleUpdate = () => loadPresets();
+    window.addEventListener('zentri:fingerprints-updated', handleUpdate);
+    return () => window.removeEventListener('zentri:fingerprints-updated', handleUpdate);
+  }, []);
+
+  const allPresets = [...PRESETS, ...dbPresets];
+
   return (
     <aside className="w-[340px] border-r border-border bg-card/10 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
       <div className="p-5 border-b border-border/50 sticky top-0 bg-background/50 backdrop-blur-xl z-10">
@@ -138,8 +176,8 @@ export const FingerprintPresets: FC<FingerprintPresetsProps> = ({ currentId, onS
           </button>
         </div>
       </div>
-      <div className="p-3 space-y-2">
-        {PRESETS.map((preset) => (
+      <div className="flex-1 flex flex-col p-3 space-y-2 relative">
+        {allPresets.map((preset) => (
           <button
             key={preset.id}
             onClick={() => onSelect(preset.config, preset.id)}
@@ -170,8 +208,8 @@ export const FingerprintPresets: FC<FingerprintPresetsProps> = ({ currentId, onS
           </button>
         ))}
 
-        {PRESETS.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center min-h-[400px]">
+        {allPresets.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-10 pb-32 text-center animate-in fade-in zoom-in-95 duration-500">
             <div className="relative mb-8">
               <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse" />
               <div className="relative w-24 h-24 rounded-[2rem] bg-gradient-to-br from-card to-background border border-border/50 flex items-center justify-center shadow-2xl">

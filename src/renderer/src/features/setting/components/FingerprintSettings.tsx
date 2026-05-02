@@ -1,20 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Globe,
-  Monitor,
-  Activity,
-  Layout,
-  MapPin,
-  CheckCircle2,
-  Settings2,
-  Zap,
-  Lock as LockIcon,
-  Shield,
-} from 'lucide-react';
+import { Globe, Monitor, Activity, Layout, MapPin, CheckCircle2 } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 import Input from '../../../shared/components/ui/input/Input';
 import Combobox from '../../../shared/components/ui/combobox/Combobox';
-import { Drawer } from '../../../shared/components/ui/drawer';
+import Modal from '../../../shared/components/ui/modal/Modal';
+import Textarea from '../../../shared/components/ui/textarea/Textarea';
 
 const HelpIcon = ({ className }: { className?: string }) => (
   <svg
@@ -182,13 +172,12 @@ const FormItem = ({
             {description}
           </p>
         </div>
-        {action && <div className="shrink-0">{action}</div>}
       </div>
 
       {showTooltip && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowTooltip(false)} />
-          <div className="absolute z-50 left-0 top-10 w-80 p-4 rounded-2xl bg-[#121214] border border-border/50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute z-50 left-0 top-10 w-80 p-4 rounded-2xl bg-[#121214] border border-border/50 shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-left">
             <div className="text-[12px] leading-relaxed text-muted-foreground">
               {tooltip || help}
             </div>
@@ -197,7 +186,14 @@ const FormItem = ({
         </>
       )}
 
-      <div className="pt-1">{children}</div>
+      <div className="pt-1 relative group/item">
+        {action && (
+          <div className="absolute -top-8 right-5 z-20 translate-y-1 group-focus-within/item:translate-y-0 transition-transform">
+            {action}
+          </div>
+        )}
+        {children}
+      </div>
     </div>
   );
 };
@@ -206,6 +202,8 @@ const parseUserAgent = (ua: string) => {
   const uaLower = ua.toLowerCase();
   let os = 'Win32';
   let osVersion = '10.0.0';
+  let brand = 'Google Chrome';
+  let brandVersion = '131';
 
   if (uaLower.includes('windows nt 10.0')) {
     os = 'Win32';
@@ -232,7 +230,42 @@ const parseUserAgent = (ua: string) => {
     osVersion = '6.5.0';
   }
 
-  return { os, osVersion };
+  // Brand detection
+  if (ua.includes('Edg/')) {
+    const match = ua.match(/Edg\/(\d+)/);
+    brand = 'Microsoft Edge';
+    brandVersion = match ? match[1] : '146';
+  } else if (ua.includes('OPR/')) {
+    const match = ua.match(/OPR\/(\d+)/);
+    brand = 'Opera';
+    brandVersion = match ? match[1] : '113';
+  } else if (ua.includes('CocCoc/')) {
+    const match = ua.match(/CocCoc\/(\d+)/);
+    brand = 'CocCoc';
+    brandVersion = match ? match[1] : '114';
+  } else if (ua.includes('SamsungBrowser/')) {
+    const match = ua.match(/SamsungBrowser\/(\d+)/);
+    brand = 'Samsung Browser';
+    brandVersion = match ? match[1] : '23';
+  } else if (ua.includes('Chrome/')) {
+    const match = ua.match(/Chrome\/(\d+)/);
+    brand = 'Google Chrome';
+    brandVersion = match ? match[1] : '131';
+  } else if (ua.includes('CriOS/')) {
+    const match = ua.match(/CriOS\/(\d+)/);
+    brand = 'Google Chrome';
+    brandVersion = match ? match[1] : '135';
+  } else if (ua.includes('Safari/') && !ua.includes('Chrome/')) {
+    const match = ua.match(/Version\/(\d+)/);
+    brand = 'Safari';
+    brandVersion = match ? match[1] : '17';
+  } else if (ua.includes('Firefox/') || ua.includes('FxiOS/')) {
+    const match = ua.match(/(?:Firefox|FxiOS)\/(\d+)/);
+    brand = 'Firefox';
+    brandVersion = match ? match[1] : '120';
+  }
+
+  return { os, osVersion, brand, brandVersion };
 };
 
 import { FingerprintConfig } from './FingerprintPresets';
@@ -241,11 +274,18 @@ import { USER_AGENTS } from '../constants/userAgents';
 export const FingerprintSettings = ({
   config,
   setConfig,
+  presetId,
+  activeStep,
+  setActiveStep,
+  isEditMode,
 }: {
   config: FingerprintConfig;
   setConfig: React.Dispatch<React.SetStateAction<FingerprintConfig>>;
+  presetId?: string | null;
+  activeStep: number;
+  setActiveStep: (step: number) => void;
+  isEditMode: boolean;
 }) => {
-  const [activeStep, setActiveStep] = useState(1);
   useEffect(() => {
     const handleOpenSave = () => setIsSaveDrawerOpen(true);
     window.addEventListener('zentri:open-save-drawer', handleOpenSave);
@@ -261,7 +301,6 @@ export const FingerprintSettings = ({
   const [memoryPopoverOpen, setMemoryPopoverOpen] = useState(false);
   const [resPopoverOpen, setResPopoverOpen] = useState(false);
   const [dprPopoverOpen, setDprPopoverOpen] = useState(false);
-  const [viewportPopoverOpen, setViewportPopoverOpen] = useState(false);
   const [langPopoverOpen, setLangPopoverOpen] = useState(false);
   const [dntPopoverOpen, setDntPopoverOpen] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -272,11 +311,35 @@ export const FingerprintSettings = ({
 
   const [osVersionSearchQuery, setOsVersionSearchQuery] = useState('');
   const [resSearchQuery, setResSearchQuery] = useState('');
-  const [viewportSearchQuery, setViewportSearchQuery] = useState('');
+  const [availResSearchQuery, setAvailResSearchQuery] = useState('');
+  const [outerResSearchQuery, setOuterResSearchQuery] = useState('');
+  const [innerResSearchQuery, setInnerResSearchQuery] = useState('');
+  const [positionSearchQuery, setPositionSearchQuery] = useState('');
+  const [brandSearchQuery, setBrandSearchQuery] = useState('');
+  const [langsSearchQuery, setLangsSearchQuery] = useState('');
+  const [accuracySearchQuery, setAccuracySearchQuery] = useState('');
+  const [fontsSearchQuery, setFontsSearchQuery] = useState('');
+  const [webglVendorSearchQuery, setWebglVendorSearchQuery] = useState('');
+  const [webglRendererSearchQuery, setWebglRendererSearchQuery] = useState('');
+  const [webglParamsSearchQuery, setWebglParamsSearchQuery] = useState('');
   const [canvasSearchQuery, setCanvasSearchQuery] = useState('');
   const [audioSearchQuery, setAudioSearchQuery] = useState('');
   const [vendorSearchQuery, setVendorSearchQuery] = useState('');
   const [prodSubSearchQuery, setProdSubSearchQuery] = useState('');
+
+  const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
+  const [availResPopoverOpen, setAvailResPopoverOpen] = useState(false);
+  const [colorDepthPopoverOpen, setColorDepthPopoverOpen] = useState(false);
+  const [outerResPopoverOpen, setOuterResPopoverOpen] = useState(false);
+  const [innerResPopoverOpen, setInnerResPopoverOpen] = useState(false);
+  const [positionPopoverOpen, setPositionPopoverOpen] = useState(false);
+  const [langsPopoverOpen, setLangsPopoverOpen] = useState(false);
+  const [accuracyPopoverOpen, setAccuracyPopoverOpen] = useState(false);
+  const [fontsPopoverOpen, setFontsPopoverOpen] = useState(false);
+  const [webglVendorPopoverOpen, setWebglVendorPopoverOpen] = useState(false);
+  const [webglRendererPopoverOpen, setWebglRendererPopoverOpen] = useState(false);
+  const [webglParamsPopoverOpen, setWebglParamsPopoverOpen] = useState(false);
+  const [channelCountPopoverOpen, setChannelCountPopoverOpen] = useState(false);
 
   const OS_PLATFORMS = [
     { label: 'Windows (Win32)', value: 'Win32' },
@@ -391,13 +454,85 @@ export const FingerprintSettings = ({
     { label: '20100101', value: '20100101', description: 'Chuẩn định danh cho Mozilla Firefox.' },
   ];
 
+  const COLOR_DEPTH_OPTIONS = [
+    { label: '24', value: '24', description: 'Chuẩn phổ biến cho hầu hết màn hình.' },
+    { label: '30', value: '30', description: 'Hỗ trợ HDR / Deep Color.' },
+  ];
+
+  const BRAND_OPTIONS = [
+    { label: 'Google Chrome', value: 'Google Chrome' },
+    { label: 'Microsoft Edge', value: 'Microsoft Edge' },
+    { label: 'Opera', value: 'Opera' },
+    { label: 'CocCoc', value: 'CocCoc' },
+    { label: 'Safari', value: 'Safari' },
+    { label: 'Firefox', value: 'Firefox' },
+    { label: 'Brave Browser', value: 'Brave Browser' },
+  ];
+
+  const LANGS_OPTIONS = [
+    { label: 'Vietnamese/English', value: '["vi-VN","vi","en-US","en"]' },
+    { label: 'English US', value: '["en-US","en"]' },
+    { label: 'English UK', value: '["en-GB","en"]' },
+  ];
+
+  const ACCURACY_OPTIONS = [
+    { label: 'High (10m)', value: '10', description: 'Mô phỏng thiết bị di động có GPS.' },
+    {
+      label: 'Medium (150m)',
+      value: '150',
+      description: 'Mô phỏng thiết bị dùng Wifi Geolocation.',
+    },
+    {
+      label: 'Low (1000m+)',
+      value: '1000',
+      description: 'Mô phỏng máy tính bàn dùng IP Geolocation.',
+    },
+  ];
+
+  const FONT_OPTIONS = [
+    {
+      label: 'Windows Standard',
+      value:
+        '["Arial","Courier New","Georgia","MS Sans Serif","Segoe UI","Tahoma","Times New Roman","Verdana"]',
+    },
+    {
+      label: 'macOS Standard',
+      value:
+        '["Arial","Courier","Geneva","Helvetica","Lucida Grande","Monaco","Palatino","Times","Verdana"]',
+    },
+    { label: 'Android Standard', value: '["Roboto","Noto Sans","Droid Sans","monospace"]' },
+  ];
+
+  const CHANNEL_COUNT_OPTIONS = [
+    {
+      label: 'Stereo (2)',
+      value: '2',
+      description: 'Hầu hết các thiết bị di động và loa thông thường.',
+    },
+    { label: 'Surround (6)', value: '6', description: 'Hệ thống 5.1.' },
+    { label: 'Surround (8)', value: '8', description: 'Hệ thống 7.1 cao cấp.' },
+  ];
+
+  const WEBGL_RENDERER_OPTIONS = [
+    {
+      label: 'ANGLE (NVIDIA GeForce RTX 3060)',
+      value: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)',
+    },
+    {
+      label: 'ANGLE (Intel UHD Graphics)',
+      value: 'ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0, D3D11-27.20.100.9415)',
+    },
+    { label: 'Apple M1', value: 'Apple M1' },
+    { label: 'Google SwiftShader', value: 'Google SwiftShader' },
+  ];
+
   return (
     <div className="max-w-4xl mx-auto pb-32 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
       <FormSection
         title="01. User Agent"
         description="Định dạng cốt lõi xác định danh tính thiết bị của bạn."
         icon={Globe}
-        isUnlocked={activeStep === 1}
+        isUnlocked={isEditMode || activeStep >= 1}
         showHelp
       >
         <div className="md:col-span-2">
@@ -409,25 +544,33 @@ export const FingerprintSettings = ({
             <Input
               type="combobox"
               placeholder="Tìm kiếm hoặc nhập User Agent..."
-              value={config.ua}
+              value={uaPopoverOpen ? uaSearchQuery : config.ua}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const val = e.target.value;
-                const { os, osVersion } = parseUserAgent(val);
-                setConfig((prev) => ({ ...prev, ua: val, os, osVersion }));
-                setUaSearchQuery(val);
+                setUaSearchQuery(e.target.value);
               }}
               popoverOpen={uaPopoverOpen}
-              onPopoverOpenChange={setUaPopoverOpen}
+              onPopoverOpenChange={(open) => {
+                setUaPopoverOpen(open);
+                if (!open) {
+                  setUaSearchQuery('');
+                }
+              }}
               popoverContent={
                 <Combobox
                   value={config.ua}
                   options={USER_AGENTS}
                   searchQuery={uaSearchQuery}
                   onChange={(val) => {
-                    const { os, osVersion } = parseUserAgent(val);
-                    setConfig((prev) => ({ ...prev, ua: val, os, osVersion }));
+                    const { os, osVersion, brand, brandVersion } = parseUserAgent(val);
+                    setConfig((prev) => ({
+                      ...prev,
+                      ua: val,
+                      os,
+                      osVersion,
+                      brand,
+                      brandVersion,
+                    }));
                     setUaSearchQuery('');
-                    setUaPopoverOpen(false);
                   }}
                 />
               }
@@ -435,7 +578,7 @@ export const FingerprintSettings = ({
             />
           </FormItem>
         </div>
-        {activeStep === 1 && (
+        {!isEditMode && activeStep === 1 && (
           <StepNavigation step={1} onPrev={() => {}} onNext={() => setActiveStep(2)} />
         )}
       </FormSection>
@@ -444,7 +587,7 @@ export const FingerprintSettings = ({
         title="02. Platform & OS Version"
         description="Đồng bộ hóa hệ điều hành và phiên bản tương ứng."
         icon={Monitor}
-        isUnlocked={activeStep === 2}
+        isUnlocked={isEditMode || activeStep >= 2}
         showHelp
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
@@ -490,8 +633,55 @@ export const FingerprintSettings = ({
               className="bg-input-background border-border rounded-xl font-bold font-mono"
             />
           </FormItem>
+          <FormItem
+            label="Brand"
+            description="Nhãn hiệu trình duyệt (UA-CH)."
+            tooltip="Giá trị Brand trong User-Agent Client Hints. Cần khớp với tên trình duyệt trong User Agent string (VD: Google Chrome, Chromium)."
+          >
+            <Input
+              type="combobox"
+              placeholder="Chọn hoặc nhập nhãn hiệu..."
+              value={brandPopoverOpen ? brandSearchQuery : config.brand}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setBrandSearchQuery(e.target.value);
+              }}
+              popoverOpen={brandPopoverOpen}
+              onPopoverOpenChange={(open) => {
+                setBrandPopoverOpen(open);
+                if (!open) setBrandSearchQuery('');
+              }}
+              popoverContent={
+                <Combobox
+                  value={config.brand}
+                  options={BRAND_OPTIONS}
+                  searchQuery={brandSearchQuery}
+                  onChange={(val) => {
+                    setConfig((prev) => ({ ...prev, brand: val }));
+                    setBrandSearchQuery('');
+                    setBrandPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+          <FormItem
+            label="Brand Version"
+            description="Phiên bản nhãn hiệu (Major)."
+            tooltip="Phiên bản chính (Major version) của trình duyệt. Việc cung cấp thông số này giúp website xác định độ tin cậy của cấu hình Client Hints."
+          >
+            <Input
+              value={config.brandVersion}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const val = e.target.value;
+                setConfig((prev) => ({ ...prev, brandVersion: val }));
+              }}
+              placeholder="Ví dụ: 131"
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
         </div>
-        {activeStep === 2 && (
+        {!isEditMode && activeStep === 2 && (
           <StepNavigation
             step={2}
             onPrev={() => setActiveStep(1)}
@@ -504,7 +694,7 @@ export const FingerprintSettings = ({
         title="03. Hardware Properties"
         description="Thông số vật lý của CPU và bộ nhớ RAM."
         icon={Activity}
-        isUnlocked={activeStep === 3}
+        isUnlocked={isEditMode || activeStep >= 3}
         showHelp
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
@@ -590,7 +780,7 @@ export const FingerprintSettings = ({
             />
           </FormItem>
         </div>
-        {activeStep === 3 && (
+        {!isEditMode && activeStep === 3 && (
           <StepNavigation
             step={3}
             onPrev={() => setActiveStep(2)}
@@ -603,7 +793,7 @@ export const FingerprintSettings = ({
         title="04. Screen Properties"
         description="Kích thước và các thuộc tính hiển thị cơ bản."
         icon={Monitor}
-        isUnlocked={activeStep === 4}
+        isUnlocked={isEditMode || activeStep >= 4}
         showHelp
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
@@ -615,18 +805,6 @@ export const FingerprintSettings = ({
             <Input
               type="combobox"
               value={`${config.width}x${config.height}`}
-              onChange={(e: any) => {
-                const val = e.target.value;
-                if (val.includes('x')) {
-                  const [w, h] = val.split('x');
-                  setConfig((prev) => ({
-                    ...prev,
-                    width: parseInt(w) || 0,
-                    height: parseInt(h) || 0,
-                  }));
-                }
-                setResSearchQuery(val);
-              }}
               popoverOpen={resPopoverOpen}
               onPopoverOpenChange={setResPopoverOpen}
               popoverContent={
@@ -635,9 +813,62 @@ export const FingerprintSettings = ({
                   options={COMMON_RESOLUTIONS}
                   searchQuery={resSearchQuery}
                   onChange={(val) => {
-                    const [w, h] = val.split('x');
-                    setConfig((prev) => ({ ...prev, width: parseInt(w), height: parseInt(h) }));
+                    const [w, h] = val.split('x').map((v: string) => parseInt(v) || 0);
+                    setConfig((prev) => {
+                      const outerW = w;
+                      const outerH = h - 40;
+                      return {
+                        ...prev,
+                        width: w,
+                        height: h,
+                        availWidth: w,
+                        availHeight: h - 40,
+                        outerWidth: outerW,
+                        outerHeight: outerH,
+                        innerWidth: Math.max(0, outerW - 16),
+                        innerHeight: Math.max(0, outerH - 72),
+                      };
+                    });
                     setResPopoverOpen(false);
+                    setResSearchQuery('');
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+          <FormItem
+            label="Available Resolution"
+            description="Kích thước khả dụng (Rộng x Cao)."
+            tooltip="Diện tích màn hình thực tế có thể sử dụng (thường hụt đi do thanh taskbar). Website sử dụng thông số này để phân tích hành vi người dùng."
+          >
+            <Input
+              type="combobox"
+              value={
+                availResPopoverOpen
+                  ? availResSearchQuery
+                  : `${config.availWidth}x${config.availHeight}`
+              }
+              onChange={(e: any) => {
+                const val = e.target.value;
+                if (val.includes('x')) {
+                  const [w, h] = val.split('x').map((v: string) => parseInt(v) || 0);
+                  setConfig((prev) => ({ ...prev, availWidth: w, availHeight: h }));
+                }
+                setAvailResSearchQuery(val);
+              }}
+              popoverOpen={availResPopoverOpen}
+              onPopoverOpenChange={setAvailResPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={`${config.availWidth}x${config.availHeight}`}
+                  options={COMMON_RESOLUTIONS}
+                  searchQuery={availResSearchQuery}
+                  onChange={(val) => {
+                    const [w, h] = val.split('x').map((v: string) => parseInt(v) || 0);
+                    setConfig((prev) => ({ ...prev, availWidth: w, availHeight: h }));
+                    setAvailResPopoverOpen(false);
+                    setAvailResSearchQuery('');
                   }}
                 />
               }
@@ -673,8 +904,35 @@ export const FingerprintSettings = ({
               className="bg-input-background border-border rounded-xl font-bold font-mono"
             />
           </FormItem>
+          <FormItem
+            label="Color Depth"
+            description="Độ sâu màu sắc (bit)."
+            tooltip="Giá trị screen.colorDepth. Hầu hết các màn hình hiện đại sử dụng 24-bit hoặc 30-bit để hiển thị hình ảnh chuẩn xác."
+          >
+            <Input
+              type="combobox"
+              value={config.colorDepth.toString()}
+              onChange={(e: any) => {
+                const val = parseInt(e.target.value) || 0;
+                setConfig((prev) => ({ ...prev, colorDepth: val }));
+              }}
+              popoverOpen={colorDepthPopoverOpen}
+              onPopoverOpenChange={setColorDepthPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={config.colorDepth.toString()}
+                  options={COLOR_DEPTH_OPTIONS}
+                  onChange={(val) => {
+                    setConfig((prev) => ({ ...prev, colorDepth: parseInt(val) }));
+                    setColorDepthPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
         </div>
-        {activeStep === 4 && (
+        {!isEditMode && activeStep === 4 && (
           <StepNavigation
             step={4}
             onPrev={() => setActiveStep(3)}
@@ -685,45 +943,139 @@ export const FingerprintSettings = ({
 
       <FormSection
         title="05. Window Properties"
-        description="Thiết lập liên quan đến kích thước cửa sổ trình duyệt."
+        description="Thiết lập chi tiết kích thước cửa sổ trình duyệt."
         icon={Layout}
-        isUnlocked={activeStep === 5}
+        isUnlocked={isEditMode || activeStep >= 5}
         showHelp
       >
-        <FormItem
-          label="Viewport Size"
-          description="Kích thước vùng nội dung hiển thị."
-          tooltip="Kích thước thực tế navigator.innerWidth/innerHeight. Đây là thông số quan trọng để website tối ưu hóa giao diện và phát hiện các dấu hiệu tự động hóa qua sai lệch viewport."
-        >
-          <Input
-            type="combobox"
-            value={`${config.innerWidth}x${config.innerHeight}`}
-            onChange={(e: any) => {
-              const val = e.target.value;
-              if (val.includes('x')) {
-                const [w, h] = val.split('x').map((v: string) => parseInt(v));
-                setConfig((prev) => ({ ...prev, innerWidth: w || 0, innerHeight: h || 0 }));
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+          <FormItem
+            label="Outer Resolution"
+            description="Kích thước toàn bộ cửa sổ."
+            tooltip="Giá trị window.outerWidth/outerHeight. Đây là kích thước tính cả thanh tiêu đề và khung viền trình duyệt. Phải lớn hơn hoặc bằng Inner Resolution."
+          >
+            <Input
+              type="combobox"
+              value={
+                outerResPopoverOpen
+                  ? outerResSearchQuery
+                  : `${config.outerWidth}x${config.outerHeight}`
               }
-              setViewportSearchQuery(val);
-            }}
-            popoverOpen={viewportPopoverOpen}
-            onPopoverOpenChange={setViewportPopoverOpen}
-            popoverContent={
-              <Combobox
-                value={`${config.innerWidth}x${config.innerHeight}`}
-                options={COMMON_RESOLUTIONS}
-                searchQuery={viewportSearchQuery}
-                onChange={(val) => {
-                  const [w, h] = val.split('x').map((v: string) => parseInt(v));
+              onChange={(e: any) => {
+                const val = e.target.value;
+                if (val.includes('x')) {
+                  const [w, h] = val.split('x').map((v: string) => parseInt(v) || 0);
+                  setConfig((prev) => ({
+                    ...prev,
+                    outerWidth: w,
+                    outerHeight: h,
+                    innerWidth: Math.max(0, w - 16), // Trừ lề ngang mặc định
+                    innerHeight: Math.max(0, h - 72), // Trừ lề dọc (Address bar + Toolbar)
+                  }));
+                }
+                setOuterResSearchQuery(val);
+              }}
+              popoverOpen={outerResPopoverOpen}
+              onPopoverOpenChange={setOuterResPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={`${config.outerWidth}x${config.outerHeight}`}
+                  options={COMMON_RESOLUTIONS}
+                  searchQuery={outerResSearchQuery}
+                  onChange={(val) => {
+                    const [w, h] = val.split('x').map((v: string) => parseInt(v) || 0);
+                    setConfig((prev) => ({
+                      ...prev,
+                      outerWidth: w,
+                      outerHeight: h,
+                      innerWidth: Math.max(0, w - 16),
+                      innerHeight: Math.max(0, h - 72),
+                    }));
+                    setOuterResPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+          <FormItem
+            label="Inner Resolution"
+            description="Kích thước nội dung (Viewport)."
+            tooltip="Giá trị window.innerWidth/innerHeight. Đây là vùng hiển thị website thực tế. Sai lệch giữa Outer và Inner giúp website nhận diện trình duyệt thật/giả."
+          >
+            <Input
+              type="combobox"
+              value={
+                innerResPopoverOpen
+                  ? innerResSearchQuery
+                  : `${config.innerWidth}x${config.innerHeight}`
+              }
+              onChange={(e: any) => {
+                const val = e.target.value;
+                if (val.includes('x')) {
+                  const [w, h] = val.split('x').map((v: string) => parseInt(v) || 0);
                   setConfig((prev) => ({ ...prev, innerWidth: w, innerHeight: h }));
-                  setViewportPopoverOpen(false);
-                }}
-              />
-            }
-            className="bg-input-background border-border rounded-xl font-bold font-mono"
-          />
-        </FormItem>
-        {activeStep === 5 && (
+                }
+                setInnerResSearchQuery(val);
+              }}
+              popoverOpen={innerResPopoverOpen}
+              onPopoverOpenChange={setInnerResPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={`${config.innerWidth}x${config.innerHeight}`}
+                  options={COMMON_RESOLUTIONS}
+                  searchQuery={innerResSearchQuery}
+                  onChange={(val) => {
+                    const [w, h] = val.split('x').map((v: string) => parseInt(v) || 0);
+                    setConfig((prev) => ({ ...prev, innerWidth: w, innerHeight: h }));
+                    setInnerResPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+          <FormItem
+            label="Screen Position"
+            description="Tọa độ cửa sổ (X, Y)."
+            tooltip="Giá trị window.screenX/screenY. Vị trí ngẫu nhiên giúp hồ sơ trông tự nhiên hơn, tránh việc mọi hồ sơ đều nằm ở chính giữa màn hình (0,0)."
+          >
+            <Input
+              type="combobox"
+              value={
+                positionPopoverOpen ? positionSearchQuery : `${config.screenX},${config.screenY}`
+              }
+              onChange={(e: any) => {
+                const val = e.target.value;
+                if (val.includes(',')) {
+                  const [x, y] = val.split(',').map((v: string) => parseInt(v) || 0);
+                  setConfig((prev) => ({ ...prev, screenX: x, screenY: y }));
+                }
+                setPositionSearchQuery(val);
+              }}
+              popoverOpen={positionPopoverOpen}
+              onPopoverOpenChange={setPositionPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={`${config.screenX},${config.screenY}`}
+                  options={[
+                    { label: 'Top Left (0,0)', value: '0,0' },
+                    { label: 'Centered (100,100)', value: '100,100' },
+                    { label: 'Random Offset (50,30)', value: '50,30' },
+                  ]}
+                  searchQuery={positionSearchQuery}
+                  onChange={(val) => {
+                    const [x, y] = val.split(',').map((v: string) => parseInt(v) || 0);
+                    setConfig((prev) => ({ ...prev, screenX: x, screenY: y }));
+                    setPositionPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+        </div>
+        {!isEditMode && activeStep === 5 && (
           <StepNavigation
             step={5}
             onPrev={() => setActiveStep(4)}
@@ -736,7 +1088,7 @@ export const FingerprintSettings = ({
         title="06. Language & Locale"
         description="Ngôn ngữ và định dạng khu vực của trình duyệt."
         icon={Globe}
-        isUnlocked={activeStep === 6}
+        isUnlocked={isEditMode || activeStep >= 6}
         showHelp
       >
         <div className="w-full">
@@ -750,14 +1102,14 @@ export const FingerprintSettings = ({
                   setConfig((prev) => ({ ...prev, autoIpLanguage: !prev.autoIpLanguage }))
                 }
                 className={cn(
-                  'flex items-center gap-2 px-3 h-7 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all',
+                  'flex items-center gap-2 px-3.5 h-8 rounded-t-xl rounded-b-none border border-b-0 text-[9px] font-black uppercase tracking-widest transition-all',
                   config.autoIpLanguage
-                    ? 'bg-primary/20 text-primary border-primary/30 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]'
+                    ? 'bg-primary/20 text-primary border-primary/30 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]'
                     : 'bg-muted/5 text-muted-foreground/40 border-border/10 hover:bg-muted/10',
                 )}
               >
                 <Globe className="w-2.5 h-2.5" />
-                {config.autoIpLanguage ? 'ON Auto IP' : 'Dựa trên IP'}
+                {config.autoIpLanguage ? 'ON AUTO IP (TỰ ĐỘNG)' : 'AUTO IP (DỰA TRÊN IP)'}
               </button>
             }
           >
@@ -786,8 +1138,47 @@ export const FingerprintSettings = ({
               )}
             />
           </FormItem>
+          <FormItem
+            label="Languages (JSON array)"
+            description="Danh sách ngôn ngữ ưu tiên (navigator.languages)."
+            tooltip="Hệ thống website sẽ kiểm tra sự đồng nhất giữa ngôn ngữ chính và danh sách này. Định dạng phải là một mảng JSON (ví dụ: ['vi-VN', 'en-US'])."
+          >
+            <Input
+              type="combobox"
+              value={
+                config.autoIpLanguage
+                  ? 'Tự động dựa vào IP'
+                  : langsPopoverOpen
+                    ? langsSearchQuery
+                    : config.languages
+              }
+              readOnly={config.autoIpLanguage}
+              onChange={(e: any) => {
+                setConfig((prev) => ({ ...prev, languages: e.target.value }));
+                setLangsSearchQuery(e.target.value);
+              }}
+              popoverOpen={!config.autoIpLanguage && langsPopoverOpen}
+              onPopoverOpenChange={setLangsPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={config.languages}
+                  options={LANGS_OPTIONS}
+                  searchQuery={langsSearchQuery}
+                  onChange={(val) => {
+                    setConfig((prev) => ({ ...prev, languages: val }));
+                    setLangsSearchQuery('');
+                    setLangsPopoverOpen(false);
+                  }}
+                />
+              }
+              className={cn(
+                'bg-input-background border-border rounded-xl font-bold font-mono transition-all',
+                config.autoIpLanguage && 'opacity-60 bg-muted/20 cursor-not-allowed',
+              )}
+            />
+          </FormItem>
         </div>
-        {activeStep === 6 && (
+        {!isEditMode && activeStep === 6 && (
           <StepNavigation
             step={6}
             onPrev={() => setActiveStep(5)}
@@ -800,7 +1191,7 @@ export const FingerprintSettings = ({
         icon={MapPin}
         title="07. Timezone & GPS"
         description="Vị trí địa lý và múi giờ giả lập."
-        isUnlocked={activeStep === 7}
+        isUnlocked={isEditMode || activeStep >= 7}
         showHelp
       >
         <div className="space-y-10">
@@ -814,14 +1205,14 @@ export const FingerprintSettings = ({
                   setConfig((prev) => ({ ...prev, autoIpTimezone: !prev.autoIpTimezone }))
                 }
                 className={cn(
-                  'flex items-center gap-2 px-3 h-7 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all',
+                  'flex items-center gap-2 px-3.5 h-8 rounded-t-xl rounded-b-none border border-b-0 text-[9px] font-black uppercase tracking-widest transition-all',
                   config.autoIpTimezone
-                    ? 'bg-primary/20 text-primary border-primary/30 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]'
+                    ? 'bg-primary/20 text-primary border-primary/30 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]'
                     : 'bg-muted/5 text-muted-foreground/40 border-border/10 hover:bg-muted/10',
                 )}
               >
                 <Globe className="w-2.5 h-2.5" />
-                {config.autoIpTimezone ? 'ON Auto IP' : 'Timezone theo IP'}
+                {config.autoIpTimezone ? 'ON AUTO IP (MÚI GIỜ)' : 'TIMEZONE THEO IP'}
               </button>
             }
           >
@@ -831,8 +1222,7 @@ export const FingerprintSettings = ({
               className="bg-muted/10 border-border/50 text-muted-foreground/60 rounded-xl opacity-80"
             />
           </FormItem>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
             <FormItem
               label="Longitude"
               description="Kinh độ địa lý."
@@ -841,14 +1231,14 @@ export const FingerprintSettings = ({
                 <button
                   onClick={() => setConfig((prev) => ({ ...prev, autoIpGps: !prev.autoIpGps }))}
                   className={cn(
-                    'flex items-center gap-2 px-3 h-7 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all',
+                    'flex items-center gap-2 px-3.5 h-8 rounded-t-xl rounded-b-none border border-b-0 text-[9px] font-black uppercase tracking-widest transition-all',
                     config.autoIpGps
-                      ? 'bg-primary/20 text-primary border-primary/30 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]'
+                      ? 'bg-primary/20 text-primary border-primary/30 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]'
                       : 'bg-muted/5 text-muted-foreground/40 border-border/10 hover:bg-muted/10',
                   )}
                 >
                   <MapPin className="w-2.5 h-2.5" />
-                  {config.autoIpGps ? 'ON Auto GPS' : 'GPS theo IP'}
+                  {config.autoIpGps ? 'ON AUTO GPS (TỌA ĐỘ)' : 'GPS THEO IP'}
                 </button>
               }
             >
@@ -868,6 +1258,20 @@ export const FingerprintSettings = ({
               label="Latitude"
               description="Vĩ độ địa lý."
               tooltip="Vĩ độ thực tế khai báo tới website. Phải luôn nằm trong bán kính sai lệch cho phép so với dải IP của nhà cung cấp mạng."
+              action={
+                <button
+                  onClick={() => setConfig((prev) => ({ ...prev, autoIpGps: !prev.autoIpGps }))}
+                  className={cn(
+                    'flex items-center gap-2 px-3.5 h-8 rounded-t-xl rounded-b-none border border-b-0 text-[9px] font-black uppercase tracking-widest transition-all',
+                    config.autoIpGps
+                      ? 'bg-primary/20 text-primary border-primary/30 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]'
+                      : 'bg-muted/5 text-muted-foreground/40 border-border/10 hover:bg-muted/10',
+                  )}
+                >
+                  <MapPin className="w-2.5 h-2.5" />
+                  {config.autoIpGps ? 'ON AUTO GPS (TỌA ĐỘ)' : 'GPS THEO IP'}
+                </button>
+              }
             >
               <Input
                 value={config.autoIpGps ? 'Auto IP' : config.latitude.toString()}
@@ -881,9 +1285,39 @@ export const FingerprintSettings = ({
                 )}
               />
             </FormItem>
+            <FormItem
+              label="Accuracy (meters)"
+              description="Độ chính xác của tọa độ GPS."
+              tooltip="Giá trị Accuracy trong Geolocation API. Thiết bị di động thường có độ chính xác cao (10-30m), máy tính bàn thường thấp hơn (1000m+)."
+            >
+              <Input
+                type="combobox"
+                value={accuracyPopoverOpen ? accuracySearchQuery : config.accuracy.toString()}
+                onChange={(e: any) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  setConfig((prev) => ({ ...prev, accuracy: val }));
+                  setAccuracySearchQuery(e.target.value);
+                }}
+                popoverOpen={accuracyPopoverOpen}
+                onPopoverOpenChange={setAccuracyPopoverOpen}
+                popoverContent={
+                  <Combobox
+                    value={config.accuracy.toString()}
+                    options={ACCURACY_OPTIONS}
+                    searchQuery={accuracySearchQuery}
+                    onChange={(val) => {
+                      setConfig((prev) => ({ ...prev, accuracy: parseFloat(val) }));
+                      setAccuracySearchQuery('');
+                      setAccuracyPopoverOpen(false);
+                    }}
+                  />
+                }
+                className="bg-input-background border-border rounded-xl font-mono"
+              />
+            </FormItem>
           </div>
         </div>
-        {activeStep === 7 && (
+        {!isEditMode && activeStep === 7 && (
           <StepNavigation
             step={7}
             onPrev={() => setActiveStep(6)}
@@ -896,7 +1330,7 @@ export const FingerprintSettings = ({
         title="08. Canvas & Media"
         description="Cấu hình xử lý đồ họa và âm thanh."
         icon={Monitor}
-        isUnlocked={activeStep === 8}
+        isUnlocked={isEditMode || activeStep >= 8}
         showHelp
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -930,7 +1364,7 @@ export const FingerprintSettings = ({
                   }}
                 />
               }
-              className="bg-input-background border-border rounded-xl font-bold font-mono"
+              className="bg-input-background border-border rounded-xl font-bold font-mono placeholder:text-muted-foreground/30"
             />
           </FormItem>
           <FormItem
@@ -966,8 +1400,64 @@ export const FingerprintSettings = ({
               className="bg-input-background border-border rounded-xl font-bold font-mono"
             />
           </FormItem>
+          <FormItem
+            label="Fonts (JSON array)"
+            description="Danh sách phông chữ (navigator.fonts)."
+            tooltip="Hệ thống phông chữ là vector định danh cực mạnh. Websites kiểm tra danh sách này để suy ra hệ điều hành. Định dạng: ['Arial', 'Tahoma']."
+          >
+            <Input
+              type="combobox"
+              value={fontsPopoverOpen ? fontsSearchQuery : config.canvasFonts}
+              onChange={(e: any) => {
+                setConfig((prev) => ({ ...prev, canvasFonts: e.target.value }));
+                setFontsSearchQuery(e.target.value);
+              }}
+              popoverOpen={fontsPopoverOpen}
+              onPopoverOpenChange={setFontsPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={config.canvasFonts}
+                  options={FONT_OPTIONS}
+                  searchQuery={fontsSearchQuery}
+                  onChange={(val) => {
+                    setConfig((prev) => ({ ...prev, canvasFonts: val }));
+                    setFontsSearchQuery('');
+                    setFontsPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+          <FormItem
+            label="Max Channel Count"
+            description="Số lượng kênh âm thanh tối đa."
+            tooltip="Giá trị destination.maxChannelCount. Thông thường là 2 (Stereo) hoặc 6/8 cho âm thanh vòm."
+          >
+            <Input
+              type="combobox"
+              value={config.audioMaxChannelCount.toString()}
+              onChange={(e: any) => {
+                const val = parseInt(e.target.value) || 0;
+                setConfig((prev) => ({ ...prev, audioMaxChannelCount: val }));
+              }}
+              popoverOpen={channelCountPopoverOpen}
+              onPopoverOpenChange={setChannelCountPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={config.audioMaxChannelCount.toString()}
+                  options={CHANNEL_COUNT_OPTIONS}
+                  onChange={(val) => {
+                    setConfig((prev) => ({ ...prev, audioMaxChannelCount: parseInt(val) }));
+                    setChannelCountPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
         </div>
-        {activeStep === 8 && (
+        {!isEditMode && activeStep === 8 && (
           <StepNavigation
             step={8}
             onPrev={() => setActiveStep(7)}
@@ -977,13 +1467,131 @@ export const FingerprintSettings = ({
       </FormSection>
 
       <FormSection
-        title="09. Browser Metadata"
-        description="Các thông số bảo mật và định danh nâng cao."
-        icon={Globe}
-        isUnlocked={activeStep === 9}
+        title="09. WebGL Properties"
+        description="Tham số đồ họa WebGL nâng cao."
+        icon={Monitor}
+        isUnlocked={isEditMode || activeStep >= 9}
         showHelp
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8">
+          <FormItem
+            label="WebGL Vendor"
+            description="Nhà sản xuất GPU (Unmasked Vendor)."
+            tooltip="Khai báo GPU của trình duyệt. Nên khớp với mục Vendor ở phần Metadata để đảm bảo tính đồng nhất."
+          >
+            <Input
+              type="combobox"
+              value={webglVendorPopoverOpen ? webglVendorSearchQuery : config.webglVendor}
+              onChange={(e: any) => {
+                setConfig((prev) => ({ ...prev, webglVendor: e.target.value }));
+                setWebglVendorSearchQuery(e.target.value);
+              }}
+              popoverOpen={webglVendorPopoverOpen}
+              onPopoverOpenChange={setWebglVendorPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={config.webglVendor}
+                  options={[
+                    { label: 'Google Inc. (NVIDIA)', value: 'Google Inc. (NVIDIA)' },
+                    { label: 'Google Inc. (Intel)', value: 'Google Inc. (Intel)' },
+                    { label: 'Apple Inc.', value: 'Apple Inc.' },
+                  ]}
+                  searchQuery={webglVendorSearchQuery}
+                  onChange={(val) => {
+                    setConfig((prev) => ({ ...prev, webglVendor: val }));
+                    setWebglVendorSearchQuery('');
+                    setWebglVendorPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+          <FormItem
+            label="WebGL Renderer"
+            description="Card đồ họa (Unmasked Renderer)."
+            tooltip="Tên card đồ họa giả lập. Đây là một trong những thông số định danh thiết bị quan trọng nhất."
+          >
+            <Input
+              type="combobox"
+              value={webglRendererPopoverOpen ? webglRendererSearchQuery : config.webglRenderer}
+              onChange={(e: any) => {
+                setConfig((prev) => ({ ...prev, webglRenderer: e.target.value }));
+                setWebglRendererSearchQuery(e.target.value);
+              }}
+              popoverOpen={webglRendererPopoverOpen}
+              onPopoverOpenChange={setWebglRendererPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={config.webglRenderer}
+                  options={WEBGL_RENDERER_OPTIONS}
+                  searchQuery={webglRendererSearchQuery}
+                  onChange={(val) => {
+                    setConfig((prev) => ({ ...prev, webglRenderer: val }));
+                    setWebglRendererSearchQuery('');
+                    setWebglRendererPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+          <FormItem
+            label="WebGL Parameters (JSON)"
+            description="Cấu hình tham số mở rộng của WebGL."
+            tooltip="Chứa các giới hạn phần cứng như MAX_TEXTURE_SIZE. Websites có thể sử dụng các giới hạn này để 'fingerprint' card đồ họa của bạn."
+          >
+            <Input
+              type="combobox"
+              value={webglParamsPopoverOpen ? webglParamsSearchQuery : config.webglParameters}
+              onChange={(e: any) => {
+                setConfig((prev) => ({ ...prev, webglParameters: e.target.value }));
+                setWebglParamsSearchQuery(e.target.value);
+              }}
+              popoverOpen={webglParamsPopoverOpen}
+              onPopoverOpenChange={setWebglParamsPopoverOpen}
+              popoverContent={
+                <Combobox
+                  value={config.webglParameters}
+                  options={[
+                    {
+                      label: 'Standard High-End',
+                      value: '{"MAX_TEXTURE_SIZE":16384,"MAX_VIEWPORT_DIMS":[16384,16384]}',
+                    },
+                    {
+                      label: 'Mid-Range',
+                      value: '{"MAX_TEXTURE_SIZE":8192,"MAX_VIEWPORT_DIMS":[8192,8192]}',
+                    },
+                  ]}
+                  searchQuery={webglParamsSearchQuery}
+                  onChange={(val) => {
+                    setConfig((prev) => ({ ...prev, webglParameters: val }));
+                    setWebglParamsSearchQuery('');
+                    setWebglParamsPopoverOpen(false);
+                  }}
+                />
+              }
+              className="bg-input-background border-border rounded-xl font-bold font-mono"
+            />
+          </FormItem>
+        </div>
+        {!isEditMode && activeStep === 9 && (
+          <StepNavigation
+            step={9}
+            onPrev={() => setActiveStep(8)}
+            onNext={() => setActiveStep(10)}
+          />
+        )}
+      </FormSection>
+
+      <FormSection
+        title="10. Browser Metadata"
+        description="Các thông số bảo mật và định danh nâng cao."
+        icon={Globe}
+        isUnlocked={isEditMode || activeStep >= 10}
+        showHelp
+      >
+        <div className="grid grid-cols-1 gap-8">
           <FormItem
             label="Vendor"
             description="navigator.vendor"
@@ -1017,232 +1625,207 @@ export const FingerprintSettings = ({
               className="bg-input-background border-border rounded-xl font-bold font-mono"
             />
           </FormItem>
-          <FormItem
-            label="Product Sub"
-            description="navigator.productSub"
-            tooltip="Hằng số định danh build của Engine trình duyệt. Giá trị 20030107 là tiêu chuẩn cho Chromium/WebKit, trong khi 20100101 dành riêng cho Gecko (Firefox)."
-          >
-            <Input
-              type="combobox"
-              placeholder="Chọn Product Sub..."
-              value={config.productSub}
-              onChange={(e: any) => setConfig((prev) => ({ ...prev, productSub: e.target.value }))}
-              popoverOpen={prodSubPopoverOpen}
-              onPopoverOpenChange={setProdSubPopoverOpen}
-              popoverContent={
-                <Combobox
-                  value={config.productSub}
-                  options={PRODUCT_SUB_OPTIONS}
-                  searchQuery={prodSubSearchQuery}
-                  onChange={(val) => {
-                    setConfig((prev) => ({ ...prev, productSub: val }));
-                    setProdSubPopoverOpen(false);
-                    setProdSubSearchQuery('');
-                  }}
-                />
-              }
-              className="bg-input-background border-border rounded-xl font-bold font-mono"
-            />
-          </FormItem>
-          <FormItem
-            label="Do Not Track"
-            description="Yêu cầu không theo dõi (DNT)."
-            tooltip="Cờ navigator.doNotTrack yêu cầu website không theo dõi hành vi người dùng. Mặc dù giúp bảo mật, nhưng việc bật thông số này đôi khi lại khiến profile trông ít tự nhiên hơn."
-          >
-            <Input
-              type="combobox"
-              value={config.doNotTrack}
-              onChange={(e: any) => setConfig((prev) => ({ ...prev, doNotTrack: e.target.value }))}
-              popoverOpen={dntPopoverOpen}
-              onPopoverOpenChange={setDntPopoverOpen}
-              popoverContent={
-                <Combobox
-                  value={config.doNotTrack}
-                  options={DNT_OPTIONS}
-                  onChange={(val) => {
-                    setConfig((prev) => ({ ...prev, doNotTrack: val }));
-                    setDntPopoverOpen(false);
-                  }}
-                />
-              }
-              className="bg-input-background border-border rounded-xl font-bold font-mono"
-            />
-          </FormItem>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <FormItem
+              label="Product Sub"
+              description="navigator.productSub"
+              tooltip="Hằng số định danh build của Engine trình duyệt. Giá trị 20030107 là tiêu chuẩn cho Chromium/WebKit, trong khi 20100101 dành riêng cho Gecko (Firefox)."
+            >
+              <Input
+                type="combobox"
+                placeholder="Chọn Product Sub..."
+                value={config.productSub}
+                onChange={(e: any) =>
+                  setConfig((prev) => ({ ...prev, productSub: e.target.value }))
+                }
+                popoverOpen={prodSubPopoverOpen}
+                onPopoverOpenChange={setProdSubPopoverOpen}
+                popoverContent={
+                  <Combobox
+                    value={config.productSub}
+                    options={PRODUCT_SUB_OPTIONS}
+                    searchQuery={prodSubSearchQuery}
+                    onChange={(val) => {
+                      setConfig((prev) => ({ ...prev, productSub: val }));
+                      setProdSubPopoverOpen(false);
+                      setProdSubSearchQuery('');
+                    }}
+                  />
+                }
+                className="bg-input-background border-border rounded-xl font-bold font-mono"
+              />
+            </FormItem>
+            <FormItem
+              label="Do Not Track"
+              description="Yêu cầu không theo dõi (DNT)."
+              tooltip="Cờ navigator.doNotTrack yêu cầu website không theo dõi hành vi người dùng. Mặc dù giúp bảo mật, nhưng việc bật thông số này đôi khi lại khiến profile trông ít tự nhiên hơn."
+            >
+              <Input
+                type="combobox"
+                value={config.doNotTrack}
+                onChange={(e: any) =>
+                  setConfig((prev) => ({ ...prev, doNotTrack: e.target.value }))
+                }
+                popoverOpen={dntPopoverOpen}
+                onPopoverOpenChange={setDntPopoverOpen}
+                popoverContent={
+                  <Combobox
+                    value={config.doNotTrack}
+                    options={DNT_OPTIONS}
+                    onChange={(val) => {
+                      setConfig((prev) => ({ ...prev, doNotTrack: val }));
+                      setDntPopoverOpen(false);
+                    }}
+                  />
+                }
+                className="bg-input-background border-border rounded-xl font-bold font-mono"
+              />
+            </FormItem>
+          </div>
         </div>
-        {activeStep === 9 && (
-          <StepNavigation step={9} onPrev={() => setActiveStep(8)} onNext={() => {}} isLast />
+        {!isEditMode && activeStep === 10 && (
+          <StepNavigation step={10} onPrev={() => setActiveStep(9)} onNext={() => {}} isLast />
         )}
       </FormSection>
 
-      <Drawer
-        isOpen={isSaveDrawerOpen}
+      <Modal
+        open={isSaveDrawerOpen}
         onClose={() => setIsSaveDrawerOpen(false)}
-        title="SAVE CUSTOM FINGERPRINT"
-        subtitle="Finalize your fingerprint profile identity"
-        width={700}
-        showCloseButton={false}
-      >
-        <div className="flex flex-col h-screen bg-background/50 overflow-hidden">
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-12 pb-32">
-            {/* Identity Group */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-1.5 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" />
-                <h3 className="text-sm font-black uppercase tracking-[0.25em] text-foreground">
-                  Profile Identity
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-1">
-                <div className="space-y-3 text-left">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 flex items-center gap-2">
-                    <Settings2 className="w-3.5 h-3.5 text-primary" />
-                    Profile Name
-                  </label>
-                  <Input
-                    placeholder="e.g. Chrome Windows 11 - Gaming Profile"
-                    value={config.profileName || ''}
-                    onChange={(e: any) =>
-                      setConfig((prev) => ({ ...prev, profileName: e.target.value }))
-                    }
-                    className="bg-input-background border-border rounded-2xl h-14 text-sm font-bold pl-5"
-                  />
-                </div>
-                <div className="space-y-3 text-left">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
-                    Description
-                  </label>
-                  <Input
-                    placeholder="Optional description about this configuration..."
-                    value={config.profileDescription || ''}
-                    onChange={(e: any) =>
-                      setConfig((prev) => ({ ...prev, profileDescription: e.target.value }))
-                    }
-                    className="bg-input-background border-border rounded-2xl h-14 text-sm font-bold pl-5"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Comprehensive Summary Grid */}
-            <div className="space-y-8">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-1.5 h-8 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-                <h3 className="text-sm font-black uppercase tracking-[0.25em] text-foreground">
-                  Complete Configuration Summary
-                </h3>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'OS', value: config.os, icon: <Monitor /> },
-                  { label: 'OS Version', value: config.osVersion, icon: <Settings2 /> },
-                  {
-                    label: 'Resolution',
-                    value: `${config.width}x${config.height}`,
-                    icon: <Monitor />,
-                  },
-                  {
-                    label: 'Viewport',
-                    value: `${config.innerWidth}x${config.innerHeight}`,
-                    icon: <Layout />,
-                  },
-                  { label: 'Memory', value: `${config.deviceMemory} GB`, icon: <Activity /> },
-                  {
-                    label: 'CPU Cores',
-                    value: `${config.hardwareConcurrency}`,
-                    icon: <Activity />,
-                  },
-                  { label: 'Touch Points', value: `${config.maxTouchPoints}`, icon: <Zap /> },
-                  { label: 'DPR', value: config.devicePixelRatio, icon: <Monitor /> },
-                  { label: 'Timezone', value: config.timezone, icon: <Globe /> },
-                  { label: 'Primary Language', value: config.primaryLanguage, icon: <Globe /> },
-                  { label: 'Languages', value: config.languages, icon: <Globe /> },
-                  { label: 'WebGL Vendor', value: config.webglVendor, icon: <Layout /> },
-                  { label: 'WebGL Renderer', value: config.webglRenderer, icon: <Layout /> },
-                  { label: 'Canvas Seed', value: config.canvasNoiseSeed, icon: <Zap /> },
-                  { label: 'Audio Rate', value: `${config.audioSampleRate}Hz`, icon: <Activity /> },
-                  { label: 'Product Sub', value: config.productSub, icon: <Settings2 /> },
-                  { label: 'Vendor', value: config.vendor, icon: <Settings2 /> },
-                  {
-                    label: 'Webdriver',
-                    value: config.webdriver ? 'Active' : 'Hidden',
-                    icon: <LockIcon />,
-                  },
-                  {
-                    label: 'DNT',
-                    value: config.doNotTrack === '1' ? 'Enabled' : 'Disabled',
-                    icon: <Shield />,
-                  },
-                  {
-                    label: 'Battery',
-                    value: `${(config.batteryLevel * 100).toFixed(0)}%`,
-                    icon: <Zap />,
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="p-5 rounded-3xl bg-card/40 border border-border/40 flex flex-col gap-3 relative overflow-hidden group hover:border-primary/30 transition-all hover:bg-card hover:-translate-y-1"
-                  >
-                    <div className="absolute top-0 left-0 w-1.5 h-full bg-muted/5 group-hover:bg-primary/40 transition-colors" />
-                    <div className="flex items-center gap-2.5 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/40 group-hover:text-primary/60 transition-colors">
-                      {React.isValidElement(item.icon) &&
-                        React.cloneElement(item.icon as React.ReactElement, {
-                          className: 'w-3.5 h-3.5',
-                        })}
-                      {item.label}
-                    </div>
-                    <div className="text-[12px] font-black text-foreground/90 truncate pl-1">
-                      {item.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Full UA Preview */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-1.5 h-8 bg-amber-500 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
-                <h3 className="text-sm font-black uppercase tracking-[0.25em] text-foreground">
-                  Full User Agent Preview
-                </h3>
-              </div>
-              <div className="p-6 rounded-[2rem] bg-card/30 border border-border/30 font-mono text-[10px] text-muted-foreground/50 leading-relaxed text-left relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.02] to-transparent pointer-events-none" />
-                <p className="relative z-10 break-all">{config.ua}</p>
-              </div>
-            </div>
+        title={
+          <div className="flex flex-col gap-1">
+            <h3 className="text-sm font-black uppercase tracking-[0.25em] text-foreground">
+              Lưu cấu hình vân tay
+            </h3>
+            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+              Xác định danh tính cho bộ hồ sơ của bạn
+            </p>
           </div>
-
-          {/* Sticky Drawer Footer */}
-          <div className="absolute bottom-0 left-0 right-0 h-28 px-10 border-t border-border/50 bg-background/90 backdrop-blur-3xl flex items-center gap-6 shadow-2xl">
+        }
+        size="sm"
+        showCloseButton={false}
+        footer={
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSaveDrawerOpen(false)}
-              className="flex-1 h-14 rounded-2xl bg-muted/10 text-muted-foreground font-black text-[11px] uppercase tracking-widest hover:bg-muted/20 transition-all border border-border/10 hover:text-foreground active:scale-95"
+              className="flex-1 h-12 rounded-xl bg-muted/10 text-muted-foreground font-black text-[10px] uppercase tracking-widest hover:bg-muted/20 transition-all border border-border/10 hover:text-foreground active:scale-95"
             >
-              Cancel & Edit
+              Hủy & Chỉnh sửa
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
                 setSaveLoading(true);
-                setTimeout(() => {
-                  setSaveLoading(false);
+                try {
+                  const id =
+                    presetId && !presetId.startsWith('new-') ? presetId : crypto.randomUUID();
+                  const query = `
+                    REPLACE INTO fingerprints (id, name, description, ua, os, os_version, config_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                  `;
+                  const params = [
+                    id,
+                    config.profileName,
+                    config.profileDescription,
+                    config.ua,
+                    config.os,
+                    config.osVersion,
+                    JSON.stringify(config),
+                  ];
+
+                  // @ts-ignore
+                  await window.electron.ipcRenderer.invoke('sqlite:run', query, params);
+
+                  // Trigger refresh of presets list
+                  window.dispatchEvent(new CustomEvent('zentri:fingerprints-updated'));
+
                   setIsSaveDrawerOpen(false);
-                }, 1500);
+                } catch (error) {
+                  console.error('Failed to save fingerprint:', error);
+                  alert('Lỗi khi lưu cấu hình vân tay. Vui lòng thử lại.');
+                } finally {
+                  setSaveLoading(false);
+                }
               }}
-              className="flex-[2] h-14 rounded-2xl bg-primary text-button-bgText font-black text-[11px] uppercase tracking-[0.25em] hover:brightness-110 transition-all shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 active:scale-[0.98]"
+              className="flex-[2] h-12 rounded-xl bg-primary/20 text-primary border border-primary/20 font-black text-[10px] uppercase tracking-[0.25em] hover:bg-primary/30 transition-all shadow-2xl shadow-primary/5 flex items-center justify-center gap-3 active:scale-[0.98]"
             >
               {saveLoading ? (
-                <div className="w-5 h-5 border-3 border-button-bgText border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-3 border-primary border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
                   <CheckCircle2 className="w-5 h-5" />
-                  Finalize & Register Profile
+                  Hoàn tất & Lưu Profile
                 </>
               )}
             </button>
           </div>
+        }
+      >
+        <div className="grid grid-cols-1 gap-8 py-2">
+          <div className="space-y-0 text-left relative group">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                Tên
+              </label>
+              <button
+                onClick={() => {
+                  const selectedUA = USER_AGENTS.find((u) => u.value === config.ua);
+                  if (selectedUA) {
+                    setConfig((prev) => ({ ...prev, profileName: selectedUA.label }));
+                  }
+                }}
+                className="flex items-center gap-2 px-3.5 h-7 rounded-t-xl bg-primary/20 text-primary text-[9px] font-black uppercase tracking-widest transition-all border border-primary/30 border-b-0 hover:bg-primary/30 hover:text-primary active:scale-95"
+              >
+                <Globe className="w-2.5 h-2.5 text-primary" />
+                Dùng User Agent làm tên
+              </button>
+            </div>
+            <Input
+              placeholder={
+                USER_AGENTS.find((u) => u.value === config.ua)
+                  ? `Ví dụ: ${USER_AGENTS.find((u) => u.value === config.ua)?.label}`
+                  : 'Ví dụ: Chrome Windows 11 - Gaming Profile'
+              }
+              value={config.profileName || ''}
+              onChange={(e: any) => setConfig((prev) => ({ ...prev, profileName: e.target.value }))}
+              className="bg-input-background border-border rounded-xl rounded-tr-none px-5 font-bold placeholder:text-muted-foreground/50"
+              size="lg"
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {[
+                { label: 'OS', value: config.os },
+                { label: 'CPU', value: `${config.hardwareConcurrency} Cores` },
+                { label: 'RAM', value: `${config.deviceMemory}GB` },
+                { label: 'Res', value: `${config.width}x${config.height}` },
+                { label: 'Lang', value: config.primaryLanguage },
+              ].map((suggestion) => (
+                <button
+                  key={suggestion.label}
+                  onClick={() => {
+                    const current = config.profileName || '';
+                    const newVal = current ? `${current} - ${suggestion.value}` : suggestion.value;
+                    setConfig((prev) => ({ ...prev, profileName: newVal }));
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-primary/10 border border-white/5 hover:border-primary/20 text-[10px] font-bold text-muted-foreground hover:text-primary transition-all flex items-center gap-1.5 active:scale-95"
+                >
+                  <span className="opacity-30 font-medium">{suggestion.label}:</span>
+                  {suggestion.value}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3 text-left">
+            <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+              Mô tả
+            </label>
+            <Textarea
+              placeholder="Nhập mô tả ngắn gọn về cấu hình này..."
+              value={config.profileDescription || ''}
+              onChange={(val) => setConfig((prev) => ({ ...prev, profileDescription: val }))}
+              className="bg-input-background border-border rounded-xl px-5 py-3 font-bold placeholder:text-muted-foreground/50"
+              minRows={3}
+            />
+          </div>
         </div>
-      </Drawer>
+      </Modal>
     </div>
   );
 };

@@ -27,10 +27,7 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
   const renderLastActivity = (account: Account) => {
     if (!account.lastActivity) {
       return (
-        <div className="flex items-center gap-2 opacity-20">
-          <Globe className="w-3.5 h-3.5" />
-          <span className="text-[10px] italic">No activity yet</span>
-        </div>
+        <span className="text-[10px] italic opacity-20 ml-6">—</span>
       );
     }
 
@@ -44,7 +41,7 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
 
     return (
       <div className="flex items-center gap-3 group/act max-w-full">
-        <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0 group-hover/act:border-primary/30 transition-colors">
+        <div className="w-8 h-8 flex items-center justify-center overflow-hidden shrink-0 transition-colors">
           <img
             src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
             className="w-5 h-5 opacity-70 group-hover/act:opacity-100 transition-opacity"
@@ -55,11 +52,11 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
           />
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[11px] font-bold text-foreground/80 truncate group-hover/act:text-foreground transition-colors leading-tight">
+          <span className="text-[13px] font-bold text-foreground/80 truncate group-hover/act:text-foreground transition-colors leading-tight">
             {title || hostname}
           </span>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[9px] text-muted-foreground/40 font-mono tracking-tight group-hover/act:text-muted-foreground/60">
+            <span className="text-[11px] text-muted-foreground/40 font-mono tracking-tight group-hover/act:text-muted-foreground/60">
               {formatDistanceToNow(new Date(time), { addSuffix: true })}
             </span>
           </div>
@@ -76,21 +73,24 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
             <HeaderCell className="w-[60px] pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
               {t('table.stt')}
             </HeaderCell>
-            <HeaderCell className="w-[300px] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+            <HeaderCell className="w-[240px] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
               {t('table.email')}
             </HeaderCell>
             <HeaderCell
-              align="center"
-              className="w-[200px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
+              align="left"
+              className="w-1/3 text-[10px] uppercase tracking-[0.2em] font-bold h-10"
             >
-              {t('table.recoveryPhone')}
-            </HeaderCell>
-            <HeaderCell className="text-[10px] uppercase tracking-[0.2em] font-bold h-10">
               Hoạt động gần nhất
             </HeaderCell>
             <HeaderCell
+              align="left"
+              className="w-[300px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
+            >
+              {t('table.lastUsedProxy')}
+            </HeaderCell>
+            <HeaderCell
               align="center"
-              className="w-[140px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
+              className="w-[120px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
             >
               {t('table.status')}
             </HeaderCell>
@@ -134,27 +134,44 @@ const ListView: FC<ListViewProps> = ({ accounts, avatars, onSelectAccount, onCon
                 </div>
               </TableCell>
 
-              <TableCell align="center">
-                <div className="flex flex-col items-center gap-1 min-w-0 px-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                  {account.recoveryEmail ? (
-                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground/80 truncate w-full justify-center">
-                      <ShieldCheck className="w-3 h-3 text-blue-500/50" />
-                      <span className="truncate">{account.recoveryEmail}</span>
-                    </div>
-                  ) : null}
-                  {account.phoneNumber ? (
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/60 tracking-tight truncate w-full justify-center">
-                      <Phone className="w-2.5 h-2.5 opacity-40" />
-                      <span>{account.phoneNumber}</span>
-                    </div>
-                  ) : null}
-                  {!account.recoveryEmail && !account.phoneNumber && (
+              <TableCell>{renderLastActivity(account)}</TableCell>
+
+              <TableCell align="left">
+                <div className="flex flex-col items-start gap-1 min-w-0 px-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                  {account.lastProxy ? (
+                    <>
+                      <div className="flex items-center gap-2 w-full justify-start">
+                        <span className="text-[14px] font-bold text-foreground/80 truncate">
+                          {account.lastProxy.host}
+                        </span>
+                        <Badge
+                          variant={
+                            account.lastProxy.protocol.includes('socks') 
+                              ? 'primary' 
+                              : account.lastProxy.protocol.includes('https') 
+                                ? 'success' 
+                                : 'warning'
+                          }
+                          className="px-1.5 py-0 h-3.5 text-[8px] font-black uppercase tracking-tighter border-none"
+                        >
+                          {account.lastProxy.protocol.toUpperCase()}
+                        </Badge>
+                      </div>
+                      {account.lastProxy.country && (
+                        <div className="flex items-center gap-1 text-[12px] font-mono text-muted-foreground/60 tracking-tight truncate w-full justify-start">
+                          <Globe className="w-2.5 h-2.5 opacity-40" />
+                          <span className="truncate">
+                            {account.lastProxy.city ? `${account.lastProxy.city}, ` : ''}
+                            {account.lastProxy.country}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
                     <span className="text-[10px] italic opacity-20">—</span>
                   )}
                 </div>
               </TableCell>
-
-              <TableCell>{renderLastActivity(account)}</TableCell>
 
               <TableCell align="center">
                 {account.status === 'active' ? (

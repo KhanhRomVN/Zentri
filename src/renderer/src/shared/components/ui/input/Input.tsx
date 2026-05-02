@@ -23,6 +23,7 @@ const Input: React.FC<InputProps> = ({
   popoverOpen: controlledPopoverOpen,
   onChange,
   popoverContent,
+  popoverClassName,
   onPopoverOpenChange,
   inlinePanel,
   multiValue = false,
@@ -183,8 +184,8 @@ const Input: React.FC<InputProps> = ({
           disabled={isDisabled}
           readOnly={type === 'calendar'}
           onChange={(e) => {
-            if (type === 'combobox') {
-              handleChange(e);
+            handleChange(e);
+            if (type === 'combobox' || type === 'calendar') {
               handlePopoverOpen();
             }
           }}
@@ -216,7 +217,13 @@ const Input: React.FC<InputProps> = ({
         placeholder={placeholder}
         disabled={isDisabled}
         onChange={handleChange}
-        onFocus={() => setIsFocused(true)}
+        onFocus={() => {
+          setIsFocused(true);
+          if (popoverContent) handlePopoverOpen();
+        }}
+        onClick={() => {
+          if (popoverContent && !popoverOpen) handlePopoverOpen();
+        }}
         onBlur={(e) => {
           setIsFocused(false);
           if (props.onBlur) props.onBlur(e);
@@ -313,11 +320,11 @@ const Input: React.FC<InputProps> = ({
         </div>
 
         {/* Popover for combobox/calendar */}
-        {(type === 'combobox' || type === 'calendar') &&
-          popoverOpen &&
-          !isDisabled &&
-          popoverContent && (
-            <div ref={popoverRef} className="absolute z-50 w-full top-[calc(100%+4px)] left-0">
+        {popoverOpen && !isDisabled && popoverContent && (
+          <div
+            ref={popoverRef}
+            className={cn('absolute z-50 min-w-full top-[calc(100%+4px)] left-0', popoverClassName)}
+          >
               {popoverContent}
             </div>
           )}

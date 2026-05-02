@@ -41,6 +41,9 @@ export function setupProxyHandlers() {
         price: row.price,
         status: row.status,
         metadata: row.metadata ? JSON.parse(row.metadata) : null,
+        expiredAt: row.expired_at,
+        lastCheckedAt: row.last_checked_at,
+        purchaseUrl: row.purchase_url,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));
@@ -58,8 +61,9 @@ export function setupProxyHandlers() {
         INSERT INTO proxies (
           id, ip_version, proxy_type, source_type, rotation_type, pricing_type,
           protocol, host, port, username, password, country, city, isp,
-          duration_days, bandwidth_gb, price, status, metadata
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          duration_days, bandwidth_gb, price, status, metadata,
+          expired_at, last_checked_at, purchase_url
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const params = [
         id,
@@ -81,6 +85,9 @@ export function setupProxyHandlers() {
         data.price || null,
         data.status || 'active',
         data.metadata ? JSON.stringify(data.metadata) : null,
+        data.expiredAt || null,
+        data.lastCheckedAt || null,
+        data.purchaseUrl || null,
       ];
 
       await dbManager.run(query, params);
@@ -138,4 +145,40 @@ export function setupProxyHandlers() {
       throw error;
     }
   });
+
+  // Get proxy history
+  ipcMain.handle('proxy:get-history', async (_event, proxyId: string) => {
+    try {
+      const query = `
+        SELECT h.*, e.email as email_address 
+        FROM proxy_history h
+        JOIN emails e ON h.email_id = e.id
+        WHERE h.proxy_id = ?
+        ORDER BY h.used_at DESC
+      `;
+      return await dbManager.all(query, [proxyId]);
+    } catch (error) {
+      console.error('[proxy:get-history] FAILED:', error);
+      throw error;
+    }
+  });
+
+  // Log proxy usage
+  ipcMain.handle(
+    'proxy:log-usage',
+    async (_event, { proxyId, emailId, targetSite }: { proxyId: string; emailId: string; targetSite?: string }) => {
+      try {
+        const id = crypto.randomUUID();
+        const query = `
+          INSERT INTO proxy_history (id, proxy_id, email_id, target_site)
+          VALUES (?, ?, ?, ?)
+        `;
+        await dbManager.run(query, [id, proxyId, emailId, targetSite || null]);
+        return true;
+      } catch (error) {
+        console.error('[proxy:log-usage] FAILED:', error);
+        throw error;
+      }
+    },
+  );
 }

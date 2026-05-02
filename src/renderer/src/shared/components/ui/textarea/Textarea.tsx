@@ -11,7 +11,7 @@ const extractTextareaClasses = (className: string): string => {
         cls.startsWith('bg-') ||
         cls.startsWith('rounded-') ||
         cls.startsWith('text-') ||
-        cls.startsWith('placeholder-'),
+        cls.includes('placeholder'),
     )
     .join(' ');
 };

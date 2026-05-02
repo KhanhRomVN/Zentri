@@ -3,12 +3,7 @@ import { Settings, Database, Plus, LayoutGrid, Shield } from 'lucide-react';
 import { GeneralSettings } from './components/GeneralSettings';
 import { ServiceManager } from './components/ServiceManager';
 import { FingerprintSettings } from './components/FingerprintSettings';
-import {
-  FingerprintPresets,
-  PRESETS,
-  FingerprintConfig,
-  INITIAL_CONFIG,
-} from './components/FingerprintPresets';
+import { FingerprintPresets, INITIAL_CONFIG } from './components/FingerprintPresets';
 import { cn } from '../../shared/lib/utils';
 import { Breadcrumb, BreadcrumbItem } from '../../shared/components/ui/breadcumb';
 
@@ -17,14 +12,21 @@ type Tab = 'general' | 'services' | 'fingerprint';
 const SettingPage = () => {
   const [activeTab, setActiveTab] = useState<Tab>('general');
   const [pendingCount, setPendingCount] = useState(0);
-  const [activePresetId, setActivePresetId] = useState<string>(PRESETS[0]?.id || '');
-  const [fpConfig, setFpConfig] = useState<FingerprintConfig>(PRESETS[0]?.config || INITIAL_CONFIG);
   const [activeStep, setActiveStep] = useState(1);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [fpConfig, setFpConfig] = useState(INITIAL_CONFIG);
+  const [initialConfig, setInitialConfig] = useState(INITIAL_CONFIG);
+
+  const isEditMode = activePresetId && !activePresetId.startsWith('new-');
+  const isDirty = JSON.stringify(fpConfig) !== JSON.stringify(initialConfig);
 
   useEffect(() => {
     const handleCount = (e: any) => setPendingCount(e.detail.count);
     window.addEventListener('zentri:services-pending-count', handleCount);
-    return () => window.removeEventListener('zentri:services-pending-count', handleCount);
+
+    return () => {
+      window.removeEventListener('zentri:services-pending-count', handleCount);
+    };
   }, []);
 
   const tabs = [
@@ -161,11 +163,15 @@ const SettingPage = () => {
                     currentId={activePresetId}
                     onSelect={(config, id) => {
                       setFpConfig(config);
+                      setInitialConfig(config);
                       setActivePresetId(id);
+                      setActiveStep(1);
                     }}
                     onAdd={() => {
                       setFpConfig(INITIAL_CONFIG);
+                      setInitialConfig(INITIAL_CONFIG);
                       setActivePresetId('new-' + Date.now());
+                      setActiveStep(1);
                     }}
                   />
                   <div className="flex-1 flex flex-col min-w-0">
@@ -175,8 +181,10 @@ const SettingPage = () => {
                           <FingerprintSettings
                             config={fpConfig}
                             setConfig={setFpConfig}
+                            presetId={activePresetId}
                             activeStep={activeStep}
                             setActiveStep={setActiveStep}
+                            isEditMode={!!isEditMode}
                           />
                         </div>
                       ) : (
@@ -199,29 +207,60 @@ const SettingPage = () => {
 
                     {activePresetId && (
                       <div className="h-20 px-8 border-t border-border/50 bg-background/50 backdrop-blur-xl flex items-center justify-end gap-3 shrink-0">
+                        {activePresetId && !activePresetId.startsWith('new-') && (
+                          <button
+                            onClick={async () => {
+                              if (confirm('Bạn có chắc chắn muốn xóa cấu hình này?')) {
+                                try {
+                                  // @ts-ignore
+                                  await window.electron.ipcRenderer.invoke(
+                                    'sqlite:run',
+                                    'DELETE FROM fingerprints WHERE id = ?',
+                                    [activePresetId],
+                                  );
+                                  window.dispatchEvent(
+                                    new CustomEvent('zentri:fingerprints-updated'),
+                                  );
+                                  setActivePresetId(null);
+                                } catch (error) {
+                                  console.error('Failed to delete fingerprint:', error);
+                                  alert('Lỗi khi xóa cấu hình.');
+                                }
+                              }
+                            }}
+                            className="px-6 h-10 rounded-xl bg-red-500/10 text-red-500 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500/20 transition-all border border-red-500/20 active:scale-95"
+                          >
+                            Xóa hồ sơ
+                          </button>
+                        )}
                         <button
                           onClick={() => {
-                            setFpConfig(INITIAL_CONFIG);
-                            setActiveStep(1);
+                            setFpConfig(initialConfig);
                           }}
-                          className="px-6 h-10 rounded-xl bg-muted/10 text-muted-foreground font-bold text-[10px] uppercase tracking-widest hover:bg-muted/20 hover:text-foreground transition-all flex items-center gap-2 group border border-border/10"
+                          disabled={!isDirty}
+                          className={cn(
+                            'px-6 h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 group border active:scale-[0.98]',
+                            !isDirty
+                              ? 'bg-muted/5 text-muted-foreground/30 border-border/20 cursor-not-allowed opacity-50'
+                              : 'bg-muted/10 text-muted-foreground hover:bg-muted/20 hover:text-foreground border-border/10',
+                          )}
                         >
-                          Reset to Default
+                          Hoàn tác thay đổi
                         </button>
                         <button
-                          disabled={activeStep < 9}
+                          disabled={!isEditMode && activeStep < 9}
                           onClick={() => {
                             const event = new CustomEvent('zentri:open-save-drawer');
                             window.dispatchEvent(event);
                           }}
                           className={cn(
-                            'px-10 h-10 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 group border active:scale-[0.98]',
-                            activeStep < 9
+                            'px-10 h-10 rounded-xl font-black uppercase tracking-[0.25em] text-[10px] transition-all flex items-center gap-2 group border active:scale-[0.98] leading-none',
+                            (!isEditMode && activeStep < 9) || (isEditMode && !isDirty)
                               ? 'bg-muted/5 text-muted-foreground/30 border-border/20 cursor-not-allowed opacity-50'
-                              : 'bg-primary/20 text-primary border-primary/20 hover:bg-primary hover:text-button-bgText shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)]',
+                              : 'bg-primary/20 text-primary border-primary/20 hover:bg-primary/30 shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)]',
                           )}
                         >
-                          Save Configuration
+                          {isEditMode ? 'Cập nhật profile' : 'Lưu profile'}
                         </button>
                       </div>
                     )}

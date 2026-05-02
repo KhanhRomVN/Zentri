@@ -11,8 +11,8 @@ import HeaderCell from './HeaderCell';
 
 const Table: React.FC<TableProps> = ({ children, className = '' }) => {
   return (
-    <div className={cn('w-full', className)}>
-      <table className="w-full border-collapse">{children}</table>
+    <div className="w-full overflow-hidden">
+      <table className={cn('w-full border-collapse', className)}>{children}</table>
     </div>
   );
 };
