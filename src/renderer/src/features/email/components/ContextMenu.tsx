@@ -1,8 +1,7 @@
 import { FC, RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { Globe, Eye, Undo2, Trash, Trash2, Zap, Shield } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { Account } from '../types';
-import Portal from '../../../shared/components/ui/Portal';
 
 interface ContextMenuProps {
   menuRef: RefObject<HTMLDivElement>;
@@ -29,13 +28,12 @@ const ContextMenu: FC<ContextMenuProps> = ({
   onLaunchRequest,
   browserVersion,
 }) => {
-  const { t } = useTranslation();
   if (!contextMenu) return null;
 
   const targetAccount = accounts.find((a) => a.id === contextMenu.accountId);
 
   return (
-    <Portal>
+    createPortal(
       <div
         ref={menuRef}
         className="fixed z-[1000] min-w-[200px] w-max bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl p-1 animate-in fade-in zoom-in-95 duration-200"
@@ -55,7 +53,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-foreground/80 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all whitespace-nowrap"
             >
               <Zap className="w-4 h-4 text-emerald-400" />
-              {t('email.contextMenu.launchNormal')}
+              Launch Normal
             </button>
             <button
               onClick={() => {
@@ -65,7 +63,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-foreground/80 hover:text-primary hover:bg-primary/10 rounded-xl transition-all whitespace-nowrap"
             >
               <Shield className="w-4 h-4 text-primary" />
-              {t('email.contextMenu.launchSecure')}
+              Launch Secure
             </button>
             <div className="h-px bg-border/30 my-1 mx-2" />
           </>
@@ -79,7 +77,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
           className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap"
         >
           <Eye className="w-4 h-4 text-blue-500/50" />
-          {t('email.contextMenu.view')}
+          View
         </button>
 
         <div className="h-px bg-border/30 my-1 mx-2" />
@@ -94,7 +92,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-emerald-500/70 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all whitespace-nowrap"
             >
               <Undo2 className="w-4 h-4" />
-              {t('email.contextMenu.restore')}
+              Restore
             </button>
             <button
               onClick={() => {
@@ -104,7 +102,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500/70 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all whitespace-nowrap"
             >
               <Trash className="w-4 h-4" />
-              {t('email.contextMenu.deletePermanently')}
+              Delete Permanently
             </button>
           </>
         ) : (
@@ -116,11 +114,12 @@ const ContextMenu: FC<ContextMenuProps> = ({
             className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500/70 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all whitespace-nowrap"
           >
             <Trash2 className="w-4 h-4" />
-            {t('email.contextMenu.delete')}
+            Delete
           </button>
         )}
-      </div>
-    </Portal>
+      </div>,
+      document.body,
+    )
   );
 };
 

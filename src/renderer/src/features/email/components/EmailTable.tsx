@@ -1,15 +1,14 @@
-import { FC, useState, useCallback, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { FC, useState, useCallback, useRef, useEffect, Fragment } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Globe, Eye, Key, Undo2 } from 'lucide-react';
+import { Trash2, Globe, Eye, Key, Undo2, X, Mail } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '../../../shared/lib/utils';
 import { Account, Service } from '../types';
-import ListView from './ListView';
 import DetailView from './DetailView';
 import ContextMenu from './ContextMenu';
 import ServiceDrawers from './ServiceDrawers';
 import ServiceVaultDrawer from './ServiceVaultDrawer';
-import Portal from '../../../shared/components/ui/Portal';
-import Modal from '../../../shared/components/ui/modal/Modal';
 import ProfileLaunchModal from './modals/ProfileLaunchModal';
 
 interface EmailTableProps {
@@ -21,9 +20,9 @@ interface EmailTableProps {
   onHardDelete: (id: string) => void;
   onSaveChanges: (oldAccount: Account, newAccount: Account) => void;
   onRefreshData?: () => void;
-  activeTab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions' | 'history';
+  activeTab: 'info' | 'services' | 'sessions' | 'history';
   setActiveTab: (
-    tab: 'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions' | 'history',
+    tab: 'info' | 'services' | 'sessions' | 'history',
   ) => void;
 }
 
@@ -51,7 +50,6 @@ const EmailTable: FC<EmailTableProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { t } = useTranslation();
   // --- States ---
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const [contextMenu, setContextMenu] = useState<{
@@ -121,6 +119,10 @@ const EmailTable: FC<EmailTableProps> = ({
   const [currentSecrets, setCurrentSecrets] = useState<any[]>([]);
   const [loadingSecrets, setLoadingSecrets] = useState(false);
 
+  // Two-phase animation: row moves first, then section expands
+  const [showDetail, setShowDetail] = useState(false);
+  const detailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const menuRef = useRef<HTMLDivElement>(null);
   const serviceMenuRef = useRef<HTMLDivElement>(null);
 
@@ -168,6 +170,29 @@ const EmailTable: FC<EmailTableProps> = ({
     } else {
       setEditedAccount(null);
     }
+  }, [focusedAccountId]);
+
+  // Two-phase detail animation
+  useEffect(() => {
+    if (detailTimerRef.current) {
+      clearTimeout(detailTimerRef.current);
+      detailTimerRef.current = null;
+    }
+
+    if (focusedAccountId) {
+      setShowDetail(false);
+      detailTimerRef.current = setTimeout(() => {
+        setShowDetail(true);
+      }, 400);
+    } else {
+      setShowDetail(false);
+    }
+
+    return () => {
+      if (detailTimerRef.current) {
+        clearTimeout(detailTimerRef.current);
+      }
+    };
   }, [focusedAccountId]);
 
   useEffect(() => {
@@ -281,16 +306,19 @@ const EmailTable: FC<EmailTableProps> = ({
     setIsLaunchModalOpen(true);
   };
 
-  const handleExecuteLaunch = async (config: { 
-    fingerprintId?: string;
-    proxyId?: string;
-    launchMode?: 'normal' | 'secure';
-  }, overrideLaunch?: {
-    accountId: string;
-    email: string;
-    provider?: string;
-    url?: string;
-  }) => {
+  const handleExecuteLaunch = async (
+    config: {
+      fingerprintId?: string;
+      proxyId?: string;
+      launchMode?: 'normal' | 'secure';
+    },
+    overrideLaunch?: {
+      accountId: string;
+      email: string;
+      provider?: string;
+      url?: string;
+    },
+  ) => {
     const launchData = overrideLaunch || pendingLaunch;
     if (!launchData) return;
     const { accountId, email, provider, url } = launchData;
@@ -448,16 +476,16 @@ const EmailTable: FC<EmailTableProps> = ({
   const validateField = useCallback((name: string, value: string) => {
     let error = '';
     if (name === 'email') {
-      if (!value.trim()) error = t('email.validation.emailRequired');
+      if (!value.trim()) error = 'Email is required';
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-        error = t('email.validation.emailInvalid');
+        error = 'Invalid email format';
     } else if (name === 'password') {
-      if (!value.trim()) error = t('email.validation.passwordRequired');
+      if (!value.trim()) error = 'Password is required';
     } else if (name === 'recoveryEmail') {
       if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-        error = t('email.validation.recoveryInvalid');
+        error = 'Invalid recovery email';
     } else if (name === 'phoneNumber') {
-      if (value && !/^\+?[0-9\s\-()]+$/.test(value)) error = t('email.validation.phoneInvalid');
+      if (value && !/^\+?[0-9\s\-()]+$/.test(value)) error = 'Invalid phone number';
     }
     setErrors((prev) => ({ ...prev, [name]: error }));
   }, []);
@@ -546,73 +574,205 @@ const EmailTable: FC<EmailTableProps> = ({
     }
   };
 
+  // --- Table helpers ---
+  const renderLastActivity = (account: Account) => {
+    if (!account.lastActivity) {
+      return <span className="text-[10px] italic opacity-20 ml-6">—</span>;
+    }
+
+    const { url, title, time } = account.lastActivity;
+    let hostname = '';
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      hostname = url;
+    }
+
+    return (
+      <div className="flex items-center gap-3 group/act max-w-full">
+        <div className="w-8 h-8 flex items-center justify-center overflow-hidden shrink-0 transition-colors">
+          <img
+            src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+            className="w-5 h-5 opacity-70 group-hover/act:opacity-100 transition-opacity"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                'https://www.google.com/s2/favicons?domain=google.com&sz=32';
+            }}
+          />
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[13px] font-bold text-foreground/80 truncate group-hover/act:text-foreground transition-colors leading-tight">
+            {title || hostname}
+          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[11px] text-muted-foreground/40 font-mono tracking-tight group-hover/act:text-muted-foreground/60">
+              {formatDistanceToNow(new Date(time), { addSuffix: true })}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // When section is expanded, hide all other rows
+  const orderedAccounts = showDetail && focusedAccountId
+    ? accounts.filter((a) => a.id === focusedAccountId)
+    : focusedAccountId
+      ? [
+          ...accounts.filter((a) => a.id === focusedAccountId),
+          ...accounts.filter((a) => a.id !== focusedAccountId),
+        ]
+      : accounts;
+
   // --- Render ---
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-background/30 transition-all duration-500 overflow-hidden">
-      <AnimatePresence mode="wait">
-        {!focusedAccountId ? (
-          <motion.div
-            key="list-view"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="flex-1 flex flex-col overflow-hidden"
-          >
-            <ListView
-              accounts={accounts}
-              avatars={avatars}
-              onSelectAccount={onSelectAccount}
-              onContextMenu={handleContextMenu}
-            />
+      {/* Inline Table (merged from ListView) */}
+      <div className="flex-1 overflow-auto custom-scrollbar flex flex-col min-h-0">
+        <table className="border-collapse table-fixed w-full">
+          <thead className="sticky top-0 z-30">
+            <tr className="border-b border-border/50 bg-table-header-background shadow-sm">
+              <th className="w-[60px] pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
+                STT
+              </th>
+              <th className="w-[240px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
+                Email
+              </th>
+              <th className="w-1/3 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
+                Last Activities
+              </th>
+              <th className="w-[300px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
+                Last Used Proxy
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <AnimatePresence>
+              {orderedAccounts.map((account, _index) => {
+                const isSelected = account.id === focusedAccountId;
+                const originalIndex = accounts.findIndex((a) => a.id === account.id);
+                return (
+                  <Fragment key={account.id}>
+                    <motion.tr
+                      layout
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{
+                        layout: { type: 'spring', stiffness: 300, damping: 30 },
+                        opacity: { duration: 0.2 },
+                      }}
+                      className={cn(
+                        'group transition-colors cursor-pointer border-b border-border/20 h-[48px] hover:bg-table-row-hover relative',
+                        account.status === 'deleting' && 'opacity-60 grayscale-[0.5]',
+                        isSelected && 'bg-primary/5',
+                      )}
+                      onClick={() => onSelectAccount(account)}
+                      onContextMenu={(e) => handleContextMenu(e, account.id)}
+                    >
+                      <td className="text-muted-foreground font-mono text-[10px] pl-6 py-2">
+                        #{String(originalIndex + 1).padStart(2, '0')}
+                      </td>
+                      <td className="font-medium">
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            'w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary transition-transform overflow-hidden border border-primary/5',
+                            !isSelected && 'group-hover:scale-110',
+                            isSelected && 'scale-110 shadow-md shadow-primary/20',
+                          )}>
+                            {avatars[account.email] ? (
+                              <img src={avatars[account.email]} alt="avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              <Mail className="w-4 h-4 opacity-40" />
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className={cn(
+                              'text-[14px] font-bold tracking-tight truncate',
+                              isSelected ? 'text-primary' : 'text-foreground',
+                            )}>
+                              {account.email}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/40 font-mono tracking-wider truncate">
+                              {account.password || 'No Password'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{renderLastActivity(account)}</td>
+                      <td>
+                        <div className="flex flex-col items-start gap-1 min-w-0 px-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                          {account.lastProxy ? (
+                            <>
+                              <div className="flex items-center gap-2 w-full justify-start">
+                                <span className="text-[14px] font-bold text-foreground/80 truncate">
+                                  {account.lastProxy.host}
+                                </span>
+                                <span className="px-1.5 py-0 h-3.5 text-[8px] font-black uppercase tracking-tighter border-none rounded bg-muted/20 text-muted-foreground">
+                                  {account.lastProxy.protocol.toUpperCase()}
+                                </span>
+                              </div>
+                              {account.lastProxy.country && (
+                                <div className="flex items-center gap-1 text-[12px] font-mono text-muted-foreground/60 tracking-tight truncate w-full justify-start">
+                                  <span className="truncate">
+                                    {account.lastProxy.city ? `${account.lastProxy.city}, ` : ''}{account.lastProxy.country}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-[10px] italic opacity-20">—</span>
+                          )}
+                        </div>
+                      </td>
+                      
+                    </motion.tr>
 
-            <div className="shrink-0 bg-table-headerBg/80 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_-12px_rgba(0,0,0,0.5)] z-40 h-12 flex items-center px-8">
-              <div className="flex-1 text-[10px] text-muted-foreground/60 font-black uppercase tracking-[0.25em]">
-                {t('email.manager.table.fleetCapacity')}
-              </div>
-              <div className="text-[11px] text-foreground font-mono font-black tracking-tighter">
-                {accounts.length}{' '}
-                <span className="text-[9px] text-primary/70 ml-1 tracking-widest font-black uppercase">
-                  {t('email.manager.table.operational')}
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="detail-view"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            transition={{ duration: 0.3, ease: 'circOut' }}
-            className="flex-1 flex flex-col overflow-hidden"
-          >
-            <DetailView
-              focusedAccount={focusedAccount}
-              accounts={accounts}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              avatars={avatars}
-              onSelectAccount={onSelectAccount}
-              onContextMenu={handleContextMenu}
-              onServiceContextMenu={handleServiceContextMenu}
-              onRestore={onRestore}
-              onHardDelete={onHardDelete}
-              editedAccount={editedAccount}
-              setEditedAccount={setEditedAccount}
-              validateField={validateField}
-              errors={errors}
-              backupCodeSearch={backupCodeSearch}
-              setBackupCodeSearch={setBackupCodeSearch}
-              serviceSearch={serviceSearch}
-              setServiceSearch={setServiceSearch}
-              accountServices={accountServices}
-              onAddNewServiceLink={handleOpenNewServiceDrawer}
-              onEditServiceLink={handleEditServiceLink}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+                    {/* Detail Row - inserted right after the selected row */}
+                    {isSelected && showDetail && (
+                      <tr key={`detail-${account.id}`} className="border-t-2 border-t-primary/20 border-b border-border/20">
+                        <td colSpan={4} className="p-0">
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                            className="overflow-hidden"
+                          >
+                            <DetailView
+                              focusedAccount={focusedAccount!}
+                              accounts={accounts}
+                              activeTab={activeTab}
+                              setActiveTab={setActiveTab}
+                              avatars={avatars}
+                              onSelectAccount={onSelectAccount}
+                              onContextMenu={handleContextMenu}
+                              onServiceContextMenu={handleServiceContextMenu}
+                              onRestore={onRestore}
+                              onHardDelete={onHardDelete}
+                              editedAccount={editedAccount}
+                              setEditedAccount={setEditedAccount}
+                              validateField={validateField}
+                              errors={errors}
+                              backupCodeSearch={backupCodeSearch}
+                              setBackupCodeSearch={setBackupCodeSearch}
+                              serviceSearch={serviceSearch}
+                              setServiceSearch={setServiceSearch}
+                              accountServices={accountServices}
+                              onAddNewServiceLink={handleOpenNewServiceDrawer}
+                              onEditServiceLink={handleEditServiceLink}
+                            />
+                          </motion.div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </AnimatePresence>
+          </tbody>
+        </table>
+      </div>
 
       <ContextMenu
         menuRef={menuRef}
@@ -625,193 +785,116 @@ const EmailTable: FC<EmailTableProps> = ({
         onSoftDelete={onSoftDelete}
         onLaunchRequest={(account, mode) => {
           if (mode === 'secure') {
-            setPendingLaunch({
-              accountId: account.id,
-              email: account.email,
-              provider: 'google',
-            });
+            setPendingLaunch({ accountId: account.id, email: account.email, provider: 'google' });
             setIsLaunchModalOpen(true);
           } else {
-            // Normal launch: skip modal and use default/last settings
-            handleExecuteLaunch({
-              fingerprintId: undefined,
-              proxyId: undefined,
-              launchMode: 'normal'
-            }, {
-              accountId: account.id,
-              email: account.email,
-              provider: 'google'
-            });
+            handleExecuteLaunch(
+              { fingerprintId: undefined, proxyId: undefined, launchMode: 'normal' },
+              { accountId: account.id, email: account.email, provider: 'google' },
+            );
           }
         }}
         browserVersion={browserVersion}
       />
 
       {/* Service Context Menu */}
-      {serviceContextMenu && (
-        <Portal>
-          <div
-            ref={serviceMenuRef}
-            className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl py-1.5 z-[1000] min-w-[200px] w-max animate-in fade-in zoom-in-95 duration-100 p-1"
-            style={{ top: serviceContextMenu.y, left: serviceContextMenu.x }}
-            onClick={() => setServiceContextMenu(null)}
-          >
-            <button
-              onClick={() => handleOpenService(serviceContextMenu.linkId)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all whitespace-nowrap"
-            >
-              <Globe className="w-4 h-4" />
-              {t('email.manager.table.openService', { version: browserVersion })}
+      {serviceContextMenu && createPortal(
+        <div
+          ref={serviceMenuRef}
+          className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl py-1.5 z-[1000] min-w-[200px] w-max animate-in fade-in zoom-in-95 duration-100 p-1"
+          style={{ top: serviceContextMenu.y, left: serviceContextMenu.x }}
+          onClick={() => setServiceContextMenu(null)}
+        >
+          <button onClick={() => handleOpenService(serviceContextMenu.linkId)} className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all whitespace-nowrap">
+            <Globe className="w-4 h-4" />Open with Chromium {browserVersion}
+          </button>
+          <div className="h-px bg-border/20 my-1 mx-2" />
+          <button onClick={() => handleEditServiceLink(serviceContextMenu.linkId)} className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap">
+            <Eye className="w-4 h-4 text-blue-500/50" />View / Edit
+          </button>
+          <button onClick={() => handleViewSecrets(serviceContextMenu.linkId)} className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap">
+            <Key className="w-4 h-4 text-primary/50" />Secrets Vault
+          </button>
+          <div className="h-px bg-border/20 my-1 mx-2" />
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all whitespace-nowrap" onClick={() => {
+            if (serviceContextMenu.status === 'trash') setServiceHardDeleteConfirmId(serviceContextMenu.linkId);
+            else setServiceDeleteConfirmId(serviceContextMenu.linkId);
+          }}>
+            <Trash2 className="w-4 h-4" />{serviceContextMenu.status === 'trash' ? 'Delete Permanently' : 'Delete'}
+          </button>
+          {serviceContextMenu.status === 'trash' && (
+            <button onClick={() => handleRestoreService(serviceContextMenu.linkId)} className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400/80 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all mt-1 whitespace-nowrap">
+              <Undo2 className="w-4 h-4" />Restore Service
             </button>
-            <div className="h-px bg-border/20 my-1 mx-2" />
-
-            <button
-              onClick={() => handleEditServiceLink(serviceContextMenu.linkId)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap"
-            >
-              <Eye className="w-4 h-4 text-blue-500/50" />
-              {t('email.manager.table.view')}
-            </button>
-
-            <button
-              onClick={() => handleViewSecrets(serviceContextMenu.linkId)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap"
-            >
-              <Key className="w-4 h-4 text-primary/50" />
-              {t('email.manager.table.secretsVault')}
-            </button>
-
-            <div className="h-px bg-border/20 my-1 mx-2" />
-            <button
-              className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all whitespace-nowrap"
-              onClick={() => {
-                if (serviceContextMenu.status === 'trash') {
-                  setServiceHardDeleteConfirmId(serviceContextMenu.linkId);
-                } else {
-                  setServiceDeleteConfirmId(serviceContextMenu.linkId);
-                }
-              }}
-            >
-              <Trash2 className="w-4 h-4" />
-              {serviceContextMenu.status === 'trash'
-                ? t('email.manager.table.deletePermanently')
-                : t('email.manager.table.delete')}
-            </button>
-
-            {serviceContextMenu.status === 'trash' && (
-              <button
-                onClick={() => handleRestoreService(serviceContextMenu.linkId)}
-                className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400/80 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all mt-1 whitespace-nowrap"
-              >
-                <Undo2 className="w-4 h-4" />
-                {t('email.manager.table.restoreService')}
-              </button>
-            )}
-          </div>
-        </Portal>
+          )}
+        </div>,
+        document.body,
       )}
 
       <ServiceDrawers
-        isServiceDrawerOpen={isServiceDrawerOpen}
-        setIsServiceDrawerOpen={setIsServiceDrawerOpen}
-        linkServiceSearchQuery={linkServiceSearchQuery}
-        setLinkServiceSearchQuery={setLinkServiceSearchQuery}
-        focusedAccount={focusedAccount}
-        newServiceData={newServiceData}
-        setNewServiceData={setNewServiceData}
-        globalServices={globalServices}
-        handleAddServiceLink={handleAddServiceLink}
-        isQuickCreateModalOpen={isQuickCreateModalOpen}
-        setIsQuickCreateModalOpen={setIsQuickCreateModalOpen}
-        quickCreateData={quickCreateData}
-        setQuickCreateData={setQuickCreateData}
+        isServiceDrawerOpen={isServiceDrawerOpen} setIsServiceDrawerOpen={setIsServiceDrawerOpen}
+        linkServiceSearchQuery={linkServiceSearchQuery} setLinkServiceSearchQuery={setLinkServiceSearchQuery}
+        focusedAccount={focusedAccount} newServiceData={newServiceData} setNewServiceData={setNewServiceData}
+        globalServices={globalServices} handleAddServiceLink={handleAddServiceLink}
+        isQuickCreateModalOpen={isQuickCreateModalOpen} setIsQuickCreateModalOpen={setIsQuickCreateModalOpen}
+        quickCreateData={quickCreateData} setQuickCreateData={setQuickCreateData}
         handleQuickCreateService={handleQuickCreateService}
-        categorySearch={categorySearch}
-        setCategorySearch={setCategorySearch}
-        categoryInputOpen={categoryInputOpen}
-        setCategoryInputOpen={setCategoryInputOpen}
-        isEditMode={isEditServiceMode}
-        onRestoreService={handleRestoreService}
+        categorySearch={categorySearch} setCategorySearch={setCategorySearch}
+        categoryInputOpen={categoryInputOpen} setCategoryInputOpen={setCategoryInputOpen}
+        isEditMode={isEditServiceMode} onRestoreService={handleRestoreService}
       />
 
       <ServiceVaultDrawer
-        isOpen={isSecretsDrawerOpen}
-        onClose={() => setIsSecretsDrawerOpen(false)}
-        linkId={newServiceData.linkId || ''}
-        serviceName={newServiceData.serviceName}
-        serviceUrl={newServiceData.serviceUrl}
-        currentSecrets={currentSecrets}
-        loadingSecrets={loadingSecrets}
-        onAddSecret={handleAddSecret}
-        onUpdateSecret={handleUpdateSecret}
-        onDeleteSecret={handleDeleteSecret}
+        isOpen={isSecretsDrawerOpen} onClose={() => setIsSecretsDrawerOpen(false)}
+        linkId={newServiceData.linkId || ''} serviceName={newServiceData.serviceName}
+        serviceUrl={newServiceData.serviceUrl} currentSecrets={currentSecrets}
+        loadingSecrets={loadingSecrets} onAddSecret={handleAddSecret}
+        onUpdateSecret={handleUpdateSecret} onDeleteSecret={handleDeleteSecret}
       />
 
-      {/* Service Confirmation Modals */}
-      <Portal>
-        {serviceDeleteConfirmId && (
-          <Modal
-            open={!!serviceDeleteConfirmId}
-            onClose={() => setServiceDeleteConfirmId(null)}
-            title={t('email.manager.table.modals.trashTitle')}
-            size="sm"
-            footer={
+      {serviceDeleteConfirmId && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setServiceDeleteConfirmId(null)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+              <h3 className="text-sm font-bold text-foreground">Move to Trash</h3>
+              <button onClick={() => setServiceDeleteConfirmId(null)} className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4"><p className="text-xs text-muted-foreground leading-relaxed">The service link will be moved to trash and can be restored within 30 days.</p></div>
+            <div className="px-6 py-4 border-t border-border/50">
               <div className="flex gap-3">
-                <button
-                  onClick={() => setServiceDeleteConfirmId(null)}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={() => handleUnlinkService(serviceDeleteConfirmId!)}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-red-500 text-white hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
-                >
-                  {t('email.manager.table.modals.trashTitle')}
-                </button>
+                <button onClick={() => setServiceDeleteConfirmId(null)} className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-muted/50 hover:bg-muted transition-colors">Cancel</button>
+                <button onClick={() => handleUnlinkService(serviceDeleteConfirmId)} className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-red-500 text-white hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">Move to Trash</button>
               </div>
-            }
-          >
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {t('email.manager.table.modals.trashDesc')}
-            </p>
-          </Modal>
-        )}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
-        {serviceHardDeleteConfirmId && (
-          <Modal
-            open={!!serviceHardDeleteConfirmId}
-            onClose={() => setServiceHardDeleteConfirmId(null)}
-            title={t('email.manager.table.modals.deleteTitle')}
-            size="sm"
-            footer={
+      {serviceHardDeleteConfirmId && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setServiceHardDeleteConfirmId(null)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+              <h3 className="text-sm font-bold text-foreground">Delete Permanently</h3>
+              <button onClick={() => setServiceHardDeleteConfirmId(null)} className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="px-6 py-4"><p className="text-xs text-muted-foreground leading-relaxed">This action cannot be undone. The service link will be permanently deleted.</p></div>
+            <div className="px-6 py-4 border-t border-border/50">
               <div className="flex gap-3">
-                <button
-                  onClick={() => setServiceHardDeleteConfirmId(null)}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={() => handlePermanentDeleteService(serviceHardDeleteConfirmId!)}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
-                >
-                  {t('email.manager.table.modals.deleteForever')}
-                </button>
+                <button onClick={() => setServiceHardDeleteConfirmId(null)} className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-muted/50 hover:bg-muted transition-colors">Cancel</button>
+                <button onClick={() => handlePermanentDeleteService(serviceHardDeleteConfirmId)} className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20">Delete Forever</button>
               </div>
-            }
-          >
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {t('email.manager.table.modals.deleteDesc')}
-            </p>
-          </Modal>
-        )}
-      </Portal>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       <ProfileLaunchModal
-        isOpen={isLaunchModalOpen}
-        onClose={() => setIsLaunchModalOpen(false)}
-        email={pendingLaunch?.email || ''}
-        accountId={pendingLaunch?.accountId || ''}
+        isOpen={isLaunchModalOpen} onClose={() => setIsLaunchModalOpen(false)}
+        email={pendingLaunch?.email || ''} accountId={pendingLaunch?.accountId || ''}
         onLaunch={handleExecuteLaunch}
       />
     </div>

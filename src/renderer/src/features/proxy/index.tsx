@@ -4,9 +4,6 @@ import { Proxy, ProxyFilterState } from './types';
 import ProxyTable from './components/ProxyTable';
 import ProxyFilter from './components/ProxyFilter';
 import ProxyConfigForm from './components/ProxyConfigForm';
-import { Breadcrumb, BreadcrumbItem } from '../../shared/components/ui/breadcumb';
-import Input from '../../shared/components/ui/input/Input';
-import Toast from '../../shared/components/ui/Toast';
 
 const ProxyManager = () => {
   const [proxies, setProxies] = useState<Proxy[]>([]);
@@ -59,20 +56,42 @@ const ProxyManager = () => {
       proxies.forEach(async (proxy) => {
         if (!proxy.host || proxy.status === 'trash' || proxy.status === 'disabled') return;
 
-        const timeToExpiration = proxy.expirationDate ? proxy.expirationDate - now : Infinity;
+        const expirationTime = proxy.expiredAt ? new Date(proxy.expiredAt).getTime() : Infinity;
+        const timeToExpiration = expirationTime - now;
         const lastCheck = proxy.lastCheckedAt || 0;
         const timeSinceLastCheck = now - lastCheck;
+
+        // Auto-mark as expired if time is up
+        if (timeToExpiration <= 0 && proxy.status !== 'expired') {
+          try {
+            // @ts-ignore
+            await window.electron.ipcRenderer.invoke('proxy:update', {
+              id: proxy.id,
+              data: { status: 'expired' },
+            });
+            setProxies((prev) =>
+              prev.map((p) => (p.id === proxy.id ? { ...p, status: 'expired' } : p)),
+            );
+            return;
+          } catch (e) {
+            console.error('[Proxy] Expiry Update Error:', e);
+          }
+        }
 
         let shouldCheck = false;
 
         // Logic as requested by user
-        if (timeToExpiration > 12 * 60 * 60 * 1000) { // > 12h
+        if (timeToExpiration > 12 * 60 * 60 * 1000) {
+          // > 12h
           if (timeSinceLastCheck > 6 * 60 * 60 * 1000) shouldCheck = true; // > 6h
-        } else if (timeToExpiration > 1 * 60 * 60 * 1000) { // 1h - 12h
+        } else if (timeToExpiration > 1 * 60 * 60 * 1000) {
+          // 1h - 12h
           if (timeSinceLastCheck > 1 * 60 * 60 * 1000) shouldCheck = true; // > 1h
-        } else if (timeToExpiration > 10 * 60 * 1000) { // 10m - 1h
+        } else if (timeToExpiration > 10 * 60 * 1000) {
+          // 10m - 1h
           if (timeSinceLastCheck > 15 * 60 * 1000) shouldCheck = true; // > 15m
-        } else if (timeToExpiration > 0) { // < 10m
+        } else if (timeToExpiration > 0) {
+          // < 10m
           if (timeSinceLastCheck > 1 * 60 * 1000) shouldCheck = true; // > 1m
         }
 
@@ -81,20 +100,22 @@ const ProxyManager = () => {
             // @ts-ignore
             const result = await window.electron.ipcRenderer.invoke('proxy:check', proxy);
             const isHealthy = result?.isHealthy ?? false;
-            
+
             // @ts-ignore
-            await window.electron.ipcRenderer.invoke('proxy:update', { 
-              id: proxy.id, 
-              data: { 
+            await window.electron.ipcRenderer.invoke('proxy:update', {
+              id: proxy.id,
+              data: {
                 lastCheckedAt: now,
-                isHealthy: isHealthy
-              } 
+                isHealthy: isHealthy,
+              },
             });
 
             // Update local state to show results immediately
-            setProxies(prev => prev.map(p => 
-              p.id === proxy.id ? { ...p, lastCheckedAt: now, isHealthy: isHealthy } : p
-            ));
+            setProxies((prev) =>
+              prev.map((p) =>
+                p.id === proxy.id ? { ...p, lastCheckedAt: now, isHealthy: isHealthy } : p,
+              ),
+            );
           } catch (e) {
             console.error('[Proxy] Health Check Error:', e);
           }
@@ -135,26 +156,22 @@ const ProxyManager = () => {
       {/* Dynamic Header */}
       {!isConfiguring && (
         <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 animate-in fade-in slide-in-from-top-2 duration-500">
-          <div className="flex items-center gap-4">
-            <Breadcrumb className="mb-0" size={120}>
-              <BreadcrumbItem
-                icon={LayoutGrid}
-                className="hover:text-foreground text-muted-foreground/50 transition-colors"
-                text={''}
-              />
-              <BreadcrumbItem text="Network Infrastructure" />
-            </Breadcrumb>
+          <div className="flex items-center gap-2 text-xs">
+            <LayoutGrid className="w-4 h-4 text-muted-foreground/50" />
+            <span className="text-muted-foreground/70 font-medium">Network Infrastructure</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="w-80 flex items-center transition-all duration-500">
-              <Input
-                size="sm"
+            <div className="w-80 flex items-center gap-2 px-3 h-9 bg-muted/5 border border-border/10 focus-within:bg-muted/10 focus-within:border-primary/30 transition-all duration-300 rounded-xl translate-y-[1px]">
+              <Search className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+              <input
+                type="text"
                 placeholder="Scan infrastructure (Host, User, ISP)..."
-                leftIcon={Search}
                 value={filters.searchQuery}
-                onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))}
-                className="!h-9 bg-muted/5 border-border/10 focus:bg-muted/10 transition-all duration-300 rounded-xl translate-y-[1px]"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))
+                }
+                className="w-full h-full bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/40"
               />
             </div>
 
@@ -229,13 +246,6 @@ const ProxyManager = () => {
           )}
         </div>
       </div>
-
-      <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
-      />
     </div>
   );
 };

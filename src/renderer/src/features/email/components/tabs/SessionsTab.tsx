@@ -1,5 +1,4 @@
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import ProfileLaunchModal from '../modals/ProfileLaunchModal';
 import {
   Database,
@@ -64,7 +63,6 @@ const getBaseDomain = (domain: string): string => {
 };
 
 const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<RAW_SessionData[]>([]);
   const [search, setSearch] = useState('');
@@ -227,7 +225,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
     return (
       <div className="p-8 flex flex-col items-center justify-center h-full">
         <Database className="w-8 h-8 text-zinc-700 animate-pulse mb-4" />
-        <p className="text-zinc-500 text-sm">{t('email.manager.tabs.sessions.loading')}</p>
+        <p className="text-zinc-500 text-sm">Loading sessions...</p>
       </div>
     );
   }
@@ -240,7 +238,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
           <input
             type="text"
-            placeholder={t('email.manager.tabs.sessions.searchPlaceholder')}
+            placeholder="Search sessions..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -257,19 +255,19 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
           <thead className="sticky top-0 z-10">
             <tr className="bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800 shadow-sm">
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase w-12 text-center">
-                {t('email.manager.tabs.sessions.headers.stt')}
+                #
               </th>
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase w-28 whitespace-nowrap text-center">
-                {t('email.manager.tabs.sessions.headers.status')}
+                Status
               </th>
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase text-left">
-                {t('email.manager.tabs.sessions.headers.website')}
+                Website
               </th>
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase text-center">
-                {t('email.manager.tabs.sessions.headers.cookies')}
+                Cookies
               </th>
               <th className="p-4 text-[10px] font-bold text-zinc-400 uppercase text-center">
-                {t('email.manager.tabs.sessions.headers.expiry')}
+                Expiry
               </th>
             </tr>
           </thead>
@@ -277,7 +275,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
             {paginatedGroups.length === 0 ? (
               <tr>
                 <td colSpan={5} className="p-12 text-center text-zinc-600 italic text-sm">
-                  {t('email.manager.tabs.sessions.empty')}
+                  No sessions found
                 </td>
               </tr>
             ) : (
@@ -305,9 +303,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
                           </span>
                           {group.subdomains.length > 1 && (
                             <span className="text-[10px] text-blue-400/80 font-bold">
-                              {t('email.manager.tabs.sessions.subdomains', {
-                                count: group.subdomains.length - 1,
-                              })}
+                              +{group.subdomains.length - 1} subdomains
                             </span>
                           )}
                         </div>
@@ -393,19 +389,19 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
           </div>
           <MenuAction
             icon={<RefreshCw className="w-3.5 h-3.5" />}
-            label={t('email.manager.tabs.sessions.context.refresh')}
+            label="Refresh"
             onClick={() => handleAction('refresh')}
           />
           <MenuAction
             icon={<Trash2 className="w-3.5 h-3.5" />}
-            label={t('email.manager.tabs.sessions.context.delete')}
+            label="Delete"
             onClick={() => handleAction('delete')}
             danger
           />
           <div className="h-px bg-zinc-800/50 my-1.5" />
           <MenuAction
             icon={<ExternalLink className="w-3.5 h-3.5" />}
-            label={t('email.manager.tabs.sessions.context.launch')}
+            label="Launch"
             onClick={() => handleAction('launch')}
           />
         </div>
@@ -445,7 +441,6 @@ const MenuAction = ({
 );
 
 const StatusBadge = ({ expiry }: { expiry: string }) => {
-  const { t } = useTranslation();
   const isExpired = new Date(expiry).getTime() < new Date().getTime();
   return (
     <span
@@ -455,9 +450,7 @@ const StatusBadge = ({ expiry }: { expiry: string }) => {
           : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
       }`}
     >
-      {isExpired
-        ? t('email.manager.tabs.sessions.status.expired')
-        : t('email.manager.tabs.sessions.status.active')}
+      {isExpired ? 'Expired' : 'Active'}
     </span>
   );
 };

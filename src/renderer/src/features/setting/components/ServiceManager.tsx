@@ -1,23 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { SchemaField } from './SchemaBuilder';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  HeaderCell,
-  TableHeader,
-  TableRow,
-} from '../../../shared/components/ui/table';
-import { Drawer } from '../../../shared/components/ui/drawer';
-import Input from '../../../shared/components/ui/input/Input';
-import Combobox from '../../../shared/components/ui/combobox/Combobox';
 import { Database, Edit2, Check, X, Lock, Trash2, Loader2, Search } from 'lucide-react';
 import { ServiceProviderConfig } from '../../email/types';
-import ServiceMetadataBuilder from '../../../shared/components/ui/service/ServiceMetadataBuilder';
 import { cn } from '@renderer/shared/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { Badge } from '../../../shared/components/ui/badge';
-import Portal from '../../../shared/components/ui/Portal';
 
 export const ServiceManager = () => {
   const [services, setServices] = useState<Record<string, ServiceProviderConfig>>({});
@@ -52,6 +39,9 @@ export const ServiceManager = () => {
   const [serviceSecrets, setServiceSecrets] = useState<any[]>([]);
   const [loadingSecrets, setLoadingSecrets] = useState(false);
 
+  // Metadata editor state (replaces ServiceMetadataBuilder)
+  const [metadataFields, setMetadataFields] = useState<{ key: string; value: string }[]>([]);
+
   useEffect(() => {
     loadServices();
   }, []);
@@ -61,6 +51,7 @@ export const ServiceManager = () => {
       setEditingService({});
       setIsNew(true);
       setIsModalOpen(true);
+      setMetadataFields([]);
     };
 
     window.addEventListener('add-service-click', handleAddService);
@@ -86,7 +77,6 @@ export const ServiceManager = () => {
       }
       setLoadingSecrets(true);
       try {
-        // Fetch all secrets associated with any account linked to this service
         // @ts-ignore
         const secrets = await window.electron.ipcRenderer.invoke(
           'sqlite:all',
@@ -172,18 +162,15 @@ export const ServiceManager = () => {
         );
       }
 
-      // Filter uniques by URL
       const uniqueDetected = Array.from(
         new Map(allDetected.map((item) => [item['url'], item])).values(),
       );
 
-      // Filter out already registered
       const registeredUrls = new Set(Object.values(services).map((s) => s.websiteUrl));
       const pending = uniqueDetected.filter((s) => !registeredUrls.has(s.url));
 
       setAllDetectedServices(pending);
 
-      // Initialize edited values
       const initialValues: Record<string, any> = {};
       pending.forEach((s: any) => {
         initialValues[s.url] = {
@@ -196,7 +183,6 @@ export const ServiceManager = () => {
       });
       setPendingEditedValues(initialValues);
 
-      // Emit event to parent index.tsx
       window.dispatchEvent(
         new CustomEvent('zentri:services-pending-count', {
           detail: { count: pending.length },
@@ -221,7 +207,6 @@ export const ServiceManager = () => {
     return () => window.removeEventListener('detect-services-click', handleDetectClick);
   }, []);
 
-  // Helper function to get favicon URL
   const getFaviconUrl = (url: string) => {
     if (!url) return '';
     try {
@@ -232,7 +217,6 @@ export const ServiceManager = () => {
     }
   };
 
-  // Validation function for individual fields
   const validateField = useCallback(
     (name: string, value: string) => {
       let error = '';
@@ -262,11 +246,9 @@ export const ServiceManager = () => {
     [services, editingService.id],
   );
 
-  // Validation function to check for duplicates (for handleSave)
   const validateService = (name: string, url: string, currentId?: string) => {
     const newErrors: Record<string, string> = {};
 
-    // Check for duplicate name if name is provided
     if (!name || !name.trim()) {
       newErrors.name = 'Service name is required';
     } else {
@@ -278,7 +260,6 @@ export const ServiceManager = () => {
       }
     }
 
-    // Check for duplicate URL if URL is provided
     if (url && url.trim()) {
       const duplicateUrl = Object.values(services).find(
         (s) => s.websiteUrl.toLowerCase().trim() === url.toLowerCase().trim() && s.id !== currentId,
@@ -298,7 +279,6 @@ export const ServiceManager = () => {
       return;
     }
 
-    // Validate for duplicates
     const validateSchema = (fields: SchemaField[]): boolean => {
       if (!fields || fields.length === 0) return true;
       for (const field of fields) {
@@ -330,6 +310,11 @@ export const ServiceManager = () => {
 
     const id = editingService.id || editingService.name.toLowerCase().replace(/\s+/g, '-');
 
+    // Convert metadata fields back to metadata array
+    const metadata = metadataFields
+      .filter((f) => f.key.trim())
+      .map((f) => ({ key: f.key.trim(), value: f.value }));
+
     try {
       // @ts-ignore
       await window.electron.ipcRenderer.invoke(
@@ -343,15 +328,14 @@ export const ServiceManager = () => {
           JSON.stringify(editingService.defaultTags || []),
           JSON.stringify(editingService.defaultCategories || []),
           (editingService as any).description || '',
-          JSON.stringify(editingService.metadata || []),
-          JSON.stringify({}), // Empty config for now as we simplified
+          JSON.stringify(metadata),
+          JSON.stringify({}),
         ],
       );
 
       await loadServices();
       setIsModalOpen(false);
 
-      // Trigger sync status change
       window.dispatchEvent(
         new CustomEvent('zentri:sync-status-changed', { detail: { isDirty: true } }),
       );
@@ -405,7 +389,25 @@ export const ServiceManager = () => {
     setEditingService(service);
     setIsNew(false);
     setIsModalOpen(true);
+    // Convert metadata object to fields array
+    const meta = service.metadata || [];
+    setMetadataFields(
+      Array.isArray(meta)
+        ? meta.map((m: any) => ({
+            key: m.key || m.label || '',
+            value: m.value || '',
+          }))
+        : [],
+    );
   };
+
+  // Derived data for tag/category suggestions
+  const allExistingTags = Array.from(
+    new Set(Object.values(services).flatMap((s) => s.defaultTags || [])),
+  ).sort();
+  const allExistingCategories = Array.from(
+    new Set(Object.values(services).flatMap((s) => s.defaultCategories || [])),
+  ).sort();
 
   return (
     <div className="h-full flex flex-col relative" ref={containerRef}>
@@ -413,47 +415,47 @@ export const ServiceManager = () => {
       {!isSyncView ? (
         <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
           <div className="flex-1 overflow-auto custom-scrollbar">
-            <Table className="border-collapse table-fixed w-full">
-              <TableHeader className="sticky top-0 z-30">
-                <TableRow className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
-                  <HeaderCell className="pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+            <table className="border-collapse table-fixed w-full">
+              <thead className="sticky top-0 z-30">
+                <tr className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
+                  <th className="pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
                     Service
-                  </HeaderCell>
-                  <HeaderCell className="w-[180px] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+                  </th>
+                  <th className="w-[180px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
                     Tags
-                  </HeaderCell>
-                  <HeaderCell className="w-[180px] pr-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
+                  </th>
+                  <th className="w-[180px] pr-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
                     Categories
-                  </HeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell
+                  <tr>
+                    <td
                       colSpan={3}
                       className="text-center py-20 text-muted-foreground/30 font-mono text-xs"
                     >
                       Loading service registry...
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : rows.length === 0 ? (
-                  <TableRow className="hover:bg-transparent border-none">
-                    <TableCell colSpan={3} className="h-64 text-center">
+                  <tr className="hover:bg-transparent border-none">
+                    <td colSpan={3} className="h-64 text-center">
                       <div className="flex flex-col items-center gap-4 opacity-20">
                         <Database className="w-16 h-16" />
                         <span className="text-[12px] font-black uppercase tracking-[0.3em]">
                           No services found. Add one to get started.
                         </span>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : (
                   rows
                     .filter((s) => !focusedServiceId || s.id === focusedServiceId)
                     .map((service) => (
-                      <div key={service.id} className="contents">
-                        <TableRow
+                      <React.Fragment key={service.id}>
+                        <tr
                           className={cn(
                             'group transition-all cursor-pointer border-b border-border/20 h-[56px] hover:bg-table-hoverItemBodyBg/50',
                             focusedServiceId === service.id &&
@@ -462,7 +464,7 @@ export const ServiceManager = () => {
                           onClick={() =>
                             setFocusedServiceId(focusedServiceId === service.id ? null : service.id)
                           }
-                          onContextMenu={(e) => {
+                          onContextMenu={(e: React.MouseEvent) => {
                             e.preventDefault();
                             setContextMenu({
                               x: e.clientX,
@@ -471,7 +473,7 @@ export const ServiceManager = () => {
                             });
                           }}
                         >
-                          <TableCell className="pl-6">
+                          <td className="pl-6">
                             <div className="flex items-center gap-4">
                               {focusedServiceId === service.id && (
                                 <button
@@ -500,50 +502,47 @@ export const ServiceManager = () => {
                                 </span>
                               </div>
                             </div>
-                          </TableCell>
-                          <TableCell>
+                          </td>
+                          <td>
                             <div className="flex gap-1 overflow-hidden">
                               {(service.defaultTags || [])
                                 .filter((t) => t.trim())
                                 .slice(0, 3)
                                 .map((tag, idx) => (
-                                  <Badge
+                                  <span
                                     key={idx}
-                                    variant="outline"
-                                    className="text-[9px] uppercase"
+                                    className="inline-flex items-center px-2 py-0.5 rounded-md border border-border/50 text-[9px] uppercase text-muted-foreground bg-muted/30"
                                   >
                                     {tag}
-                                  </Badge>
+                                  </span>
                                 ))}
                             </div>
-                          </TableCell>
-                          <TableCell className="pr-6">
+                          </td>
+                          <td className="pr-6">
                             {service.defaultCategories?.[0] && (
-                              <Badge
-                                variant="ghost-warning"
-                                className="text-[10px] uppercase font-black"
-                              >
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-amber-500/30 text-[10px] uppercase font-black text-amber-500 bg-amber-500/5">
                                 {service.defaultCategories[0]}
-                              </Badge>
+                              </span>
                             )}
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
 
                         {focusedServiceId === service.id && (
-                          <TableRow className="hover:bg-transparent border-none">
-                            <TableCell colSpan={3} className="p-0">
+                          <tr className="hover:bg-transparent border-none">
+                            <td colSpan={3} className="p-0">
                               <div className="bg-background/20 backdrop-blur-xl border-b border-border/10 animate-in fade-in duration-300">
-                                {/* Minimalism Navbar for Secrets */}
                                 <div className="h-12 px-10 flex items-center justify-between gap-4 border-b border-border/5 bg-white/[0.01]">
                                   <div className="flex-1 max-w-sm">
-                                    <Input
-                                      size="sm"
-                                      placeholder={`Search registry vault for ${service.name}...`}
-                                      value={secretSearch}
-                                      onChange={(e) => setSecretSearch(e.target.value)}
-                                      leftIcon={Search}
-                                      className="!h-8 bg-muted/5 border-border/5 focus:bg-muted/10 rounded-lg text-[11px]"
-                                    />
+                                    <div className="relative flex items-center">
+                                      <Search className="absolute left-3 w-3.5 h-3.5 text-muted-foreground/50" />
+                                      <input
+                                        type="text"
+                                        placeholder={`Search registry vault for ${service.name}...`}
+                                        value={secretSearch}
+                                        onChange={(e) => setSecretSearch(e.target.value)}
+                                        className="w-full h-8 pl-9 pr-3 bg-muted/5 border border-border/5 focus:bg-muted/10 rounded-lg text-[11px] text-foreground placeholder:text-muted-foreground/40 outline-none"
+                                      />
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-3">
                                     <button
@@ -556,33 +555,33 @@ export const ServiceManager = () => {
                                 </div>
 
                                 <div className="bg-transparent overflow-hidden">
-                                  <Table className="w-full border-collapse">
-                                    <TableHeader>
-                                      <TableRow className="bg-muted/5 hover:bg-muted/5 border-b border-border/10 h-10">
-                                        <HeaderCell className="text-[10px] font-black uppercase tracking-widest pl-10">
+                                  <table className="w-full border-collapse">
+                                    <thead>
+                                      <tr className="bg-muted/5 hover:bg-muted/5 border-b border-border/10 h-10">
+                                        <th className="text-[10px] font-black uppercase tracking-widest pl-10 text-left">
                                           Account Identity
-                                        </HeaderCell>
-                                        <HeaderCell className="text-[10px] font-black uppercase tracking-widest">
+                                        </th>
+                                        <th className="text-[10px] font-black uppercase tracking-widest text-left">
                                           Credential Key
-                                        </HeaderCell>
-                                        <HeaderCell className="text-[10px] font-black uppercase tracking-widest">
+                                        </th>
+                                        <th className="text-[10px] font-black uppercase tracking-widest text-left">
                                           Value
-                                        </HeaderCell>
-                                        <HeaderCell className="text-[10px] font-black uppercase tracking-widest pr-10 text-right">
+                                        </th>
+                                        <th className="text-[10px] font-black uppercase tracking-widest pr-10 text-right">
                                           Actions
-                                        </HeaderCell>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
                                       {loadingSecrets ? (
-                                        <TableRow>
-                                          <TableCell
+                                        <tr>
+                                          <td
                                             colSpan={4}
                                             className="text-center py-16 opacity-30"
                                           >
                                             <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-                                          </TableCell>
-                                        </TableRow>
+                                          </td>
+                                        </tr>
                                       ) : serviceSecrets.filter(
                                           (s) =>
                                             s.secret_name
@@ -595,8 +594,8 @@ export const ServiceManager = () => {
                                               .toLowerCase()
                                               .includes(secretSearch.toLowerCase()),
                                         ).length === 0 ? (
-                                        <TableRow>
-                                          <TableCell
+                                        <tr>
+                                          <td
                                             colSpan={4}
                                             className="text-center py-16 opacity-20"
                                           >
@@ -608,8 +607,8 @@ export const ServiceManager = () => {
                                                   : 'No active links'}
                                               </p>
                                             </div>
-                                          </TableCell>
-                                        </TableRow>
+                                          </td>
+                                        </tr>
                                       ) : (
                                         serviceSecrets
                                           .filter(
@@ -625,11 +624,11 @@ export const ServiceManager = () => {
                                                 .includes(secretSearch.toLowerCase()),
                                           )
                                           .map((secret) => (
-                                            <TableRow
+                                            <tr
                                               key={secret.id}
                                               className="group/item border-b border-border/10 last:border-0 hover:bg-white/[0.03] transition-colors h-14"
                                             >
-                                              <TableCell className="pl-10 font-mono text-[11px] py-3">
+                                              <td className="pl-10 font-mono text-[11px] py-3">
                                                 <div className="flex flex-col">
                                                   <span className="text-foreground/90 font-bold leading-none">
                                                     {secret.username}
@@ -638,18 +637,18 @@ export const ServiceManager = () => {
                                                     {secret.accountEmail}
                                                   </span>
                                                 </div>
-                                              </TableCell>
-                                              <TableCell className="font-mono text-[11px] py-3 text-primary/70">
+                                              </td>
+                                              <td className="font-mono text-[11px] py-3 text-primary/70">
                                                 {secret.secret_name}
-                                              </TableCell>
-                                              <TableCell className="font-mono text-[11px] py-3">
+                                              </td>
+                                              <td className="font-mono text-[11px] py-3">
                                                 <div className="flex items-center gap-3">
                                                   <span className="tracking-[0.3em] opacity-20 group-hover/item:opacity-60 transition-opacity">
                                                     ••••••••
                                                   </span>
                                                 </div>
-                                              </TableCell>
-                                              <TableCell className="pr-10 text-right py-3">
+                                              </td>
+                                              <td className="pr-10 text-right py-3">
                                                 <div className="flex items-center justify-end gap-1 opacity-0 group-hover/item:opacity-100 transition-all translate-x-2 group-hover/item:translate-x-0">
                                                   <button
                                                     onClick={(e) => {
@@ -664,22 +663,22 @@ export const ServiceManager = () => {
                                                     <Database className="w-4 h-4" />
                                                   </button>
                                                 </div>
-                                              </TableCell>
-                                            </TableRow>
+                                              </td>
+                                            </tr>
                                           ))
                                       )}
-                                    </TableBody>
-                                  </Table>
+                                    </tbody>
+                                  </table>
                                 </div>
                               </div>
-                            </TableCell>
-                          </TableRow>
+                            </td>
+                          </tr>
                         )}
-                      </div>
+                      </React.Fragment>
                     ))
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
 
           {/* Service Footer */}
@@ -695,9 +694,9 @@ export const ServiceManager = () => {
             </div>
           </div>
 
-          {/* Context Menu Component */}
-          {contextMenu && (
-            <Portal>
+          {/* Context Menu */}
+          {contextMenu &&
+            createPortal(
               <div
                 ref={contextMenuRef}
                 className="fixed bg-popover border border-border/50 rounded-xl shadow-2xl py-1.5 z-[1000] min-w-[160px] animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl"
@@ -750,9 +749,9 @@ export const ServiceManager = () => {
                   <Trash2 className="w-3.5 h-3.5" />
                   Delete Service
                 </button>
-              </div>
-            </Portal>
-          )}
+              </div>,
+              document.body,
+            )}
         </div>
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden bg-background">
@@ -764,7 +763,6 @@ export const ServiceManager = () => {
                     <div className="absolute top-0 -left-8 -right-8 h-px bg-white/10" />
                   )}
                   <div className="flex flex-col gap-6">
-                    {/* Header: Favicon & Numbering */}
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center p-1.5 backdrop-blur-sm">
                         <img
@@ -785,14 +783,14 @@ export const ServiceManager = () => {
                       </div>
                     </div>
 
-                    {/* Form Sections */}
                     <div className="space-y-6">
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2.5">
                           <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
                             Service Name <span className="text-destructive ml-1">*</span>
                           </label>
-                          <Input
+                          <input
+                            type="text"
                             value={pendingEditedValues[service.url]?.name || service.name}
                             onChange={(e) =>
                               setPendingEditedValues((prev) => ({
@@ -801,13 +799,15 @@ export const ServiceManager = () => {
                               }))
                             }
                             placeholder="e.g. OpenAI"
+                            className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
                           />
                         </div>
                         <div className="space-y-2.5">
                           <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
                             Category
                           </label>
-                          <Input
+                          <input
+                            type="text"
                             value={pendingEditedValues[service.url]?.category || ''}
                             onChange={(e) =>
                               setPendingEditedValues((prev) => ({
@@ -816,6 +816,7 @@ export const ServiceManager = () => {
                               }))
                             }
                             placeholder="Development"
+                            className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
                           />
                         </div>
                       </div>
@@ -824,7 +825,8 @@ export const ServiceManager = () => {
                         <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
                           URL <span className="text-destructive ml-1">*</span>
                         </label>
-                        <Input
+                        <input
+                          type="text"
                           value={pendingEditedValues[service.url]?.url || service.url}
                           onChange={(e) =>
                             setPendingEditedValues((prev) => ({
@@ -832,6 +834,7 @@ export const ServiceManager = () => {
                               [service.url]: { ...prev[service.url], url: e.target.value },
                             }))
                           }
+                          className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
                         />
                       </div>
 
@@ -839,7 +842,8 @@ export const ServiceManager = () => {
                         <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
                           Tags
                         </label>
-                        <Input
+                        <input
+                          type="text"
                           value={pendingEditedValues[service.url]?.tags || ''}
                           onChange={(e) =>
                             setPendingEditedValues((prev) => ({
@@ -848,6 +852,7 @@ export const ServiceManager = () => {
                             }))
                           }
                           placeholder="AI, Dev, Private (comma separated)"
+                          className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
                         />
                       </div>
 
@@ -874,7 +879,6 @@ export const ServiceManager = () => {
             </div>
           </div>
 
-          {/* Sticky Footer for Sync View */}
           <div className="h-16 bg-background/80 backdrop-blur-3xl border-t border-border/50 flex items-center justify-between px-8 shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -900,278 +904,415 @@ export const ServiceManager = () => {
         </div>
       )}
 
-      <Drawer
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={isNew ? 'Initialize New Service' : 'Edit Service Configuration'}
-        subtitle={
-          isNew
-            ? 'Configure a new cloud deployment provider for Zentri'
-            : `Review and update settings for ${editingService.name}`
-        }
-        direction="right"
-        width={500}
-        footerActions={
-          <div className="flex gap-4 w-full">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="flex-1 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-button-secondBg hover:bg-button-secondBgHover transition-colors border border-white/5"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!editingService.name}
-              className={cn(
-                'flex-1 px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg',
-                !editingService.name
-                  ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
-                  : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
-              )}
-            >
-              Save
-            </button>
-          </div>
-        }
-      >
-        <div className="p-4 space-y-4">
-          {/* Service Identity */}
-          <div className="space-y-4">
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Name
-                <span className="text-destructive ml-1">*</span>
-              </label>
-              <Input
-                type="text"
-                value={editingService.name || ''}
-                onChange={(e) => {
-                  setEditingService((prev) => ({ ...prev, name: e.target.value }));
-                  if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
-                }}
-                onBlur={() => validateField('name', editingService.name || '')}
-                placeholder="e.g. Google Cloud"
-                error={errors.name}
-              />
+      {/* Edit Service Drawer - Native */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[90] flex justify-end">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setIsModalOpen(false)}
+          />
+          <div className="relative w-[500px] h-full bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 shrink-0">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  {isNew ? 'Initialize New Service' : 'Edit Service Configuration'}
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {isNew
+                    ? 'Configure a new cloud deployment provider for Zentri'
+                    : `Review and update settings for ${editingService.name}`}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* URL */}
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                URL
-              </label>
-              <Input
-                type="text"
-                value={editingService.websiteUrl || ''}
-                onChange={(e) => {
-                  setEditingService((prev) => ({ ...prev, websiteUrl: e.target.value }));
-                  if (errors.websiteUrl) setErrors((prev) => ({ ...prev, websiteUrl: '' }));
-                }}
-                onBlur={() => validateField('websiteUrl', editingService.websiteUrl || '')}
-                placeholder="https://console.cloud.google.com"
-                error={errors.websiteUrl}
-              />
-            </div>
-          </div>
+            {/* Drawer Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+              {/* Service Identity */}
+              <div className="space-y-4">
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Name
+                    <span className="text-destructive ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editingService.name || ''}
+                    onChange={(e) => {
+                      setEditingService((prev) => ({ ...prev, name: e.target.value }));
+                      if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+                    }}
+                    onBlur={() => validateField('name', editingService.name || '')}
+                    placeholder="e.g. Google Cloud"
+                    className={cn(
+                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                      errors.name ? 'border-destructive' : 'border-border',
+                    )}
+                  />
+                  {errors.name && (
+                    <p className="mt-1 text-[11px] font-bold text-destructive">{errors.name}</p>
+                  )}
+                </div>
 
-          {/* Classification */}
-          <div className="space-y-4">
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Category
-              </label>
-              <Input
-                type="combobox"
-                placeholder="Select or create category..."
-                value={categorySearch || editingService.defaultCategories?.[0] || ''}
-                onChange={(e) => setCategorySearch(e.target.value)}
-                multiValue={false}
-                badges={[]} // Don't show badges for single-select category
-                rightIcon={
-                  editingService.defaultCategories?.[0] ? (
-                    <X
-                      className="w-3 h-3 cursor-pointer hover:text-red-500 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingService((prev) => ({ ...prev, defaultCategories: [] }));
-                      }}
-                    />
-                  ) : undefined
-                }
-                popoverOpen={categoryInputOpen}
-                onPopoverOpenChange={setCategoryInputOpen}
-                popoverContent={(() => {
-                  const allCategories = Array.from(
-                    new Set(Object.values(services).flatMap((s) => s.defaultCategories || [])),
-                  ).sort();
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editingService.websiteUrl || ''}
+                    onChange={(e) => {
+                      setEditingService((prev) => ({ ...prev, websiteUrl: e.target.value }));
+                      if (errors.websiteUrl) setErrors((prev) => ({ ...prev, websiteUrl: '' }));
+                    }}
+                    onBlur={() => validateField('websiteUrl', editingService.websiteUrl || '')}
+                    placeholder="https://console.cloud.google.com"
+                    className={cn(
+                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                      errors.websiteUrl ? 'border-destructive' : 'border-border',
+                    )}
+                  />
+                  {errors.websiteUrl && (
+                    <p className="mt-1 text-[11px] font-bold text-destructive">
+                      {errors.websiteUrl}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-                  return (
-                    <div className="flex flex-col max-h-[200px] overflow-y-auto">
-                      {allCategories
-                        .filter((c) => c.toLowerCase().includes(categorySearch.toLowerCase()))
-                        .map((category) => (
-                          <button
-                            key={category}
-                            onClick={() => {
-                              setEditingService((prev) => ({
-                                ...prev,
-                                defaultCategories: [category],
-                              }));
-                              setCategorySearch(''); // Clear search so input shows the selected value
-                              setCategoryInputOpen(false);
-                            }}
-                            className="flex items-center justify-between px-4 py-2.5 text-xs hover:bg-muted text-left transition-colors"
-                          >
-                            <span>{category}</span>
-                            {(editingService.defaultCategories || []).includes(category) && (
-                              <Check className="w-3 h-3 text-primary" />
-                            )}
-                          </button>
-                        ))}
-                      {categorySearch && !allCategories.includes(categorySearch) && (
+              {/* Category - Native Combobox */}
+              <div className="space-y-4">
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Category
+                  </label>
+                  <div className="relative">
+                    <div className="flex items-center">
+                      <input
+                        type="text"
+                        placeholder="Select or create category..."
+                        value={
+                          categorySearch ||
+                          editingService.defaultCategories?.[0] ||
+                          ''
+                        }
+                        onChange={(e) => {
+                          setCategorySearch(e.target.value);
+                          setCategoryInputOpen(true);
+                        }}
+                        onFocus={() => setCategoryInputOpen(true)}
+                        onBlur={() => setTimeout(() => setCategoryInputOpen(false), 200)}
+                        className="w-full h-10 px-3 pr-8 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
+                      />
+                      {editingService.defaultCategories?.[0] && (
                         <button
                           onClick={() => {
-                            setEditingService((prev) => ({
-                              ...prev,
-                              defaultCategories: [categorySearch],
-                            }));
-                            setCategorySearch(''); // Clear search so input shows the new value
-                            setCategoryInputOpen(false);
+                            setEditingService((prev) => ({ ...prev, defaultCategories: [] }));
                           }}
-                          className="flex items-center gap-2 px-4 py-2.5 text-xs text-primary hover:bg-muted text-left transition-colors border-t border-border/50"
+                          className="absolute right-3 p-0.5 text-muted-foreground hover:text-red-500 transition-colors"
                         >
-                          <Edit2 className="w-3 h-3" />
-                          <span>Create "{categorySearch}"</span>
+                          <X className="w-3 h-3" />
                         </button>
                       )}
                     </div>
-                  );
-                })()}
-                onBlur={() =>
-                  validateField('category', editingService.defaultCategories?.[0] || '')
-                }
-              />
-            </div>
-          </div>
+                    {categoryInputOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 max-h-[200px] overflow-y-auto">
+                        {allExistingCategories
+                          .filter((c) =>
+                            c.toLowerCase().includes(categorySearch.toLowerCase()),
+                          )
+                          .map((category) => (
+                            <button
+                              key={category}
+                              onMouseDown={() => {
+                                setEditingService((prev) => ({
+                                  ...prev,
+                                  defaultCategories: [category],
+                                }));
+                                setCategorySearch('');
+                                setCategoryInputOpen(false);
+                              }}
+                              className="flex items-center justify-between w-full px-4 py-2.5 text-xs hover:bg-muted text-left transition-colors"
+                            >
+                              <span>{category}</span>
+                              {(editingService.defaultCategories || []).includes(category) && (
+                                <Check className="w-3 h-3 text-primary" />
+                              )}
+                            </button>
+                          ))}
+                        {categorySearch &&
+                          !allExistingCategories.includes(categorySearch) && (
+                            <button
+                              onMouseDown={() => {
+                                setEditingService((prev) => ({
+                                  ...prev,
+                                  defaultCategories: [categorySearch],
+                                }));
+                                setCategorySearch('');
+                                setCategoryInputOpen(false);
+                              }}
+                              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs text-primary hover:bg-muted text-left transition-colors border-t border-border/50"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Create "{categorySearch}"</span>
+                            </button>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Tags
-              </label>
-              <Input
-                type="combobox"
-                placeholder="Add tags..."
-                value={tagSearch}
-                onChange={(e) => setTagSearch(e.target.value)}
-                multiValue={true}
-                badgeColorMode="diverse"
-                badgeVariant="neon"
-                badges={(editingService.defaultTags || []).map((t) => ({
-                  id: t,
-                  label: t,
-                }))}
-                onBadgeRemove={(id: string | number) => {
-                  const newTags = (editingService.defaultTags || []).filter((t) => t !== id);
-                  setEditingService((prev) => ({ ...prev, defaultTags: newTags }));
-                }}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === 'Enter' && tagSearch.trim()) {
-                    const currentTags = editingService.defaultTags || [];
-                    const newVal = tagSearch.trim();
-                    if (!currentTags.includes(newVal)) {
-                      setEditingService((prev) => ({
-                        ...prev,
-                        defaultTags: [...currentTags, newVal],
-                      }));
+              {/* Tags - Native Tag Input */}
+              <div className="space-y-4">
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Tags
+                  </label>
+                  <div className="relative">
+                    <div className="bg-input-background border border-border rounded-xl">
+                      {(editingService.defaultTags || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 p-2 pb-0">
+                          {(editingService.defaultTags || []).map((tag, idx) => {
+                            const colors = [
+                              'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                              'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                              'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                              'bg-pink-500/20 text-pink-400 border-pink-500/30',
+                              'bg-purple-500/20 text-purple-400 border-purple-500/30',
+                              'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+                            ];
+                            const colorClass = colors[idx % colors.length];
+                            return (
+                              <span
+                                key={tag}
+                                className={cn(
+                                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border',
+                                  colorClass,
+                                )}
+                              >
+                                {tag}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newTags = (editingService.defaultTags || []).filter(
+                                      (t) => t !== tag,
+                                    );
+                                    setEditingService((prev) => ({
+                                      ...prev,
+                                      defaultTags: newTags,
+                                    }));
+                                  }}
+                                  className="hover:opacity-70 transition-opacity"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Add tags..."
+                        value={tagSearch}
+                        onChange={(e) => {
+                          setTagSearch(e.target.value);
+                          setTagInputOpen(true);
+                        }}
+                        onFocus={() => setTagInputOpen(true)}
+                        onBlur={() => setTimeout(() => setTagInputOpen(false), 200)}
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                          if (e.key === 'Enter' && tagSearch.trim()) {
+                            const currentTags = editingService.defaultTags || [];
+                            const newVal = tagSearch.trim();
+                            if (!currentTags.includes(newVal)) {
+                              setEditingService((prev) => ({
+                                ...prev,
+                                defaultTags: [...currentTags, newVal],
+                              }));
+                            }
+                            setTagSearch('');
+                            setTagInputOpen(false);
+                          }
+                        }}
+                        className="w-full h-10 px-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none rounded-xl"
+                      />
+                    </div>
+                    {tagInputOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 max-h-[200px] overflow-y-auto">
+                        {allExistingTags
+                          .filter(
+                            (t) =>
+                              !(editingService.defaultTags || []).includes(t) &&
+                              t.toLowerCase().includes(tagSearch.toLowerCase()),
+                          )
+                          .map((tag) => (
+                            <button
+                              key={tag}
+                              onMouseDown={() => {
+                                const currentTags = editingService.defaultTags || [];
+                                if (!currentTags.includes(tag)) {
+                                  setEditingService((prev) => ({
+                                    ...prev,
+                                    defaultTags: [...currentTags, tag],
+                                  }));
+                                }
+                                setTagSearch('');
+                                setTagInputOpen(false);
+                              }}
+                              className="w-full px-4 py-2.5 text-xs hover:bg-muted text-left transition-colors"
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        {tagSearch &&
+                          !allExistingTags.includes(tagSearch) &&
+                          !(editingService.defaultTags || []).includes(tagSearch) && (
+                            <button
+                              onMouseDown={() => {
+                                const currentTags = editingService.defaultTags || [];
+                                if (!currentTags.includes(tagSearch)) {
+                                  setEditingService((prev) => ({
+                                    ...prev,
+                                    defaultTags: [...currentTags, tagSearch],
+                                  }));
+                                }
+                                setTagSearch('');
+                                setTagInputOpen(false);
+                              }}
+                              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs text-primary hover:bg-muted text-left transition-colors border-t border-border/50"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Create "{tagSearch}"</span>
+                            </button>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                  {errors.tags && (
+                    <p className="mt-1 text-[11px] font-bold text-destructive">{errors.tags}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Description
+                  </label>
+                  <textarea
+                    value={(editingService as any).description || ''}
+                    onChange={(e) => {
+                      setEditingService((prev) => ({ ...prev, description: e.target.value }));
+                      if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
+                    }}
+                    onBlur={() =>
+                      validateField('description', (editingService as any).description || '')
                     }
-                    setTagSearch('');
-                    setTagInputOpen(false);
-                  }
-                }}
-                popoverOpen={tagInputOpen}
-                onPopoverOpenChange={setTagInputOpen}
-                popoverContent={(() => {
-                  const currentTags = editingService.defaultTags || [];
-                  const existingTags = Array.from(
-                    new Set(Object.values(services).flatMap((s) => s.defaultTags || [])),
-                  ).sort();
+                    placeholder="Detailed description of the service and its purpose..."
+                    className={cn(
+                      'w-full bg-input-background border rounded-xl px-4 py-3 text-sm focus:outline-none min-h-[120px] resize-none transition-all',
+                      errors.description
+                        ? 'border-destructive'
+                        : 'border-border focus:border-primary/50',
+                    )}
+                  />
+                  {errors.description && (
+                    <p className="mt-1.5 text-[11px] font-bold text-destructive ml-1">
+                      {errors.description}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-                  return (
-                    <Combobox
-                      searchQuery={tagSearch}
-                      options={existingTags
-                        .map((t: string) => ({ value: t, label: t }))
-                        .filter((o) => !currentTags.includes(o.value))}
-                      creatable={true}
-                      onCreate={(val: string) => {
-                        if (!currentTags.includes(val)) {
-                          setEditingService((prev) => ({
-                            ...prev,
-                            defaultTags: [...currentTags, val],
-                          }));
-                        }
-                        setTagSearch('');
-                        setTagInputOpen(false);
-                      }}
-                      onChange={(val: string) => {
-                        if (!currentTags.includes(val)) {
-                          setEditingService((prev) => ({
-                            ...prev,
-                            defaultTags: [...currentTags, val],
-                          }));
-                        }
-                        setTagSearch('');
-                        setTagInputOpen(false);
-                      }}
-                    />
-                  );
-                })()}
-                onBlur={() => validateField('tags', (editingService.defaultTags || []).join(','))}
-                error={errors.tags}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Description
-              </label>
-              <textarea
-                value={(editingService as any).description || ''}
-                onChange={(e) => {
-                  setEditingService((prev) => ({ ...prev, description: e.target.value }));
-                  if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
-                }}
-                onBlur={() =>
-                  validateField('description', (editingService as any).description || '')
-                }
-                placeholder="Detailed description of the service and its purpose..."
-                className={cn(
-                  'w-full bg-input-background border rounded-xi px-4 py-3 text-sm focus:outline-none min-h-[120px] resize-none transition-all',
-                  errors.description
-                    ? 'border-destructive'
-                    : 'border-border focus:border-primary/50',
+              {/* Metadata Key-Value Editor (replaces ServiceMetadataBuilder) */}
+              <div className="pt-2 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Metadata Fields
+                  </label>
+                  <button
+                    onClick={() =>
+                      setMetadataFields((prev) => [...prev, { key: '', value: '' }])
+                    }
+                    className="p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-all text-[10px] font-black uppercase"
+                  >
+                    + Add
+                  </button>
+                </div>
+                {metadataFields.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground/40 italic">
+                    No metadata fields defined. Add key-value pairs for additional service configuration.
+                  </p>
                 )}
-              />
-              {errors.description && (
-                <p className="mt-1.5 text-[11px] font-bold text-destructive ml-1">
-                  {errors.description}
-                </p>
-              )}
+                {metadataFields.map((field, idx) => (
+                  <div key={idx} className="flex gap-2 items-start">
+                    <input
+                      type="text"
+                      placeholder="Key"
+                      value={field.key}
+                      onChange={(e) => {
+                        const updated = [...metadataFields];
+                        updated[idx] = { ...updated[idx], key: e.target.value };
+                        setMetadataFields(updated);
+                      }}
+                      className="flex-1 h-9 px-3 rounded-lg bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Value"
+                      value={field.value}
+                      onChange={(e) => {
+                        const updated = [...metadataFields];
+                        updated[idx] = { ...updated[idx], value: e.target.value };
+                        setMetadataFields(updated);
+                      }}
+                      className="flex-1 h-9 px-3 rounded-lg bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                    />
+                    <button
+                      onClick={() =>
+                        setMetadataFields((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      className="p-1.5 text-muted-foreground/30 hover:text-destructive transition-colors shrink-0 mt-0.5"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="pt-2">
-            <ServiceMetadataBuilder
-              definitionOnly={true}
-              metadata={editingService.metadata || []}
-              onChange={(metadata) => setEditingService((prev) => ({ ...prev, metadata }))}
-            />
+            {/* Drawer Footer */}
+            <div className="flex gap-4 w-full p-4 border-t border-border bg-card/50 shrink-0">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-button-secondBg hover:bg-button-secondBgHover transition-colors border border-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!editingService.name}
+                className={cn(
+                  'flex-1 px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg',
+                  !editingService.name
+                    ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
+                    : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
+                )}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
-      </Drawer>
+      )}
     </div>
   );
 };

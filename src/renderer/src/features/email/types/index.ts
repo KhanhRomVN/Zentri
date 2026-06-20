@@ -1,7 +1,10 @@
 import { Email, Service, ActivityItem, Cookie } from '../../../../../shared/types';
-import { MetadataItem } from '../../../shared/components/ui/service/ServiceMetadataBuilder';
-
-export type { MetadataItem };
+export interface MetadataItem {
+  key: string;
+  value: string;
+  type?: string;
+  label?: string;
+}
 
 export type { Service, ActivityItem, Cookie };
 

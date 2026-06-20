@@ -1,16 +1,7 @@
 import { Search, Plus, ShieldCheck, Lock, LayoutGrid } from 'lucide-react';
-import React, { useRef, FC } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useRef, FC } from 'react';
 import { cn } from '../../../../shared/lib/utils';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  HeaderCell,
-  TableCell,
-} from '../../../../shared/components/ui/table';
-import Input from '../../../../shared/components/ui/input/Input';
+
 
 interface ServicesTabProps {
   serviceSearch: string;
@@ -29,7 +20,6 @@ const ServicesTab: FC<ServicesTabProps> = ({
   onEditServiceLink,
   onServiceContextMenu,
 }) => {
-  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Derived filtered services
@@ -45,19 +35,21 @@ const ServicesTab: FC<ServicesTabProps> = ({
       {/* Services Sub-Navbar */}
       <div className="h-14 border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-10 flex items-center justify-between px-8 gap-4 shrink-0">
         <div className="w-80 flex items-center transition-all duration-500">
-          <Input
-            size="sm"
-            placeholder={t('email.manager.tabs.services.searchPlaceholder')}
-            value={serviceSearch}
-            onChange={(e) => setServiceSearch(e.target.value)}
-            leftIcon={Search}
-            className="!h-9 bg-muted/5 border-border/10 focus:bg-muted/10 transition-all duration-300 rounded-xl translate-y-[1px]"
-          />
+          <div className="relative flex items-center w-full">
+            <Search className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
+            <input
+              type="text"
+              placeholder="Search services..."
+              value={serviceSearch}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setServiceSearch(e.target.value)}
+              className="w-full !h-9 pl-10 pr-3 bg-muted/5 border border-border/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:bg-muted/10 transition-all duration-300 translate-y-[1px]"
+            />
+          </div>
         </div>
         <button
           onClick={onAddNewServiceLink}
           className="w-9 h-9 flex items-center justify-center bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all active:scale-90 border border-primary/20 group"
-          title={t('email.manager.tabs.services.linkNewTooltip')}
+          title="Link New Service"
         >
           <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
         </button>
@@ -65,68 +57,56 @@ const ServicesTab: FC<ServicesTabProps> = ({
 
       <div className="flex-1 overflow-hidden flex flex-col relative min-h-0 bg-card/5 backdrop-blur-sm">
         <div className="flex-1 overflow-auto custom-scrollbar">
-          <Table className="border-collapse table-fixed w-full">
-            <TableHeader className="sticky top-0 z-30">
-              <TableRow className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
-                <HeaderCell className="w-[60px] pl-8 text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-                  {t('email.manager.tabs.services.headers.stt')}
-                </HeaderCell>
-                <HeaderCell className="w-[25%] text-[10px] uppercase tracking-[0.2em] font-bold h-10">
-                  {t('email.manager.tabs.services.headers.service')}
-                </HeaderCell>
-                <HeaderCell
-                  align="center"
-                  className="w-[22%] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
-                >
-                  {t('email.manager.tabs.services.headers.account')}
-                </HeaderCell>
-                <HeaderCell
-                  align="center"
-                  className="w-[18%] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
-                >
-                  {t('email.manager.tabs.services.headers.lastUsed')}
-                </HeaderCell>
-                <HeaderCell
-                  align="center"
-                  className="w-[110px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
-                >
-                  {t('email.manager.tabs.services.headers.status')}
-                </HeaderCell>
-                <HeaderCell
-                  align="center"
-                  className="w-[90px] text-[10px] uppercase tracking-[0.2em] font-bold h-10"
-                >
-                  {t('email.manager.tabs.services.headers.secrets')}
-                </HeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <table className="border-collapse table-fixed w-full">
+            <thead className="sticky top-0 z-30">
+              <tr className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
+                <th className="w-[60px] pl-8 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                  #
+                </th>
+                <th className="w-[25%] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                  Service
+                </th>
+                <th className="w-[22%] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-center text-muted-foreground">
+                  Account
+                </th>
+                <th className="w-[18%] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-center text-muted-foreground">
+                  Last Used
+                </th>
+                <th className="w-[110px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-center text-muted-foreground">
+                  Status
+                </th>
+                <th className="w-[90px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-center text-muted-foreground">
+                  Secrets
+                </th>
+              </tr>
+            </thead>
+            <tbody>
               {filteredServices.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={6} className="h-40">
+                <tr className="hover:bg-transparent">
+                  <td colSpan={6} className="h-40">
                     <div className="flex flex-col items-center justify-center gap-3 opacity-20">
                       <LayoutGrid className="w-8 h-8" />
                       <p className="text-[11px] font-black uppercase tracking-widest">
-                        {t('email.manager.tabs.services.emptyTitle')}
+                        No services linked
                       </p>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : (
                 filteredServices.map((service: any, index: number) => (
-                  <TableRow
+                  <tr
                     key={service.id}
                     className={cn(
                       'group border-b border-border/10 hover:bg-white/[0.02] h-12 transition-all duration-300 cursor-pointer',
                       service.status === 'trash' && 'opacity-60 grayscale-[0.5] italic',
                     )}
                     onClick={() => onEditServiceLink(service.id)}
-                    onContextMenu={(e) => onServiceContextMenu(e, service.id)}
+                    onContextMenu={(e: React.MouseEvent) => onServiceContextMenu(e, service.id)}
                   >
-                    <TableCell className="pl-8 py-2 text-muted-foreground font-mono text-[10px]">
+                    <td className="pl-8 py-2 text-muted-foreground font-mono text-[10px]">
                       {String(index + 1).padStart(2, '0')}
-                    </TableCell>
-                    <TableCell className="py-2">
+                    </td>
+                    <td className="py-2">
                       <div className="flex items-center gap-3 group/val">
                         <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center p-1 border border-white/5 shadow-sm transition-transform group-hover/val:scale-110">
                           <img
@@ -145,8 +125,8 @@ const ServicesTab: FC<ServicesTabProps> = ({
                           </span>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell align="center" className="py-2">
+                    </td>
+                    <td className="py-2 text-center">
                       <div className="flex flex-col items-center gap-0.5 group/creds">
                         <span
                           className={cn(
@@ -173,8 +153,8 @@ const ServicesTab: FC<ServicesTabProps> = ({
                           </div>
                         ) : null}
                       </div>
-                    </TableCell>
-                    <TableCell align="center" className="py-2">
+                    </td>
+                    <td className="py-2 text-center">
                       <div className="flex flex-col items-center gap-0.5">
                         <span className="text-[11px] font-medium text-foreground/60 leading-none">
                           {service.lastUsedAt
@@ -190,8 +170,8 @@ const ServicesTab: FC<ServicesTabProps> = ({
                           </span>
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell align="center" className="py-2">
+                    </td>
+                    <td className="py-2 text-center">
                       <div className="flex justify-center">
                         <div
                           className={cn(
@@ -206,20 +186,20 @@ const ServicesTab: FC<ServicesTabProps> = ({
                           {service.status || 'Unknown'}
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell align="center" className="py-2 font-bold">
+                    </td>
+                    <td className="py-2 font-bold text-center">
                       <div className="flex items-center justify-center gap-2 text-[11px] font-mono">
                         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-bold transition-all shadow-sm">
                           <ShieldCheck className="w-3 h-3" />
                           {service.secretCount || 0}
                         </div>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ))
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

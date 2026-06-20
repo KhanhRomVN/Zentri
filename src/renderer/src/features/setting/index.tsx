@@ -5,7 +5,6 @@ import { ServiceManager } from './components/ServiceManager';
 import { FingerprintSettings } from './components/FingerprintSettings';
 import { FingerprintPresets, INITIAL_CONFIG } from './components/FingerprintPresets';
 import { cn } from '../../shared/lib/utils';
-import { Breadcrumb, BreadcrumbItem } from '../../shared/components/ui/breadcumb';
 
 type Tab = 'general' | 'services' | 'fingerprint';
 
@@ -59,10 +58,13 @@ const SettingPage = () => {
       <header className="h-14 px-4 border-b border-border/50 flex items-center justify-between shrink-0 bg-card/50 backdrop-blur-xl z-20">
         <div className="flex items-center gap-4">
           <LayoutGrid className="w-5 h-5 text-muted-foreground/50" />
-          <Breadcrumb className="mb-0.5">
-            <BreadcrumbItem text="Setting" />
-            <BreadcrumbItem text={tabs.find((t) => t.id === activeTab)?.label || ''} />
-          </Breadcrumb>
+          <div className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
+            <span className="text-muted-foreground/70">Setting</span>
+            <span className="text-muted-foreground/40 select-none">/</span>
+            <span className="text-foreground/80">
+              {tabs.find((t) => t.id === activeTab)?.label || ''}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {activeTab === 'services' && (
@@ -160,7 +162,7 @@ const SettingPage = () => {
               {activeTab === 'fingerprint' && (
                 <div className="flex h-full overflow-hidden relative">
                   <FingerprintPresets
-                    currentId={activePresetId}
+                    currentId={activePresetId ?? undefined}
                     onSelect={(config, id) => {
                       setFpConfig(config);
                       setInitialConfig(config);

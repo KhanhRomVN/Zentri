@@ -4,7 +4,6 @@ import SearchSidebar from './components/SearchSidebar';
 import SearchTopNavbar from './components/SearchTopNavbar';
 import SearchContentView from './components/SearchContentView';
 import { SmartView } from './types/search';
-import { Drawer } from '../../shared/components/ui/drawer';
 import SmartViewBuilder from './components/SmartViewBuilder';
 
 const DEFAULT_VIEWS: SmartView[] = [

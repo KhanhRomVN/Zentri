@@ -1,12 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './i18n';
 import './styles/main.css';
 import 'react-modern-drawer/dist/index.css';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { FontProvider } from './fonts';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,7 +24,9 @@ const persister = createSyncStoragePersister({
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
-      <App />
+      <FontProvider defaultFontId="google-sans">
+        <App />
+      </FontProvider>
     </PersistQueryClientProvider>
   </React.StrictMode>,
 );

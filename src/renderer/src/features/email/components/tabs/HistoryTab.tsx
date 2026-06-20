@@ -1,5 +1,4 @@
 import { FC, useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { History, Clock, Activity, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -166,7 +165,6 @@ const HistoryCalendar: FC<{
 };
 
 const HistoryActivityChart: FC<{ intervals: ActivityInterval[] }> = ({ intervals }) => {
-  const { t } = useTranslation();
   const chartData = useMemo(() => {
     if (!intervals || intervals.length === 0) {
       return Array.from({ length: 25 }, (_, i) => ({
@@ -187,7 +185,7 @@ const HistoryActivityChart: FC<{ intervals: ActivityInterval[] }> = ({ intervals
     <div className="space-y-4">
       <div className="flex items-center px-1">
         <h3 className="text-[14px] font-black uppercase tracking-[0.1em] text-foreground/70">
-          {t('email.history.activityChart')}
+          Activity Chart
         </h3>
       </div>
       <div className="p-6 pb-2 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl overflow-hidden">
@@ -255,7 +253,6 @@ const HistoryActivityChart: FC<{ intervals: ActivityInterval[] }> = ({ intervals
 };
 
 const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -335,7 +332,7 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
         <div className="px-5 space-y-3">
           <div className="flex items-center px-1">
             <h3 className="text-[12px] font-black uppercase tracking-[0.1em] text-foreground/70">
-              {t('email.history.topWebsites')}
+              Top Websites
             </h3>
           </div>
           <div className="flex flex-col gap-2">
@@ -413,7 +410,7 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
               </div>
               <div className="space-y-2">
                 <h3 className="text-base font-black tracking-tight text-foreground/90">
-                  {t('email.history.errorTitle')}
+                  Error Loading History
                 </h3>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
                   {error}
@@ -436,10 +433,10 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
               </div>
               <div className="space-y-3">
                 <h3 className="text-lg font-black tracking-tight text-foreground/80">
-                  {t('email.history.emptyTitle')}
+                  No History Found
                 </h3>
                 <p className="text-xs text-muted-foreground max-w-[280px] leading-relaxed mx-auto font-medium opacity-60">
-                  {t('email.history.emptyDesc')}
+                  No browsing activity recorded for this date.
                 </p>
               </div>
             </div>
@@ -450,7 +447,7 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
               <div className="space-y-4">
                 <div className="flex items-center">
                   <h3 className="text-[13px] font-black uppercase tracking-[0.1em] text-foreground/70">
-                    {t('email.history.detailedLog')}
+                    Detailed Log
                   </h3>
                 </div>
                 <div className="space-y-1">

@@ -1,10 +1,19 @@
 import { useState, useEffect } from 'react';
 import { FolderOpen, FilePlus, X } from 'lucide-react';
-import LanguageSwitcher from '../../../shared/components/ui/LanguageSwitcher';
-import { useTranslation } from 'react-i18next';
+
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'vi', label: 'Tiếng Việt' },
+];
 
 export const GeneralSettings = () => {
-  const { t } = useTranslation();
+  const [language, setLanguage] = useState<'en' | 'vi'>(() => {
+    try {
+      const saved = localStorage.getItem('systema-language');
+      if (saved === 'en' || saved === 'vi') return saved;
+    } catch { /* ignore */ }
+    return 'en';
+  });
   const [folderPath, setFolderPath] = useState('');
   const [browserPath, setBrowserPath] = useState('');
   const [isSaved, setIsSaved] = useState(false);
@@ -71,11 +80,11 @@ export const GeneralSettings = () => {
       <div className="space-y-6">
         <div className="space-y-3">
           <label className="text-[14px] font-bold uppercase tracking-wider text-muted-foreground/70">
-            {t('settings.storageFolder')}
+            Storage Folder
           </label>
           <div className="flex gap-2">
             <div className="flex-1 h-11 rounded-xl border border-border bg-input-background px-4 text-sm flex items-center text-muted-foreground overflow-hidden font-mono truncate">
-              {folderPath || t('settings.noFolderSelected')}
+              {folderPath || 'No folder selected'}
             </div>
             <button
               onClick={handleSelectFolder}
@@ -89,30 +98,44 @@ export const GeneralSettings = () => {
 
         <div className="space-y-3">
           <label className="text-[12px] font-bold uppercase tracking-widest text-muted-foreground/50">
-            {t('settings.appLanguage')}
+            App Language
           </label>
-          <LanguageSwitcher variant="field" />
+          <select
+            value={language}
+            onChange={(e) => {
+              const lang = e.target.value as 'en' | 'vi';
+              setLanguage(lang);
+              try { localStorage.setItem('systema-language', lang); } catch { /* ignore */ }
+            }}
+            className="w-full h-11 rounded-xl border border-border bg-input-background px-4 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="space-y-3">
           <label className="text-[14px] font-bold uppercase tracking-wider text-muted-foreground/70">
-            {t('settings.browserExecutablePath')}
+            Browser Executable Path
           </label>
           <input
             type="text"
             value={browserPath}
             onChange={(e) => saveBrowserPath(e.target.value)}
-            placeholder={t('settings.browserExecutablePlaceholder')}
+            placeholder="/path/to/browser/executable"
             className="w-full h-11 rounded-xl border border-border bg-input-background px-4 text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
           />
           <p className="text-[11px] text-muted-foreground/50">
-            {t('settings.browserExecutableHint')}
+            Leave empty to use the default system browser path.
           </p>
         </div>
 
         {isSaved && (
           <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-xs font-medium animate-in fade-in zoom-in duration-300 w-fit">
-            {t('settings.savedSuccess')}
+            Saved successfully
           </div>
         )}
       </div>
@@ -136,13 +159,13 @@ export const GeneralSettings = () => {
               <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6">
                 <FilePlus className="w-8 h-8" />
               </div>
-              <h2 className="text-xl font-bold mb-2">{t('settings.initializeTitle')}</h2>
+              <h2 className="text-xl font-bold mb-2">Initialize Repository</h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-                {t('settings.initializeDescPre')}{' '}
+                This will create{' '}
                 <code className="bg-muted px-1 rounded text-foreground">zentri.db</code>{' '}
-                {t('settings.initializeDescAnd')}{' '}
+                and{' '}
                 <code className="bg-muted px-1 rounded text-foreground">profiles/</code>{' '}
-                {t('settings.initializeDescPost')}
+                in the selected folder.
               </p>
 
               <div className="flex gap-3 w-full">
@@ -150,13 +173,13 @@ export const GeneralSettings = () => {
                   onClick={() => setShowCreateModal(false)}
                   className="flex-1 h-12 rounded-md border border-border font-bold text-sm hover:bg-muted transition-all"
                 >
-                  {t('common.cancel')}
+                  Cancel
                 </button>
                 <button
                   onClick={handleCreateFile}
                   className="flex-1 h-12 rounded-md bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
                 >
-                  {t('settings.initializeAndSave')}
+                  Initialize & Save
                 </button>
               </div>
             </div>

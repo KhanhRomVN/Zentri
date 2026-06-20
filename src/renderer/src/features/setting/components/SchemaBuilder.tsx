@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CodeBlock } from '@core/components/CodeBlock';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
+import { CodeBlock } from '@renderer/components/common/CodeBlock';
 
 export interface SchemaField {
   key: string;

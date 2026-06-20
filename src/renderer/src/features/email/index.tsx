@@ -1,6 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
-import { useTranslation, Trans } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useHashParams } from '../../hooks/useHashParams';
 import EmailTable from './components/EmailTable';
 import {
   Plus,
@@ -10,19 +9,15 @@ import {
   Shield,
   Key,
   Hash,
-  Search,
-  LayoutGrid,
+  Home,
+  ChevronRight,
   Trash2,
   Undo2,
+  X,
 } from 'lucide-react';
 import { cn } from '../../shared/lib/utils';
 import { Account } from './types';
 import { v4 as uuidv4 } from 'uuid';
-import { Breadcrumb, BreadcrumbItem } from '../../shared/components/ui/breadcumb';
-import { Drawer } from '../../shared/components/ui/drawer';
-import Input from '../../shared/components/ui/input/Input';
-import Toast from '../../shared/components/ui/Toast';
-import { Modal } from '../../shared/components/ui/modal';
 
 const diffChars = (oldStr: string, newStr: string) => {
   let commonPrefix = 0;
@@ -51,9 +46,44 @@ const diffChars = (oldStr: string, newStr: string) => {
   };
 };
 
+// Inline Modal component using native HTML
+const ModalWrapper: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  footer: React.ReactNode;
+  size?: 'sm' | 'md';
+  bodyClassName?: string;
+}> = ({ open, onClose, title, children, footer, size = 'sm', bodyClassName }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className={cn(
+          'relative bg-card border border-border rounded-2xl shadow-2xl w-full mx-4 animate-in fade-in zoom-in-95 duration-200',
+          size === 'sm' ? 'max-w-md' : 'max-w-lg',
+        )}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          <button
+            onClick={onClose}
+            className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className={cn('px-6', bodyClassName)}>{children}</div>
+        <div className="px-6 py-4 border-t border-border/50">{footer}</div>
+      </div>
+    </div>
+  );
+};
+
 const EmailManager = () => {
-  const { t } = useTranslation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useHashParams();
   const [accounts, setAccounts] = useState<Account[]>([]);
 
   // Filters State
@@ -90,7 +120,7 @@ const EmailManager = () => {
       setSearchQuery('');
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('focus');
-      setSearchParams(newParams, { replace: true });
+      setSearchParams(newParams, true);
     } else if (focusEmail && accounts.length > 0) {
       console.log('[EmailManager] Deep link focus (Email) detected:', focusEmail);
       const matched = accounts.find((a) => a.email.toLowerCase() === focusEmail.toLowerCase());
@@ -100,20 +130,30 @@ const EmailManager = () => {
         setSearchQuery('');
         const newParams = new URLSearchParams(searchParams);
         newParams.delete('focus_email');
-        setSearchParams(newParams, { replace: true });
+        setSearchParams(newParams, true);
       } else {
         console.warn('[EmailManager] Could not find account with email:', focusEmail);
       }
     }
   }, [searchParams, setSearchParams, accounts]);
+
   const [toast, setToast] = useState({
     visible: false,
     message: '',
     type: 'info' as 'info' | 'success' | 'error' | 'warning',
   });
-  const [activeTab, setActiveTab] = useState<
-    'info' | 'services' | 'inbox' | 'fingerprint' | 'sessions' | 'history'
-  >('info');
+
+  // Auto-dismiss toast after 3 seconds
+  useEffect(() => {
+    if (toast.visible) {
+      const timer = setTimeout(() => {
+        setToast((prev) => ({ ...prev, visible: false }));
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.visible]);
+
+  const [activeTab, setActiveTab] = useState<'info' | 'services' | 'sessions' | 'history'>('info');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [hardDeleteConfirmId, setHardDeleteConfirmId] = useState<string | null>(null);
   const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
@@ -262,7 +302,7 @@ const EmailManager = () => {
 
         setToast({
           visible: true,
-          message: t('email.toast.movedToTrash'),
+          message: 'Account moved to trash',
           type: 'warning',
         });
 
@@ -271,7 +311,7 @@ const EmailManager = () => {
         console.error('[Email] Soft delete error:', e);
         setToast({
           visible: true,
-          message: t('email.toast.trashFailed'),
+          message: 'Failed to move to trash',
           type: 'error',
         });
       }
@@ -288,11 +328,11 @@ const EmailManager = () => {
           'UPDATE emails SET status = ?, scheduled_deletion_at = NULL WHERE id = ?',
           ['active', id],
         );
-        setToast({ visible: true, message: t('email.toast.restored'), type: 'success' });
+        setToast({ visible: true, message: 'Account restored successfully', type: 'success' });
         await loadData();
       } catch (e) {
         console.error('[Email] Restore error:', e);
-        setToast({ visible: true, message: t('email.toast.restoreFailed'), type: 'error' });
+        setToast({ visible: true, message: 'Failed to restore account', type: 'error' });
       }
     },
     [loadData],
@@ -305,11 +345,11 @@ const EmailManager = () => {
         await window.electron.ipcRenderer.invoke('sqlite:run', 'DELETE FROM emails WHERE id = ?', [
           id,
         ]);
-        setToast({ visible: true, message: t('email.toast.deleted'), type: 'info' });
+        setToast({ visible: true, message: 'Account permanently deleted', type: 'info' });
         await loadData();
       } catch (e) {
         console.error('[Email] Hard delete error:', e);
-        setToast({ visible: true, message: t('email.toast.deleteFailed'), type: 'error' });
+        setToast({ visible: true, message: 'Failed to delete account', type: 'error' });
       }
     },
     [loadData],
@@ -332,11 +372,11 @@ const EmailManager = () => {
             updated.id,
           ],
         );
-        setToast({ visible: true, message: t('email.toast.updated'), type: 'success' });
+        setToast({ visible: true, message: 'Account updated successfully', type: 'success' });
         await loadData();
       } catch (e) {
         console.error('[Email] Update error:', e);
-        setToast({ visible: true, message: t('email.toast.updateFailed'), type: 'error' });
+        setToast({ visible: true, message: 'Failed to update account', type: 'error' });
       } finally {
         setLoading(false);
       }
@@ -347,16 +387,15 @@ const EmailManager = () => {
   const validateField = useCallback((name: string, value: string) => {
     let error = '';
     if (name === 'email') {
-      if (!value.trim()) error = t('email.validation.emailRequired');
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-        error = t('email.validation.emailInvalid');
+      if (!value.trim()) error = 'Email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Invalid email format';
     } else if (name === 'password') {
-      if (!value.trim()) error = t('email.validation.passwordRequired');
+      if (!value.trim()) error = 'Password is required';
     } else if (name === 'recoveryEmail') {
       if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-        error = t('email.validation.recoveryInvalid');
+        error = 'Invalid recovery email format';
     } else if (name === 'phoneNumber') {
-      if (value && !/^\+?[0-9\s\-()]+$/.test(value)) error = t('email.validation.phoneInvalid');
+      if (value && !/^\+?[0-9\s\-()]+$/.test(value)) error = 'Invalid phone number format';
     }
     setErrors((prev) => ({ ...prev, [name]: error }));
   }, []);
@@ -366,21 +405,21 @@ const EmailManager = () => {
 
     // Use common validation logic
     if (!newEmailData.email.trim()) {
-      newErrors.email = t('email.validation.emailRequired');
+      newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmailData.email)) {
-      newErrors.email = t('email.validation.emailInvalid');
+      newErrors.email = 'Invalid email format';
     }
     if (!newEmailData.password.trim()) {
-      newErrors.password = t('email.validation.passwordRequired');
+      newErrors.password = 'Password is required';
     }
     if (
       newEmailData.recoveryEmail &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmailData.recoveryEmail)
     ) {
-      newErrors.recoveryEmail = t('email.validation.recoveryInvalid');
+      newErrors.recoveryEmail = 'Invalid recovery email format';
     }
     if (newEmailData.phoneNumber && !/^\+?[0-9\s\-()]+$/.test(newEmailData.phoneNumber)) {
-      newErrors.phoneNumber = t('email.validation.phoneInvalid');
+      newErrors.phoneNumber = 'Invalid phone number format';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -453,49 +492,73 @@ const EmailManager = () => {
     });
   }, [accounts, searchQuery, statusFilter, providerFilter]);
 
+  const toastTypeStyles: Record<string, string> = {
+    info: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
+    success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+    error: 'border-red-500/30 bg-red-500/10 text-red-400',
+    warning: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  };
+
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
       {/* Header with Breadcrumbs */}
-      <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
-        <div className="flex items-center gap-4">
-          <Breadcrumb className="mb-0" size={120}>
-            <BreadcrumbItem
-              icon={LayoutGrid}
-              className="hover:text-foreground text-muted-foreground/50 transition-colors"
-              text={''}
-            />
-            <BreadcrumbItem text={t('email.manager.email')} />
-          </Breadcrumb>
+      <div className="h-[37px] flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
+        <div className="flex items-center gap-2">
+          <Home className="w-4 h-4 text-text-secondary -mt-0.5" />
+          <ChevronRight className="w-3 h-3 text-text-secondary" />
+          <span className="text-text-secondary text-sm">Email</span>
+          {focusedAccountId && (() => {
+            const focused = accounts.find(a => a.id === focusedAccountId);
+            const tabLabels: Record<string, string> = {
+              info: 'Information',
+              services: 'Services',
+              sessions: 'Sessions',
+              history: 'History',
+            };
+            return (
+              <>
+                <ChevronRight className="w-3 h-3 text-text-secondary" />
+                <span className="text-text-primary text-sm font-medium truncate max-w-[200px]">
+                  {focused?.email || ''}
+                </span>
+                <ChevronRight className="w-3 h-3 text-text-secondary" />
+                <span className="text-text-primary text-sm font-medium">
+                  {tabLabels[activeTab] || ''}
+                </span>
+              </>
+            );
+          })()}
         </div>
 
         <div className="flex items-center gap-3">
           {/* SearchBar */}
           <div className="w-80 flex items-center transition-all duration-500">
-            <Input
-              size="sm"
-              placeholder={
-                focusedAccountId
-                  ? t('email.manager.searchDisabledPlaceholder')
-                  : t('email.manager.searchPlaceholder')
-              }
-              leftIcon={Search}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              readOnly={!!focusedAccountId}
-              onClick={() => {
-                if (focusedAccountId) {
-                  setToast({
-                    visible: true,
-                    message: t('email.toast.searchDisabled'),
-                    type: 'warning',
-                  });
-                }
-              }}
+            <div
               className={cn(
-                '!h-9 bg-muted/5 border-border/10 focus:bg-muted/10 transition-all duration-300 rounded-xl translate-y-[1px]',
+                'relative flex items-center w-full h-7 bg-input-background border border-border rounded-md transition-all duration-300',
                 focusedAccountId && 'opacity-50 cursor-not-allowed border-dashed',
               )}
-            />
+            >
+              <input
+                type="text"
+                placeholder={
+                  focusedAccountId ? 'Search disabled (viewing focused item)' : 'Search accounts...'
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                readOnly={!!focusedAccountId}
+                onClick={() => {
+                  if (focusedAccountId) {
+                    setToast({
+                      visible: true,
+                      message: 'Search disabled while viewing a focused item',
+                      type: 'warning',
+                    });
+                  }
+                }}
+                className="w-full h-full pl-3 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
+              />
+            </div>
           </div>
 
           <button
@@ -503,8 +566,8 @@ const EmailManager = () => {
               setSelectedAccount(null);
               setIsDrawerOpen(true);
             }}
-            className="w-9 h-9 flex items-center justify-center bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all active:scale-90 border border-primary/20 group"
-            title={t('email.manager.addAccount')}
+            className="w-7 h-7 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
+            title="Add Account"
           >
             <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
           </button>
@@ -518,7 +581,7 @@ const EmailManager = () => {
             <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground opacity-50">
               <Loader2 className="w-10 h-10 animate-spin text-primary" />
               <span className="text-[10px] font-bold tracking-[0.3em] uppercase">
-                {t('email.manager.indexing')}
+                Indexing accounts...
               </span>
             </div>
           ) : error ? (
@@ -527,16 +590,14 @@ const EmailManager = () => {
                 <AlertCircle className="w-10 h-10" />
               </div>
               <div className="max-w-md space-y-2">
-                <h2 className="text-sm font-bold text-foreground">
-                  {t('email.manager.syncFailure')}
-                </h2>
+                <h2 className="text-sm font-bold text-foreground">Sync Failure</h2>
                 <p className="text-xs text-muted-foreground leading-relaxed">{error}</p>
               </div>
               <button
                 onClick={loadData}
                 className="px-6 py-2.5 bg-background border border-border hover:bg-muted rounded-xl text-xs font-bold transition-all active:scale-95"
               >
-                {t('email.manager.restoreConnection')}
+                Restore Connection
               </button>
             </div>
           ) : accounts.length === 0 ? (
@@ -548,9 +609,10 @@ const EmailManager = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-sm font-bold tracking-tight">{t('email.manager.emptyTitle')}</p>
+                <p className="text-sm font-bold tracking-tight">No email accounts yet</p>
                 <p className="text-xs text-muted-foreground max-w-[240px] leading-relaxed mx-auto">
-                  {t('email.manager.emptyDesc')}
+                  Add your first email account to get started with profile management and service
+                  linking.
                 </p>
               </div>
               <button
@@ -558,7 +620,7 @@ const EmailManager = () => {
                 className="flex items-center gap-2 bg-primary/10 text-primary px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                {t('email.manager.addAccount')}
+                Add Account
               </button>
             </div>
           ) : (
@@ -580,223 +642,317 @@ const EmailManager = () => {
         </div>
       </div>
 
-      {/* Add Email Drawer */}
-      <Drawer
-        isOpen={isDrawerOpen}
-        onClose={() => {
-          setIsDrawerOpen(false);
-          setSelectedAccount(null);
-        }}
-        direction="right"
-        width={500}
-        title={selectedAccount ? t('email.manager.detailsTitle') : t('email.manager.addTitle')}
-        subtitle={
-          selectedAccount ? t('email.manager.detailsSubtitle') : t('email.manager.addSubtitle')
-        }
-        footerActions={
-          <div className="flex gap-3 w-full">
-            <button
-              onClick={() => setIsDrawerOpen(false)}
-              className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors"
-            >
-              {t('email.serviceDrawer.cancel')}
-            </button>
-            <button
-              onClick={handleAddEmail}
-              disabled={!newEmailData.email || !newEmailData.password || !!trashConflict}
-              className={cn(
-                'flex-1 px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
-                !newEmailData.email || !newEmailData.password || !!trashConflict
-                  ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
-                  : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
-              )}
-            >
-              {t('email.quickCreate.save')}
-            </button>
-          </div>
-        }
-      >
-        <div className="p-4 space-y-6">
-          {/* Account Credentials */}
-          <div className="space-y-4">
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                {t('email.manager.email')}
-                <span className="text-destructive ml-1">*</span>
-              </label>
-              <Input
-                placeholder="identity@example.com"
-                value={newEmailData.email}
-                onChange={(e) => {
-                  setNewEmailData((d) => ({ ...d, email: e.target.value }));
-                  if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+      {/* Add Email Drawer - Native */}
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-[90] flex justify-end">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => {
+              setIsDrawerOpen(false);
+              setSelectedAccount(null);
+            }}
+          />
+          <div className="relative w-[500px] h-full bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 shrink-0">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  {selectedAccount ? 'Account Details' : 'Add Account'}
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {selectedAccount
+                    ? 'View and manage account information'
+                    : 'Add a new email account to your repository'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                  setSelectedAccount(null);
                 }}
-                onBlur={() => validateField('email', newEmailData.email)}
-                error={errors.email}
-              />
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              {/* Trash Conflict Warning */}
-              {trashConflict && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                        {t('email.manager.trashConflict.title')}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        {t('email.manager.trashConflict.desc')}
-                      </p>
+            {/* Drawer Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
+              {/* Account Credentials */}
+              <div className="space-y-4">
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Email
+                    <span className="text-destructive ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="identity@example.com"
+                    value={newEmailData.email}
+                    onChange={(e) => {
+                      setNewEmailData((d) => ({ ...d, email: e.target.value }));
+                      if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+                    }}
+                    onBlur={() => validateField('email', newEmailData.email)}
+                    className={cn(
+                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                      errors.email ? 'border-destructive' : 'border-border',
+                    )}
+                  />
+
+                  {/* Trash Conflict Warning */}
+                  {trashConflict && (
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                            Trash Conflict
+                          </p>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            This account exists in the trash. Please delete it permanently or
+                            restore it before re-adding.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleHardDelete(trashConflict.id)}
+                          className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
+                        >
+                          Delete Permanently
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsDrawerOpen(false);
+                            setFocusedAccountId(trashConflict.id);
+                          }}
+                          className="flex-1 py-2 rounded-xl bg-white/5 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider hover:bg-amber-500/5 transition-colors"
+                        >
+                          View in Table
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleHardDelete(trashConflict.id)}
-                      className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
-                    >
-                      {t('email.manager.deletePermanently')}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsDrawerOpen(false);
-                        setFocusedAccountId(trashConflict.id);
-                      }}
-                      className="flex-1 py-2 rounded-xl bg-white/5 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider hover:bg-amber-500/5 transition-colors"
-                    >
-                      {t('email.manager.trashConflict.viewInTable')}
-                    </button>
+                  )}
+                </div>
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Password
+                    <span className="text-destructive ml-1">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="••••••••••••"
+                    value={newEmailData.password}
+                    onChange={(e) => {
+                      setNewEmailData((d) => ({ ...d, password: e.target.value }));
+                      if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                    }}
+                    onBlur={() => validateField('password', newEmailData.password)}
+                    className={cn(
+                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                      errors.password ? 'border-destructive' : 'border-border',
+                    )}
+                  />
+                </div>
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Recovery Email
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="backup@proton.me"
+                    value={newEmailData.recoveryEmail}
+                    onChange={(e) => {
+                      setNewEmailData((d) => ({ ...d, recoveryEmail: e.target.value }));
+                      if (errors.recoveryEmail)
+                        setErrors((prev) => ({ ...prev, recoveryEmail: '' }));
+                    }}
+                    onBlur={() => validateField('recoveryEmail', newEmailData.recoveryEmail)}
+                    className={cn(
+                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                      errors.recoveryEmail ? 'border-destructive' : 'border-border',
+                    )}
+                  />
+                </div>
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="+84 ••• ••• •••"
+                    value={newEmailData.phoneNumber}
+                    onChange={(e) => {
+                      setNewEmailData((d) => ({ ...d, phoneNumber: e.target.value }));
+                      if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: '' }));
+                    }}
+                    onBlur={() => validateField('phoneNumber', newEmailData.phoneNumber)}
+                    className={cn(
+                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                      errors.phoneNumber ? 'border-destructive' : 'border-border',
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Security Secrets */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-4 h-4 text-primary" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
+                    Security Settings
+                  </h3>
+                </div>
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    TOTP Secret Key
+                  </label>
+                  <div className="relative flex items-center">
+                    <Key className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
+                    <input
+                      type="text"
+                      placeholder="Paste TOTP secret key..."
+                      value={newEmailData.totpSecretKey}
+                      onChange={(e) =>
+                        setNewEmailData((d) => ({ ...d, totpSecretKey: e.target.value }))
+                      }
+                      className="w-full h-10 pl-10 pr-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
+                    />
                   </div>
                 </div>
-              )}
-            </div>
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                {t('email.manager.password')}
-                <span className="text-destructive ml-1">*</span>
-              </label>
-              <Input
-                type="password"
-                placeholder="••••••••••••"
-                value={newEmailData.password}
-                onChange={(e) => {
-                  setNewEmailData((d) => ({ ...d, password: e.target.value }));
-                  if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
-                }}
-                onBlur={() => validateField('password', newEmailData.password)}
-                error={errors.password}
-              />
-            </div>
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                {t('email.manager.recoveryEmail')}
-              </label>
-              <Input
-                placeholder="backup@proton.me"
-                value={newEmailData.recoveryEmail}
-                onChange={(e) => {
-                  setNewEmailData((d) => ({ ...d, recoveryEmail: e.target.value }));
-                  if (errors.recoveryEmail) setErrors((prev) => ({ ...prev, recoveryEmail: '' }));
-                }}
-                onBlur={() => validateField('recoveryEmail', newEmailData.recoveryEmail)}
-                error={errors.recoveryEmail}
-              />
-            </div>
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                {t('email.manager.phoneNumber')}
-              </label>
-              <Input
-                type="text"
-                placeholder="+84 ••• ••• •••"
-                value={newEmailData.phoneNumber}
-                onChange={(e) => {
-                  setNewEmailData((d) => ({ ...d, phoneNumber: e.target.value }));
-                  if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: '' }));
-                }}
-                onBlur={() => validateField('phoneNumber', newEmailData.phoneNumber)}
-                error={errors.phoneNumber}
-              />
-            </div>
-          </div>
 
-          {/* Security Secrets */}
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Shield className="w-4 h-4 text-primary" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
-                {t('email.manager.securitySettings')}
-              </h3>
-            </div>
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                {t('email.manager.totpKey')}
-              </label>
-              <Input
-                type="text"
-                placeholder={t('email.manager.totpPlaceholder')}
-                leftIcon={Key}
-                value={newEmailData.totpSecretKey}
-                onChange={(e) => setNewEmailData((d) => ({ ...d, totpSecretKey: e.target.value }))}
-              />
+                <div className="space-y-2.5">
+                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                    Backup Codes
+                  </label>
+                  <div className="bg-input-background border border-border rounded-xl">
+                    {/* Badge List */}
+                    {newEmailData.backupCodes.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 p-2 pb-0">
+                        {newEmailData.backupCodes.map((code, idx) => {
+                          const colors = [
+                            'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                            'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                            'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                            'bg-pink-500/20 text-pink-400 border-pink-500/30',
+                            'bg-purple-500/20 text-purple-400 border-purple-500/30',
+                            'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+                          ];
+                          const colorClass = colors[idx % colors.length];
+                          return (
+                            <span
+                              key={code}
+                              className={cn(
+                                'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border',
+                                colorClass,
+                              )}
+                            >
+                              {code}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setNewEmailData((d) => ({
+                                    ...d,
+                                    backupCodes: d.backupCodes.filter((c) => c !== code),
+                                  }))
+                                }
+                                className="hover:opacity-70 transition-opacity"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {/* Input */}
+                    <div className="relative flex items-center">
+                      <Hash className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
+                      <input
+                        type="text"
+                        placeholder="Type code and press Enter..."
+                        value={backupCodeSearch}
+                        onChange={(e) => setBackupCodeSearch(e.target.value)}
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                          if (e.key === 'Enter' && backupCodeSearch.trim()) {
+                            const newVal = backupCodeSearch.trim();
+                            if (!newEmailData.backupCodes.includes(newVal)) {
+                              setNewEmailData((d) => ({
+                                ...d,
+                                backupCodes: [...d.backupCodes, newVal],
+                              }));
+                            }
+                            setBackupCodeSearch('');
+                          }
+                        }}
+                        className="w-full h-10 pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none rounded-xl"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                {t('email.manager.backupCodes')}
-              </label>
-              <Input
-                type="combobox"
-                placeholder={t('email.manager.backupPlaceholder')}
-                value={backupCodeSearch}
-                onChange={(e) => setBackupCodeSearch(e.target.value)}
-                multiValue={true}
-                badgeColorMode="diverse"
-                badgeVariant="neon"
-                leftIcon={Hash}
-                badges={newEmailData.backupCodes.map((code) => ({ id: code, label: code }))}
-                onBadgeRemove={(id) => {
-                  setNewEmailData((d) => ({
-                    ...d,
-                    backupCodes: d.backupCodes.filter((c) => c !== id),
-                  }));
-                }}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === 'Enter' && backupCodeSearch.trim()) {
-                    const newVal = backupCodeSearch.trim();
-                    if (!newEmailData.backupCodes.includes(newVal)) {
-                      setNewEmailData((d) => ({
-                        ...d,
-                        backupCodes: [...d.backupCodes, newVal],
-                      }));
-                    }
-                    setBackupCodeSearch('');
-                  }
-                }}
-                className="bg-input-background border-border rounded-xl"
-              />
+            {/* Drawer Footer */}
+            <div className="px-4 py-4 border-t border-border/50 shrink-0">
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddEmail}
+                  disabled={!newEmailData.email || !newEmailData.password || !!trashConflict}
+                  className={cn(
+                    'flex-1 px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
+                    !newEmailData.email || !newEmailData.password || !!trashConflict
+                      ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
+                      : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
+                  )}
+                >
+                  Save Account
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </Drawer>
-      <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
-      />
+      )}
 
-      <Modal
+      {/* Toast - Native */}
+      {toast.visible && (
+        <div
+          className={cn(
+            'fixed bottom-6 right-6 z-[200] px-4 py-3 rounded-xl border shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4 fade-in duration-300',
+            toastTypeStyles[toast.type],
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <span>{toast.message}</span>
+            <button
+              onClick={() => setToast((prev) => ({ ...prev, visible: false }))}
+              className="ml-2 hover:opacity-70 transition-opacity"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
+      <ModalWrapper
         open={!!deleteConfirmId}
         onClose={() => setDeleteConfirmId(null)}
-        title={t('email.manager.trashTitle')}
-        size="sm"
+        title="Move to Trash"
         footer={
           <div className="flex gap-3 w-full">
             <button
               onClick={() => setDeleteConfirmId(null)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
             >
-              {t('email.serviceDrawer.cancel')}
+              Cancel
             </button>
             <button
               onClick={() => {
@@ -807,7 +963,7 @@ const EmailManager = () => {
               }}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all shadow-lg shadow-destructive/20"
             >
-              {t('email.manager.confirm')}
+              Move to Trash
             </button>
           </div>
         }
@@ -817,27 +973,25 @@ const EmailManager = () => {
             <Trash2 className="w-6 h-6" />
           </div>
           <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            <Trans i18nKey="email.manager.trashWarning">
-              Are you sure you want to move this account to the trash? It will be{' '}
-              <span className="text-foreground font-bold"> permanently deleted </span> after a 7-day
-              grace period.
-            </Trans>
+            Are you sure you want to move this account to the trash? It will be{' '}
+            <span className="text-foreground font-bold"> permanently deleted </span> after a 7-day
+            grace period.
           </p>
         </div>
-      </Modal>
+      </ModalWrapper>
 
-      <Modal
+      {/* Hard Delete Modal */}
+      <ModalWrapper
         open={!!hardDeleteConfirmId}
         onClose={() => setHardDeleteConfirmId(null)}
-        title={t('email.manager.deleteTitle')}
-        size="sm"
+        title="Permanently Delete"
         footer={
           <div className="flex gap-3 w-full">
             <button
               onClick={() => setHardDeleteConfirmId(null)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
             >
-              {t('email.serviceDrawer.cancel')}
+              Cancel
             </button>
             <button
               onClick={() => {
@@ -848,7 +1002,7 @@ const EmailManager = () => {
               }}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
             >
-              {t('email.manager.delete')}
+              Delete
             </button>
           </div>
         }
@@ -858,27 +1012,25 @@ const EmailManager = () => {
             <AlertCircle className="w-6 h-6" />
           </div>
           <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            <Trans i18nKey="email.manager.deleteWarning">
-              This action <span className="text-red-500 font-bold"> cannot be undone </span>. All
-              account data, profiles, and associated service links will be wiped from the local
-              repository.
-            </Trans>
+            This action <span className="text-red-500 font-bold"> cannot be undone </span>. All
+            account data, profiles, and associated service links will be wiped from the local
+            repository.
           </p>
         </div>
-      </Modal>
+      </ModalWrapper>
 
-      <Modal
+      {/* Restore Modal */}
+      <ModalWrapper
         open={!!restoreConfirmId}
         onClose={() => setRestoreConfirmId(null)}
-        title={t('email.manager.restoreTitle')}
-        size="sm"
+        title="Restore Account"
         footer={
           <div className="flex gap-3 w-full">
             <button
               onClick={() => setRestoreConfirmId(null)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
             >
-              {t('email.serviceDrawer.cancel')}
+              Cancel
             </button>
             <button
               onClick={() => {
@@ -889,7 +1041,7 @@ const EmailManager = () => {
               }}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
             >
-              {t('email.manager.restore')}
+              Restore
             </button>
           </div>
         }
@@ -899,27 +1051,26 @@ const EmailManager = () => {
             <Undo2 className="w-6 h-6" />
           </div>
           <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            <Trans i18nKey="email.manager.restoreWarning">
-              Are you sure you want to <span className="text-emerald-500 font-bold">restore</span>{' '}
-              this account? Normal operations will resume and scheduled deletion will be cancelled.
-            </Trans>
+            Are you sure you want to <span className="text-emerald-500 font-bold">restore</span>{' '}
+            this account? Normal operations will resume and scheduled deletion will be cancelled.
           </p>
         </div>
-      </Modal>
+      </ModalWrapper>
 
-      <Modal
+      {/* Diff Review Modal */}
+      <ModalWrapper
         open={!!diffPayload}
         onClose={() => setDiffPayload(null)}
-        title={t('email.manager.reviewChanges')}
+        title="Review Changes"
         size="md"
-        bodyClassName="h-[35vh] max-h-[35vh]"
+        bodyClassName="h-[35vh] max-h-[35vh] overflow-y-auto custom-scrollbar"
         footer={
           <div className="flex gap-3 w-full">
             <button
               onClick={() => setDiffPayload(null)}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
             >
-              {t('email.serviceDrawer.cancel')}
+              Cancel
             </button>
             <button
               onClick={() => {
@@ -930,7 +1081,7 @@ const EmailManager = () => {
               }}
               className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
             >
-              {t('email.manager.confirmChanges')}
+              Confirm Changes
             </button>
           </div>
         }
@@ -1021,7 +1172,7 @@ const EmailManager = () => {
               })}
           </div>
         </div>
-      </Modal>
+      </ModalWrapper>
     </div>
   );
 };
