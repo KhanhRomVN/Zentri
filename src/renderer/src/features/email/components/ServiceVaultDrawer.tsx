@@ -277,7 +277,7 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
                       onClick={() => setTypePopoverOpen(!typePopoverOpen)}
                       className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none focus:border-primary/50 cursor-pointer" />
                     {typePopoverOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 p-1.5 space-y-1">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 p-1.5 space-y-1 hover:border-primary transition-colors">
                         {[{ id: 'text', label: 'Plain Text', icon: <Database className="w-3.5 h-3.5" /> }, { id: 'totp', label: 'TOTP Secret', icon: <ShieldCheck className="w-3.5 h-3.5" /> }].map((type) => (
                           <button key={type.id} onClick={() => { setNewSecret((s) => ({ ...s, type: type.id })); setTypePopoverOpen(false); }}
                             className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all',
@@ -337,7 +337,7 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
                       onClick={() => setEditTypePopoverOpen(!editTypePopoverOpen)}
                       className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none focus:border-primary/50 cursor-pointer" />
                     {editTypePopoverOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 p-1.5 space-y-1">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 p-1.5 space-y-1 hover:border-primary transition-colors">
                         {[{ id: 'text', label: 'Plain Text', icon: <Database className="w-3.5 h-3.5" /> }, { id: 'totp', label: 'TOTP Secret', icon: <ShieldCheck className="w-3.5 h-3.5" /> }].map((type) => (
                           <button key={type.id} onClick={() => { setEditingSecret({ ...editingSecret, secret_type: type.id }); setEditTypePopoverOpen(false); }}
                             className={cn('w-full flex items-center gap-3 px-3 py-3 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all',

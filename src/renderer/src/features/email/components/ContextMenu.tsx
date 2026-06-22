@@ -36,7 +36,7 @@ const ContextMenu: FC<ContextMenuProps> = ({
     createPortal(
       <div
         ref={menuRef}
-        className="fixed z-[1000] min-w-[200px] w-max bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl p-1 animate-in fade-in zoom-in-95 duration-200"
+        className="fixed z-[1000] min-w-[200px] w-max bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl p-1 animate-in fade-in zoom-in-95 duration-200 hover:border-primary transition-colors"
         style={{ top: contextMenu.y, left: contextMenu.x }}
       >
         {targetAccount?.status === 'active' && (

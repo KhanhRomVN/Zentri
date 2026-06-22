@@ -379,7 +379,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
       {menu && (
         <div
           ref={menuRef}
-          className="absolute z-[100] w-72 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden py-1.5 ring-1 ring-white/5"
+          className="absolute z-[100] w-72 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden py-1.5 ring-1 ring-white/5 hover:border-primary transition-colors"
           style={{ top: menu?.y, left: menu?.x }}
         >
           <div className="px-4 py-2 bg-zinc-800/30 border-b border-zinc-800/50 mb-1">

@@ -33,22 +33,22 @@ const ServicesTab: FC<ServicesTabProps> = ({
   return (
     <div className="flex flex-col h-full overflow-hidden relative" ref={containerRef}>
       {/* Services Sub-Navbar */}
-      <div className="h-14 border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-10 flex items-center justify-between px-8 gap-4 shrink-0">
+      <div className="h-[48px] flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
         <div className="w-80 flex items-center transition-all duration-500">
-          <div className="relative flex items-center w-full">
+          <div className="relative flex items-center w-full h-9 bg-input-background border border-border rounded-md transition-all duration-300">
             <Search className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
             <input
               type="text"
               placeholder="Search services..."
               value={serviceSearch}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setServiceSearch(e.target.value)}
-              className="w-full !h-9 pl-10 pr-3 bg-muted/5 border border-border/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:bg-muted/10 transition-all duration-300 translate-y-[1px]"
+              className="w-full h-full pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
             />
           </div>
         </div>
         <button
           onClick={onAddNewServiceLink}
-          className="w-9 h-9 flex items-center justify-center bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all active:scale-90 border border-primary/20 group"
+          className="w-9 h-9 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
           title="Link New Service"
         >
           <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />

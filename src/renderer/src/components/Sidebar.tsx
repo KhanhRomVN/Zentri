@@ -8,7 +8,6 @@ import {
   PlusCircle,
   Search,
   Zap,
-  FolderTree,
   Network,
 } from 'lucide-react';
 import { useAccentColors } from '../hooks/useAccentColors';
@@ -94,13 +93,6 @@ const NAV_ITEMS = [
     disabled: false,
   },
   {
-    title: 'Category',
-    href: '/category',
-    icon: FolderTree,
-    color: '#ec4899',
-    disabled: true,
-  },
-  {
     title: 'Proxy',
     href: '/proxy',
     icon: Network,
@@ -138,7 +130,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed: _setIsCollapsed, activePage
         {/* Header */}
         <div
           className={cn(
-            'w-full h-[37px] flex items-center shrink-0 border-b border-border/50',
+            'w-full h-[48px] flex items-center shrink-0 border-b border-border/50',
             expanded ? 'px-3 justify-start' : 'justify-center',
           )}
         >

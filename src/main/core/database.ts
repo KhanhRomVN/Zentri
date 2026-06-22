@@ -97,6 +97,8 @@ export class DbManager {
           category TEXT,
           description TEXT,
           config_json TEXT,
+          metadata TEXT,
+          auth_method TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
@@ -105,25 +107,8 @@ export class DbManager {
           id TEXT PRIMARY KEY,
           email_id TEXT,
           service_id TEXT,
-          password TEXT,
-          username TEXT,
-          notes TEXT,
-          last_used_at DATETIME,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
           FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS service_emails_secrets (
-          id TEXT PRIMARY KEY,
-          service_email_id TEXT,
-          secret_name TEXT NOT NULL,
-          secret_value TEXT,
-          secret_type TEXT DEFAULT 'password',
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (service_email_id) REFERENCES service_emails(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS agents (
@@ -253,8 +238,9 @@ export class DbManager {
       }
     }
 
-    // Migration for services table (ensure description and metadata exists)
+    // Migration for services table (ensure metadata, auth_method, and description exist)
     const serviceColumns = await this.rawAll<{ name: string }>('PRAGMA table_info(services)');
+    
     const hasDescription = serviceColumns.some((c) => c.name === 'description');
     if (!hasDescription) {
       try {
@@ -275,95 +261,69 @@ export class DbManager {
       }
     }
 
-    // Migration for service_emails (username, notes)
+    const hasAuthMethod = serviceColumns.some((c) => c.name === 'auth_method');
+    if (!hasAuthMethod) {
+      try {
+        await this.rawRun('ALTER TABLE services ADD COLUMN auth_method TEXT');
+        console.log('[DB] Migration: Added auth_method to services table');
+      } catch (e) {
+        console.error('[DB] Migration failed (auth_method):', e);
+      }
+    }
+
+    // Migration for service_emails: strip down to only id, email_id, service_id
+    // SQLite doesn't support DROP COLUMN easily, so we recreate the table
     const serviceEmailColumns = await this.rawAll<{ name: string }>(
       'PRAGMA table_info(service_emails)',
     );
-    const hasUsername = serviceEmailColumns.some((c) => c.name === 'username');
-    if (!hasUsername) {
-      try {
-        await this.rawRun('ALTER TABLE service_emails ADD COLUMN username TEXT');
-        await this.rawRun('ALTER TABLE service_emails ADD COLUMN notes TEXT');
-        console.log('[DB] Migration: Added username and notes to service_emails table');
-      } catch (e) {
-        console.error('[DB] Migration failed (username/notes):', e);
-      }
-    }
-
-    const hasPassword = serviceEmailColumns.some((c) => c.name === 'password');
-    if (!hasPassword) {
-      try {
-        await this.rawRun('ALTER TABLE service_emails ADD COLUMN password TEXT');
-        console.log('[DB] Migration: Added password to service_emails table');
-      } catch (e) {
-        console.error('[DB] Migration failed (password):', e);
-      }
-    }
-
-    const hasEmailMetadata = serviceEmailColumns.some((c) => c.name === 'metadata');
-    if (!hasEmailMetadata) {
-      try {
-        await this.rawRun('ALTER TABLE service_emails ADD COLUMN metadata TEXT');
-        console.log('[DB] Migration: Added metadata to service_emails table');
-      } catch (e) {
-        console.error('[DB] Migration failed (service_emails metadata):', e);
-      }
-    }
-
-    const hasStatus = serviceEmailColumns.some((c) => c.name === 'status');
-    if (!hasStatus) {
-      try {
-        await this.rawRun("ALTER TABLE service_emails ADD COLUMN status TEXT DEFAULT 'active'");
-        await this.rawRun('ALTER TABLE service_emails ADD COLUMN scheduled_deletion_at DATETIME');
-        console.log(
-          '[DB] Migration: Added status and scheduled_deletion_at to service_emails table',
-        );
-      } catch (e) {
-        console.error('[DB] Migration failed (status/deletion):', e);
-      }
-    }
-
-    const hasServiceLastUsed = serviceEmailColumns.some((c) => c.name === 'last_used_at');
-    if (!hasServiceLastUsed) {
-      try {
-        await this.rawRun('ALTER TABLE service_emails ADD COLUMN last_used_at DATETIME');
-        console.log('[DB] Migration: Added last_used_at to service_emails table');
-      } catch (e) {
-        console.error('[DB] Migration failed (service last_used_at):', e);
-      }
-    }
-
-    // Migration to rename service_secrets to service_emails_secrets
-    const oldTableExists = await this.rawAll<{ name: string }>(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='service_secrets'",
+    const hasExtraColumns = serviceEmailColumns.some(
+      (c) => ['password', 'username', 'notes', 'metadata', 'status', 'scheduled_deletion_at', 'last_used_at', 'created_at', 'updated_at'].includes(c.name)
     );
-    const newTableExists = await this.rawAll<{ name: string }>(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='service_emails_secrets'",
-    );
-
-    if (oldTableExists.length > 0 && newTableExists.length === 0) {
+    if (hasExtraColumns) {
       try {
-        await this.rawRun('ALTER TABLE service_secrets RENAME TO service_emails_secrets');
-        console.log('[DB] Migration: Renamed service_secrets to service_emails_secrets');
+        // Backup existing links
+        await this.rawRun(`
+          CREATE TABLE IF NOT EXISTS service_emails_backup AS
+          SELECT id, email_id, service_id FROM service_emails
+        `);
+        // Drop old table
+        await this.rawRun('DROP TABLE service_emails');
+        // Recreate with minimal columns
+        await this.rawRun(`
+          CREATE TABLE service_emails (
+            id TEXT PRIMARY KEY,
+            email_id TEXT,
+            service_id TEXT,
+            FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
+            FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+          )
+        `);
+        // Restore data
+        await this.rawRun(`
+          INSERT INTO service_emails (id, email_id, service_id)
+          SELECT id, email_id, service_id FROM service_emails_backup
+        `);
+        // Drop backup
+        await this.rawRun('DROP TABLE service_emails_backup');
+        console.log('[DB] Migration: Stripped service_emails to minimal columns (id, email_id, service_id)');
       } catch (e) {
-        console.error('[DB] Migration failed (rename service_secrets):', e);
+        console.error('[DB] Migration failed (service_emails strip):', e);
       }
-    } else if (oldTableExists.length > 0 && newTableExists.length > 0) {
-      console.log('[DB] Migration skip: both service_secrets and service_emails_secrets exist');
     }
 
-    const secretColumns = await this.rawAll<{ name: string }>(
-      'PRAGMA table_info(service_emails_secrets)',
-    );
-    const hasSecretType = secretColumns.some((c) => c.name === 'secret_type');
-    if (!hasSecretType) {
-      try {
-        await this.rawRun(
-          "ALTER TABLE service_emails_secrets ADD COLUMN secret_type TEXT DEFAULT 'password'",
-        );
-        console.log('[DB] Migration: Added secret_type to service_emails_secrets table');
-      } catch (e) {
-        console.error('[DB] Migration failed (secret_type):', e);
+    // Migration: drop service_emails_secrets and service_secrets tables (no longer needed)
+    const secretsTables = ['service_emails_secrets', 'service_secrets'];
+    for (const tableName of secretsTables) {
+      const exists = await this.rawAll<{ name: string }>(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='${tableName}'`,
+      );
+      if (exists.length > 0) {
+        try {
+          await this.rawRun(`DROP TABLE ${tableName}`);
+          console.log(`[DB] Migration: Dropped ${tableName} table (no longer needed)`);
+        } catch (e) {
+          console.error(`[DB] Migration failed (drop ${tableName}):`, e);
+        }
       }
     }
 

@@ -5,6 +5,7 @@ import { Trash2, Globe, Eye, Key, Undo2, X, Mail } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../../../shared/lib/utils';
 import { Account, Service } from '../types';
+import { SERVICES } from '../../../constants/services';
 import DetailView from './DetailView';
 import ContextMenu from './ContextMenu';
 import ServiceDrawers from './ServiceDrawers';
@@ -213,10 +214,46 @@ const EmailTable: FC<EmailTableProps> = ({
     const loadGlobalServices = async () => {
       try {
         // @ts-ignore
-        const services = await window.electron.ipcRenderer.invoke('service:get-all');
-        setGlobalServices(services || []);
+        const dbServices = await window.electron.ipcRenderer.invoke('service:get-all');
+        const dbList = dbServices || [];
+
+        // Merge: constants SERVICES as base, DB data for enrichment
+        const dbMap: Record<string, any> = {};
+        dbList.forEach((svc: any) => {
+          dbMap[svc.id] = svc;
+        });
+
+        const mergedIds = new Set<string>();
+
+        // Build from constants
+        const merged: Service[] = SERVICES.map((svc) => {
+          mergedIds.add(svc.id);
+          const dbSvc = dbMap[svc.id];
+          return {
+            id: svc.id,
+            name: dbSvc?.name || svc.name,
+            url: dbSvc?.url || svc.url,
+            category: dbSvc?.category || svc.category,
+            tags: dbSvc?.tags || svc.tags,
+            description: dbSvc?.description || svc.description,
+            metadata: dbSvc?.metadata || null,
+            created_at: dbSvc?.created_at || new Date().toISOString(),
+            updated_at: dbSvc?.updated_at || new Date().toISOString(),
+          } as Service;
+        });
+
+        // Add DB-only services
+        dbList.forEach((svc: any) => {
+          if (!mergedIds.has(svc.id)) {
+            merged.push(svc as Service);
+          }
+        });
+
+        setGlobalServices(merged);
       } catch (err) {
         console.error('Failed to load global services', err);
+        // Fallback: use constants
+        setGlobalServices(SERVICES as any[]);
       }
     };
     loadGlobalServices();
@@ -367,71 +404,26 @@ const EmailTable: FC<EmailTableProps> = ({
     }));
     setIsSecretsDrawerOpen(true);
     setLoadingSecrets(true);
-    try {
-      // @ts-ignore
-      const results = await window.electron.ipcRenderer.invoke(
-        'sqlite:all',
-        'SELECT * FROM service_emails_secrets WHERE service_email_id = ? ORDER BY created_at DESC',
-        [linkId],
-      );
-      setCurrentSecrets(results || []);
-    } catch (err) {
-      console.error('Failed to fetch secrets', err);
-    } finally {
-      setLoadingSecrets(false);
-    }
+    // Secrets are now managed via service metadata fields - no separate table
+    setCurrentSecrets([]);
+    setLoadingSecrets(false);
   };
 
-  const handleAddSecret = async (linkId: string, name: string, value: string, type: string) => {
-    try {
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke(
-        'sqlite:run',
-        'INSERT INTO service_emails_secrets (id, service_email_id, secret_name, secret_value, secret_type) VALUES (?, ?, ?, ?, ?)',
-        [window.crypto.randomUUID(), linkId, name, value, type],
-      );
-      // Refresh secrets list
-      handleViewSecrets(linkId);
-    } catch (err) {
-      console.error('Failed to add secret', err);
-    }
+  const handleAddSecret = async (_linkId: string, _name: string, _value: string, _type: string) => {
+    // Secrets now managed via service metadata - no separate table
   };
 
   const handleUpdateSecret = async (
-    secretId: string,
-    name: string,
-    value: string,
-    type: string,
+    _secretId: string,
+    _name: string,
+    _value: string,
+    _type: string,
   ) => {
-    try {
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke(
-        'sqlite:run',
-        'UPDATE service_emails_secrets SET secret_name = ?, secret_value = ?, secret_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [name, value, type, secretId],
-      );
-      if (newServiceData.linkId) {
-        handleViewSecrets(newServiceData.linkId);
-      }
-    } catch (err) {
-      console.error('Failed to update secret', err);
-    }
+    // Secrets now managed via service metadata - no separate table
   };
 
-  const handleDeleteSecret = async (secretId: string) => {
-    try {
-      // @ts-ignore
-      await window.electron.ipcRenderer.invoke(
-        'sqlite:run',
-        'DELETE FROM service_emails_secrets WHERE id = ?',
-        [secretId],
-      );
-      if (newServiceData.linkId) {
-        handleViewSecrets(newServiceData.linkId);
-      }
-    } catch (err) {
-      console.error('Failed to delete secret', err);
-    }
+  const handleDeleteSecret = async (_secretId: string) => {
+    // Secrets now managed via service metadata - no separate table
   };
 
   const handleOpenNewServiceDrawer = () => {
@@ -801,7 +793,7 @@ const EmailTable: FC<EmailTableProps> = ({
       {serviceContextMenu && createPortal(
         <div
           ref={serviceMenuRef}
-          className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl py-1.5 z-[1000] min-w-[200px] w-max animate-in fade-in zoom-in-95 duration-100 p-1"
+          className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl py-1.5 z-[1000] min-w-[200px] w-max animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
           style={{ top: serviceContextMenu.y, left: serviceContextMenu.x }}
           onClick={() => setServiceContextMenu(null)}
         >

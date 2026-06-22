@@ -99,7 +99,7 @@ const DetailView: FC<DetailViewProps> = ({
 
   return (
     <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden min-h-[calc(100vh-220px)]">
-      <div className="w-64 border-l border-r border-border/30 bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-hidden relative">
+      <div className="w-64 border-l border-r border-border bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-hidden relative">
         <div className="flex-1 space-y-1">
           <button
             onClick={(e) => {
@@ -115,9 +115,10 @@ const DetailView: FC<DetailViewProps> = ({
             style={
               {
                 '--tab-color': getTabColor('info').base,
-                background: activeTab === 'info'
-                  ? `linear-gradient(to right, ${getTabColor('info').bg}, transparent)`
-                  : undefined,
+                background:
+                  activeTab === 'info'
+                    ? `linear-gradient(to right, ${getTabColor('info').bg}, transparent)`
+                    : undefined,
               } as React.CSSProperties
             }
           >
@@ -137,7 +138,7 @@ const DetailView: FC<DetailViewProps> = ({
               )}
               style={
                 activeTab === 'info'
-                  ? { '--tab-color': getTabColor('info').base } as React.CSSProperties
+                  ? ({ '--tab-color': getTabColor('info').base } as React.CSSProperties)
                   : undefined
               }
             />
@@ -158,9 +159,10 @@ const DetailView: FC<DetailViewProps> = ({
             style={
               {
                 '--tab-color': getTabColor('services').base,
-                background: activeTab === 'services'
-                  ? `linear-gradient(to right, ${getTabColor('services').bg}, transparent)`
-                  : undefined,
+                background:
+                  activeTab === 'services'
+                    ? `linear-gradient(to right, ${getTabColor('services').bg}, transparent)`
+                    : undefined,
               } as React.CSSProperties
             }
           >
@@ -180,7 +182,7 @@ const DetailView: FC<DetailViewProps> = ({
               )}
               style={
                 activeTab === 'services'
-                  ? { '--tab-color': getTabColor('services').base } as React.CSSProperties
+                  ? ({ '--tab-color': getTabColor('services').base } as React.CSSProperties)
                   : undefined
               }
             />
@@ -201,9 +203,10 @@ const DetailView: FC<DetailViewProps> = ({
             style={
               {
                 '--tab-color': getTabColor('sessions').base,
-                background: activeTab === 'sessions'
-                  ? `linear-gradient(to right, ${getTabColor('sessions').bg}, transparent)`
-                  : undefined,
+                background:
+                  activeTab === 'sessions'
+                    ? `linear-gradient(to right, ${getTabColor('sessions').bg}, transparent)`
+                    : undefined,
               } as React.CSSProperties
             }
           >
@@ -223,7 +226,7 @@ const DetailView: FC<DetailViewProps> = ({
               )}
               style={
                 activeTab === 'sessions'
-                  ? { '--tab-color': getTabColor('sessions').base } as React.CSSProperties
+                  ? ({ '--tab-color': getTabColor('sessions').base } as React.CSSProperties)
                   : undefined
               }
             />
@@ -244,9 +247,10 @@ const DetailView: FC<DetailViewProps> = ({
             style={
               {
                 '--tab-color': getTabColor('history').base,
-                background: activeTab === 'history'
-                  ? `linear-gradient(to right, ${getTabColor('history').bg}, transparent)`
-                  : undefined,
+                background:
+                  activeTab === 'history'
+                    ? `linear-gradient(to right, ${getTabColor('history').bg}, transparent)`
+                    : undefined,
               } as React.CSSProperties
             }
           >
@@ -266,7 +270,7 @@ const DetailView: FC<DetailViewProps> = ({
               )}
               style={
                 activeTab === 'history'
-                  ? { '--tab-color': getTabColor('history').base } as React.CSSProperties
+                  ? ({ '--tab-color': getTabColor('history').base } as React.CSSProperties)
                   : undefined
               }
             />
@@ -315,10 +319,7 @@ const DetailView: FC<DetailViewProps> = ({
               onServiceContextMenu={onServiceContextMenu}
             />
           ) : activeTab === 'sessions' ? (
-            <SessionsTab
-              email={editedAccount?.email || ''}
-              accountId={focusedAccount?.id || ''}
-            />
+            <SessionsTab email={editedAccount?.email || ''} accountId={focusedAccount?.id || ''} />
           ) : (
             <HistoryTab email={editedAccount?.email || ''} />
           )}

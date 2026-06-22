@@ -203,7 +203,7 @@ const HistoryActivityChart: FC<{ intervals: ActivityInterval[] }> = ({ intervals
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     return (
-                      <div className="bg-popover/90 backdrop-blur-xl border border-border/50 p-2 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                      <div className="bg-popover/90 backdrop-blur-xl border border-border/50 p-2 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 hover:border-primary transition-colors">
                         <p className="text-[10px] font-black text-primary uppercase tracking-wider mb-1">
                           {payload[0].payload.label}
                         </p>

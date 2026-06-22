@@ -9,7 +9,7 @@ import {
   Shield,
   Key,
   Hash,
-  Home,
+  LayoutDashboard,
   ChevronRight,
   Trash2,
   Undo2,
@@ -182,7 +182,7 @@ const EmailManager = () => {
         window.electron.ipcRenderer.invoke(
           'sqlite:all',
           `SELECT se.*, s.name as serviceName, s.url as serviceUrl, s.metadata as serviceMetadataDef,
-                  (SELECT COUNT(*) FROM service_emails_secrets ses WHERE ses.service_email_id = se.id) as secretCount
+                  0 as secretCount
            FROM service_emails se 
            JOIN services s ON se.service_id = s.id`,
         ),
@@ -502,11 +502,11 @@ const EmailManager = () => {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
       {/* Header with Breadcrumbs */}
-      <div className="h-[37px] flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
+      <div className="h-[48px] flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
         <div className="flex items-center gap-2">
-          <Home className="w-4 h-4 text-text-secondary -mt-0.5" />
-          <ChevronRight className="w-3 h-3 text-text-secondary" />
-          <span className="text-text-secondary text-sm">Email</span>
+          <LayoutDashboard className="w-4 h-4 text-text-primary -mt-0.5" />
+          <ChevronRight className="w-3 h-3 text-text-primary" />
+          <span className="text-text-primary text-sm">Email</span>
           {focusedAccountId && (() => {
             const focused = accounts.find(a => a.id === focusedAccountId);
             const tabLabels: Record<string, string> = {
@@ -530,12 +530,12 @@ const EmailManager = () => {
           })()}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
           {/* SearchBar */}
           <div className="w-80 flex items-center transition-all duration-500">
             <div
               className={cn(
-                'relative flex items-center w-full h-7 bg-input-background border border-border rounded-md transition-all duration-300',
+                'relative flex items-center w-full h-9 bg-input-background border border-border rounded-md transition-all duration-300',
                 focusedAccountId && 'opacity-50 cursor-not-allowed border-dashed',
               )}
             >
@@ -566,7 +566,7 @@ const EmailManager = () => {
               setSelectedAccount(null);
               setIsDrawerOpen(true);
             }}
-            className="w-7 h-7 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
+            className="w-9 h-9 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
             title="Add Account"
           >
             <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />

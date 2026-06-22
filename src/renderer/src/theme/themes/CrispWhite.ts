@@ -190,6 +190,7 @@ export const CrispWhite: ThemeConfig = {
     tableHeaderBackground: 'rgb(248, 249, 250)',
     tableFooterBackground: 'rgb(248, 249, 250)',
     tableRowHover: 'rgb(240, 242, 244)',
+    drawerBackground: 'rgb(255, 255, 255)',
   },
   accentColors: [
     'rgb(0, 102, 204)', // Blue - primary accent

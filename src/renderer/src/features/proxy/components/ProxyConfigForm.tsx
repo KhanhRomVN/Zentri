@@ -221,7 +221,7 @@ const ProxyConfigForm: FC<ProxyConfigFormProps> = ({ proxy, onClose, onSuccess }
                         onClick={() => setCurrencyPopoverOpen(!currencyPopoverOpen)}
                         className={cn(inputClass, 'text-xs font-bold uppercase tracking-widest cursor-pointer')} />
                       {currencyPopoverOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 max-h-[200px] overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 max-h-[200px] overflow-y-auto hover:border-primary transition-colors">
                           {CURRENCY_OPTIONS.map((cur) => (
                             <button key={cur} onMouseDown={() => { setFormData((d: any) => ({ ...d, metadata: { ...d.metadata, currency: cur } })); setCurrencyPopoverOpen(false); }}
                               className="w-full px-4 py-2.5 text-xs hover:bg-muted text-left transition-colors">{cur}</button>

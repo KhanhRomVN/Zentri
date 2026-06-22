@@ -34,6 +34,7 @@ export interface ThemeConfig {
     sidebarBackground: string;
     sidebarItemHover: string;
     sidebarItemFocus: string;
+    drawerBackground: string;
     tableHeaderBackground: string;
     tableFooterBackground: string;
     tableRowHover: string;

@@ -178,7 +178,7 @@ export const MonoBlack: ThemeConfig = {
     //
     modalBackground: 'rgb(12, 12, 12)',
     //
-    dropdownBackground: 'rgb(12, 12, 12)',
+    dropdownBackground: 'rgb(0, 0, 0)',
     dropdownItemHover: 'rgb(25, 25, 25)',
     //
     tooltipBackground: 'rgb(25, 25, 25)',
@@ -190,6 +190,7 @@ export const MonoBlack: ThemeConfig = {
     tableHeaderBackground: 'rgb(15, 15, 15)',
     tableFooterBackground: 'rgb(15, 15, 15)',
     tableRowHover: 'rgb(25, 25, 25)',
+    drawerBackground: 'rgb(18, 18, 18)',
   },
   accentColors: [
     'rgb(255, 255, 255)', // White - primary

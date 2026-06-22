@@ -62,6 +62,7 @@ export function ThemeProvider({
       tableHeaderBackground: '--table-header-background',
       tableFooterBackground: '--table-footer-background',
       tableRowHover: '--table-row-hover',
+      drawerBackground: '--drawer-background',
     };
 
     const themeData = preset.tailwind;

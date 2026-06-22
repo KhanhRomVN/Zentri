@@ -63,15 +63,15 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
               setLinkServiceSearchQuery('');
             }}
           />
-          <div className="relative w-[500px] h-full bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 shrink-0">
+          <div className="relative w-[500px] h-full bg-drawer-background border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 shrink-0">
               <div>
-                <h3 className="text-sm font-bold text-foreground">
+                <h3 className="text-base font-bold text-foreground">
                   {isEditMode
                     ? 'Edit Connection'
                     : 'Link Account'}
                 </h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {isEditMode
                     ? `Update credentials for ${newServiceData.serviceName}`
                     : `Associate service with ${focusedAccount?.email || ''}`}
@@ -87,17 +87,17 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto custom-scrollbar p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
               {/* Service Selector */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  <label className="text-[12px] font-bold text-muted-foreground/70">
                     Select Service
                   </label>
                   {!isEditMode && (
                     <button
                       onClick={() => setIsQuickCreateModalOpen(true)}
-                      className="text-[11px] font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors"
+                      className="text-[11px] font-bold text-primary hover:text-primary/80 transition-colors"
                     >
                       + New Service
                     </button>
@@ -109,7 +109,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                       type="text"
                       readOnly
                       value={newServiceData.serviceName}
-                      className="w-full h-12 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none"
+                      className="w-full h-12 px-3 rounded-md bg-input-background border border-border text-sm text-foreground outline-none"
                     />
                   ) : (
                     <>
@@ -122,10 +122,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                         }
                         onFocus={() => setServicePopoverOpen(true)}
                         onBlur={() => setTimeout(() => setServicePopoverOpen(false), 200)}
-                        className="w-full h-12 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                        className="w-full h-12 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                       />
                       {servicePopoverOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 max-h-[250px] overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-dropdown-background border border-border rounded-md shadow-2xl z-50 max-h-[250px] overflow-y-auto hover:border-primary transition-colors">
                           {globalServices
                             .filter((s) =>
                               s.name.toLowerCase().includes(linkServiceSearchQuery.toLowerCase()),
@@ -192,7 +192,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   );
                   if (existingLink?.status === 'deleting') {
                     return (
-                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-md space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="flex items-start gap-3">
                           <Plus className="w-5 h-5 text-amber-500 shrink-0 mt-0.5 rotate-45" />
                           <div className="space-y-1">
@@ -211,7 +211,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                               setIsServiceDrawerOpen(false);
                             }
                           }}
-                          className="w-full py-2.5 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+                          className="w-full py-2.5 rounded-md bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
                         >
                           <Database className="w-3.5 h-3.5" />
                           Restore Connection
@@ -226,7 +226,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
               {/* Credentials */}
               <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-500">
                 <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  <label className="text-[12px] font-bold text-muted-foreground/70">
                     Username
                   </label>
                   <input
@@ -236,11 +236,11 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                     onChange={(e) =>
                       setNewServiceData((prev: any) => ({ ...prev, username: e.target.value }))
                     }
-                    className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                    className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                   />
                 </div>
                 <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  <label className="text-[12px] font-bold text-muted-foreground/70">
                     Password
                   </label>
                   <input
@@ -250,11 +250,11 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                     onChange={(e) =>
                       setNewServiceData((prev: any) => ({ ...prev, password: e.target.value }))
                     }
-                    className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                    className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                   />
                 </div>
                 <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  <label className="text-[12px] font-bold text-muted-foreground/70">
                     Notes
                   </label>
                   <textarea
@@ -263,7 +263,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                     onChange={(e) =>
                       setNewServiceData((prev: any) => ({ ...prev, notes: e.target.value }))
                     }
-                    className="w-full bg-input-background border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 min-h-[100px] resize-none"
+                    className="w-full bg-input-background border border-border rounded-md px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 min-h-[100px] resize-none"
                   />
                 </div>
               </div>
@@ -283,13 +283,13 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   <div className="space-y-4 pt-4 border-t border-border/30">
                     <div className="flex items-center gap-2 mb-2">
                       <Database className="w-4 h-4 text-primary" />
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
+                      <h3 className="text-xs font-bold text-foreground/90">
                         Service-Specific Metadata
                       </h3>
                     </div>
                     {metadataDefinitions.map((item: any) => (
                       <div key={item.key} className="space-y-2.5">
-                        <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                        <label className="text-[12px] font-bold text-muted-foreground/70">
                           {item.key}
                           {item.type === 'array' && (
                             <span className="text-[10px] lowercase font-normal opacity-50">
@@ -319,7 +319,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                               },
                             }))
                           }
-                          className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                          className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                         />
                       </div>
                     ))}
@@ -327,10 +327,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                 );
               })()}
             </div>
-            <div className="flex gap-3 w-full p-4 border-t border-border bg-card/50 shrink-0">
+            <div className="flex gap-3 w-full px-4 py-2 border-t border-border bg-card/50 shrink-0 justify-end">
               <button
                 onClick={() => setIsServiceDrawerOpen(false)}
-                className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors border border-white/5"
+                className="px-5 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
               >
                 Cancel
               </button>
@@ -338,10 +338,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                 onClick={handleAddServiceLink}
                 disabled={!newServiceData.serviceId}
                 className={cn(
-                  'flex-1 px-4 py-3 rounded-xl text-xs font-bold transition-all shadow-lg',
+                  'px-5 py-2.5 rounded-lg transition-all font-semibold text-xs',
                   !newServiceData.serviceId
-                    ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
-                    : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
+                    ? 'bg-card-background text-text-secondary cursor-not-allowed'
+                    : 'bg-primary/30 text-primary hover:bg-primary/40 shadow-lg shadow-primary/10',
                 )}
               >
                 {isEditMode
@@ -353,26 +353,31 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
         </div>
       )}
 
-      {/* Quick Create Service Modal */}
+      {/* Quick Create Service Drawer */}
       {isQuickCreateModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex justify-end">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setIsQuickCreateModalOpen(false)}
           />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-              <h3 className="text-sm font-bold text-foreground">Quick Create Service</h3>
+          <div className="relative w-[500px] h-full bg-drawer-background border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 shrink-0">
+              <div>
+                <h3 className="text-base font-bold text-foreground">Quick Create Service</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Add a new service to the global library
+                </p>
+              </div>
               <button
                 onClick={() => setIsQuickCreateModalOpen(false)}
-                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="px-6 py-4 space-y-5">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
               <div className="space-y-2.5">
-                <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                <label className="text-[12px] font-bold text-muted-foreground/70">
                   Service Name <span className="text-destructive ml-1">*</span>
                 </label>
                 <input
@@ -381,11 +386,11 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   value={quickCreateData.name}
                   onChange={(e) => setQuickCreateData((d: any) => ({ ...d, name: e.target.value }))}
                   autoFocus
-                  className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                  className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                 />
               </div>
               <div className="space-y-2.5">
-                <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                <label className="text-[12px] font-bold text-muted-foreground/70">
                   URL
                 </label>
                 <input
@@ -393,11 +398,11 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   placeholder="https://..."
                   value={quickCreateData.url}
                   onChange={(e) => setQuickCreateData((d: any) => ({ ...d, url: e.target.value }))}
-                  className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                  className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                 />
               </div>
               <div className="space-y-2.5">
-                <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                <label className="text-[12px] font-bold text-muted-foreground/70">
                   Category
                 </label>
                 <div className="relative">
@@ -411,7 +416,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                       }
                       onFocus={() => setCategoryInputOpen(true)}
                       onBlur={() => setTimeout(() => setCategoryInputOpen(false), 200)}
-                      className="w-full h-10 px-3 pr-8 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                      className="w-full h-10 px-3 pr-8 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                     />
                     {quickCreateData.category && (
                       <button
@@ -426,7 +431,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                     )}
                   </div>
                   {categoryInputOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 max-h-[200px] overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-dropdown-background border border-border rounded-md shadow-2xl z-50 max-h-[200px] overflow-y-auto hover:border-primary transition-colors">
                       {(() => {
                         const allCategories = Array.from(
                           new Set(
@@ -480,7 +485,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                 </div>
               </div>
               <div className="space-y-2.5">
-                <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                <label className="text-[12px] font-bold text-muted-foreground/70">
                   Tags
                 </label>
                 <input
@@ -488,11 +493,11 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   placeholder="tag1, tag2, tag3..."
                   value={quickCreateData.tags}
                   onChange={(e) => setQuickCreateData((d: any) => ({ ...d, tags: e.target.value }))}
-                  className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                  className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                 />
               </div>
               <div className="space-y-2.5">
-                <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                <label className="text-[12px] font-bold text-muted-foreground/70">
                   Description
                 </label>
                 <textarea
@@ -501,12 +506,12 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   onChange={(e) =>
                     setQuickCreateData((d: any) => ({ ...d, description: e.target.value }))
                   }
-                  className="w-full bg-input-background border border-border/50 rounded-2xl px-5 py-3 text-sm text-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all h-24 resize-none"
+                  className="w-full bg-input-background border border-border rounded-md px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 min-h-[100px] resize-none"
                 />
               </div>
               <div className="pt-2 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  <label className="text-[12px] font-bold text-muted-foreground/70">
                     Metadata Fields
                   </label>
                   <button
@@ -516,7 +521,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                         metadata: [...(d.metadata || []), { key: '', value: '' }],
                       }))
                     }
-                    className="p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-all text-[10px] font-black uppercase"
+                    className="p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-all text-[10px] font-black"
                   >
                     + Add
                   </button>
@@ -537,7 +542,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                         updated[idx] = { ...updated[idx], key: e.target.value };
                         setQuickCreateData((d: any) => ({ ...d, metadata: updated }));
                       }}
-                      className="flex-1 h-9 px-3 rounded-lg bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                      className="flex-1 h-9 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                     />
                     <input
                       type="text"
@@ -548,7 +553,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                         updated[idx] = { ...updated[idx], value: e.target.value };
                         setQuickCreateData((d: any) => ({ ...d, metadata: updated }));
                       }}
-                      className="flex-1 h-9 px-3 rounded-lg bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                      className="flex-1 h-9 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                     />
                     <button
                       onClick={() =>
@@ -565,7 +570,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                 ))}
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-border/50 flex gap-3">
+            <div className="flex gap-3 w-full px-4 py-2 border-t border-border bg-card/50 shrink-0 justify-end">
               <button
                 onClick={() => {
                   setIsQuickCreateModalOpen(false);
@@ -579,7 +584,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                   });
                   setCategorySearch('');
                 }}
-                className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors border border-white/5"
+                className="px-5 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
               >
                 Cancel
               </button>
@@ -587,10 +592,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                 onClick={handleQuickCreateService}
                 disabled={!quickCreateData.name}
                 className={cn(
-                  'flex-1 px-4 py-3 rounded-xl text-xs font-bold transition-all shadow-lg',
+                  'px-5 py-2.5 rounded-lg transition-all font-semibold text-xs',
                   !quickCreateData.name
-                    ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
-                    : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
+                    ? 'bg-card-background text-text-secondary cursor-not-allowed'
+                    : 'bg-primary/30 text-primary hover:bg-primary/40 shadow-lg shadow-primary/10',
                 )}
               >
                 Save Service

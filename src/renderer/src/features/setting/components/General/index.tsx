@@ -1,10 +1,62 @@
-import { useState, useEffect } from 'react';
-import { FolderOpen, FilePlus, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { FolderOpen, FilePlus, X, ChevronDown } from 'lucide-react';
 
 const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'vi', label: 'Tiếng Việt' },
 ];
+
+const LanguageDropdown = ({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { code: string; label: string }[];
+}) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selected = options.find((o) => o.code === value);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full h-9 rounded-md border border-border bg-input-background px-3 text-sm text-foreground flex items-center justify-between hover:border-primary/50 transition-all cursor-pointer"
+      >
+        <span>{selected?.label || value}</span>
+        <ChevronDown className="w-4 h-4 text-muted-foreground/50" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors">
+          {options.map((opt) => (
+            <button
+              key={opt.code}
+              onClick={() => {
+                onChange(opt.code);
+                setOpen(false);
+              }}
+              className="w-full px-4 py-2.5 text-sm text-left hover:bg-dropdown-item-hover rounded-xl transition-colors"
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const GeneralSettings = () => {
   const [language, setLanguage] = useState<'en' | 'vi'>(() => {
@@ -79,46 +131,39 @@ export const GeneralSettings = () => {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
       <div className="space-y-6">
         <div className="space-y-3">
-          <label className="text-[14px] font-bold uppercase tracking-wider text-muted-foreground/70">
+          <label className="text-sm font-medium text-foreground">
             Storage Folder
           </label>
           <div className="flex gap-2">
-            <div className="flex-1 h-11 rounded-xl border border-border bg-input-background px-4 text-sm flex items-center text-muted-foreground overflow-hidden font-mono truncate">
+            <div className="flex-1 h-9 rounded-md border border-border bg-input-background px-3 text-sm flex items-center text-muted-foreground overflow-hidden font-mono truncate">
               {folderPath || 'No folder selected'}
             </div>
             <button
               onClick={handleSelectFolder}
-              className="w-11 h-11 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-all active:scale-95"
+              className="w-9 h-9 shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-all active:scale-95"
               title="Select Folder"
             >
-              <FolderOpen className="w-5 h-5" />
+              <FolderOpen className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         <div className="space-y-3">
-          <label className="text-[12px] font-bold uppercase tracking-widest text-muted-foreground/50">
+          <label className="text-sm font-medium text-foreground">
             App Language
           </label>
-          <select
+          <LanguageDropdown
             value={language}
-            onChange={(e) => {
-              const lang = e.target.value as 'en' | 'vi';
-              setLanguage(lang);
+            onChange={(lang) => {
+              setLanguage(lang as 'en' | 'vi');
               try { localStorage.setItem('systema-language', lang); } catch { /* ignore */ }
             }}
-            className="w-full h-11 rounded-xl border border-border bg-input-background px-4 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-all cursor-pointer"
-          >
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code}>
-                {lang.label}
-              </option>
-            ))}
-          </select>
+            options={SUPPORTED_LANGUAGES}
+          />
         </div>
 
         <div className="space-y-3">
-          <label className="text-[14px] font-bold uppercase tracking-wider text-muted-foreground/70">
+          <label className="text-sm font-medium text-foreground">
             Browser Executable Path
           </label>
           <input
@@ -126,7 +171,7 @@ export const GeneralSettings = () => {
             value={browserPath}
             onChange={(e) => saveBrowserPath(e.target.value)}
             placeholder="/path/to/browser/executable"
-            className="w-full h-11 rounded-xl border border-border bg-input-background px-4 text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
+            className="w-full h-9 rounded-md border border-border bg-input-background px-3 text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
           />
           <p className="text-[11px] text-muted-foreground/50">
             Leave empty to use the default system browser path.

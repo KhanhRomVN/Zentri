@@ -121,7 +121,7 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
               />
               <ChevronDown className="w-4 h-4 text-zinc-700 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               {proxyDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-1 z-[1100] max-h-[300px] overflow-auto custom-scrollbar">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-1 z-[1100] max-h-[300px] overflow-auto custom-scrollbar hover:border-primary transition-colors">
                   <button
                     className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-400 hover:text-white rounded-lg cursor-pointer transition-colors"
                     onMouseDown={() => { setSelectedProxyId(undefined); setProxySearch(''); setProxyDropdownOpen(false); }}
@@ -200,7 +200,7 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
               />
               <ChevronDown className="w-4 h-4 text-zinc-700 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               {fingerprintDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-1 z-[1100] max-h-[300px] overflow-auto custom-scrollbar">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-1 z-[1100] max-h-[300px] overflow-auto custom-scrollbar hover:border-primary transition-colors">
                   <button
                     className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-400 hover:text-white rounded-lg cursor-pointer transition-colors"
                     onMouseDown={() => { setSelectedFingerprintId(undefined); setFingerprintSearch(''); setFingerprintDropdownOpen(false); }}

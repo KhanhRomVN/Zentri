@@ -424,7 +424,8 @@ function setupServiceHandlers() {
         ...s,
         tags: s.tags ? JSON.parse(s.tags) : [],
         category: s.category ? JSON.parse(s.category) : [],
-        metadata: s.metadata ? JSON.parse(s.metadata) : [],
+        metadata: s.metadata ? JSON.parse(s.metadata) : null,
+        auth_method: s.auth_method ? JSON.parse(s.auth_method) : [],
       }));
     } catch (error) {
       console.error('[service:get-all] FAILED:', error);
@@ -436,17 +437,18 @@ function setupServiceHandlers() {
     try {
       const id = crypto.randomUUID();
       const query = `
-        INSERT INTO services (id, name, url, tags, category, description, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO services (id, name, url, tags, category, description, metadata, auth_method)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const params = [
         id,
         data.name,
         data.url || null,
-        data.tags || '[]',
-        data.category || '[]',
+        data.tags ? JSON.stringify(data.tags) : '[]',
+        data.category ? JSON.stringify(data.category) : '[]',
         data.description || null,
-        data.metadata || '[]',
+        data.metadata ? JSON.stringify(data.metadata) : null,
+        data.auth_method ? JSON.stringify(data.auth_method) : '[]',
       ];
       await dbManager.run(query, params);
       const newService = await dbManager.get('SELECT * FROM services WHERE id = ?', [id]);

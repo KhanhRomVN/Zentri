@@ -13,6 +13,7 @@ module.exports = {
     'bg-table-footer-background',
     'bg-table-row-hover',
     'bg-tooltip-background',
+    'bg-drawer-background',
   ],
   theme: {
     extend: {
@@ -45,6 +46,7 @@ module.exports = {
         'table-header-background': 'rgb(var(--table-header-background) / <alpha-value>)',
         'table-footer-background': 'rgb(var(--table-footer-background) / <alpha-value>)',
         'table-row-hover': 'rgb(var(--table-row-hover) / <alpha-value>)',
+        'drawer-background': 'rgb(var(--drawer-background) / <alpha-value>)',
         card: {
           background: 'rgb(var(--card-background) / <alpha-value>)',
           hover: 'rgb(var(--card-background-hover) / <alpha-value>)',

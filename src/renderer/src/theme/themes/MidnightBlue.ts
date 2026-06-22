@@ -178,7 +178,7 @@ export const MidnightBlue: ThemeConfig = {
     //
     modalBackground: 'rgb(10, 14, 20)',
     //
-    dropdownBackground: 'rgb(10, 15, 25)',
+    dropdownBackground: 'rgb(15, 19, 25)',
     dropdownItemHover: 'rgb(15, 25, 40)',
     //
     tooltipBackground: 'rgb(20, 25, 35)',
@@ -190,18 +190,19 @@ export const MidnightBlue: ThemeConfig = {
     tableHeaderBackground: 'rgb(12, 16, 22)',
     tableFooterBackground: 'rgb(12, 16, 22)',
     tableRowHover: 'rgb(20, 25, 35)',
+    drawerBackground: 'rgb(16, 20, 28)',
   },
   accentColors: [
-    'rgb(10, 132, 255)',  // Blue - primary
-    'rgb(48, 209, 88)',   // Green - vibrant
-    'rgb(255, 159, 10)',  // Orange - warm
-    'rgb(175, 82, 222)',  // Purple - rich
-    'rgb(255, 45, 85)',   // Red - bold
+    'rgb(10, 132, 255)', // Blue - primary
+    'rgb(48, 209, 88)', // Green - vibrant
+    'rgb(255, 159, 10)', // Orange - warm
+    'rgb(175, 82, 222)', // Purple - rich
+    'rgb(255, 45, 85)', // Red - bold
     'rgb(255, 105, 180)', // Pink - bright
-    'rgb(0, 210, 255)',   // Aqua - electric
-    'rgb(255, 200, 50)',  // Gold - bright (replaced similar mustard)
-    'rgb(230, 190, 60)',  // Mustard - warm
-    'rgb(138, 90, 255)',  // Violet - luminous
+    'rgb(0, 210, 255)', // Aqua - electric
+    'rgb(255, 200, 50)', // Gold - bright (replaced similar mustard)
+    'rgb(230, 190, 60)', // Mustard - warm
+    'rgb(138, 90, 255)', // Violet - luminous
     'rgb(255, 150, 100)', // Coral - warm (replaced peach)
   ],
   typography: {

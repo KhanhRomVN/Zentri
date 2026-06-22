@@ -178,7 +178,7 @@ export const SoftLight: ThemeConfig = {
     //
     modalBackground: 'rgb(255, 252, 248)',
     //
-    dropdownBackground: 'rgb(255, 252, 248)',
+    dropdownBackground: 'rgb(245, 240, 235)',
     dropdownItemHover: 'rgb(237, 232, 227)',
     //
     tooltipBackground: 'rgb(237, 232, 227)',
@@ -190,6 +190,7 @@ export const SoftLight: ThemeConfig = {
     tableHeaderBackground: 'rgb(240, 234, 228)',
     tableFooterBackground: 'rgb(240, 234, 228)',
     tableRowHover: 'rgb(237, 232, 227)',
+    drawerBackground: 'rgb(250, 247, 244)',
   },
   accentColors: [
     'rgb(90, 108, 138)', // Blue - primary

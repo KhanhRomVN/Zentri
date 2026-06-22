@@ -403,7 +403,7 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
               }}
             />
             <div
-              className="fixed z-[1001] w-56 bg-dialog-background border border-border shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+              className="fixed z-[1001] w-56 bg-dialog-background border border-border shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 hover:border-primary transition-colors"
               style={{ left: menuConfig.x, top: menuConfig.y }}
             >
               <div className="p-2 space-y-1">
