@@ -217,7 +217,7 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
       {contextMenu && contextMenuView && createPortal(
         <div
           ref={menuRef}
-          className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-md py-1.5 z-[1000] min-w-[140px] w-max animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
+          className="fixed bg-modal-background border border-border rounded-lg shadow-xl py-1.5 z-[1000] min-w-[140px] w-max animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={() => setContextMenu(null)}
         >
@@ -226,9 +226,9 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
               onFavoriteView?.(contextMenu.viewId);
               setContextMenu(null);
             }}
-            className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-bold text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 rounded-md transition-all whitespace-nowrap"
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
           >
-            <Star className={`w-4 h-4 ${contextMenuView?.favorite ? 'fill-amber-400' : ''}`} />
+            <Star className={`w-4 h-4 text-amber-400 ${contextMenuView?.favorite ? 'fill-amber-400' : ''}`} />
             {contextMenuView?.favorite ? 'Unfavorite' : 'Favorite'}
           </button>
           {contextMenuView?.source !== 'service' && (
@@ -239,9 +239,9 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
                   onEditView?.(contextMenuView);
                   setContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-bold text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
               >
-                <Pencil className="w-4 h-4" />
+                <Pencil className="w-4 h-4 text-blue-500/50" />
                 Edit
               </button>
               <div className="h-px bg-border/20 my-1 mx-2" />
@@ -250,9 +250,9 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
                   onDeleteView?.(contextMenu.viewId);
                   setContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-bold text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all whitespace-nowrap"
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4 text-red-500/60" />
                 Delete
               </button>
             </>

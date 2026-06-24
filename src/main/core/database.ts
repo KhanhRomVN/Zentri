@@ -271,6 +271,8 @@ export class DbManager {
       }
     }
 
+    
+
     // Migration for service_emails: strip down to only id, email_id, service_id
     // SQLite doesn't support DROP COLUMN easily, so we recreate the table
     const serviceEmailColumns = await this.rawAll<{ name: string }>(

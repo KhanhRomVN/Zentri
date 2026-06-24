@@ -108,11 +108,6 @@ _Thư viện các dịch vụ và nền tảng hỗ trợ._
 - **`auth_method`** [TEXT]
   - Mảng string chứa toàn bộ phương thức xác thực được hỗ trợ (JSON).
   - Ví dụ: `["google_oauth"]`, `["basic_auth"]`, `["github_oauth"]`.
-- **`layout_config`** [TEXT]
-  - Cấu hình layout tùy chỉnh cho UI form nhập liệu của service (JSON).
-  - Mỗi field gồm: `field_name` (tên field khớp với metadata), `x`, `y` (vị trí), `width`, `height` (kích thước).
-  - Cho phép kéo thả tùy chỉnh vị trí các field thay vì layout cố định.
-  - Ví dụ: `[{"field_name":"username","x":0,"y":0,"width":1,"height":1},{"field_name":"password","x":1,"y":0,"width":1,"height":1}]`
 
 ---
 

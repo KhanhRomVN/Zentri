@@ -7,7 +7,7 @@ import { cn } from '../../../shared/lib/utils';
 import { Account, Service } from '../types';
 import { SERVICES } from '../../../constants/services';
 import DetailView from './DetailView';
-import ContextMenu from './ContextMenu';
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from './ContextMenu';
 import ServiceDrawers from './ServiceDrawers';
 import ServiceVaultDrawer from './ServiceVaultDrawer';
 import ProfileLaunchModal from './modals/ProfileLaunchModal';
@@ -487,27 +487,14 @@ const EmailTable: FC<EmailTableProps> = ({
 
     try {
       if (isEditServiceMode && newServiceData.linkId) {
-        // @ts-ignore
-        await window.electron.ipcRenderer.invoke(
-          'sqlite:run',
-          "UPDATE service_emails SET username = ?, password = ?, notes = ?, metadata = ?, updated_at = datetime('now') WHERE id = ?",
-          [
-            newServiceData.username,
-            newServiceData.password,
-            newServiceData.notes,
-            JSON.stringify(newServiceData.metadata),
-            newServiceData.linkId,
-          ],
-        );
+        // Edit mode: currently we don't support editing service links as there are no editable fields
+        // Just close the drawer and refresh
+        console.log('Edit mode: no fields to update for service link');
       } else {
         // @ts-ignore
         await window.electron.ipcRenderer.invoke('email:add-service-link', {
           emailId: focusedAccount.id,
           serviceId: newServiceData.serviceId,
-          username: newServiceData.username,
-          password: newServiceData.password,
-          notes: newServiceData.notes,
-          metadata: newServiceData.metadata,
         });
       }
 
@@ -753,6 +740,8 @@ const EmailTable: FC<EmailTableProps> = ({
                               accountServices={accountServices}
                               onAddNewServiceLink={handleOpenNewServiceDrawer}
                               onEditServiceLink={handleEditServiceLink}
+                              onOpenService={handleOpenService}
+                              onDeleteService={handleUnlinkService}
                             />
                           </motion.div>
                         </td>
@@ -766,58 +755,40 @@ const EmailTable: FC<EmailTableProps> = ({
         </table>
       </div>
 
-      <ContextMenu
-        menuRef={menuRef}
-        contextMenu={contextMenu}
-        setContextMenu={setContextMenu}
-        accounts={accounts}
-        onSelectAccount={onSelectAccount}
-        onRestore={onRestore}
-        onHardDelete={onHardDelete}
-        onSoftDelete={onSoftDelete}
-        onLaunchRequest={(account, mode) => {
-          if (mode === 'secure') {
-            setPendingLaunch({ accountId: account.id, email: account.email, provider: 'google' });
-            setIsLaunchModalOpen(true);
-          } else {
-            handleExecuteLaunch(
-              { fingerprintId: undefined, proxyId: undefined, launchMode: 'normal' },
-              { accountId: account.id, email: account.email, provider: 'google' },
-            );
-          }
-        }}
-        browserVersion={browserVersion}
-      />
+      
 
       {/* Service Context Menu */}
       {serviceContextMenu && createPortal(
         <div
           ref={serviceMenuRef}
-          className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl py-1.5 z-[1000] min-w-[200px] w-max animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
+          className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-md shadow-lg shadow-black/20 py-1.5 z-[1000] min-w-[200px] w-max animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
           style={{ top: serviceContextMenu.y, left: serviceContextMenu.x }}
           onClick={() => setServiceContextMenu(null)}
         >
-          <button onClick={() => handleOpenService(serviceContextMenu.linkId)} className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all whitespace-nowrap">
-            <Globe className="w-4 h-4" />Open with Chromium {browserVersion}
+          <button onClick={() => handleOpenService(serviceContextMenu.linkId)} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap">
+            <Globe className="w-4 h-4 text-emerald-400" />Open with Chromium {browserVersion}
           </button>
           <div className="h-px bg-border/20 my-1 mx-2" />
-          <button onClick={() => handleEditServiceLink(serviceContextMenu.linkId)} className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap">
+          <button onClick={() => handleEditServiceLink(serviceContextMenu.linkId)} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap">
             <Eye className="w-4 h-4 text-blue-500/50" />View / Edit
           </button>
-          <button onClick={() => handleViewSecrets(serviceContextMenu.linkId)} className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-muted/50 rounded-xl transition-all whitespace-nowrap">
+          <button onClick={() => handleViewSecrets(serviceContextMenu.linkId)} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap">
             <Key className="w-4 h-4 text-primary/50" />Secrets Vault
           </button>
           <div className="h-px bg-border/20 my-1 mx-2" />
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all whitespace-nowrap" onClick={() => {
+          <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap" onClick={() => {
             if (serviceContextMenu.status === 'trash') setServiceHardDeleteConfirmId(serviceContextMenu.linkId);
             else setServiceDeleteConfirmId(serviceContextMenu.linkId);
           }}>
-            <Trash2 className="w-4 h-4" />{serviceContextMenu.status === 'trash' ? 'Delete Permanently' : 'Delete'}
+            <Trash2 className="w-4 h-4 text-red-500/60" />{serviceContextMenu.status === 'trash' ? 'Delete Permanently' : 'Delete'}
           </button>
           {serviceContextMenu.status === 'trash' && (
-            <button onClick={() => handleRestoreService(serviceContextMenu.linkId)} className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-400/80 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all mt-1 whitespace-nowrap">
-              <Undo2 className="w-4 h-4" />Restore Service
-            </button>
+            <>
+              <div className="h-px bg-border/20 my-1 mx-2" />
+              <button onClick={() => handleRestoreService(serviceContextMenu.linkId)} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap">
+                <Undo2 className="w-4 h-4 text-emerald-400" />Restore Service
+              </button>
+            </>
           )}
         </div>,
         document.body,

@@ -160,33 +160,21 @@ export function setupProfileHandlers() {
       {
         emailId,
         serviceId,
-        username,
-        password,
-        notes,
-        metadata,
       }: {
         emailId: string;
         serviceId: string;
-        username?: string;
-        password?: string;
-        notes?: string;
-        metadata?: any;
       },
     ) => {
       try {
         const id = crypto.randomUUID();
         const query = `
-          INSERT INTO service_emails (id, email_id, service_id, username, password, notes, metadata)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO service_emails (id, email_id, service_id)
+          VALUES (?, ?, ?)
         `;
         const params = [
           id,
           emailId,
           serviceId,
-          username || null,
-          password || null,
-          notes || null,
-          metadata ? JSON.stringify(metadata) : null,
         ];
         await dbManager.run(query, params);
         return { success: true, id };

@@ -74,6 +74,16 @@ export interface Service {
     [key: string]: unknown;
   } | null;
   auth_method?: string[] | null;
+  layout_config?: {
+    gridCols?: number;
+    fields?: Array<{
+      field_name: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }>;
+  } | null;
   created_at?: string;
   updated_at?: string;
 }

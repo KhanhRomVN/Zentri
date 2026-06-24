@@ -212,7 +212,7 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
       {/* Context Menu */}
       {contextMenu && createPortal(
         <div
-          className="fixed z-[9999] w-48 bg-[#111111] border border-white/10 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] p-1.5 backdrop-blur-xl"
+          className="fixed z-[9999] w-48 bg-modal-background border border-border rounded-lg shadow-xl p-1.5 backdrop-blur-xl"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <div className="px-3 py-1.5 mb-1.5 border-b border-white/5">
@@ -222,28 +222,28 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
           </div>
           <button
             onClick={() => { navigator.clipboard.writeText(contextMenu.secret.secret_value); setContextMenu(null); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-bold text-foreground/80 hover:bg-white/5 hover:text-foreground transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] font-bold text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground transition-all"
           >
             <Copy className="w-3.5 h-3.5 opacity-50" />Copy Secret
           </button>
           {contextMenu.secret.secret_type === 'totp' && (
             <button
               onClick={() => { navigator.clipboard.writeText(generateTOTP(contextMenu.secret.secret_value)); setContextMenu(null); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-bold text-primary hover:bg-primary/10 transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] font-bold text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground transition-all"
             >
               <RotateCcw className="w-3.5 h-3.5" />Copy OTP Code
             </button>
           )}
           <button
             onClick={() => { setEditingSecret(contextMenu.secret); setIsEditModalOpen(true); setContextMenu(null); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-bold text-foreground/80 hover:bg-white/5 hover:text-foreground transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] font-bold text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground transition-all"
           >
             <Edit2 className="w-3.5 h-3.5 opacity-50" />Edit Meta
           </button>
           <div className="h-px bg-white/5 my-1" />
           <button
             onClick={() => { onDeleteSecret?.(contextMenu.secret.id); setContextMenu(null); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-bold text-red-500/80 hover:bg-red-500/10 hover:text-red-500 transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] font-bold text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground transition-all"
           >
             <Trash2 className="w-3.5 h-3.5" />Purge Secret
           </button>

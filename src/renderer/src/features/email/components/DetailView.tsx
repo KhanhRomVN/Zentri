@@ -70,6 +70,8 @@ interface DetailViewProps {
   accountServices: any[];
   onAddNewServiceLink: () => void;
   onEditServiceLink: (linkId: string) => void;
+  onOpenService?: (linkId: string) => void;
+  onDeleteService?: (linkId: string) => void;
 }
 
 const DetailView: FC<DetailViewProps> = ({
@@ -90,6 +92,8 @@ const DetailView: FC<DetailViewProps> = ({
   accountServices,
   onAddNewServiceLink,
   onEditServiceLink,
+  onOpenService,
+  onDeleteService,
 }) => {
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
 
@@ -317,6 +321,8 @@ const DetailView: FC<DetailViewProps> = ({
               onAddNewServiceLink={onAddNewServiceLink}
               onEditServiceLink={onEditServiceLink}
               onServiceContextMenu={onServiceContextMenu}
+              onOpenService={onOpenService}
+              onDeleteService={onDeleteService}
             />
           ) : activeTab === 'sessions' ? (
             <SessionsTab email={editedAccount?.email || ''} accountId={focusedAccount?.id || ''} />

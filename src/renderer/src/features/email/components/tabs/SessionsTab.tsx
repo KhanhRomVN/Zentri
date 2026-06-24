@@ -1,4 +1,5 @@
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
+import { cn } from '../../../../shared/lib/utils';
 import ProfileLaunchModal from '../modals/ProfileLaunchModal';
 import {
   Database,
@@ -379,7 +380,7 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
       {menu && (
         <div
           ref={menuRef}
-          className="absolute z-[100] w-72 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden py-1.5 ring-1 ring-white/5 hover:border-primary transition-colors"
+          className="absolute z-[100] w-72 bg-modal-background border border-border rounded-lg shadow-xl overflow-hidden p-1 hover:border-primary transition-colors"
           style={{ top: menu?.y, left: menu?.x }}
         >
           <div className="px-4 py-2 bg-zinc-800/30 border-b border-zinc-800/50 mb-1">
@@ -431,12 +432,14 @@ const MenuAction = ({
       e.stopPropagation();
       onClick();
     }}
-    className={`w-full text-left px-4 py-2.5 flex items-center space-x-3 hover:bg-zinc-800 transition-colors ${
-      danger ? 'text-red-400' : 'text-zinc-300'
-    }`}
+    className={cn(
+      "w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-md transition-all text-[11px] font-bold uppercase tracking-widest",
+      "text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground",
+      danger && "text-red-500/60 hover:text-red-500 hover:bg-red-500/10"
+    )}
   >
     {icon}
-    <span className="text-xs font-semibold">{label}</span>
+    <span>{label}</span>
   </button>
 );
 

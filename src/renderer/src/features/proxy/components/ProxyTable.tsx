@@ -403,10 +403,10 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
               }}
             />
             <div
-              className="fixed z-[1001] w-56 bg-dialog-background border border-border shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 hover:border-primary transition-colors"
+              className="fixed z-[1001] w-56 bg-modal-background border border-border rounded-lg shadow-xl overflow-hidden p-1 animate-in fade-in zoom-in-95 duration-200 hover:border-primary transition-colors"
               style={{ left: menuConfig.x, top: menuConfig.y }}
             >
-              <div className="p-2 space-y-1">
+              <div className="p-1 space-y-1">
                 <button
                   onClick={() => {
                     const p = proxies.find((x) => x.id === menuConfig.proxyId);
@@ -417,9 +417,9 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                     }
                     setMenuConfig(null);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[12px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
                 >
-                  <Eye className="w-3.5 h-3.5" />
+                  <Eye className="w-3.5 h-3.5 text-blue-500/50" />
                   View
                 </button>
                 <button
@@ -432,9 +432,9 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                     }
                     setMenuConfig(null);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[12px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
+                  <Edit3 className="w-3.5 h-3.5 text-primary/50" />
                   Edit
                 </button>
                 <button
@@ -447,9 +447,9 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                     }
                     setMenuConfig(null);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[12px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
                 >
-                  <HistoryIcon className="w-3.5 h-3.5" />
+                  <HistoryIcon className="w-3.5 h-3.5 text-amber-500/50" />
                   View History
                 </button>
                 <button
@@ -457,9 +457,9 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                     setMenuConfig(null);
                     handleCheckProxy(menuConfig.proxyId);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[12px] font-bold uppercase tracking-widest text-muted-foreground hover:text-emerald-400 hover:bg-emerald-400/10 rounded-xl transition-all"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
                 >
-                  <Check className="w-3.5 h-3.5" />
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
                   Check
                 </button>
                 <div className="h-px bg-border/50 mx-2 my-1" />
@@ -470,9 +470,9 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                     else handleSoftDelete(menuConfig.proxyId);
                     setMenuConfig(null);
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[12px] font-bold uppercase tracking-widest text-rose-400 hover:bg-rose-400/10 rounded-xl transition-all"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5 text-red-500/60" />
                   {proxies.find((p) => p.id === menuConfig.proxyId)?.status === 'trash'
                     ? 'Delete Forever'
                     : 'Delete'}

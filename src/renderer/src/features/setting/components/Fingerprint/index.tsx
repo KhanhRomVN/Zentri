@@ -242,7 +242,7 @@ export const FingerprintSettings = () => {
       {contextMenu && createPortal(
         <div
           ref={contextMenuRef}
-          className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-2xl py-1.5 z-[1000] min-w-[160px] animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
+          className="fixed bg-modal-background border border-border rounded-lg shadow-xl py-1.5 z-[1000] min-w-[160px] animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
           <button
@@ -251,14 +251,14 @@ export const FingerprintSettings = () => {
               if (preset) { setEditConfig({ ...preset.config }); setExpandedId(preset.id); }
               setContextMenu(null);
             }}
-            className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-xl transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
           >
             <Edit2 className="w-3.5 h-3.5 text-primary" />Edit
           </button>
           <div className="h-px bg-border/20 my-1 mx-2" />
           <button
             onClick={() => handleDelete(contextMenu.presetId)}
-            className="w-full flex items-center gap-3 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
           >
             <Trash2 className="w-3.5 h-3.5" />Delete
           </button>
