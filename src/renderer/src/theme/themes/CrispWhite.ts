@@ -161,20 +161,33 @@ export const CrispWhite: ThemeConfig = {
     warn: 'rgb(204, 102, 0)',
     info: 'rgb(0, 102, 204)',
     //
+    blue: 'rgb(0, 102, 204)',
+    green: 'rgb(0, 136, 68)',
+    red: 'rgb(221, 34, 34)',
+    yellow: 'rgb(255, 187, 0)',
+    purple: 'rgb(153, 0, 204)',
+    pink: 'rgb(230, 100, 160)',
+    navy: 'rgb(26, 37, 74)',
+    teal: 'rgb(0, 180, 220)',
+    violet: 'rgb(130, 80, 200)',
+    //
     background: 'rgb(255, 255, 255)',
-    foreground: 'rgb(34, 34, 34)',
     //
     textPrimary: 'rgb(34, 34, 34)',
     textSecondary: 'rgb(122, 138, 154)',
     textForeground: 'rgb(255, 255, 255)',
     //
+    buttonSolidBackground: 'rgb(0, 102, 204)',
+    buttonSolidText: 'rgb(255, 255, 255)',
+    buttonSoftBackground: 'rgb(200, 220, 240)',
+    //
     border: 'rgb(208, 216, 224)',
     divider: 'rgb(208, 216, 224)',
     //
-    cardBackground: 'rgb(248, 249, 250)',
+    cardBackground: 'rgb(235, 238, 242)',
     cardBackgroundHover: 'rgb(240, 242, 244)',
     //
-    inputBackground: 'rgb(232, 236, 240)',
+    inputBackground: 'rgb(235, 238, 242)',
     //
     modalBackground: 'rgb(255, 255, 255)',
     //
@@ -185,12 +198,10 @@ export const CrispWhite: ThemeConfig = {
     //
     sidebarBackground: 'rgb(245, 246, 248)',
     sidebarItemHover: 'rgb(255, 255, 255)',
-    sidebarItemFocus: 'rgb(230, 234, 238)',
     //
     tableHeaderBackground: 'rgb(248, 249, 250)',
     tableFooterBackground: 'rgb(248, 249, 250)',
     tableRowHover: 'rgb(240, 242, 244)',
-    drawerBackground: 'rgb(255, 255, 255)',
   },
   accentColors: [
     'rgb(0, 102, 204)', // Blue - primary accent

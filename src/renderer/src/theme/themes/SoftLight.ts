@@ -161,12 +161,25 @@ export const SoftLight: ThemeConfig = {
     warn: 'rgb(210, 140, 60)',
     info: 'rgb(90, 108, 138)',
     //
+    blue: 'rgb(90, 108, 138)',
+    green: 'rgb(45, 122, 74)',
+    red: 'rgb(192, 57, 43)',
+    yellow: 'rgb(210, 185, 80)',
+    purple: 'rgb(138, 90, 154)',
+    pink: 'rgb(220, 130, 170)',
+    navy: 'rgb(60, 80, 110)',
+    teal: 'rgb(60, 140, 140)',
+    violet: 'rgb(130, 100, 170)',
+    //
     background: 'rgb(245, 240, 235)',
-    foreground: 'rgb(61, 61, 61)',
     //
     textPrimary: 'rgb(61, 61, 61)',
     textSecondary: 'rgb(138, 138, 138)',
     textForeground: 'rgb(245, 240, 235)',
+    //
+    buttonSolidBackground: 'rgb(90, 108, 138)',
+    buttonSolidText: 'rgb(245, 240, 235)',
+    buttonSoftBackground: 'rgb(200, 200, 210)',
     //
     border: 'rgb(216, 208, 200)',
     divider: 'rgb(216, 208, 200)',
@@ -178,19 +191,17 @@ export const SoftLight: ThemeConfig = {
     //
     modalBackground: 'rgb(255, 252, 248)',
     //
-    dropdownBackground: 'rgb(245, 240, 235)',
+    dropdownBackground: 'rgb(255, 252, 248)',
     dropdownItemHover: 'rgb(237, 232, 227)',
     //
     tooltipBackground: 'rgb(237, 232, 227)',
     //
     sidebarBackground: 'rgb(235, 228, 220)',
     sidebarItemHover: 'rgb(245, 240, 235)',
-    sidebarItemFocus: 'rgb(220, 212, 202)',
     //
     tableHeaderBackground: 'rgb(240, 234, 228)',
     tableFooterBackground: 'rgb(240, 234, 228)',
     tableRowHover: 'rgb(237, 232, 227)',
-    drawerBackground: 'rgb(250, 247, 244)',
   },
   accentColors: [
     'rgb(90, 108, 138)', // Blue - primary

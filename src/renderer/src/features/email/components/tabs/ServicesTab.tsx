@@ -1,7 +1,7 @@
 import { Search, Plus, ShieldCheck, Lock, LayoutGrid, Globe, Eye, Trash2 } from 'lucide-react';
-import { useRef, FC, useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef, FC } from 'react';
 import { cn } from '../../../../shared/lib/utils';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../../components/ui/Dropdown';
 
 
 interface ServicesTabProps {
@@ -25,13 +25,7 @@ const ServicesTab: FC<ServicesTabProps> = ({
   onOpenService,
   onDeleteService,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [cardContextMenu, setCardContextMenu] = useState<{
-    x: number;
-    y: number;
-    linkId: string;
-  } | null>(null);
-  const cardMenuRef = useRef<HTMLDivElement>(null);
+  
 
   // Derived filtered services
   const filteredServices = (accountServices || []).filter(
@@ -41,25 +35,8 @@ const ServicesTab: FC<ServicesTabProps> = ({
       s.url?.toLowerCase().includes(serviceSearch.toLowerCase()),
   );
 
-  const handleCardContextMenu = (e: React.MouseEvent, linkId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCardContextMenu({ x: e.clientX, y: e.clientY, linkId });
-  };
-
-  // Close context menu on click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (cardMenuRef.current && !cardMenuRef.current.contains(e.target as Node)) {
-        setCardContextMenu(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   return (
-    <div className="flex flex-col h-full overflow-hidden relative" ref={containerRef}>
+    <div className="flex flex-col h-full overflow-hidden relative">
       {/* Services Sub-Navbar */}
       <div className="h-[48px] flex items-center justify-between px-2 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
@@ -100,166 +77,154 @@ const ServicesTab: FC<ServicesTabProps> = ({
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredServices.map((service: any, index: number) => (
-                <div
-                  key={service.id}
-                  className={cn(
-                    'group relative bg-card/30 backdrop-blur-sm border border-border/50 rounded-xl p-4 transition-all duration-300 cursor-pointer hover:bg-card/60 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5',
-                    service.status === 'trash' && 'opacity-60 grayscale-[0.5] italic',
-                  )}
-                  onClick={() => onEditServiceLink(service.id)}
-                  onContextMenu={(e: React.MouseEvent) => handleCardContextMenu(e, service.id)}
-                >
-                  {/* Card Header */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center p-1.5 border border-white/5 shadow-sm transition-transform group-hover:scale-110 group-hover:border-primary/30">
-                        <img
-                          src={`https://www.google.com/s2/favicons?domain=${service.url}&sz=64`}
-                          className="w-full h-full object-contain"
-                          alt=""
-                          onError={(e: any) => (e.target.style.display = 'none')}
-                        />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[14px] font-bold text-foreground/90 leading-tight group-hover:text-primary transition-colors truncate">
-                          {service.name}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/40 font-mono truncate">
-                          {service.url ? new URL(service.url).hostname : ''}
-                        </span>
-                      </div>
-                    </div>
+                <Dropdown key={service.id} trigger="contextmenu">
+                  <DropdownTrigger asChild>
                     <div
                       className={cn(
-                        'px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border shrink-0',
-                        service.status === 'active'
-                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                          : service.status === 'trash'
-                            ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                            : 'bg-muted text-muted-foreground border-transparent',
+                        'group relative bg-card/30 backdrop-blur-sm border border-border/50 rounded-xl p-4 transition-all duration-300 cursor-pointer hover:bg-card/60 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5',
+                        service.status === 'trash' && 'opacity-60 grayscale-[0.5] italic',
                       )}
+                      onClick={() => onEditServiceLink(service.id)}
                     >
-                      {service.status || 'Unknown'}
-                    </div>
-                  </div>
-
-                  {/* Card Body */}
-                  <div className="mt-4 space-y-2">
-                    {/* Category & Last Used */}
-                    <div className="flex items-center justify-between">
-                      {service.category ? (
-                        <span className="text-[10px] font-bold text-primary/70 bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                          {service.category}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground/30 italic">No category</span>
-                      )}
-                      {service.lastUsedAt && (
-                        <span className="text-[9px] text-muted-foreground/40 font-mono">
-                          {new Date(service.lastUsedAt).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Security Badges */}
-                    {(() => {
-                      let metadata = service.metadata;
-                      if (!metadata) {
-                        metadata = [];
-                      } else if (typeof metadata === 'string') {
-                        try {
-                          metadata = JSON.parse(metadata);
-                        } catch {
-                          metadata = [];
-                        }
-                      }
-                      // Ensure metadata is an array
-                      if (!Array.isArray(metadata)) {
-                        metadata = [];
-                      }
-                      const hasEncryption = metadata.some((item: any) => item.feature === 'encryption');
-                      const hasTOTP = metadata.some((item: any) => item.feature === 'totp');
-                      const hasBackupCodes = metadata.some((item: any) => item.feature === 'backup_codes');
-                      const has2FA = hasTOTP || hasBackupCodes;
-                      
-                      if (!hasEncryption && !has2FA) return null;
-                      
-                      return (
-                        <div className="flex items-center gap-2 pt-1">
-                          {hasEncryption && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wider">
-                              <Lock className="w-3 h-3" />
-                              Encryption
-                            </div>
+                      {/* Card Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center p-1.5 border border-white/5 shadow-sm transition-transform group-hover:scale-110 group-hover:border-primary/30">
+                            <img
+                              src={`https://www.google.com/s2/favicons?domain=${service.url}&sz=64`}
+                              className="w-full h-full object-contain"
+                              alt=""
+                              onError={(e: any) => (e.target.style.display = 'none')}
+                            />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[14px] font-bold text-foreground/90 leading-tight group-hover:text-primary transition-colors truncate">
+                              {service.name}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/40 font-mono truncate">
+                              {service.url ? new URL(service.url).hostname : ''}
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          className={cn(
+                            'px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border shrink-0',
+                            service.status === 'active'
+                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                              : service.status === 'trash'
+                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                : 'bg-muted text-muted-foreground border-transparent',
                           )}
-                          {has2FA && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider">
-                              <ShieldCheck className="w-3 h-3" />
-                              {hasTOTP && hasBackupCodes ? '2FA + Backup' : hasTOTP ? 'TOTP 2FA' : 'Backup Codes'}
-                            </div>
+                        >
+                          {service.status || 'Unknown'}
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="mt-4 space-y-2">
+                        {/* Category & Last Used */}
+                        <div className="flex items-center justify-between">
+                          {service.category ? (
+                            <span className="text-[10px] font-bold text-primary/70 bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                              {service.category}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground/30 italic">No category</span>
+                          )}
+                          {service.lastUsedAt && (
+                            <span className="text-[9px] text-muted-foreground/40 font-mono">
+                              {new Date(service.lastUsedAt).toLocaleDateString()}
+                            </span>
                           )}
                         </div>
-                      );
-                    })()}
-                  </div>
 
-                  {/* Index Badge */}
-                  <div className="absolute top-3 right-3 text-[8px] font-mono text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors">
-                    #{String(index + 1).padStart(2, '0')}
-                  </div>
-                </div>
+                        {/* Security Badges */}
+                        {(() => {
+                          let metadata = service.metadata;
+                          if (!metadata) {
+                            metadata = [];
+                          } else if (typeof metadata === 'string') {
+                            try {
+                              metadata = JSON.parse(metadata);
+                            } catch {
+                              metadata = [];
+                            }
+                          }
+                          // Ensure metadata is an array
+                          if (!Array.isArray(metadata)) {
+                            metadata = [];
+                          }
+                          const hasEncryption = metadata.some((item: any) => item.feature === 'encryption');
+                          const hasTOTP = metadata.some((item: any) => item.feature === 'totp');
+                          const hasBackupCodes = metadata.some((item: any) => item.feature === 'backup_codes');
+                          const has2FA = hasTOTP || hasBackupCodes;
+                          
+                          if (!hasEncryption && !has2FA) return null;
+                          
+                          return (
+                            <div className="flex items-center gap-2 pt-1">
+                              {hasEncryption && (
+                                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wider">
+                                  <Lock className="w-3 h-3" />
+                                  Encryption
+                                </div>
+                              )}
+                              {has2FA && (
+                                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  {hasTOTP && hasBackupCodes ? '2FA + Backup' : hasTOTP ? 'TOTP 2FA' : 'Backup Codes'}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Index Badge */}
+                      <div className="absolute top-3 right-3 text-[8px] font-mono text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors">
+                        #{String(index + 1).padStart(2, '0')}
+                      </div>
+                    </div>
+                  </DropdownTrigger>
+                  <DropdownContent>
+                    <DropdownItem
+                      onClick={() => {
+                        if (onOpenService) {
+                          onOpenService(service.id);
+                        }
+                      }}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      Open in Browser
+                    </DropdownItem>
+                    <div className="h-px bg-divider my-1" />
+                    <DropdownItem
+                      onClick={() => {
+                        onEditServiceLink(service.id);
+                      }}
+                    >
+                      <Eye className="w-3.5 h-3.5 text-blue-500/50" />
+                      View Info
+                    </DropdownItem>
+                    <div className="h-px bg-divider my-1" />
+                    <DropdownItem
+                      className="text-error focus:text-error focus:bg-error/10"
+                      onClick={() => {
+                        if (onDeleteService) {
+                          onDeleteService(service.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </DropdownItem>
+                  </DropdownContent>
+                </Dropdown>
               ))}
             </div>
           )}
         </div>
       </div>
-      {/* Card Context Menu */}
-      {cardContextMenu && createPortal(
-        <div
-          ref={cardMenuRef}
-          className="fixed bg-card/95 backdrop-blur-2xl border border-border/50 rounded-md shadow-lg shadow-black/20 py-1.5 z-[1000] min-w-[200px] w-max animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
-          style={{ top: cardContextMenu.y, left: cardContextMenu.x }}
-          onClick={() => setCardContextMenu(null)}
-        >
-          <button
-            onClick={() => {
-              if (onOpenService) {
-                onOpenService(cardContextMenu.linkId);
-              }
-              setCardContextMenu(null);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
-          >
-            <Globe className="w-4 h-4" />
-            Open in Browser
-          </button>
-          <div className="h-px bg-border/20 my-1 mx-2" />
-          <button
-            onClick={() => {
-              onEditServiceLink(cardContextMenu.linkId);
-              setCardContextMenu(null);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
-          >
-            <Eye className="w-4 h-4 text-blue-500/50" />
-            View Info
-          </button>
-          <div className="h-px bg-border/20 my-1 mx-2" />
-          <button
-            onClick={() => {
-              if (onDeleteService) {
-                onDeleteService(cardContextMenu.linkId);
-              }
-              setCardContextMenu(null);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
-        </div>,
-        document.body,
-      )}
     </div>
   );
 };

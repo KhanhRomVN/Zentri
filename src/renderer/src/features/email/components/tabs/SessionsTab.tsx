@@ -11,6 +11,7 @@ import {
   ExternalLink,
   ChevronLeft,
 } from 'lucide-react';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../../components/ui/Dropdown';
 
 interface SessionsTabProps {
   email: string;
@@ -63,6 +64,80 @@ const getBaseDomain = (domain: string): string => {
   return parts.length > 1 ? parts.slice(-2).join('.') : parts[0];
 };
 
+const StatusBadge = ({ expiry }: { expiry: string }) => {
+  const isExpired = new Date(expiry).getTime() < new Date().getTime();
+  return (
+    <span
+      className={`px-2.5 py-0.5 rounded-[4px] text-[10px] font-bold border tracking-tight ${
+        isExpired
+          ? 'bg-red-500/10 text-red-500 border-red-500/20'
+          : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+      }`}
+    >
+      {isExpired ? 'Expired' : 'Active'}
+    </span>
+  );
+};
+
+const HealthCircle = ({ subdomains }: { subdomains: RAW_SessionData[] }) => {
+  const size = 32;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  const total = subdomains.length;
+  // If no items, show empty circle (shouldn't happen here)
+  if (total === 0) return null;
+
+  // INCREASED GAP for clear definition and using butt caps
+  const gapSize = total > 1 ? 10 : 0; // degrees
+  const gapInPixels = (gapSize / 360) * circumference;
+  const segmentLength = (circumference - total * gapInPixels) / total;
+
+  return (
+    <div className="flex items-center justify-center">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        {subdomains.map((sub, i) => {
+          const isExpired = new Date(sub.expiryDate).getTime() < new Date().getTime();
+          const offset = i * (segmentLength + gapInPixels);
+
+          return (
+            <circle
+              key={i}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="transparent"
+              stroke={isExpired ? '#ef4444' : '#10b981'}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${segmentLength} ${circumference - segmentLength}`}
+              strokeDashoffset={-offset}
+              strokeLinecap="butt"
+              className="transition-all duration-300 hover:stroke-[7px] cursor-help"
+            >
+              <title>{sub.domain}</title>
+            </circle>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
+const GlobeIcon = ({ domain, size = 16 }: { domain: string; size?: number }) => {
+  const cleanDomain = domain.replace(/^\./, '');
+  const iconUrl = `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=32`;
+  return (
+    <img
+      src={iconUrl}
+      alt=""
+      className="rounded-sm opacity-80"
+      style={{ width: size, height: size }}
+      onError={(e) => (e.currentTarget.style.display = 'none')}
+    />
+  );
+};
+
 const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<RAW_SessionData[]>([]);
@@ -72,8 +147,6 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
   const pageSize = 10;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; item: any } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [pendingLaunch, setPendingLaunch] = useState<{
     accountId: string;
@@ -124,14 +197,6 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
 
   useEffect(() => {
     fetchSessions();
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenu(null);
-      }
-    };
-    window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
   }, [email]);
 
   const groupedSessions = useMemo(() => {
@@ -180,31 +245,8 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
     setExpandedDomains(next);
   };
 
-  const handleContextMenu = (e: React.MouseEvent, item: any) => {
-    e.preventDefault();
-    if (!containerRef.current) return;
-
-    const containerRect = containerRef.current.getBoundingClientRect();
-
-    // Position relative to container
-    let x = e.clientX - containerRect.left;
-    let y = e.clientY - containerRect.top;
-
-    // Boundary check (keep menu from overflowing right/bottom)
-    const menuWidth = 280;
-    const menuHeight = 200;
-    if (x + menuWidth > containerRect.width) x -= menuWidth;
-    if (y + menuHeight > containerRect.height) y -= menuHeight;
-
-    setMenu({ x, y, item });
-  };
-
-  const handleAction = async (action: string) => {
-    if (!menu) return;
-    const item = menu.item;
+  const handleAction = async (action: string, item: any) => {
     const targetDomain = item.domain || item.baseDomain;
-
-    setMenu(null);
 
     if (action === 'launch') {
       setPendingLaunch({
@@ -282,71 +324,112 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
             ) : (
               paginatedGroups.map((group, idx) => (
                 <React.Fragment key={group.baseDomain}>
-                  <tr
-                    className={`hover:bg-zinc-900/40 transition-colors group cursor-pointer ${expandedDomains.has(group.baseDomain) ? 'bg-zinc-900/10' : ''}`}
-                    onClick={() => toggleExpand(group.baseDomain, group.subdomains.length > 1)}
-                    onContextMenu={(e) => handleContextMenu(e, group)}
-                  >
-                    <td className="p-4 text-[10px] text-zinc-600 font-mono text-center">
-                      {((currentPage - 1) * pageSize + idx + 1).toString().padStart(2, '0')}
-                    </td>
-                    <td className="p-4 text-center">
-                      <HealthCircle subdomains={group.subdomains} />
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-6 h-6 rounded bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-800">
-                          <GlobeIcon domain={group.baseDomain} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-zinc-200">
-                            {group.baseDomain}
-                          </span>
-                          {group.subdomains.length > 1 && (
-                            <span className="text-[10px] text-blue-400/80 font-bold">
-                              +{group.subdomains.length - 1} subdomains
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="text-xs font-mono text-zinc-400">{group.totalCookies}</span>
-                    </td>
-                    <td className="p-4 text-xs text-zinc-500 text-center">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Clock className="w-3 h-3" />
-                        <span>{new Date(group.latestExpiry).toLocaleDateString()}</span>
-                      </div>
-                    </td>
-                  </tr>
+                  <Dropdown trigger="contextmenu">
+                    <DropdownTrigger asChild>
+                      <tr
+                        className={`hover:bg-zinc-900/40 transition-colors group cursor-pointer ${expandedDomains.has(group.baseDomain) ? 'bg-zinc-900/10' : ''}`}
+                        onClick={() => toggleExpand(group.baseDomain, group.subdomains.length > 1)}
+                      >
+                        <td className="p-4 text-[10px] text-zinc-600 font-mono text-center">
+                          {((currentPage - 1) * pageSize + idx + 1).toString().padStart(2, '0')}
+                        </td>
+                        <td className="p-4 text-center">
+                          <HealthCircle subdomains={group.subdomains} />
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-6 h-6 rounded bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-800">
+                              <GlobeIcon domain={group.baseDomain} />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-zinc-200">
+                                {group.baseDomain}
+                              </span>
+                              {group.subdomains.length > 1 && (
+                                <span className="text-[10px] text-blue-400/80 font-bold">
+                                  +{group.subdomains.length - 1} subdomains
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className="text-xs font-mono text-zinc-400">{group.totalCookies}</span>
+                        </td>
+                        <td className="p-4 text-xs text-zinc-500 text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            <Clock className="w-3 h-3" />
+                            <span>{new Date(group.latestExpiry).toLocaleDateString()}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </DropdownTrigger>
+                    <DropdownContent>
+                      <DropdownItem onClick={() => handleAction('refresh', group)}>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Refresh
+                      </DropdownItem>
+                      <DropdownItem
+                        className="text-error focus:text-error focus:bg-error/10"
+                        onClick={() => handleAction('delete', group)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </DropdownItem>
+                      <div className="h-px bg-divider my-1" />
+                      <DropdownItem onClick={() => handleAction('launch', group)}>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Launch
+                      </DropdownItem>
+                    </DropdownContent>
+                  </Dropdown>
 
                   {expandedDomains.has(group.baseDomain) &&
                     group.subdomains.map((sub, sIdx) => (
-                      <tr
-                        key={`${group.baseDomain}-sub-${sIdx}`}
-                        className="bg-zinc-900/10 border-l-2 border-blue-500/20 group/sub cursor-context-menu hover:bg-zinc-900/60 transition-colors"
-                        onContextMenu={(e) => handleContextMenu(e, sub)}
-                      >
-                        <td className="p-2 text-right opacity-30 pr-4">
-                          <span className="text-[10px] font-mono">L{sIdx + 1}</span>
-                        </td>
-                        <td className="p-2 text-center">
-                          <StatusBadge expiry={sub.expiryDate} />
-                        </td>
-                        <td className="p-2 pl-4">
-                          <div className="flex items-center space-x-2">
-                            <GlobeIcon domain={sub.domain} size={14} />
-                            <span className="text-[11px] text-zinc-500 font-mono truncate">
-                              {sub.domain}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-2 text-center text-[10px] text-zinc-600">{sub.count}</td>
-                        <td className="p-2 text-[10px] text-zinc-600 text-center">
-                          {new Date(sub.expiryDate).toLocaleDateString()}
-                        </td>
-                      </tr>
+                      <React.Fragment key={`${group.baseDomain}-sub-${sIdx}`}>
+                        <Dropdown trigger="contextmenu">
+                          <DropdownTrigger asChild>
+                            <tr className="bg-zinc-900/10 border-l-2 border-blue-500/20 group/sub cursor-context-menu hover:bg-zinc-900/60 transition-colors">
+                              <td className="p-2 text-right opacity-30 pr-4">
+                                <span className="text-[10px] font-mono">L{sIdx + 1}</span>
+                              </td>
+                              <td className="p-2 text-center">
+                                <StatusBadge expiry={sub.expiryDate} />
+                              </td>
+                              <td className="p-2 pl-4">
+                                <div className="flex items-center space-x-2">
+                                  <GlobeIcon domain={sub.domain} size={14} />
+                                  <span className="text-[11px] text-zinc-500 font-mono truncate">
+                                    {sub.domain}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-2 text-center text-[10px] text-zinc-600">{sub.count}</td>
+                              <td className="p-2 text-[10px] text-zinc-600 text-center">
+                                {new Date(sub.expiryDate).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          </DropdownTrigger>
+                          <DropdownContent>
+                            <DropdownItem onClick={() => handleAction('refresh', sub)}>
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              Refresh
+                            </DropdownItem>
+                            <DropdownItem
+                              className="text-error focus:text-error focus:bg-error/10"
+                              onClick={() => handleAction('delete', sub)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Delete
+                            </DropdownItem>
+                            <div className="h-px bg-divider my-1" />
+                            <DropdownItem onClick={() => handleAction('launch', sub)}>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Launch
+                            </DropdownItem>
+                          </DropdownContent>
+                        </Dropdown>
+                      </React.Fragment>
                     ))}
                 </React.Fragment>
               ))
@@ -376,144 +459,14 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
         </div>
       </div>
 
-      {/* Context Menu Dropdown */}
-      {menu && (
-        <div
-          ref={menuRef}
-          className="absolute z-[100] w-72 bg-modal-background border border-border rounded-lg shadow-xl overflow-hidden p-1 hover:border-primary transition-colors"
-          style={{ top: menu?.y, left: menu?.x }}
-        >
-          <div className="px-4 py-2 bg-zinc-800/30 border-b border-zinc-800/50 mb-1">
-            <p className="text-[10px] font-bold text-zinc-500 uppercase truncate">
-              {menu?.item.domain || menu?.item.baseDomain}
-            </p>
-          </div>
-          <MenuAction
-            icon={<RefreshCw className="w-3.5 h-3.5" />}
-            label="Refresh"
-            onClick={() => handleAction('refresh')}
-          />
-          <MenuAction
-            icon={<Trash2 className="w-3.5 h-3.5" />}
-            label="Delete"
-            onClick={() => handleAction('delete')}
-            danger
-          />
-          <div className="h-px bg-zinc-800/50 my-1.5" />
-          <MenuAction
-            icon={<ExternalLink className="w-3.5 h-3.5" />}
-            label="Launch"
-            onClick={() => handleAction('launch')}
-          />
-        </div>
-      )}
       <ProfileLaunchModal
         isOpen={isLaunchModalOpen}
         onClose={() => setIsLaunchModalOpen(false)}
         email={email}
-        onLaunch={handleExecuteLaunch} accountId={''}      />
+        onLaunch={handleExecuteLaunch}
+        accountId={accountId}
+      />
     </div>
-  );
-};
-
-const MenuAction = ({
-  icon,
-  label,
-  onClick,
-  danger,
-}: {
-  icon: any;
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-}) => (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      onClick();
-    }}
-    className={cn(
-      "w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-md transition-all text-[11px] font-bold uppercase tracking-widest",
-      "text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground",
-      danger && "text-red-500/60 hover:text-red-500 hover:bg-red-500/10"
-    )}
-  >
-    {icon}
-    <span>{label}</span>
-  </button>
-);
-
-const StatusBadge = ({ expiry }: { expiry: string }) => {
-  const isExpired = new Date(expiry).getTime() < new Date().getTime();
-  return (
-    <span
-      className={`px-2.5 py-0.5 rounded-[4px] text-[10px] font-bold border tracking-tight ${
-        isExpired
-          ? 'bg-red-500/10 text-red-500 border-red-500/20'
-          : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-      }`}
-    >
-      {isExpired ? 'Expired' : 'Active'}
-    </span>
-  );
-};
-
-const HealthCircle = ({ subdomains }: { subdomains: RAW_SessionData[] }) => {
-  const size = 32;
-  const strokeWidth = 5;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-
-  const total = subdomains.length;
-  // If no items, show empty circle (shouldn't happen here)
-  if (total === 0) return null;
-
-  // INCREASED GAP for clear definition and using butt caps
-  const gapSize = total > 1 ? 10 : 0; // degrees
-  const gapInPixels = (gapSize / 360) * circumference;
-  const segmentLength = (circumference - total * gapInPixels) / total;
-
-  return (
-    <div className="flex items-center justify-center">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-        {subdomains.map((sub, i) => {
-          const isExpired = new Date(sub.expiryDate).getTime() < new Date().getTime();
-          const offset = i * (segmentLength + gapInPixels);
-
-          return (
-            <circle
-              key={i}
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="transparent"
-              stroke={isExpired ? '#ef4444' : '#10b981'}
-              strokeWidth={strokeWidth}
-              strokeDasharray={`${segmentLength} ${circumference - segmentLength}`}
-              strokeDashoffset={-offset}
-              strokeLinecap="butt"
-              className="transition-all duration-300 hover:stroke-[7px] cursor-help"
-            >
-              <title>{sub.domain}</title>
-            </circle>
-          );
-        })}
-      </svg>
-    </div>
-  );
-};
-
-const GlobeIcon = ({ domain, size = 16 }: { domain: string; size?: number }) => {
-  const cleanDomain = domain.replace(/^\./, '');
-  const iconUrl = `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=32`;
-  return (
-    <img
-      src={iconUrl}
-      alt=""
-      className="rounded-sm opacity-80"
-      style={{ width: size, height: size }}
-      onError={(e) => (e.currentTarget.style.display = 'none')}
-    />
   );
 };
 

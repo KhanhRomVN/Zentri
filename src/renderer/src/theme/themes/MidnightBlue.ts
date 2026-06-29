@@ -161,12 +161,25 @@ export const MidnightBlue: ThemeConfig = {
     warn: 'rgb(255, 159, 10)',
     info: 'rgb(10, 132, 255)',
     //
+    blue: 'rgb(10, 132, 255)',
+    green: 'rgb(48, 209, 88)',
+    red: 'rgb(255, 45, 85)',
+    yellow: 'rgb(255, 200, 50)',
+    purple: 'rgb(175, 82, 222)',
+    pink: 'rgb(255, 105, 180)',
+    navy: 'rgb(30, 50, 80)',
+    teal: 'rgb(0, 210, 255)',
+    violet: 'rgb(138, 90, 255)',
+    //
     background: 'rgb(15, 19, 25)',
-    foreground: 'rgb(200, 214, 240)',
     //
     textPrimary: 'rgb(200, 214, 240)',
     textSecondary: 'rgb(106, 122, 154)',
     textForeground: 'rgb(15, 19, 25)',
+    //
+    buttonSolidBackground: 'rgb(10, 132, 255)',
+    buttonSolidText: 'rgb(255, 255, 255)',
+    buttonSoftBackground: 'rgb(20, 40, 80)',
     //
     border: 'rgb(28, 35, 51)',
     divider: 'rgb(28, 35, 51)',
@@ -178,19 +191,17 @@ export const MidnightBlue: ThemeConfig = {
     //
     modalBackground: 'rgb(10, 14, 20)',
     //
-    dropdownBackground: 'rgb(15, 19, 25)',
+    dropdownBackground: 'rgb(10, 15, 25)',
     dropdownItemHover: 'rgb(15, 25, 40)',
     //
     tooltipBackground: 'rgb(20, 25, 35)',
     //
     sidebarBackground: 'rgb(8, 10, 14)',
     sidebarItemHover: 'rgb(13, 16, 23)',
-    sidebarItemFocus: 'rgb(17, 24, 39)',
     //
     tableHeaderBackground: 'rgb(12, 16, 22)',
     tableFooterBackground: 'rgb(12, 16, 22)',
     tableRowHover: 'rgb(20, 25, 35)',
-    drawerBackground: 'rgb(16, 20, 28)',
   },
   accentColors: [
     'rgb(10, 132, 255)', // Blue - primary

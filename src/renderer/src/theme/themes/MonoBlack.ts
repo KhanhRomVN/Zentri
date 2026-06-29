@@ -161,12 +161,25 @@ export const MonoBlack: ThemeConfig = {
     warn: 'rgb(255, 200, 100)',
     info: 'rgb(100, 150, 255)',
     //
+    blue: 'rgb(100, 150, 255)',
+    green: 'rgb(100, 255, 100)',
+    red: 'rgb(255, 68, 68)',
+    yellow: 'rgb(255, 200, 100)',
+    purple: 'rgb(180, 120, 255)',
+    pink: 'rgb(255, 120, 200)',
+    navy: 'rgb(60, 80, 120)',
+    teal: 'rgb(80, 220, 255)',
+    violet: 'rgb(180, 120, 255)',
+    //
     background: 'rgb(0, 0, 0)',
-    foreground: 'rgb(255, 255, 255)',
     //
     textPrimary: 'rgb(255, 255, 255)',
     textSecondary: 'rgb(200, 200, 200)',
     textForeground: 'rgb(0, 0, 0)',
+    //
+    buttonSolidBackground: 'rgb(255, 255, 255)',
+    buttonSolidText: 'rgb(0, 0, 0)',
+    buttonSoftBackground: 'rgb(40, 40, 40)',
     //
     border: 'rgb(40, 40, 40)',
     divider: 'rgb(40, 40, 40)',
@@ -178,19 +191,17 @@ export const MonoBlack: ThemeConfig = {
     //
     modalBackground: 'rgb(12, 12, 12)',
     //
-    dropdownBackground: 'rgb(0, 0, 0)',
+    dropdownBackground: 'rgb(12, 12, 12)',
     dropdownItemHover: 'rgb(25, 25, 25)',
     //
     tooltipBackground: 'rgb(25, 25, 25)',
     //
     sidebarBackground: 'rgb(5, 5, 5)',
     sidebarItemHover: 'rgb(20, 20, 20)',
-    sidebarItemFocus: 'rgb(25, 25, 25)',
     //
     tableHeaderBackground: 'rgb(15, 15, 15)',
     tableFooterBackground: 'rgb(15, 15, 15)',
     tableRowHover: 'rgb(25, 25, 25)',
-    drawerBackground: 'rgb(18, 18, 18)',
   },
   accentColors: [
     'rgb(255, 255, 255)', // White - primary

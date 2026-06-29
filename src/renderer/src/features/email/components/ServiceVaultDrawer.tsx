@@ -1,6 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, Loader2, ShieldCheck, Database, Plus, Copy, Edit2, RotateCcw, X } from 'lucide-react';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../components/ui/Dropdown';
 import { cn } from '../../../shared/lib/utils';
 import { generateTOTP, getTOTPTimeRemaining } from '../utils/totp';
 
@@ -36,8 +37,6 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; secret: any } | null>(null);
-
   const [, setTotpTick] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(30);
 
@@ -50,12 +49,6 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
     return () => clearInterval(interval);
   }, [isOpen]);
 
-  useEffect(() => {
-    const handleClick = () => setContextMenu(null);
-    window.addEventListener('click', handleClick);
-    return () => window.removeEventListener('click', handleClick);
-  }, []);
-
   const getTypeBadgeStyles = (type: string) => {
     switch (type) {
       case 'totp':
@@ -64,11 +57,6 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
       default:
         return 'bg-muted/10 text-muted-foreground border-border/10';
     }
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, secret: any) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, secret });
   };
 
   if (!isOpen) return null;
@@ -162,94 +150,93 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
             ) : (
               <div>
                 {currentSecrets.map((s, idx) => (
-                  <div
-                    key={s.id}
-                    onContextMenu={(e) => handleContextMenu(e, s)}
-                    onClick={() => {
-                      setEditingSecret(s);
-                      setIsEditModalOpen(true);
-                    }}
-                    className={cn(
-                      'group flex flex-col px-4 py-5 transition-all cursor-pointer relative',
-                      'border-b border-white/10',
-                      idx === 0 && 'border-t border-white/10',
-                      'hover:bg-primary/5',
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-6">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <span className="text-[14px] font-bold text-foreground leading-none truncate max-w-[180px]">
-                          {s.secret_name}
-                        </span>
-                        {s.secret_type === 'totp' && (
-                          <div className="flex items-center gap-3 px-3 py-1.5 bg-black/40 rounded-lg border border-white/10 opacity-90 group-hover:opacity-100 transition-all shadow-xl">
-                            <span className="text-[16px] font-black font-mono tracking-[0.1em] text-primary tabular-nums">
-                              {generateTOTP(s.secret_value)}
-                            </span>
-                            <div className="flex items-center gap-2 border-l border-white/20 pl-3">
-                              <span className="text-[11px] font-black font-mono text-primary/60 w-4 text-right">
-                                {timeRemaining}
-                              </span>
-                            </div>
-                          </div>
+                  <Dropdown key={s.id} trigger="contextmenu">
+                    <DropdownTrigger asChild>
+                      <div
+                        onClick={() => {
+                          setEditingSecret(s);
+                          setIsEditModalOpen(true);
+                        }}
+                        className={cn(
+                          'group flex flex-col px-4 py-5 transition-all cursor-pointer relative',
+                          'border-b border-white/10',
+                          idx === 0 && 'border-t border-white/10',
+                          'hover:bg-primary/5',
                         )}
+                      >
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-4 min-w-0">
+                            <span className="text-[14px] font-bold text-foreground leading-none truncate max-w-[180px]">
+                              {s.secret_name}
+                            </span>
+                            {s.secret_type === 'totp' && (
+                              <div className="flex items-center gap-3 px-3 py-1.5 bg-black/40 rounded-lg border border-white/10 opacity-90 group-hover:opacity-100 transition-all shadow-xl">
+                                <span className="text-[16px] font-black font-mono tracking-[0.1em] text-primary tabular-nums">
+                                  {generateTOTP(s.secret_value)}
+                                </span>
+                                <div className="flex items-center gap-2 border-l border-white/20 pl-3">
+                                  <span className="text-[11px] font-black font-mono text-primary/60 w-4 text-right">
+                                    {timeRemaining}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className={cn(
+                            'px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border shrink-0 opacity-80 group-hover:opacity-100 transition-all shadow-sm',
+                            getTypeBadgeStyles(s.secret_type || 'password'),
+                          )}>
+                            {s.secret_type || 'password'}
+                          </div>
+                        </div>
                       </div>
-                      <div className={cn(
-                        'px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border shrink-0 opacity-80 group-hover:opacity-100 transition-all shadow-sm',
-                        getTypeBadgeStyles(s.secret_type || 'password'),
-                      )}>
-                        {s.secret_type || 'password'}
-                      </div>
-                    </div>
-                  </div>
+                    </DropdownTrigger>
+                    <DropdownContent>
+                      <DropdownItem
+                        onClick={() => {
+                          navigator.clipboard.writeText(s.secret_value);
+                        }}
+                      >
+                        <Copy className="w-3.5 h-3.5 opacity-50" />
+                        Copy Secret
+                      </DropdownItem>
+                      {s.secret_type === 'totp' && (
+                        <DropdownItem
+                          onClick={() => {
+                            navigator.clipboard.writeText(generateTOTP(s.secret_value));
+                          }}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Copy OTP Code
+                        </DropdownItem>
+                      )}
+                      <DropdownItem
+                        onClick={() => {
+                          setEditingSecret(s);
+                          setIsEditModalOpen(true);
+                        }}
+                      >
+                        <Edit2 className="w-3.5 h-3.5 opacity-50" />
+                        Edit Meta
+                      </DropdownItem>
+                      <div className="h-px bg-divider my-1" />
+                      <DropdownItem
+                        className="text-error focus:text-error focus:bg-error/10"
+                        onClick={() => {
+                          onDeleteSecret?.(s.id);
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Purge Secret
+                      </DropdownItem>
+                    </DropdownContent>
+                  </Dropdown>
                 ))}
               </div>
             )}
           </div>
         </div>
       </div>
-
-      {/* Context Menu */}
-      {contextMenu && createPortal(
-        <div
-          className="fixed z-[9999] w-48 bg-modal-background border border-border rounded-lg shadow-xl p-1.5 backdrop-blur-xl"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <div className="px-3 py-1.5 mb-1.5 border-b border-white/5">
-            <p className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate">
-              Actions for {contextMenu.secret.secret_name}
-            </p>
-          </div>
-          <button
-            onClick={() => { navigator.clipboard.writeText(contextMenu.secret.secret_value); setContextMenu(null); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] font-bold text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground transition-all"
-          >
-            <Copy className="w-3.5 h-3.5 opacity-50" />Copy Secret
-          </button>
-          {contextMenu.secret.secret_type === 'totp' && (
-            <button
-              onClick={() => { navigator.clipboard.writeText(generateTOTP(contextMenu.secret.secret_value)); setContextMenu(null); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] font-bold text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground transition-all"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />Copy OTP Code
-            </button>
-          )}
-          <button
-            onClick={() => { setEditingSecret(contextMenu.secret); setIsEditModalOpen(true); setContextMenu(null); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] font-bold text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground transition-all"
-          >
-            <Edit2 className="w-3.5 h-3.5 opacity-50" />Edit Meta
-          </button>
-          <div className="h-px bg-white/5 my-1" />
-          <button
-            onClick={() => { onDeleteSecret?.(contextMenu.secret.id); setContextMenu(null); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[11px] font-bold text-foreground/80 hover:bg-dropdown-item-hover hover:text-foreground transition-all"
-          >
-            <Trash2 className="w-3.5 h-3.5" />Purge Secret
-          </button>
-        </div>,
-        document.body,
-      )}
 
       {/* Add Secret Modal */}
       {isAddModalOpen && createPortal(

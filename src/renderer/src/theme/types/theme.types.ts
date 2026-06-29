@@ -4,7 +4,6 @@ export interface ThemeColors {
   textPrimary: string;
   textSecondary: string;
   border: string;
-  drawerBackground: string;
   [key: string]: string;
 }
 

@@ -13,7 +13,6 @@ module.exports = {
     'bg-table-footer-background',
     'bg-table-row-hover',
     'bg-tooltip-background',
-    'bg-drawer-background',
   ],
   theme: {
     extend: {
@@ -26,8 +25,16 @@ module.exports = {
         error: 'rgb(var(--error) / <alpha-value>)',
         warn: 'rgb(var(--warn) / <alpha-value>)',
         info: 'rgb(var(--info) / <alpha-value>)',
+        blue: 'rgb(var(--blue) / <alpha-value>)',
+        green: 'rgb(var(--green) / <alpha-value>)',
+        red: 'rgb(var(--red) / <alpha-value>)',
+        yellow: 'rgb(var(--yellow) / <alpha-value>)',
+        purple: 'rgb(var(--purple) / <alpha-value>)',
+        pink: 'rgb(var(--pink) / <alpha-value>)',
+        navy: 'rgb(var(--navy) / <alpha-value>)',
+        teal: 'rgb(var(--teal) / <alpha-value>)',
+        violet: 'rgb(var(--violet) / <alpha-value>)',
         background: 'rgb(var(--background) / <alpha-value>)',
-        foreground: 'rgb(var(--foreground) / <alpha-value>)',
         text: {
           primary: 'rgb(var(--text-primary) / <alpha-value>)',
           secondary: 'rgb(var(--text-secondary) / <alpha-value>)',
@@ -46,7 +53,9 @@ module.exports = {
         'table-header-background': 'rgb(var(--table-header-background) / <alpha-value>)',
         'table-footer-background': 'rgb(var(--table-footer-background) / <alpha-value>)',
         'table-row-hover': 'rgb(var(--table-row-hover) / <alpha-value>)',
-        'drawer-background': 'rgb(var(--drawer-background) / <alpha-value>)',
+        'button-solid-background': 'rgb(var(--button-solid-background) / <alpha-value>)',
+        'button-solid-text': 'rgb(var(--button-solid-text) / <alpha-value>)',
+        'button-soft-background': 'rgb(var(--button-soft-background) / <alpha-value>)',
         card: {
           background: 'rgb(var(--card-background) / <alpha-value>)',
           hover: 'rgb(var(--card-background-hover) / <alpha-value>)',
@@ -70,7 +79,6 @@ module.exports = {
           background: 'rgb(var(--sidebar-background) / <alpha-value>)',
           item: {
             hover: 'rgb(var(--sidebar-item-hover) / <alpha-value>)',
-            focus: 'rgb(var(--sidebar-item-focus) / <alpha-value>)',
           },
         },
         table: {

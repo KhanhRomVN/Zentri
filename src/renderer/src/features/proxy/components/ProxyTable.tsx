@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { cn } from '../../../shared/lib/utils';
 import ProxyDetailView from './ProxyDetailView';
 import ProxyHistoryView from './ProxyHistoryView';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../components/ui/Dropdown';
 
 interface ProxyTableProps {
   proxies: Proxy[];
@@ -31,9 +32,7 @@ const PAGE_SIZE = 15;
 const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [focusRowId, setFocusRowId] = useState<string | null>(null);
-  const [menuConfig, setMenuConfig] = useState<{ x: number; y: number; proxyId: string } | null>(
-    null,
-  );
+  
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [targetDeleteId, setTargetDeleteId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -191,18 +190,16 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                 .filter((p) => (focusRowId ? p.id === focusRowId : true))
                 .map((proxy, index) => (
                   <React.Fragment key={proxy.id}>
-                    <tr
-                      onClick={() => handleRowClick(proxy.id)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setMenuConfig({ x: e.clientX, y: e.clientY, proxyId: proxy.id });
-                      }}
-                      className={cn(
-                        'group border-b border-border/10 hover:bg-primary/[0.03] cursor-pointer transition-all duration-300',
-                        focusRowId === proxy.id &&
-                          'bg-primary/[0.05] border-primary/20 sticky top-[57px] z-20 shadow-xl backdrop-blur-xl',
-                      )}
-                    >
+                    <Dropdown trigger="contextmenu">
+                      <DropdownTrigger asChild>
+                        <tr
+                          onClick={() => handleRowClick(proxy.id)}
+                          className={cn(
+                            'group border-b border-border/10 hover:bg-primary/[0.03] cursor-pointer transition-all duration-300',
+                            focusRowId === proxy.id &&
+                              'bg-primary/[0.05] border-primary/20 sticky top-[57px] z-20 shadow-xl backdrop-blur-xl',
+                          )}
+                        >
                       <td className="py-4 px-3 text-[14px] font-black text-muted-foreground/40 font-mono text-left">
                         {String((validCurrentPage - 1) * PAGE_SIZE + index + 1).padStart(2, '0')}
                       </td>
@@ -288,7 +285,69 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                             : `${proxy.bandwidthGb || 0} GB`}
                         </span>
                       </td>
-                    </tr>
+                        </tr>
+                      </DropdownTrigger>
+                      <DropdownContent>
+                        <DropdownItem
+                          onClick={() => {
+                            const p = proxies.find((x) => x.id === proxy.id);
+                            if (p) {
+                              setFocusRowId(p.id);
+                              setIsEditing(false);
+                              setIsHistory(false);
+                            }
+                          }}
+                        >
+                          <Eye className="w-3.5 h-3.5 text-blue-500/50" />
+                          View
+                        </DropdownItem>
+                        <DropdownItem
+                          onClick={() => {
+                            const p = proxies.find((x) => x.id === proxy.id);
+                            if (p) {
+                              setFocusRowId(p.id);
+                              setIsEditing(true);
+                              setIsHistory(false);
+                            }
+                          }}
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-primary/50" />
+                          Edit
+                        </DropdownItem>
+                        <DropdownItem
+                          onClick={() => {
+                            const p = proxies.find((x) => x.id === proxy.id);
+                            if (p) {
+                              setFocusRowId(p.id);
+                              setIsEditing(false);
+                              setIsHistory(true);
+                            }
+                          }}
+                        >
+                          <HistoryIcon className="w-3.5 h-3.5 text-amber-500/50" />
+                          View History
+                        </DropdownItem>
+                        <DropdownItem
+                          onClick={() => {
+                            handleCheckProxy(proxy.id);
+                          }}
+                        >
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          Check
+                        </DropdownItem>
+                        <div className="h-px bg-divider my-1" />
+                        <DropdownItem
+                          className="text-error focus:text-error focus:bg-error/10"
+                          onClick={() => {
+                            if (proxy.status === 'trash') handleHardDelete(proxy.id);
+                            else handleSoftDelete(proxy.id);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {proxy.status === 'trash' ? 'Delete Forever' : 'Delete'}
+                        </DropdownItem>
+                      </DropdownContent>
+                    </Dropdown>
                     {focusRowId === proxy.id && (
                       <tr className="hover:bg-transparent bg-background/20">
                         <td colSpan={5} className="p-0 border-none">
@@ -390,98 +449,7 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
         </div>
       </div>
 
-      {/* Context Menu */}
-      {menuConfig &&
-        createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-[1000]"
-              onClick={() => setMenuConfig(null)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setMenuConfig(null);
-              }}
-            />
-            <div
-              className="fixed z-[1001] w-56 bg-modal-background border border-border rounded-lg shadow-xl overflow-hidden p-1 animate-in fade-in zoom-in-95 duration-200 hover:border-primary transition-colors"
-              style={{ left: menuConfig.x, top: menuConfig.y }}
-            >
-              <div className="p-1 space-y-1">
-                <button
-                  onClick={() => {
-                    const p = proxies.find((x) => x.id === menuConfig.proxyId);
-                    if (p) {
-                      setFocusRowId(p.id);
-                      setIsEditing(false);
-                      setIsHistory(false);
-                    }
-                    setMenuConfig(null);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
-                >
-                  <Eye className="w-3.5 h-3.5 text-blue-500/50" />
-                  View
-                </button>
-                <button
-                  onClick={() => {
-                    const p = proxies.find((x) => x.id === menuConfig.proxyId);
-                    if (p) {
-                      setFocusRowId(p.id);
-                      setIsEditing(true);
-                      setIsHistory(false);
-                    }
-                    setMenuConfig(null);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
-                >
-                  <Edit3 className="w-3.5 h-3.5 text-primary/50" />
-                  Edit
-                </button>
-                <button
-                  onClick={() => {
-                    const p = proxies.find((x) => x.id === menuConfig.proxyId);
-                    if (p) {
-                      setFocusRowId(p.id);
-                      setIsEditing(false);
-                      setIsHistory(true);
-                    }
-                    setMenuConfig(null);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
-                >
-                  <HistoryIcon className="w-3.5 h-3.5 text-amber-500/50" />
-                  View History
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuConfig(null);
-                    handleCheckProxy(menuConfig.proxyId);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
-                >
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  Check
-                </button>
-                <div className="h-px bg-border/50 mx-2 my-1" />
-                <button
-                  onClick={() => {
-                    const p = proxies.find((x) => x.id === menuConfig.proxyId);
-                    if (p?.status === 'trash') handleHardDelete(menuConfig.proxyId);
-                    else handleSoftDelete(menuConfig.proxyId);
-                    setMenuConfig(null);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-red-500/60" />
-                  {proxies.find((p) => p.id === menuConfig.proxyId)?.status === 'trash'
-                    ? 'Delete Forever'
-                    : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </>,
-          document.body,
-        )}
+      
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen &&

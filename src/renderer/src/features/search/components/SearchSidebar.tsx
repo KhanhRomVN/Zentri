@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { SmartView } from '../types/search';
 import { useAccentColors } from '../../../hooks/useAccentColors';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../components/ui/Dropdown';
 
 // Icon map: name → component (mirrored from SmartViewBuilder)
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -82,8 +83,6 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
   onFavoriteView,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; viewId: string } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
 
   // Update the global color cache for getItemColor
@@ -91,28 +90,11 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
     setAccentColorsForSearchSidebar(accentColors, UNIFIED_ACCENT);
   }
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setContextMenu(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   // Views are already sorted by SearchManager (manual > service, favorites, recent, account count, alphabetical)
   // Only filter by search query here, do NOT re-sort
   const filteredViews = views.filter((v) =>
     v.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-
-  const handleContextMenu = (e: React.MouseEvent, viewId: string) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, viewId });
-  };
-
-  const contextMenuView = contextMenu ? views.find((v) => v.id === contextMenu.viewId) : null;
 
   return (
     <div className="w-[360px] shrink-0 border-r border-border bg-card/50 backdrop-blur-xl flex flex-col relative z-20 transition-all duration-500">
@@ -152,114 +134,103 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
             const ViewIcon = view.icon ? ICON_MAP[view.icon] : null;
             const itemColor = getItemColor(view.id);
             return (
-              <button
-                key={view.id}
-                onClick={() => onSelectView(view.id)}
-                onContextMenu={(e) => handleContextMenu(e, view.id)}
-                className={cn(
-                  'group relative flex items-center gap-3 mx-2 px-3 py-2 rounded-r-lg transition-all duration-200 outline-none text-left border-l-2',
-                  selectedViewId === view.id
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-card-hover border-l-transparent',
-                )}
-                style={{
-                  background:
-                    selectedViewId === view.id
-                      ? itemColor?.bg
-                      : undefined,
-                  borderLeftColor:
-                    selectedViewId === view.id
-                      ? itemColor?.base
-                      : undefined,
-                }}
-              >
-                <div className="w-8 h-8 shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
-                  {ViewIcon ? (
-                    <ViewIcon className="w-5 h-5" style={{ color: itemColor?.base }} />
-                  ) : view.domain ? (
-                    <img
-                      src={`https://www.google.com/s2/favicons?domain=${view.domain}&sz=64`}
-                      alt={view.name}
-                      className="w-5 h-5 object-contain"
-                    />
-                  ) : (
-                    <Table className="w-5 h-5" style={{ color: itemColor?.base }} />
-                  )}
-                </div>
+              <Dropdown key={view.id} trigger="contextmenu">
+                <DropdownTrigger asChild>
+                  <button
+                    onClick={() => onSelectView(view.id)}
+                    className={cn(
+                      'group relative flex items-center gap-3 mx-2 px-3 py-2 rounded-r-lg transition-all duration-200 outline-none text-left border-l-2',
+                      selectedViewId === view.id
+                        ? 'text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-card-hover border-l-transparent',
+                    )}
+                    style={{
+                      background:
+                        selectedViewId === view.id
+                          ? itemColor?.bg
+                          : undefined,
+                      borderLeftColor:
+                        selectedViewId === view.id
+                          ? itemColor?.base
+                          : undefined,
+                    }}
+                  >
+                    <div className="w-8 h-8 shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+                      {ViewIcon ? (
+                        <ViewIcon className="w-5 h-5" style={{ color: itemColor?.base }} />
+                      ) : view.domain ? (
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${view.domain}&sz=64`}
+                          alt={view.name}
+                          className="w-5 h-5 object-contain"
+                        />
+                      ) : (
+                        <Table className="w-5 h-5" style={{ color: itemColor?.base }} />
+                      )}
+                    </div>
 
-                <div className="flex flex-col items-start min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 w-full">
-                    <span className="text-[15px] font-bold tracking-tight truncate text-text-primary">
-                      {view.name}
-                    </span>
-                    {view.favorite && (
-                      <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
-                    )}
-                    {view.source === 'service' && view.accountCount !== undefined && (
-                      <span className="text-[10px] font-mono text-muted-foreground/50 ml-auto shrink-0">
-                        {view.accountCount}
-                      </span>
-                    )}
-                  </div>
-                  {view.description && (
-                    <span className="text-[11px] text-muted-foreground/40 truncate w-full mt-0.5">
-                      {view.description}
-                    </span>
+                    <div className="flex flex-col items-start min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 w-full">
+                        <span className="text-[15px] font-bold tracking-tight truncate text-text-primary">
+                          {view.name}
+                        </span>
+                        {view.favorite && (
+                          <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
+                        )}
+                        {view.source === 'service' && view.accountCount !== undefined && (
+                          <span className="text-[10px] font-mono text-muted-foreground/50 ml-auto shrink-0">
+                            {view.accountCount}
+                          </span>
+                        )}
+                      </div>
+                      {view.description && (
+                        <span className="text-[11px] text-muted-foreground/40 truncate w-full mt-0.5">
+                          {view.description}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </DropdownTrigger>
+                <DropdownContent>
+                  <DropdownItem
+                    onClick={() => {
+                      onFavoriteView?.(view.id);
+                    }}
+                  >
+                    <Star className={`w-3.5 h-3.5 text-amber-400 ${view.favorite ? 'fill-amber-400' : ''}`} />
+                    {view.favorite ? 'Unfavorite' : 'Favorite'}
+                  </DropdownItem>
+                  {view.source !== 'service' && (
+                    <>
+                      <div className="h-px bg-divider my-1" />
+                      <DropdownItem
+                        onClick={() => {
+                          onEditView?.(view);
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-blue-500/50" />
+                        Edit
+                      </DropdownItem>
+                      <div className="h-px bg-divider my-1" />
+                      <DropdownItem
+                        className="text-error focus:text-error focus:bg-error/10"
+                        onClick={() => {
+                          onDeleteView?.(view.id);
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </DropdownItem>
+                    </>
                   )}
-                </div>
-              </button>
+                </DropdownContent>
+              </Dropdown>
             );
           })}
         </div>
       </div>
 
-      {/* Context Menu */}
-      {contextMenu && contextMenuView && createPortal(
-        <div
-          ref={menuRef}
-          className="fixed bg-modal-background border border-border rounded-lg shadow-xl py-1.5 z-[1000] min-w-[140px] w-max animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          onClick={() => setContextMenu(null)}
-        >
-          <button
-            onClick={() => {
-              onFavoriteView?.(contextMenu.viewId);
-              setContextMenu(null);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
-          >
-            <Star className={`w-4 h-4 text-amber-400 ${contextMenuView?.favorite ? 'fill-amber-400' : ''}`} />
-            {contextMenuView?.favorite ? 'Unfavorite' : 'Favorite'}
-          </button>
-          {contextMenuView?.source !== 'service' && (
-            <>
-              <div className="h-px bg-border/20 my-1 mx-2" />
-              <button
-                onClick={() => {
-                  onEditView?.(contextMenuView);
-                  setContextMenu(null);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
-              >
-                <Pencil className="w-4 h-4 text-blue-500/50" />
-                Edit
-              </button>
-              <div className="h-px bg-border/20 my-1 mx-2" />
-              <button
-                onClick={() => {
-                  onDeleteView?.(contextMenu.viewId);
-                  setContextMenu(null);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all whitespace-nowrap"
-              >
-                <Trash2 className="w-4 h-4 text-red-500/60" />
-                Delete
-              </button>
-            </>
-          )}
-        </div>,
-        document.body,
-      )}
+      
     </div>
   );
 };

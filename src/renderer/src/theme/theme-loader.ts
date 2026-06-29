@@ -20,8 +20,16 @@ export interface ThemeConfig {
     error: string;
     warn: string;
     info: string;
+    blue: string;
+    green: string;
+    red: string;
+    yellow: string;
+    purple: string;
+    pink: string;
+    navy: string;
+    teal: string;
+    violet: string;
     background: string;
-    foreground: string;
     textPrimary: string;
     textSecondary: string;
     border: string;
@@ -33,11 +41,12 @@ export interface ThemeConfig {
     dropdownItemHover: string;
     sidebarBackground: string;
     sidebarItemHover: string;
-    sidebarItemFocus: string;
-    drawerBackground: string;
     tableHeaderBackground: string;
     tableFooterBackground: string;
     tableRowHover: string;
+    buttonSolidBackground: string;
+    buttonSolidText: string;
+    buttonSoftBackground: string;
   };
   accentColors: string[];
   typography?: {
