@@ -158,11 +158,9 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
   const fetchSessions = async () => {
     setLoading(true);
     try {
-      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
       // @ts-ignore
       const result = await window.electron.ipcRenderer.invoke('email:get-sessions', {
         email,
-        browserPath,
       });
       if (result.success) {
         setSessions(result.sessions);
@@ -180,14 +178,12 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
     setIsLaunchModalOpen(false);
 
     try {
-      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
       // @ts-ignore
       await window.electron.ipcRenderer.invoke('email:open-login', {
         accountId,
         email,
         provider: provider || 'custom',
         url,
-        browserPath,
       });
     } catch (error) {
       console.error('Failed to launch browser:', error);

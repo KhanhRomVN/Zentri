@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, GripVertical, ChevronDown, Bug, Key, Mail, Clock } from 'lucide-react';
 import { cn } from '@renderer/shared/lib/utils';
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../../../components/ui/Drawer';
 import { ServiceProviderConfig } from '../../../email/types';
 import { SERVICES } from '../../../../constants/services';
 import { CATEGORIES, CategoryItem } from '../../../../constants/categories';
@@ -666,29 +667,17 @@ useEffect(() => {
   const validFields = metadataFields.filter((f) => f.name.trim());
 
   return (
-    <div className="fixed inset-0 z-[90] flex justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-[560px] h-full bg-drawer-background border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 shrink-0">
-          <div>
-            <h3 className="text-base font-bold text-foreground">
-              {isNew ? 'Initialize New Service' : 'Edit Service Configuration'}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {isNew
-                ? 'Configure a new service provider for Zentri'
-                : `Review and update settings for ${name}`}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-error hover:bg-error/10 transition-all border border-border"
-            title="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+    <Drawer isOpen={isOpen} onClose={onClose} position="right" width="560px">
+      <DrawerHeader
+        title={isNew ? 'Initialize New Service' : 'Edit Service Configuration'}
+        description={
+          isNew
+            ? 'Configure a new service provider for Zentri'
+            : `Review and update settings for ${name}`
+        }
+        onClose={onClose}
+      />
+      <DrawerBody className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground/80">Service Template</label>
             <CustomSelect
@@ -951,8 +940,8 @@ useEffect(() => {
               })}
             </div>
           </div>
-        </div>
-        <div className="flex gap-3 w-full px-4 py-2 border-t border-border bg-card/50 shrink-0 justify-end">
+        </DrawerBody>
+      <DrawerFooter className="justify-end">
           <button
             onClick={onClose}
             className="px-5 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
@@ -1004,8 +993,7 @@ useEffect(() => {
           >
             {isNew ? 'Create Service' : 'Save Changes'}
           </button>
-        </div>
-      </div>
+        </DrawerFooter>
       <CreateCategoryModal
         isOpen={showCreateCategory}
         onClose={() => setShowCreateCategory(false)}
@@ -1015,8 +1003,7 @@ useEffect(() => {
         }}
         initialTitle={newCategoryTitle}
       />
-      
-    </div>
+    </Drawer>
   );
 };
 

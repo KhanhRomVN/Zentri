@@ -5,7 +5,7 @@ module.exports = {
   safelist: [
     'bg-card-background',
     'bg-input-background',
-    'bg-modal-background',
+    'bg-background',
     'bg-dropdown-background',
     'bg-dropdown-item-hover',
     'bg-sidebar-background',

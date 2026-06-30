@@ -4,7 +4,12 @@ import { Edit2, Trash2 } from 'lucide-react';
 import { ServiceProviderConfig } from '../../../email/types';
 import { cn } from '@renderer/shared/lib/utils';
 import { useServiceDrawer } from '../../../../contexts/ServiceDrawerContext';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../../components/ui/Dropdown';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+} from '../../../../components/ui/Dropdown';
 
 interface ServiceManagerProps {
   serviceSearch: string;
@@ -177,7 +182,12 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
                                   }
                                   return next;
                                 });
-                                setSelectAll(checked && rows.every((s) => selectedServices.has(s.id) || s.id === service.id));
+                                setSelectAll(
+                                  checked &&
+                                    rows.every(
+                                      (s) => selectedServices.has(s.id) || s.id === service.id,
+                                    ),
+                                );
                               }}
                               onClick={(e) => e.stopPropagation()}
                             />
@@ -223,7 +233,9 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-[9px] text-muted-foreground/30 italic">—</span>
+                                <span className="text-[9px] text-muted-foreground/30 italic">
+                                  —
+                                </span>
                               )}
                             </div>
                           </td>
@@ -239,7 +251,9 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-[9px] text-muted-foreground/30 italic">—</span>
+                                <span className="text-[9px] text-muted-foreground/30 italic">
+                                  —
+                                </span>
                               )}
                             </div>
                           </td>
@@ -256,49 +270,49 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
             {rows.length} services
           </div>
         </div>
-        {contextMenu && createPortal(
-        <div
-          ref={contextMenuRef}
-          className="fixed bg-modal-background border border-border rounded-lg shadow-xl py-1.5 z-[1000] min-w-[160px] animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-        >
-          <button
-            onClick={() => {
-              handleEdit(services[contextMenu.serviceId]);
-              setContextMenu(null);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
-          >
-            <Edit2 className="w-3.5 h-3.5 text-primary/50" />
-            Edit Configuration
-          </button>
-          <div className="h-px bg-border/20 my-1 mx-2" />
-          <button
-            onClick={async () => {
-              if (confirm(`Remove "${services[contextMenu.serviceId].name}"?`)) {
-                try {
-                  /* @ts-ignore */ await window.electron.ipcRenderer.invoke(
-                    'sqlite:run',
-                    'DELETE FROM services WHERE id = ?',
-                    [contextMenu.serviceId],
-                  );
-                  await loadServices();
-                } catch (e) {
-                  console.error('Delete failed', e);
-                }
-              }
-              setContextMenu(null);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-red-500/60" />
-            Delete Service
-          </button>
-        </div>,
-        document.body,
-      )}
+        {contextMenu &&
+          createPortal(
+            <div
+              ref={contextMenuRef}
+              className="fixed bg-background border border-border rounded-lg shadow-xl py-1.5 z-[1000] min-w-[160px] animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
+              style={{ top: contextMenu.y, left: contextMenu.x }}
+            >
+              <button
+                onClick={() => {
+                  handleEdit(services[contextMenu.serviceId]);
+                  setContextMenu(null);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
+              >
+                <Edit2 className="w-3.5 h-3.5 text-primary/50" />
+                Edit Configuration
+              </button>
+              <div className="h-px bg-border/20 my-1 mx-2" />
+              <button
+                onClick={async () => {
+                  if (confirm(`Remove "${services[contextMenu.serviceId].name}"?`)) {
+                    try {
+                      /* @ts-ignore */ await window.electron.ipcRenderer.invoke(
+                        'sqlite:run',
+                        'DELETE FROM services WHERE id = ?',
+                        [contextMenu.serviceId],
+                      );
+                      await loadServices();
+                    } catch (e) {
+                      console.error('Delete failed', e);
+                    }
+                  }
+                  setContextMenu(null);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-500/60" />
+                Delete Service
+              </button>
+            </div>,
+            document.body,
+          )}
       </div>
-      
     </div>
   );
 };

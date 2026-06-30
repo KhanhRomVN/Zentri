@@ -17,20 +17,27 @@ export const FingerprintSettings = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editConfig, setEditConfig] = useState<FingerprintConfig>(INITIAL_CONFIG);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; presetId: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; presetId: string } | null>(
+    null,
+  );
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const loadPresets = async () => {
     setLoading(true);
     try {
       // @ts-ignore
-      const rows = await window.electron.ipcRenderer.invoke('sqlite:all', 'SELECT * FROM fingerprints ORDER BY created_at DESC');
-      setPresets(rows.map((r: any) => ({
-        id: r.id,
-        name: r.name || 'Untitled',
-        description: r.description || '',
-        config: r.config_json ? JSON.parse(r.config_json) : INITIAL_CONFIG,
-      })));
+      const rows = await window.electron.ipcRenderer.invoke(
+        'sqlite:all',
+        'SELECT * FROM fingerprints ORDER BY created_at DESC',
+      );
+      setPresets(
+        rows.map((r: any) => ({
+          id: r.id,
+          name: r.name || 'Untitled',
+          description: r.description || '',
+          config: r.config_json ? JSON.parse(r.config_json) : INITIAL_CONFIG,
+        })),
+      );
     } catch (error) {
       console.error('Failed to load fingerprint presets:', error);
     } finally {
@@ -68,7 +75,7 @@ export const FingerprintSettings = () => {
       description: '',
       config: { ...INITIAL_CONFIG, profileName: 'New Fingerprint' },
     };
-    setPresets(prev => [newPreset, ...prev]);
+    setPresets((prev) => [newPreset, ...prev]);
     setEditConfig(newPreset.config);
     setExpandedId(newId);
   };
@@ -77,8 +84,12 @@ export const FingerprintSettings = () => {
     if (confirm('Delete this fingerprint?')) {
       try {
         // @ts-ignore
-        await window.electron.ipcRenderer.invoke('sqlite:run', 'DELETE FROM fingerprints WHERE id = ?', [id]);
-        setPresets(prev => prev.filter(p => p.id !== id));
+        await window.electron.ipcRenderer.invoke(
+          'sqlite:run',
+          'DELETE FROM fingerprints WHERE id = ?',
+          [id],
+        );
+        setPresets((prev) => prev.filter((p) => p.id !== id));
         if (expandedId === id) setExpandedId(null);
       } catch (e) {
         console.error('Delete failed', e);
@@ -97,8 +108,12 @@ export const FingerprintSettings = () => {
   };
 
   const OS_LABEL: Record<string, string> = {
-    'Win32': 'Windows', 'MacIntel': 'macOS', 'Linux x86_64': 'Linux',
-    'Linux armv8l': 'Android', 'iPhone': 'iOS', 'iPad': 'iPadOS',
+    Win32: 'Windows',
+    MacIntel: 'macOS',
+    'Linux x86_64': 'Linux',
+    'Linux armv8l': 'Android',
+    iPhone: 'iOS',
+    iPad: 'iPadOS',
   };
 
   return (
@@ -108,26 +123,47 @@ export const FingerprintSettings = () => {
         <table className="border-collapse table-fixed w-full">
           <thead className="sticky top-0 z-30">
             <tr className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
-              <th className="w-[60px] pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">#</th>
-              <th className="text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">Name</th>
-              <th className="w-[120px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">OS</th>
-              <th className="w-[140px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">Browser</th>
-              <th className="w-[130px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">Resolution</th>
-              <th className="w-[120px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">CPU / RAM</th>
-              <th className="w-[100px] pr-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-right text-muted-foreground">Actions</th>
+              <th className="w-[60px] pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                #
+              </th>
+              <th className="text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                Name
+              </th>
+              <th className="w-[120px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                OS
+              </th>
+              <th className="w-[140px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                Browser
+              </th>
+              <th className="w-[130px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                Resolution
+              </th>
+              <th className="w-[120px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                CPU / RAM
+              </th>
+              <th className="w-[100px] pr-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-right text-muted-foreground">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-20 text-muted-foreground/30 font-mono text-xs">Loading fingerprints...</td>
+                <td
+                  colSpan={7}
+                  className="text-center py-20 text-muted-foreground/30 font-mono text-xs"
+                >
+                  Loading fingerprints...
+                </td>
               </tr>
             ) : presets.length === 0 ? (
               <tr className="hover:bg-transparent border-none">
                 <td colSpan={7} className="h-64 text-center">
                   <div className="flex flex-col items-center gap-4 opacity-20">
                     <Shield className="w-16 h-16" />
-                    <span className="text-[12px] font-black uppercase tracking-[0.3em]">No fingerprint presets. Click + to create one.</span>
+                    <span className="text-[12px] font-black uppercase tracking-[0.3em]">
+                      No fingerprint presets. Click + to create one.
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -154,9 +190,13 @@ export const FingerprintSettings = () => {
                           <Shield className="w-4 h-4 text-primary/60" />
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-[14px] font-bold text-foreground tracking-tight truncate">{preset.name}</span>
+                          <span className="text-[14px] font-bold text-foreground tracking-tight truncate">
+                            {preset.name}
+                          </span>
                           {preset.description && (
-                            <span className="text-[10px] text-muted-foreground/40 font-mono truncate">{preset.description}</span>
+                            <span className="text-[10px] text-muted-foreground/40 font-mono truncate">
+                              {preset.description}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -164,38 +204,57 @@ export const FingerprintSettings = () => {
                     <td className="py-2">
                       <div className="flex items-center gap-2">
                         <Monitor className="w-3.5 h-3.5 text-muted-foreground/50" />
-                        <span className="text-[12px] font-medium text-foreground/70">{OS_LABEL[preset.config.os] || preset.config.os}</span>
+                        <span className="text-[12px] font-medium text-foreground/70">
+                          {OS_LABEL[preset.config.os] || preset.config.os}
+                        </span>
                       </div>
                     </td>
                     <td className="py-2">
-                      <span className="text-[12px] font-mono text-foreground/60">{preset.config.brand} {preset.config.brandVersion}</span>
+                      <span className="text-[12px] font-mono text-foreground/60">
+                        {preset.config.brand} {preset.config.brandVersion}
+                      </span>
                     </td>
                     <td className="py-2">
-                      <span className="text-[12px] font-mono text-foreground/60">{preset.config.width}x{preset.config.height}</span>
+                      <span className="text-[12px] font-mono text-foreground/60">
+                        {preset.config.width}x{preset.config.height}
+                      </span>
                     </td>
                     <td className="py-2">
                       <div className="flex items-center gap-2">
                         <Cpu className="w-3.5 h-3.5 text-muted-foreground/50" />
-                        <span className="text-[12px] font-medium text-foreground/70">{preset.config.hardwareConcurrency}C / {preset.config.deviceMemory}GB</span>
+                        <span className="text-[12px] font-medium text-foreground/70">
+                          {preset.config.hardwareConcurrency}C / {preset.config.deviceMemory}GB
+                        </span>
                       </div>
                     </td>
                     <td className="py-2 pr-6 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleRowClick(preset); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRowClick(preset);
+                          }}
                           className="p-1.5 rounded-lg hover:bg-primary/20 text-primary transition-all"
                           title="Edit"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(preset.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(preset.id);
+                          }}
                           className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500/60 hover:text-red-500 transition-all"
                           title="Delete"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                        <ChevronDown className={cn('w-4 h-4 text-muted-foreground/50 transition-transform duration-300', expandedId === preset.id && 'rotate-180')} />
+                        <ChevronDown
+                          className={cn(
+                            'w-4 h-4 text-muted-foreground/50 transition-transform duration-300',
+                            expandedId === preset.id && 'rotate-180',
+                          )}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -239,32 +298,38 @@ export const FingerprintSettings = () => {
       </div>
 
       {/* Context Menu */}
-      {contextMenu && createPortal(
-        <div
-          ref={contextMenuRef}
-          className="fixed bg-modal-background border border-border rounded-lg shadow-xl py-1.5 z-[1000] min-w-[160px] animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-        >
-          <button
-            onClick={() => {
-              const preset = presets.find(p => p.id === contextMenu.presetId);
-              if (preset) { setEditConfig({ ...preset.config }); setExpandedId(preset.id); }
-              setContextMenu(null);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
+      {contextMenu &&
+        createPortal(
+          <div
+            ref={contextMenuRef}
+            className="fixed bg-background border border-border rounded-lg shadow-xl py-1.5 z-[1000] min-w-[160px] animate-in fade-in zoom-in-95 duration-100 p-1 hover:border-primary transition-colors"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
           >
-            <Edit2 className="w-3.5 h-3.5 text-primary" />Edit
-          </button>
-          <div className="h-px bg-border/20 my-1 mx-2" />
-          <button
-            onClick={() => handleDelete(contextMenu.presetId)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
-          >
-            <Trash2 className="w-3.5 h-3.5" />Delete
-          </button>
-        </div>,
-        document.body,
-      )}
+            <button
+              onClick={() => {
+                const preset = presets.find((p) => p.id === contextMenu.presetId);
+                if (preset) {
+                  setEditConfig({ ...preset.config });
+                  setExpandedId(preset.id);
+                }
+                setContextMenu(null);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-primary" />
+              Edit
+            </button>
+            <div className="h-px bg-border/20 my-1 mx-2" />
+            <button
+              onClick={() => handleDelete(contextMenu.presetId)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-foreground/80 hover:text-foreground hover:bg-dropdown-item-hover rounded-md transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

@@ -27,20 +27,15 @@ const MainLayout = () => {
 
   useEffect(() => {
     const initDatabase = async () => {
-      const savedPath = localStorage.getItem('zentri_storage_folder');
-      if (savedPath) {
-        try {
-          // @ts-ignore
-          await window.electron.ipcRenderer.invoke('sqlite:open', savedPath + '/zentri.db');
-          setIsDbReady(true);
-          console.log('Database auto-initialized on startup');
-        } catch (error) {
-          console.error('Failed to auto-initialize database:', error);
-          // Even if it fails, we might want to show the app so user can fix the path
-          setIsDbReady(true);
-        }
-      } else {
-        // No path saved? We should still set ready to true so Dashboard can show "Select Path"
+      try {
+        // @ts-ignore
+        const dbPath = await window.electron.ipcRenderer.invoke('storage:init-zentri');
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke('sqlite:open', dbPath);
+        setIsDbReady(true);
+        console.log('Database auto-initialized on startup:', dbPath);
+      } catch (error) {
+        console.error('Failed to auto-initialize database:', error);
         setIsDbReady(true);
       }
     };

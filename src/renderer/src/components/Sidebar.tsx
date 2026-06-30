@@ -222,7 +222,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed: _setIsCollapsed, activePage
         </nav>
 
         {/* Settings at bottom */}
-        <div className="mt-auto flex flex-col gap-1 w-full py-2">
+        <div className={cn('mt-auto flex flex-col gap-1 w-full py-2', expanded ? 'px-2' : 'px-0')}>
           {(() => {
             const itemColor = getItemColor('/setting');
             return (

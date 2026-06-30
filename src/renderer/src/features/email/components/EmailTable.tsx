@@ -359,14 +359,12 @@ const EmailTable: FC<EmailTableProps> = ({
     setIsLaunchModalOpen(false);
 
     try {
-      const browserPath = localStorage.getItem('zentri_browser_path') || undefined;
       // @ts-ignore
       await window.electron.ipcRenderer.invoke('email:open-login', {
         accountId,
         email,
         provider: provider || 'custom',
         url,
-        browserPath,
         fingerprintId: config.fingerprintId,
         proxyId: config.proxyId,
         launchMode: config.launchMode || 'secure',
@@ -767,7 +765,7 @@ const EmailTable: FC<EmailTableProps> = ({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed bg-modal-background border border-border rounded-md shadow-lg py-1 z-[1000] min-w-[160px]"
+            className="fixed bg-background border border-border rounded-md shadow-lg py-1 z-[1000] min-w-[160px]"
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={() => setContextMenu(null)}
           >

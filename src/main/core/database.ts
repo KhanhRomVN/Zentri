@@ -32,12 +32,12 @@ export class DbManager {
     if (inputPath) {
       // Check if it's a directory or a file
       if (fs.existsSync(inputPath) && fs.statSync(inputPath).isDirectory()) {
-        this.dbPath = path.join(inputPath, 'zentri.db');
+        this.dbPath = path.join(inputPath, 'zentri.sql');
       } else {
         this.dbPath = inputPath;
       }
     } else {
-      this.dbPath = path.join(app.getPath('userData'), 'zentri.db');
+      this.dbPath = path.join(app.getPath('userData'), 'zentri.sql');
     }
 
     // Ensure the directory for the DB exists

@@ -1,4 +1,5 @@
-import { ipcMain, dialog, BrowserWindow, app } from 'electron';
+import { ipcMain, dialog, BrowserWindow, app, shell } from 'electron';
+import { exec, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -344,14 +345,80 @@ export function setupEventHandlers() {
     }
   });
 
-  // 1. Select Storage Folder
-  ipcMain.handle('storage:select-folder', async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
-      properties: ['openDirectory'],
-    });
-    if (canceled) return null;
-    return filePaths[0];
+  // 1. Initialize/Get Zentri storage path (auto-managed at ~/.zentri/)
+  ipcMain.handle('storage:init-zentri', async () => {
+    const homeDir = app.getPath('home');
+    const zentriDir = path.join(homeDir, '.zentri');
+    const profilesDir = path.join(zentriDir, 'profiles');
+    const dbPath = path.join(zentriDir, 'zentri.sql');
+
+    try {
+      // Create .zentri/ folder if not exists
+      if (!fs.existsSync(zentriDir)) {
+        fs.mkdirSync(zentriDir, { recursive: true });
+      }
+
+      // Create profiles/ folder if not exists
+      if (!fs.existsSync(profilesDir)) {
+        fs.mkdirSync(profilesDir, { recursive: true });
+      }
+
+      return dbPath;
+    } catch (error) {
+      console.error('Error initializing Zentri storage:', error);
+      throw error;
+    }
   });
+
+  // Open Zentri folder in system file explorer
+  ipcMain.handle('storage:open-zentri-folder', async (_event, dbPath: string) => {
+    console.log('[storage:open-zentri-folder] Received dbPath:', dbPath);
+    if (!dbPath) {
+      console.log('[storage:open-zentri-folder] dbPath is empty, returning');
+      return;
+    }
+    const folderPath = path.dirname(dbPath);
+    console.log('[storage:open-zentri-folder] Opening folder:', folderPath);
+
+    const platform = process.platform;
+
+    try {
+      if (platform === 'win32') {
+        const child = spawn('explorer', [folderPath], { detached: true, stdio: 'ignore' });
+        child.unref();
+      } else if (platform === 'darwin') {
+        const child = spawn('open', [folderPath], { detached: true, stdio: 'ignore' });
+        child.unref();
+      } else {
+        // Linux: thử nautilus trước (xdg-open bị lỗi trên một số máy), fallback xdg-open
+        const child = spawn('nautilus', ['--no-desktop', folderPath], {
+          detached: true,
+          stdio: 'ignore',
+          env: { ...process.env }
+        });
+        child.on('error', (err) => {
+          console.error('[storage:open-zentri-folder] nautilus failed:', err.message);
+          // Fallback to xdg-open
+          const fb = spawn('xdg-open', [folderPath], {
+            detached: true,
+            stdio: 'ignore',
+            env: { ...process.env }
+          });
+          fb.on('error', (fbErr) => {
+            console.error('[storage:open-zentri-folder] xdg-open also failed:', fbErr.message);
+          });
+          fb.unref();
+        });
+        child.unref();
+      }
+      console.log('[storage:open-zentri-folder] Spawned file explorer for:', folderPath);
+      return folderPath;
+    } catch (error: any) {
+      console.error('[storage:open-zentri-folder] Failed to spawn:', error.message);
+      throw new Error(`Failed to open folder: ${error.message}`);
+    }
+  });
+  console.log('[storage:open-zentri-folder] Handler registered');
 
   // 2. Read file data from storage folder
   ipcMain.handle(

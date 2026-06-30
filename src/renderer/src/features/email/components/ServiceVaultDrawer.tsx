@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Trash2, Loader2, ShieldCheck, Database, Plus, Copy, Edit2, RotateCcw, X } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../components/ui/Dropdown';
 import { cn } from '../../../shared/lib/utils';
+import { Drawer, DrawerHeader, DrawerBody } from '../../../components/ui/Drawer';
 import { generateTOTP, getTOTPTimeRemaining } from '../utils/totp';
 
 interface ServiceVaultDrawerProps {
@@ -61,182 +62,174 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
 
   if (!isOpen) return null;
 
+  const handleClose = () => {
+    onClose();
+    setNewSecret({ name: '', value: '', type: 'text' });
+  };
+
   return (
-    <div className="fixed inset-0 z-[90] flex justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { onClose(); setNewSecret({ name: '', value: '', type: 'text' }); }} />
-      <div className="relative w-[500px] h-full bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        {/* Drawer Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 shrink-0">
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Service Vault</h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Active credentials for {serviceName || 'this service'}
-            </p>
+    <Drawer isOpen={isOpen} onClose={handleClose} position="right" width="500px">
+      <DrawerHeader
+        title="Service Vault"
+        description={`Active credentials for ${serviceName || 'this service'}`}
+        onClose={handleClose}
+      />
+
+      <DrawerBody className="!p-0 flex flex-col">
+        {/* Service Identity */}
+        <div className="px-4 py-3 border-b border-border/10 relative overflow-hidden bg-white/5 shrink-0">
+          <div className="flex items-center gap-3.5 relative">
+            <div className="relative w-10 h-10 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center transition-all duration-500 shadow-2xl">
+              {serviceUrl ? (
+                <img
+                  src={`https://www.google.com/s2/favicons?domain=${new URL(serviceUrl).hostname}&sz=128`}
+                  alt={serviceName}
+                  className="w-6 h-6 object-contain brightness-110"
+                />
+              ) : (
+                <Database className="w-5 h-5 text-primary/80" />
+              )}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <h3 className="text-[14px] font-black text-foreground tracking-tight leading-none uppercase truncate">
+                {serviceName || 'Unknown Service'}
+              </h3>
+              {serviceUrl && (
+                <p className="text-[10px] text-muted-foreground/30 font-bold truncate mt-1.5 tracking-wider font-mono">
+                  {new URL(serviceUrl).hostname}
+                </p>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => { onClose(); setNewSecret({ name: '', value: '', type: 'text' }); }}
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        <div className="flex flex-col h-full overflow-hidden bg-transparent">
-          {/* Service Identity */}
-          <div className="px-4 py-3 border-b border-border/10 relative overflow-hidden bg-white/5">
-            <div className="flex items-center gap-3.5 relative">
-              <div className="relative w-10 h-10 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center transition-all duration-500 shadow-2xl">
-                {serviceUrl ? (
-                  <img
-                    src={`https://www.google.com/s2/favicons?domain=${new URL(serviceUrl).hostname}&sz=128`}
-                    alt={serviceName}
-                    className="w-6 h-6 object-contain brightness-110"
-                  />
-                ) : (
-                  <Database className="w-5 h-5 text-primary/80" />
-                )}
-              </div>
-              <div className="flex flex-col min-w-0">
-                <h3 className="text-[14px] font-black text-foreground tracking-tight leading-none uppercase truncate">
-                  {serviceName || 'Unknown Service'}
-                </h3>
-                {serviceUrl && (
-                  <p className="text-[10px] text-muted-foreground/30 font-bold truncate mt-1.5 tracking-wider font-mono">
-                    {new URL(serviceUrl).hostname}
-                  </p>
-                )}
-              </div>
-            </div>
+        {/* Secrets List */}
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="px-4 py-4 flex items-center justify-between sticky top-0 bg-card/10 backdrop-blur-md z-10 border-b border-border/5">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 flex items-center gap-3">
+              Service Credentials ({currentSecrets.length})
+            </label>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="p-1.5 rounded-lg bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all active:scale-95 border border-primary/10"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {/* Secrets List */}
-          <div className="flex-1 overflow-auto custom-scrollbar">
-            <div className="px-4 py-4 flex items-center justify-between sticky top-0 bg-card/10 backdrop-blur-md z-10 border-b border-border/5">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 flex items-center gap-3">
-                Service Credentials ({currentSecrets.length})
-              </label>
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="p-1.5 rounded-lg bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all active:scale-95 border border-primary/10"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
+          {loadingSecrets ? (
+            <div className="flex flex-col items-center justify-center py-20 opacity-30 gap-6">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary text-center px-4">
+                Syncing Protected Keys...
+              </span>
             </div>
-
-            {loadingSecrets ? (
-              <div className="flex flex-col items-center justify-center py-20 opacity-30 gap-6">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary text-center px-4">
-                  Syncing Protected Keys...
-                </span>
+          ) : currentSecrets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 opacity-20 gap-10 text-center px-8">
+              <div className="relative w-24 h-24 rounded-[2.5rem] bg-muted/30 border border-white/5 flex items-center justify-center">
+                <Database className="w-10 h-10 text-muted-foreground/30" />
               </div>
-            ) : currentSecrets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 opacity-20 gap-10 text-center px-8">
-                <div className="relative w-24 h-24 rounded-[2.5rem] bg-muted/30 border border-white/5 flex items-center justify-center">
-                  <Database className="w-10 h-10 text-muted-foreground/30" />
-                </div>
-                <div className="space-y-4">
-                  <p className="text-xs font-black tracking-[0.2em] uppercase text-foreground/80">
-                    Vault is Isolated
-                  </p>
-                  <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="px-8 py-3 rounded-xl bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-white transition-all border border-primary/20 shadow-2xl shadow-primary/10"
-                  >
-                    Start Initialization
-                  </button>
-                </div>
+              <div className="space-y-4">
+                <p className="text-xs font-black tracking-[0.2em] uppercase text-foreground/80">
+                  Vault is Isolated
+                </p>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-8 py-3 rounded-xl bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-white transition-all border border-primary/20 shadow-2xl shadow-primary/10"
+                >
+                  Start Initialization
+                </button>
               </div>
-            ) : (
-              <div>
-                {currentSecrets.map((s, idx) => (
-                  <Dropdown key={s.id} trigger="contextmenu">
-                    <DropdownTrigger asChild>
-                      <div
-                        onClick={() => {
-                          setEditingSecret(s);
-                          setIsEditModalOpen(true);
-                        }}
-                        className={cn(
-                          'group flex flex-col px-4 py-5 transition-all cursor-pointer relative',
-                          'border-b border-white/10',
-                          idx === 0 && 'border-t border-white/10',
-                          'hover:bg-primary/5',
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-6">
-                          <div className="flex items-center gap-4 min-w-0">
-                            <span className="text-[14px] font-bold text-foreground leading-none truncate max-w-[180px]">
-                              {s.secret_name}
-                            </span>
-                            {s.secret_type === 'totp' && (
-                              <div className="flex items-center gap-3 px-3 py-1.5 bg-black/40 rounded-lg border border-white/10 opacity-90 group-hover:opacity-100 transition-all shadow-xl">
-                                <span className="text-[16px] font-black font-mono tracking-[0.1em] text-primary tabular-nums">
-                                  {generateTOTP(s.secret_value)}
+            </div>
+          ) : (
+            <div>
+              {currentSecrets.map((s, idx) => (
+                <Dropdown key={s.id} trigger="contextmenu">
+                  <DropdownTrigger asChild>
+                    <div
+                      onClick={() => {
+                        setEditingSecret(s);
+                        setIsEditModalOpen(true);
+                      }}
+                      className={cn(
+                        'group flex flex-col px-4 py-5 transition-all cursor-pointer relative',
+                        'border-b border-white/10',
+                        idx === 0 && 'border-t border-white/10',
+                        'hover:bg-primary/5',
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-6">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <span className="text-[14px] font-bold text-foreground leading-none truncate max-w-[180px]">
+                            {s.secret_name}
+                          </span>
+                          {s.secret_type === 'totp' && (
+                            <div className="flex items-center gap-3 px-3 py-1.5 bg-black/40 rounded-lg border border-white/10 opacity-90 group-hover:opacity-100 transition-all shadow-xl">
+                              <span className="text-[16px] font-black font-mono tracking-[0.1em] text-primary tabular-nums">
+                                {generateTOTP(s.secret_value)}
+                              </span>
+                              <div className="flex items-center gap-2 border-l border-white/20 pl-3">
+                                <span className="text-[11px] font-black font-mono text-primary/60 w-4 text-right">
+                                  {timeRemaining}
                                 </span>
-                                <div className="flex items-center gap-2 border-l border-white/20 pl-3">
-                                  <span className="text-[11px] font-black font-mono text-primary/60 w-4 text-right">
-                                    {timeRemaining}
-                                  </span>
-                                </div>
                               </div>
-                            )}
-                          </div>
-                          <div className={cn(
-                            'px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border shrink-0 opacity-80 group-hover:opacity-100 transition-all shadow-sm',
-                            getTypeBadgeStyles(s.secret_type || 'password'),
-                          )}>
-                            {s.secret_type || 'password'}
-                          </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className={cn(
+                          'px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border shrink-0 opacity-80 group-hover:opacity-100 transition-all shadow-sm',
+                          getTypeBadgeStyles(s.secret_type || 'password'),
+                        )}>
+                          {s.secret_type || 'password'}
                         </div>
                       </div>
-                    </DropdownTrigger>
-                    <DropdownContent>
+                    </div>
+                  </DropdownTrigger>
+                  <DropdownContent>
+                    <DropdownItem
+                      onClick={() => {
+                        navigator.clipboard.writeText(s.secret_value);
+                      }}
+                    >
+                      <Copy className="w-3.5 h-3.5 opacity-50" />
+                      Copy Secret
+                    </DropdownItem>
+                    {s.secret_type === 'totp' && (
                       <DropdownItem
                         onClick={() => {
-                          navigator.clipboard.writeText(s.secret_value);
+                          navigator.clipboard.writeText(generateTOTP(s.secret_value));
                         }}
                       >
-                        <Copy className="w-3.5 h-3.5 opacity-50" />
-                        Copy Secret
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Copy OTP Code
                       </DropdownItem>
-                      {s.secret_type === 'totp' && (
-                        <DropdownItem
-                          onClick={() => {
-                            navigator.clipboard.writeText(generateTOTP(s.secret_value));
-                          }}
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          Copy OTP Code
-                        </DropdownItem>
-                      )}
-                      <DropdownItem
-                        onClick={() => {
-                          setEditingSecret(s);
-                          setIsEditModalOpen(true);
-                        }}
-                      >
-                        <Edit2 className="w-3.5 h-3.5 opacity-50" />
-                        Edit Meta
-                      </DropdownItem>
-                      <div className="h-px bg-divider my-1" />
-                      <DropdownItem
-                        className="text-error focus:text-error focus:bg-error/10"
-                        onClick={() => {
-                          onDeleteSecret?.(s.id);
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Purge Secret
-                      </DropdownItem>
-                    </DropdownContent>
-                  </Dropdown>
-                ))}
-              </div>
-            )}
-          </div>
+                    )}
+                    <DropdownItem
+                      onClick={() => {
+                        setEditingSecret(s);
+                        setIsEditModalOpen(true);
+                      }}
+                    >
+                      <Edit2 className="w-3.5 h-3.5 opacity-50" />
+                      Edit Meta
+                    </DropdownItem>
+                    <div className="h-px bg-divider my-1" />
+                    <DropdownItem
+                      className="text-error focus:text-error focus:bg-error/10"
+                      onClick={() => {
+                        onDeleteSecret?.(s.id);
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Purge Secret
+                    </DropdownItem>
+                  </DropdownContent>
+                </Dropdown>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      </DrawerBody>
 
       {/* Add Secret Modal */}
       {isAddModalOpen && createPortal(
@@ -357,7 +350,7 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
         </div>,
         document.body,
       )}
-    </div>
+    </Drawer>
   );
 };
 

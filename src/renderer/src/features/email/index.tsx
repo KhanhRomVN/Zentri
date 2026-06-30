@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '../../shared/lib/utils';
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
 import { Account } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -642,284 +643,265 @@ const EmailManager = () => {
         </div>
       </div>
 
-      {/* Add Email Drawer - Native */}
-      {isDrawerOpen && (
-        <div className="fixed inset-0 z-[90] flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => {
-              setIsDrawerOpen(false);
-              setSelectedAccount(null);
-            }}
-          />
-          <div className="relative w-[500px] h-full bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 shrink-0">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  {selectedAccount ? 'Account Details' : 'Add Account'}
-                </h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {selectedAccount
-                    ? 'View and manage account information'
-                    : 'Add a new email account to your repository'}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setIsDrawerOpen(false);
-                  setSelectedAccount(null);
+      {/* Add Email Drawer */}
+      <Drawer
+        isOpen={isDrawerOpen}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedAccount(null);
+        }}
+        position="right"
+        width="500px"
+      >
+        <DrawerHeader
+          title={selectedAccount ? 'Account Details' : 'Add Account'}
+          description={
+            selectedAccount
+              ? 'View and manage account information'
+              : 'Add a new email account to your repository'
+          }
+          onClose={() => {
+            setIsDrawerOpen(false);
+            setSelectedAccount(null);
+          }}
+        />
+
+        <DrawerBody className="space-y-6">
+          {/* Account Credentials */}
+          <div className="space-y-4">
+            <div className="space-y-2.5">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                Email
+                <span className="text-destructive ml-1">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="identity@example.com"
+                value={newEmailData.email}
+                onChange={(e) => {
+                  setNewEmailData((d) => ({ ...d, email: e.target.value }));
+                  if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
                 }}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                onBlur={() => validateField('email', newEmailData.email)}
+                className={cn(
+                  'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                  errors.email ? 'border-destructive' : 'border-border',
+                )}
+              />
 
-            {/* Drawer Body */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
-              {/* Account Credentials */}
-              <div className="space-y-4">
-                <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                    Email
-                    <span className="text-destructive ml-1">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="identity@example.com"
-                    value={newEmailData.email}
-                    onChange={(e) => {
-                      setNewEmailData((d) => ({ ...d, email: e.target.value }));
-                      if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
-                    }}
-                    onBlur={() => validateField('email', newEmailData.email)}
-                    className={cn(
-                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
-                      errors.email ? 'border-destructive' : 'border-border',
-                    )}
-                  />
-
-                  {/* Trash Conflict Warning */}
-                  {trashConflict && (
-                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                            Trash Conflict
-                          </p>
-                          <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            This account exists in the trash. Please delete it permanently or
-                            restore it before re-adding.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleHardDelete(trashConflict.id)}
-                          className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
-                        >
-                          Delete Permanently
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsDrawerOpen(false);
-                            setFocusedAccountId(trashConflict.id);
-                          }}
-                          className="flex-1 py-2 rounded-xl bg-white/5 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider hover:bg-amber-500/5 transition-colors"
-                        >
-                          View in Table
-                        </button>
-                      </div>
+              {/* Trash Conflict Warning */}
+              {trashConflict && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                        Trash Conflict
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        This account exists in the trash. Please delete it permanently or
+                        restore it before re-adding.
+                      </p>
                     </div>
-                  )}
-                </div>
-                <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                    Password
-                    <span className="text-destructive ml-1">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••••••"
-                    value={newEmailData.password}
-                    onChange={(e) => {
-                      setNewEmailData((d) => ({ ...d, password: e.target.value }));
-                      if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
-                    }}
-                    onBlur={() => validateField('password', newEmailData.password)}
-                    className={cn(
-                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
-                      errors.password ? 'border-destructive' : 'border-border',
-                    )}
-                  />
-                </div>
-                <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                    Recovery Email
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="backup@proton.me"
-                    value={newEmailData.recoveryEmail}
-                    onChange={(e) => {
-                      setNewEmailData((d) => ({ ...d, recoveryEmail: e.target.value }));
-                      if (errors.recoveryEmail)
-                        setErrors((prev) => ({ ...prev, recoveryEmail: '' }));
-                    }}
-                    onBlur={() => validateField('recoveryEmail', newEmailData.recoveryEmail)}
-                    className={cn(
-                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
-                      errors.recoveryEmail ? 'border-destructive' : 'border-border',
-                    )}
-                  />
-                </div>
-                <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                    Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="+84 ••• ••• •••"
-                    value={newEmailData.phoneNumber}
-                    onChange={(e) => {
-                      setNewEmailData((d) => ({ ...d, phoneNumber: e.target.value }));
-                      if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: '' }));
-                    }}
-                    onBlur={() => validateField('phoneNumber', newEmailData.phoneNumber)}
-                    className={cn(
-                      'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
-                      errors.phoneNumber ? 'border-destructive' : 'border-border',
-                    )}
-                  />
-                </div>
-              </div>
-
-              {/* Security Secrets */}
-              <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-4 h-4 text-primary" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
-                    Security Settings
-                  </h3>
-                </div>
-                <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                    TOTP Secret Key
-                  </label>
-                  <div className="relative flex items-center">
-                    <Key className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
-                    <input
-                      type="text"
-                      placeholder="Paste TOTP secret key..."
-                      value={newEmailData.totpSecretKey}
-                      onChange={(e) =>
-                        setNewEmailData((d) => ({ ...d, totpSecretKey: e.target.value }))
-                      }
-                      className="w-full h-10 pl-10 pr-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
-                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleHardDelete(trashConflict.id)}
+                      className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
+                    >
+                      Delete Permanently
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                        setFocusedAccountId(trashConflict.id);
+                      }}
+                      className="flex-1 py-2 rounded-xl bg-white/5 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider hover:bg-amber-500/5 transition-colors"
+                    >
+                      View in Table
+                    </button>
                   </div>
                 </div>
+              )}
+            </div>
+            <div className="space-y-2.5">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                Password
+                <span className="text-destructive ml-1">*</span>
+              </label>
+              <input
+                type="password"
+                placeholder="••••••••••••"
+                value={newEmailData.password}
+                onChange={(e) => {
+                  setNewEmailData((d) => ({ ...d, password: e.target.value }));
+                  if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                }}
+                onBlur={() => validateField('password', newEmailData.password)}
+                className={cn(
+                  'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                  errors.password ? 'border-destructive' : 'border-border',
+                )}
+              />
+            </div>
+            <div className="space-y-2.5">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                Recovery Email
+              </label>
+              <input
+                type="text"
+                placeholder="backup@proton.me"
+                value={newEmailData.recoveryEmail}
+                onChange={(e) => {
+                  setNewEmailData((d) => ({ ...d, recoveryEmail: e.target.value }));
+                  if (errors.recoveryEmail)
+                    setErrors((prev) => ({ ...prev, recoveryEmail: '' }));
+                }}
+                onBlur={() => validateField('recoveryEmail', newEmailData.recoveryEmail)}
+                className={cn(
+                  'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                  errors.recoveryEmail ? 'border-destructive' : 'border-border',
+                )}
+              />
+            </div>
+            <div className="space-y-2.5">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                Phone Number
+              </label>
+              <input
+                type="text"
+                placeholder="+84 ••• ••• •••"
+                value={newEmailData.phoneNumber}
+                onChange={(e) => {
+                  setNewEmailData((d) => ({ ...d, phoneNumber: e.target.value }));
+                  if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: '' }));
+                }}
+                onBlur={() => validateField('phoneNumber', newEmailData.phoneNumber)}
+                className={cn(
+                  'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
+                  errors.phoneNumber ? 'border-destructive' : 'border-border',
+                )}
+              />
+            </div>
+          </div>
 
-                <div className="space-y-2.5">
-                  <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                    Backup Codes
-                  </label>
-                  <div className="bg-input-background border border-border rounded-xl">
-                    {/* Badge List */}
-                    {newEmailData.backupCodes.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 p-2 pb-0">
-                        {newEmailData.backupCodes.map((code, idx) => {
-                          const colors = [
-                            'bg-blue-500/20 text-blue-400 border-blue-500/30',
-                            'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                            'bg-amber-500/20 text-amber-400 border-amber-500/30',
-                            'bg-pink-500/20 text-pink-400 border-pink-500/30',
-                            'bg-purple-500/20 text-purple-400 border-purple-500/30',
-                            'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-                          ];
-                          const colorClass = colors[idx % colors.length];
-                          return (
-                            <span
-                              key={code}
-                              className={cn(
-                                'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border',
-                                colorClass,
-                              )}
-                            >
-                              {code}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setNewEmailData((d) => ({
-                                    ...d,
-                                    backupCodes: d.backupCodes.filter((c) => c !== code),
-                                  }))
-                                }
-                                className="hover:opacity-70 transition-opacity"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {/* Input */}
-                    <div className="relative flex items-center">
-                      <Hash className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
-                      <input
-                        type="text"
-                        placeholder="Type code and press Enter..."
-                        value={backupCodeSearch}
-                        onChange={(e) => setBackupCodeSearch(e.target.value)}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                          if (e.key === 'Enter' && backupCodeSearch.trim()) {
-                            const newVal = backupCodeSearch.trim();
-                            if (!newEmailData.backupCodes.includes(newVal)) {
+          {/* Security Secrets */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-4 h-4 text-primary" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
+                Security Settings
+              </h3>
+            </div>
+            <div className="space-y-2.5">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                TOTP Secret Key
+              </label>
+              <div className="relative flex items-center">
+                <Key className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
+                <input
+                  type="text"
+                  placeholder="Paste TOTP secret key..."
+                  value={newEmailData.totpSecretKey}
+                  onChange={(e) =>
+                    setNewEmailData((d) => ({ ...d, totpSecretKey: e.target.value }))
+                  }
+                  className="w-full h-10 pl-10 pr-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                Backup Codes
+              </label>
+              <div className="bg-input-background border border-border rounded-xl">
+                {newEmailData.backupCodes.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 p-2 pb-0">
+                    {newEmailData.backupCodes.map((code, idx) => {
+                      const colors = [
+                        'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                        'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                        'bg-pink-500/20 text-pink-400 border-pink-500/30',
+                        'bg-purple-500/20 text-purple-400 border-purple-500/30',
+                        'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+                      ];
+                      const colorClass = colors[idx % colors.length];
+                      return (
+                        <span
+                          key={code}
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border',
+                            colorClass,
+                          )}
+                        >
+                          {code}
+                          <button
+                            type="button"
+                            onClick={() =>
                               setNewEmailData((d) => ({
                                 ...d,
-                                backupCodes: [...d.backupCodes, newVal],
-                              }));
+                                backupCodes: d.backupCodes.filter((c) => c !== code),
+                              }))
                             }
-                            setBackupCodeSearch('');
-                          }
-                        }}
-                        className="w-full h-10 pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none rounded-xl"
-                      />
-                    </div>
+                            className="hover:opacity-70 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
                   </div>
+                )}
+                <div className="relative flex items-center">
+                  <Hash className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
+                  <input
+                    type="text"
+                    placeholder="Type code and press Enter..."
+                    value={backupCodeSearch}
+                    onChange={(e) => setBackupCodeSearch(e.target.value)}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === 'Enter' && backupCodeSearch.trim()) {
+                        const newVal = backupCodeSearch.trim();
+                        if (!newEmailData.backupCodes.includes(newVal)) {
+                          setNewEmailData((d) => ({
+                            ...d,
+                            backupCodes: [...d.backupCodes, newVal],
+                          }));
+                        }
+                        setBackupCodeSearch('');
+                      }
+                    }}
+                    className="w-full h-10 pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none rounded-xl"
+                  />
                 </div>
-              </div>
-            </div>
-
-            {/* Drawer Footer */}
-            <div className="px-4 py-4 border-t border-border/50 shrink-0">
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddEmail}
-                  disabled={!newEmailData.email || !newEmailData.password || !!trashConflict}
-                  className={cn(
-                    'flex-1 px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
-                    !newEmailData.email || !newEmailData.password || !!trashConflict
-                      ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
-                      : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
-                  )}
-                >
-                  Save Account
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </DrawerBody>
+
+        <DrawerFooter>
+          <button
+            onClick={() => setIsDrawerOpen(false)}
+            className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAddEmail}
+            disabled={!newEmailData.email || !newEmailData.password || !!trashConflict}
+            className={cn(
+              'flex-1 px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
+              !newEmailData.email || !newEmailData.password || !!trashConflict
+                ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
+                : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
+            )}
+          >
+            Save Account
+          </button>
+        </DrawerFooter>
+      </Drawer>
 
       {/* Toast - Native */}
       {toast.visible && (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Chrome, Facebook, Instagram, Check, X } from 'lucide-react';
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
 import RegisSidebar from './components/RegisSidebar';
 import RegisGridView from './components/RegisGridView';
 import RegisAccountTable from './components/RegisAccountTable';
@@ -210,102 +211,87 @@ const RegisManager = () => {
         </div>
       </div>
 
-      {/* Add Service Drawer - Native */}
-      {isServiceDrawerOpen && (
-        <div className="fixed inset-0 z-[90] flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setIsServiceDrawerOpen(false)}
-          />
-          <div className="relative w-[400px] h-full bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 shrink-0">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">Add Service Node</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Provision a new registration target
-                </p>
-              </div>
-              <button
-                onClick={() => setIsServiceDrawerOpen(false)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {/* Add Service Drawer */}
+      <Drawer
+        isOpen={isServiceDrawerOpen}
+        onClose={() => setIsServiceDrawerOpen(false)}
+        position="right"
+        width="400px"
+      >
+        <DrawerHeader
+          title="Add Service Node"
+          description="Provision a new registration target"
+          onClose={() => setIsServiceDrawerOpen(false)}
+        />
+
+        <DrawerBody className="space-y-8">
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
+                Service Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Google"
+                value={serviceForm.name}
+                onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
+                className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
+              />
             </div>
-
-            {/* Drawer Body */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
-                    Service Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Google"
-                    value={serviceForm.name}
-                    onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
-                    Domain URL
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. google.com"
-                    value={serviceForm.domain}
-                    onChange={(e) => setServiceForm({ ...serviceForm, domain: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
-                  Color Identity
-                </label>
-                <div className="grid grid-cols-6 gap-2 bg-muted/20 p-4 rounded-2xl border border-border/50">
-                  {PRESET_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setServiceForm({ ...serviceForm, color })}
-                      className="group relative aspect-square rounded-full transition-all active:scale-95 border border-white/5"
-                      style={{ backgroundColor: color }}
-                    >
-                      {serviceForm.color === color && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full scale-110 ring-2 ring-primary transition-all">
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 rounded-full bg-white/0 group-hover:bg-white/10 transition-colors" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Drawer Footer */}
-            <div className="flex gap-3 w-full p-4 border-t border-border bg-card/50 shrink-0">
-              <button
-                onClick={() => setIsServiceDrawerOpen(false)}
-                className="flex-1 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddService}
-                disabled={!serviceForm.name || !serviceForm.domain}
-                className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all font-semibold text-xs shadow-lg shadow-primary/10 disabled:opacity-50"
-              >
-                Provision Node
-              </button>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
+                Domain URL
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. google.com"
+                value={serviceForm.domain}
+                onChange={(e) => setServiceForm({ ...serviceForm, domain: e.target.value })}
+                className="w-full h-10 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
+              />
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="space-y-4">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
+              Color Identity
+            </label>
+            <div className="grid grid-cols-6 gap-2 bg-muted/20 p-4 rounded-2xl border border-border/50">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => setServiceForm({ ...serviceForm, color })}
+                  className="group relative aspect-square rounded-full transition-all active:scale-95 border border-white/5"
+                  style={{ backgroundColor: color }}
+                >
+                  {serviceForm.color === color && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full scale-110 ring-2 ring-primary transition-all">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 rounded-full bg-white/0 group-hover:bg-white/10 transition-colors" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </DrawerBody>
+
+        <DrawerFooter>
+          <button
+            onClick={() => setIsServiceDrawerOpen(false)}
+            className="flex-1 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAddService}
+            disabled={!serviceForm.name || !serviceForm.domain}
+            className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all font-semibold text-xs shadow-lg shadow-primary/10 disabled:opacity-50"
+          >
+            Provision Node
+          </button>
+        </DrawerFooter>
+      </Drawer>
     </div>
   );
 };

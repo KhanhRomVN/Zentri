@@ -4,12 +4,14 @@ import { GeneralSettings } from './components/General';
 import { ServiceManager } from './components/Service';
 import { FingerprintSettings } from './components/Fingerprint';
 import { cn } from '../../shared/lib/utils';
+import { useAccentColors } from '../../hooks/useAccentColors';
 
 type Tab = 'general' | 'services' | 'fingerprint';
 
 const SettingPage = () => {
   const [activeTab, setActiveTab] = useState<Tab>('general');
   const [serviceSearch, setServiceSearch] = useState('');
+  const { getColorByIndex, toRgba } = useAccentColors();
 
   const tabs = [
     {
@@ -105,37 +107,34 @@ const SettingPage = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Settings Sidebar */}
         <aside className="w-[280px] border-r border-border bg-card/10 flex flex-col shrink-0">
-          <nav className="flex-1 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as Tab)}
-                className={cn(
-                  'flex items-center gap-3 py-3 px-4 mb-1 text-sm font-medium rounded-none transition-all relative group w-full',
-                  activeTab === tab.id
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-                style={{
-                  background:
-                    activeTab === tab.id
-                      ? `linear-gradient(to right, ${tab.color}15, transparent)`
-                      : undefined,
-                }}
-              >
-                {activeTab === tab.id && (
-                  <div
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-lg"
-                    style={{ backgroundColor: tab.color }}
+          <nav className="flex-1 py-4 space-y-1 overflow-y-auto custom-scrollbar px-2">
+            {tabs.map((tab, index) => {
+              const tabColor = getColorByIndex(index);
+              const isActive = activeTab === tab.id;
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as Tab)}
+                  className={cn(
+                    'group relative w-full flex items-center gap-3 px-3 py-2 transition-all duration-200 rounded-lg',
+                    'text-[13px] font-semibold',
+                    !isActive && 'text-muted-foreground hover:text-foreground hover:bg-sidebar-item-hover',
+                    isActive && 'text-[--tab-color]',
+                  )}
+                  style={{
+                    '--tab-color': tabColor,
+                    background: isActive ? toRgba(tabColor, 0.1) : undefined,
+                  } as React.CSSProperties}
+                >
+                  <tab.icon
+                    className="w-5 h-5 flex-shrink-0 transition-colors"
+                    style={{ color: isActive ? tabColor : undefined }}
                   />
-                )}
-                <tab.icon
-                  className="w-5 h-5 flex-shrink-0 transition-colors"
-                  style={{ color: activeTab === tab.id ? tab.color : undefined }}
-                />
-                <span className="whitespace-nowrap overflow-hidden text-ellipsis">{tab.label}</span>
-              </button>
-            ))}
+                  <span className="whitespace-nowrap overflow-hidden text-ellipsis">{tab.label}</span>
+                </button>
+              );
+            })}
           </nav>
         </aside>
 

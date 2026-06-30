@@ -11,6 +11,7 @@ import {
   Feather, TrendingUp, Umbrella,
 } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../../components/ui/Drawer';
 import ColumnBuilder from './ColumnBuilder';
 
 // Icon map: name → component
@@ -119,28 +120,18 @@ const SmartViewBuilder: FC<SmartViewBuilderProps> = ({ isOpen, onClose, onSave, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[90] flex justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-[624px] h-full bg-drawer-background border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        {/* Drawer Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 shrink-0">
-          <div>
-            <h3 className="text-base font-bold text-foreground">{editView ? 'Edit Smart View' : 'Create Smart View'}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {editView ? 'Modify your custom data pipeline architecture' : 'Define your custom data pipeline architecture'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-error hover:bg-error/10 transition-all border border-border"
-            title="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Drawer isOpen={isOpen} onClose={onClose} position="right" width="624px">
+      <DrawerHeader
+        title={editView ? 'Edit Smart View' : 'Create Smart View'}
+        description={
+          editView
+            ? 'Modify your custom data pipeline architecture'
+            : 'Define your custom data pipeline architecture'
+        }
+        onClose={onClose}
+      />
 
-        {/* Drawer Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+      <DrawerBody className="space-y-6">
           {/* Name + Icon Picker */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground/80">
@@ -228,10 +219,9 @@ const SmartViewBuilder: FC<SmartViewBuilderProps> = ({ isOpen, onClose, onSave, 
 
           {/* Table Columns */}
           <ColumnBuilder columns={columns} onColumnsChange={setColumns} />
-        </div>
+        </DrawerBody>
 
-        {/* Drawer Footer */}
-        <div className="flex gap-3 w-full px-4 py-2 border-t border-border bg-card/50 shrink-0 justify-end">
+      <DrawerFooter className="justify-end">
           <button
             onClick={onClose}
             className="px-5 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
@@ -250,9 +240,8 @@ const SmartViewBuilder: FC<SmartViewBuilderProps> = ({ isOpen, onClose, onSave, 
           >
             Deploy Smart View
           </button>
-        </div>
-      </div>
-    </div>
+        </DrawerFooter>
+    </Drawer>
   );
 };
 
