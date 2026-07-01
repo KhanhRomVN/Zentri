@@ -50,9 +50,7 @@ const RegisSidebar: FC<RegisSidebarProps> = ({
           {filteredServices.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 mt-10 opacity-20">
               <Search className="w-10 h-10 mb-4" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-center">
-                System Depleted
-              </span>
+              <span className="text-[10px] font-black uppercase  text-center">System Depleted</span>
             </div>
           ) : (
             filteredServices.map((service) => (

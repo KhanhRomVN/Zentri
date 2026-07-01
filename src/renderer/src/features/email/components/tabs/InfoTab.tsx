@@ -74,9 +74,7 @@ const InfoTab: FC<InfoTabProps> = ({
       <div className="space-y-8">
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] ml-1">
-              Email
-            </label>
+            <label className="text-[13px] font-semibold text-muted-foreground/30 ml-1">Email</label>
             <input
               type="text"
               value={editedAccount?.email || ''}
@@ -97,7 +95,7 @@ const InfoTab: FC<InfoTabProps> = ({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] ml-1">
+            <label className="text-[13px] font-semibold text-muted-foreground/30 ml-1">
               Password
             </label>
             <input
@@ -127,7 +125,7 @@ const InfoTab: FC<InfoTabProps> = ({
 
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] ml-1">
+            <label className="text-[13px] font-semibold text-muted-foreground/30 ml-1">
               Recovery Email
             </label>
             <input
@@ -154,7 +152,7 @@ const InfoTab: FC<InfoTabProps> = ({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] ml-1">
+            <label className="text-[13px] font-semibold text-muted-foreground/30 ml-1">
               Phone Number
             </label>
             <input
@@ -182,15 +180,8 @@ const InfoTab: FC<InfoTabProps> = ({
         </div>
 
         <div className="space-y-4 pt-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Shield className="w-4 h-4 text-primary" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
-              Security Settings
-            </h3>
-          </div>
-
           <div className="space-y-2.5">
-            <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+            <label className="text-[13px] font-semibold tracking-wider text-muted-foreground/70">
               TOTP Key
             </label>
             <div className="relative flex items-center">
@@ -228,7 +219,7 @@ const InfoTab: FC<InfoTabProps> = ({
           </div>
 
           <div className="space-y-2.5">
-            <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
+            <label className="text-[13px] font-semibold tracking-wider text-muted-foreground/70">
               Backup Codes
             </label>
             <div className="bg-input-background border border-border/50 rounded-xl">

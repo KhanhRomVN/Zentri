@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import SearchSidebar from './components/SearchSidebar';
 import SearchTopNavbar from './components/SearchTopNavbar';
 import SearchContentView from './components/SearchContentView';
+import SearchToolbar from './components/SearchToolbar';
+import FilterBar from './components/FilterBar';
 import { SmartView } from './types/search';
 import SmartViewBuilder from './components/SmartViewBuilder';
-import { SERVICES } from '../../constants/services';
+import { useSearchTableState } from './hooks/useSearchTableState';
+import { useSearchFilter } from './hooks/useSearchFilter';
 
 const STORAGE_KEY = 'zentri_search_views';
 const CACHE_KEY = 'zentri_search_recent';
@@ -40,18 +43,50 @@ const SearchManager = () => {
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [editingView, setEditingView] = useState<SmartView | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [tableSearch, setTableSearch] = useState('');
+  const [showFilterBar, setShowFilterBar] = useState(false);
+
+  const selectedView = views.find((v) => v.id === selectedViewId) || null;
+
+  // Get available columns from selected view
+  const availableColumns = useMemo(() => {
+    if (!selectedView) return [];
+    return selectedView.columns.filter((c) => c.isVisible).map((c) => c.field || c.id);
+  }, [selectedView]);
+
+  // Table state
+  const {
+    sorting,
+    setSorting,
+    columnVisibility,
+    setColumnVisibility,
+    columnSizing,
+    setColumnSizing,
+    columnOrder,
+    setColumnOrder,
+  } = useSearchTableState({
+    viewId: selectedViewId,
+    defaultColumns: availableColumns,
+  });
+
+  // Filter state
+  const { filters, addFilter, removeFilter, clearFilters, updateFilter, filterCount } =
+    useSearchFilter({
+      viewId: selectedViewId,
+      availableColumns,
+    });
 
   // Load views from storage + fetch services on mount
   useEffect(() => {
     const loadViews = async () => {
       try {
-        console.log('[SearchManager] loadViews START');
-        console.log('[SearchManager] SERVICES from constants:', SERVICES.length, 'items');
-
         // @ts-ignore
         const [saved, dbServices, accountCounts] = await Promise.all([
           window.electron.ipcRenderer.invoke('storage:get', STORAGE_KEY),
-          window.electron.ipcRenderer.invoke('sqlite:all', 'SELECT * FROM services ORDER BY name ASC'),
+          window.electron.ipcRenderer.invoke(
+            'sqlite:all',
+            'SELECT * FROM services ORDER BY name ASC',
+          ),
           window.electron.ipcRenderer.invoke(
             'sqlite:all',
             'SELECT se.service_id, COUNT(DISTINCT se.email_id) as cnt FROM service_emails se GROUP BY se.service_id',
@@ -68,15 +103,20 @@ const SearchManager = () => {
 
         // Only keep user-created views (not service cards from previous save)
         // Normalize: views without explicit source or with non-service source → 'manual'
-        const userViews: SmartView[] = (saved && Array.isArray(saved))
-          ? saved
-              .filter((v: SmartView) => v.source !== 'service')
-              .map((v: SmartView) => ({
-                ...v,
-                source: v.source && v.source !== 'service' ? v.source : 'manual',
-              }))
-          : [];
-        console.log('[SearchManager] userViews:', userViews.length, userViews.map(v => `${v.name}(${v.source})`));
+        const userViews: SmartView[] =
+          saved && Array.isArray(saved)
+            ? saved
+                .filter((v: SmartView) => v.source !== 'service')
+                .map((v: SmartView) => ({
+                  ...v,
+                  source: v.source && v.source !== 'service' ? v.source : 'manual',
+                }))
+            : [];
+        console.log(
+          '[SearchManager] userViews:',
+          userViews.length,
+          userViews.map((v) => `${v.name}(${v.source})`),
+        );
 
         // Build account count map from DB
         const countMap: Record<string, number> = {};
@@ -91,82 +131,60 @@ const SearchManager = () => {
         });
         console.log('[SearchManager] dbServiceMap keys:', Object.keys(dbServiceMap).length);
 
-        // Merge: constants SERVICES as base, DB data for enrichment
-        // Also include any DB-only services not in constants
-        const mergedServiceIds = new Set<string>();
+        // Create service views from DB services only
+        const serviceViews: SmartView[] = (dbServices || []).map((svc: any) => ({
+          id: `svc_${svc.id}`,
+          name: svc.name,
+          description: svc.url || '',
+          domain: svc.url
+            ? (() => {
+                try {
+                  return new URL(svc.url).hostname;
+                } catch {
+                  return '';
+                }
+              })()
+            : '',
+          color: '#3B82F6',
+          icon: '',
+          source: 'service' as const,
+          serviceId: svc.id,
+          accountCount: countMap[svc.id] || 0,
+          lastUsedAt: recentCache[`svc_${svc.id}`] || undefined,
+          columns: [
+            {
+              id: 'col_stt',
+              label: 'STT',
+              type: 'number' as const,
+              field: '_stt',
+              isVisible: true,
+              isSortable: false,
+              isFilterable: false,
+            },
+            {
+              id: 'col_email',
+              label: 'Email',
+              type: 'email' as const,
+              field: 'email',
+              isVisible: true,
+              isSortable: true,
+              isFilterable: true,
+              template: { operator: '', value: '', sortOrder: 'none' },
+            },
+          ],
+          createdAt: svc.created_at || new Date().toISOString(),
+          updatedAt: svc.updated_at || new Date().toISOString(),
+        }));
 
-        const serviceViews: SmartView[] = SERVICES.map((svc) => {
-          mergedServiceIds.add(svc.id);
-          const dbSvc = dbServiceMap[svc.id];
-          return {
-            id: `svc_${svc.id}`,
-            name: dbSvc?.name || svc.name,
-            description: dbSvc?.url || svc.url || '',
-            domain: (dbSvc?.url || svc.url)
-              ? (() => {
-                  try {
-                    return new URL(dbSvc?.url || svc.url).hostname;
-                  } catch {
-                    return '';
-                  }
-                })()
-              : '',
-            color: '#3B82F6',
-            icon: '',
-            source: 'service' as const,
-            serviceId: svc.id,
-            accountCount: countMap[svc.id] || 0,
-            lastUsedAt: recentCache[`svc_${svc.id}`] || undefined,
-            columns: [
-              { id: 'col_stt', label: 'STT', type: 'number' as const, field: '_stt', isVisible: true, isSortable: false, isFilterable: false },
-              { id: 'col_email', label: 'Email', type: 'email' as const, field: 'email', isVisible: true, isSortable: true, isFilterable: true, template: { operator: '', value: '', sortOrder: 'none' } },
-            ],
-            createdAt: dbSvc?.created_at || new Date().toISOString(),
-            updatedAt: dbSvc?.updated_at || new Date().toISOString(),
-          };
-        });
-
-        console.log('[SearchManager] serviceViews from constants:', serviceViews.length);
-
-        // Add DB-only services that aren't in constants
-        let dbOnlyCount = 0;
-        (dbServices || []).forEach((svc: any) => {
-          if (!mergedServiceIds.has(svc.id)) {
-            dbOnlyCount++;
-            serviceViews.push({
-              id: `svc_${svc.id}`,
-              name: svc.name,
-              description: svc.url || '',
-              domain: svc.url
-                ? (() => {
-                    try {
-                      return new URL(svc.url).hostname;
-                    } catch {
-                      return '';
-                    }
-                  })()
-                : '',
-              color: '#3B82F6',
-              icon: '',
-              source: 'service' as const,
-              serviceId: svc.id,
-              accountCount: countMap[svc.id] || 0,
-              lastUsedAt: recentCache[`svc_${svc.id}`] || undefined,
-              columns: [
-                { id: 'col_stt', label: 'STT', type: 'number' as const, field: '_stt', isVisible: true, isSortable: false, isFilterable: false },
-                { id: 'col_email', label: 'Email', type: 'email' as const, field: 'email', isVisible: true, isSortable: true, isFilterable: true, template: { operator: '', value: '', sortOrder: 'none' } },
-              ],
-              createdAt: svc.created_at || new Date().toISOString(),
-              updatedAt: svc.updated_at || new Date().toISOString(),
-            });
-          }
-        });
-        console.log('[SearchManager] DB-only services added:', dbOnlyCount);
+        console.log('[SearchManager] serviceViews from DB:', serviceViews.length);
 
         // Merge and sort: Custom views (manual) ALWAYS on top of service cards
         const allViews = [...userViews, ...serviceViews];
         console.log('[SearchManager] allViews before sort:', allViews.length);
-        console.log('[SearchManager] First 5 view names:', allViews.slice(0, 5).map(v => v.name));
+        console.log(
+          '[SearchManager] First 5 view names:',
+          allViews.slice(0, 5).map((v) => v.name),
+        );
 
         allViews.sort((a, b) => {
           const aIsManual = a.source !== 'service';
@@ -195,7 +213,10 @@ const SearchManager = () => {
         });
 
         console.log('[SearchManager] allViews after sort:', allViews.length);
-        console.log('[SearchManager] First 5 after sort:', allViews.slice(0, 5).map(v => `${v.name} (${v.source})`));
+        console.log(
+          '[SearchManager] First 5 after sort:',
+          allViews.slice(0, 5).map((v) => `${v.name} (${v.source})`),
+        );
 
         if (allViews.length > 0) {
           console.log('[SearchManager] Setting views + selectedViewId:', allViews[0].id);
@@ -225,8 +246,6 @@ const SearchManager = () => {
     }
   }, [views, loaded]);
 
-  const selectedView = views.find((v) => v.id === selectedViewId) || null;
-
   const handleSelectView = useCallback((id: string) => {
     const viewId = id === 'all' ? null : id;
     setSelectedViewId(viewId);
@@ -235,16 +254,18 @@ const SearchManager = () => {
       const now = new Date().toISOString();
       recentCache[id] = now;
       saveRecentCache();
-      setViews((prev) =>
-        prev.map((v) => (v.id === id ? { ...v, lastUsedAt: now } : v)),
-      );
+      setViews((prev) => prev.map((v) => (v.id === id ? { ...v, lastUsedAt: now } : v)));
     }
   }, []);
 
   const handleCreateView = (newView: SmartView) => {
     if (editingView) {
       setViews((prev) =>
-        prev.map((v) => (v.id === editingView.id ? { ...newView, id: editingView.id, source: 'manual' as const } : v)),
+        prev.map((v) =>
+          v.id === editingView.id
+            ? { ...newView, id: editingView.id, source: 'manual' as const }
+            : v,
+        ),
       );
       setEditingView(null);
     } else {
@@ -269,9 +290,7 @@ const SearchManager = () => {
   };
 
   const handleFavoriteView = (id: string) => {
-    setViews((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, favorite: !v.favorite } : v)),
-    );
+    setViews((prev) => prev.map((v) => (v.id === id ? { ...v, favorite: !v.favorite } : v)));
   };
 
   const handleCloseBuilder = () => {
@@ -285,7 +304,21 @@ const SearchManager = () => {
 
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10">
-      <SearchTopNavbar selectedView={selectedView} onReset={resetSelection} />
+      <SearchTopNavbar
+        selectedView={selectedView}
+        onReset={resetSelection}
+        searchQuery={tableSearch}
+        onSearchChange={setTableSearch}
+        filtersCount={filterCount}
+        showFilterBar={showFilterBar}
+        onToggleFilterBar={() => setShowFilterBar(!showFilterBar)}
+        sorting={sorting}
+        onSortingChange={setSorting}
+        availableColumns={availableColumns}
+        columnVisibility={columnVisibility}
+        onColumnVisibilityChange={setColumnVisibility}
+        totalRecords={0}
+      />
 
       <div className="flex-1 flex overflow-hidden">
         <SearchSidebar
@@ -299,12 +332,33 @@ const SearchManager = () => {
         />
 
         <div className="flex-1 flex flex-col min-w-0 bg-card/5 backdrop-blur-sm relative z-10 transition-all duration-500">
+          {showFilterBar && (
+            <FilterBar
+              filters={filters}
+              availableColumns={availableColumns}
+              onAddFilter={addFilter}
+              onRemoveFilter={removeFilter}
+              onClearFilters={clearFilters}
+              onUpdateFilter={updateFilter}
+            />
+          )}
+
           <main className="flex-1 overflow-hidden relative text-foreground flex flex-col">
             <AnimatePresence mode="wait">
               <SearchContentView
                 key={selectedViewId || 'empty'}
                 selectedView={selectedView}
                 onOpenAddView={() => setIsBuilderOpen(true)}
+                searchQuery={tableSearch}
+                sorting={sorting}
+                onSortingChange={setSorting}
+                columnVisibility={columnVisibility}
+                onColumnVisibilityChange={setColumnVisibility}
+                columnSizing={columnSizing}
+                onColumnSizingChange={setColumnSizing}
+                columnOrder={columnOrder}
+                onColumnOrderChange={setColumnOrder}
+                filters={filters}
               />
             </AnimatePresence>
           </main>

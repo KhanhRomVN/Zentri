@@ -104,7 +104,7 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
           <table className="border-collapse table-fixed w-full">
             <thead className="sticky top-0 z-30">
               <tr className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
-                <th className="w-[40px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-center text-muted-foreground">
+                <th className="w-[40px] text-[10px] uppercase  font-bold h-10 text-center text-muted-foreground">
                   <input
                     type="checkbox"
                     className="w-3.5 h-3.5 rounded border-border/50 bg-input-background accent-primary cursor-pointer"
@@ -121,19 +121,19 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
                     }}
                   />
                 </th>
-                <th className="w-[50px] pl-4 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                <th className="w-[50px] pl-4 text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                   STT
                 </th>
-                <th className="text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                <th className="text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                   Service
                 </th>
-                <th className="w-[150px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                <th className="w-[150px] text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                   Category
                 </th>
-                <th className="w-[150px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                <th className="w-[150px] text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                   Auth
                 </th>
-                <th className="w-[200px] pr-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+                <th className="w-[200px] pr-6 text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                   Metadata Fields
                 </th>
               </tr>

@@ -123,25 +123,25 @@ export const FingerprintSettings = () => {
         <table className="border-collapse table-fixed w-full">
           <thead className="sticky top-0 z-30">
             <tr className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
-              <th className="w-[60px] pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+              <th className="w-[60px] pl-6 text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                 #
               </th>
-              <th className="text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+              <th className="text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                 Name
               </th>
-              <th className="w-[120px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+              <th className="w-[120px] text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                 OS
               </th>
-              <th className="w-[140px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+              <th className="w-[140px] text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                 Browser
               </th>
-              <th className="w-[130px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+              <th className="w-[130px] text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                 Resolution
               </th>
-              <th className="w-[120px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left text-muted-foreground">
+              <th className="w-[120px] text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
                 CPU / RAM
               </th>
-              <th className="w-[100px] pr-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-right text-muted-foreground">
+              <th className="w-[100px] pr-6 text-[10px] uppercase  font-bold h-10 text-right text-muted-foreground">
                 Actions
               </th>
             </tr>

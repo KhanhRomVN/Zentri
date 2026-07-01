@@ -81,9 +81,7 @@ const RegisGridView: FC<RegisGridViewProps> = ({
         {filteredBatches.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center py-32 opacity-20 border-2 border-dashed border-border/30 rounded-[32px]">
             <LayoutGrid className="w-12 h-12 mb-4" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-              No batches provisioned
-            </span>
+            <span className="text-[10px] font-black uppercase ">No batches provisioned</span>
           </div>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(350px,1fr))] gap-8">

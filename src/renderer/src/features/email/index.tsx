@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../shared/lib/utils';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
+import { Button } from '../../components/ui/Button';
 import { Account } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -508,27 +509,28 @@ const EmailManager = () => {
           <LayoutDashboard className="w-4 h-4 text-text-primary -mt-0.5" />
           <ChevronRight className="w-3 h-3 text-text-primary" />
           <span className="text-text-primary text-sm">Email</span>
-          {focusedAccountId && (() => {
-            const focused = accounts.find(a => a.id === focusedAccountId);
-            const tabLabels: Record<string, string> = {
-              info: 'Information',
-              services: 'Services',
-              sessions: 'Sessions',
-              history: 'History',
-            };
-            return (
-              <>
-                <ChevronRight className="w-3 h-3 text-text-secondary" />
-                <span className="text-text-primary text-sm font-medium truncate max-w-[200px]">
-                  {focused?.email || ''}
-                </span>
-                <ChevronRight className="w-3 h-3 text-text-secondary" />
-                <span className="text-text-primary text-sm font-medium">
-                  {tabLabels[activeTab] || ''}
-                </span>
-              </>
-            );
-          })()}
+          {focusedAccountId &&
+            (() => {
+              const focused = accounts.find((a) => a.id === focusedAccountId);
+              const tabLabels: Record<string, string> = {
+                info: 'Information',
+                services: 'Services',
+                sessions: 'Sessions',
+                history: 'History',
+              };
+              return (
+                <>
+                  <ChevronRight className="w-3 h-3 text-text-secondary" />
+                  <span className="text-text-primary text-sm font-medium truncate max-w-[200px]">
+                    {focused?.email || ''}
+                  </span>
+                  <ChevronRight className="w-3 h-3 text-text-secondary" />
+                  <span className="text-text-primary text-sm font-medium">
+                    {tabLabels[activeTab] || ''}
+                  </span>
+                </>
+              );
+            })()}
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -699,8 +701,8 @@ const EmailManager = () => {
                         Trash Conflict
                       </p>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        This account exists in the trash. Please delete it permanently or
-                        restore it before re-adding.
+                        This account exists in the trash. Please delete it permanently or restore it
+                        before re-adding.
                       </p>
                     </div>
                   </div>
@@ -754,8 +756,7 @@ const EmailManager = () => {
                 value={newEmailData.recoveryEmail}
                 onChange={(e) => {
                   setNewEmailData((d) => ({ ...d, recoveryEmail: e.target.value }));
-                  if (errors.recoveryEmail)
-                    setErrors((prev) => ({ ...prev, recoveryEmail: '' }));
+                  if (errors.recoveryEmail) setErrors((prev) => ({ ...prev, recoveryEmail: '' }));
                 }}
                 onBlur={() => validateField('recoveryEmail', newEmailData.recoveryEmail)}
                 className={cn(
@@ -882,24 +883,17 @@ const EmailManager = () => {
         </DrawerBody>
 
         <DrawerFooter>
-          <button
-            onClick={() => setIsDrawerOpen(false)}
-            className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors"
-          >
+          <Button variant="outline" className="flex-1" onClick={() => setIsDrawerOpen(false)}>
             Cancel
-          </button>
-          <button
-            onClick={handleAddEmail}
+          </Button>
+          <Button
+            variant="solid"
+            className="flex-1"
             disabled={!newEmailData.email || !newEmailData.password || !!trashConflict}
-            className={cn(
-              'flex-1 px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
-              !newEmailData.email || !newEmailData.password || !!trashConflict
-                ? 'bg-button-bg/50 text-button-bgText cursor-not-allowed opacity-70'
-                : 'bg-button-bg text-button-bgText hover:bg-button-bgHover shadow-primary/20',
-            )}
+            onClick={handleAddEmail}
           >
             Save Account
-          </button>
+          </Button>
         </DrawerFooter>
       </Drawer>
 

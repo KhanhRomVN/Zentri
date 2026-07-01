@@ -19,7 +19,12 @@ import { toast } from 'sonner';
 import { cn } from '../../../shared/lib/utils';
 import ProxyDetailView from './ProxyDetailView';
 import ProxyHistoryView from './ProxyHistoryView';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../components/ui/Dropdown';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+} from '../../../components/ui/Dropdown';
 
 interface ProxyTableProps {
   proxies: Proxy[];
@@ -32,7 +37,7 @@ const PAGE_SIZE = 15;
 const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [focusRowId, setFocusRowId] = useState<string | null>(null);
-  
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [targetDeleteId, setTargetDeleteId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -200,91 +205,96 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
                               'bg-primary/[0.05] border-primary/20 sticky top-[57px] z-20 shadow-xl backdrop-blur-xl',
                           )}
                         >
-                      <td className="py-4 px-3 text-[14px] font-black text-muted-foreground/40 font-mono text-left">
-                        {String((validCurrentPage - 1) * PAGE_SIZE + index + 1).padStart(2, '0')}
-                      </td>
-                      <td className="py-4 px-3 overflow-hidden text-left">
-                        <div className="flex items-center gap-3">
-                          <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[15px] font-bold font-mono tracking-tight text-foreground/90 truncate">
-                                {proxy.host}:{proxy.port}
-                              </span>
-                              <span
-                                className={cn(
-                                  'px-1.5 py-0.5 rounded bg-muted/10 text-[9px] font-black uppercase tracking-widest',
-                                  getProtocolColor(proxy.protocol),
-                                )}
-                              >
-                                {proxy.protocol?.toUpperCase() || 'HTTP'}
-                              </span>
-                            </div>
-                            <span className="text-[12px] text-muted-foreground/50 truncate tracking-tight">
-                              {proxy.username || 'Anonymous Access'}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-3 text-left">
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <div className="flex items-center gap-2 justify-start">
-                            <span className="text-[15px] font-bold text-foreground/90 tracking-tight">
-                              {proxy.country || 'GLOBAL'}
-                            </span>
-                            {proxy.city && (
-                              <span className="text-[14px] text-muted-foreground/60 truncate">
-                                / {proxy.city}
-                              </span>
+                          <td className="py-4 px-3 text-[14px] font-black text-muted-foreground/40 font-mono text-left">
+                            {String((validCurrentPage - 1) * PAGE_SIZE + index + 1).padStart(
+                              2,
+                              '0',
                             )}
-                          </div>
-                          <div className="text-[13px] text-muted-foreground/70 font-medium truncate uppercase tracking-tight">
-                            {proxy.isp || 'N/A Provider'}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-3 w-[160px]">
-                        <div className="flex items-center justify-center w-full">
-                          {(() => {
-                            const derivedStatus = getDerivedStatus(proxy);
-                            const statusLabels: Record<string, string> = {
-                              active: 'Active',
-                              expired: 'Expired',
-                              disabled: 'Disabled',
-                              trash: 'Trash',
-                            };
-                            return (
-                              <div
-                                className={cn(
-                                  'inline-flex items-center px-4 py-1.5 rounded-xl border text-[11px] font-black uppercase tracking-widest whitespace-nowrap shadow-sm transition-all hover:scale-105',
-                                  getStatusStyle(derivedStatus),
-                                )}
-                              >
-                                {statusLabels[derivedStatus] || derivedStatus}
+                          </td>
+                          <td className="py-4 px-3 overflow-hidden text-left">
+                            <div className="flex items-center gap-3">
+                              <div className="flex flex-col min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[15px] font-bold font-mono tracking-tight text-foreground/90 truncate">
+                                    {proxy.host}:{proxy.port}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      'px-1.5 py-0.5 rounded bg-muted/10 text-[9px] font-black uppercase tracking-widest',
+                                      getProtocolColor(proxy.protocol),
+                                    )}
+                                  >
+                                    {proxy.protocol?.toUpperCase() || 'HTTP'}
+                                  </span>
+                                </div>
+                                <span className="text-[12px] text-muted-foreground/50 truncate tracking-tight">
+                                  {proxy.username || 'Anonymous Access'}
+                                </span>
                               </div>
-                            );
-                          })()}
-                        </div>
-                      </td>
-                      <td className="py-4 px-3 text-center">
-                        <span className="text-[13px] font-bold font-mono text-muted-foreground/40 whitespace-nowrap">
-                          {proxy.pricingType === 'time'
-                            ? (() => {
-                                if (!proxy.expiredAt) return `${proxy.durationDays || 0} days`;
-                                const expiry = new Date(proxy.expiredAt).getTime();
-                                const diff = expiry - Date.now();
-                                if (diff <= 0) return 'Expired';
-                                const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-                                const hours = Math.floor(
-                                  (diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
+                            </div>
+                          </td>
+                          <td className="py-4 px-3 text-left">
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <div className="flex items-center gap-2 justify-start">
+                                <span className="text-[15px] font-bold text-foreground/90 tracking-tight">
+                                  {proxy.country || 'GLOBAL'}
+                                </span>
+                                {proxy.city && (
+                                  <span className="text-[14px] text-muted-foreground/60 truncate">
+                                    / {proxy.city}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[13px] text-muted-foreground/70 font-medium truncate uppercase tracking-tight">
+                                {proxy.isp || 'N/A Provider'}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-3 w-[160px]">
+                            <div className="flex items-center justify-center w-full">
+                              {(() => {
+                                const derivedStatus = getDerivedStatus(proxy);
+                                const statusLabels: Record<string, string> = {
+                                  active: 'Active',
+                                  expired: 'Expired',
+                                  disabled: 'Disabled',
+                                  trash: 'Trash',
+                                };
+                                return (
+                                  <div
+                                    className={cn(
+                                      'inline-flex items-center px-4 py-1.5 rounded-xl border text-[11px] font-black uppercase tracking-widest whitespace-nowrap shadow-sm transition-all hover:scale-105',
+                                      getStatusStyle(derivedStatus),
+                                    )}
+                                  >
+                                    {statusLabels[derivedStatus] || derivedStatus}
+                                  </div>
                                 );
-                                const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
-                                if (days > 0) return `${days} ngày ${hours} giờ`;
-                                if (hours > 0) return `${hours} giờ ${minutes} phút`;
-                                return `${minutes} phút`;
-                              })()
-                            : `${proxy.bandwidthGb || 0} GB`}
-                        </span>
-                      </td>
+                              })()}
+                            </div>
+                          </td>
+                          <td className="py-4 px-3 text-center">
+                            <span className="text-[13px] font-bold font-mono text-muted-foreground/40 whitespace-nowrap">
+                              {proxy.pricingType === 'time'
+                                ? (() => {
+                                    if (!proxy.expiredAt) return `${proxy.durationDays || 0} days`;
+                                    const expiry = new Date(proxy.expiredAt).getTime();
+                                    const diff = expiry - Date.now();
+                                    if (diff <= 0) return 'Expired';
+                                    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+                                    const hours = Math.floor(
+                                      (diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
+                                    );
+                                    const minutes = Math.floor(
+                                      (diff % (60 * 60 * 1000)) / (60 * 1000),
+                                    );
+                                    if (days > 0) return `${days} ngày ${hours} giờ`;
+                                    if (hours > 0) return `${hours} giờ ${minutes} phút`;
+                                    return `${minutes} phút`;
+                                  })()
+                                : `${proxy.bandwidthGb || 0} GB`}
+                            </span>
+                          </td>
                         </tr>
                       </DropdownTrigger>
                       <DropdownContent>
@@ -398,13 +408,13 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/20" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500/60">
+            <span className="text-[10px] font-black uppercase  text-emerald-500/60">
               Active: {proxies.filter((p) => getDerivedStatus(p) === 'active').length}
             </span>
           </div>
           <div className="flex items-center gap-2.5">
             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-lg shadow-amber-500/20" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500/60">
+            <span className="text-[10px] font-black uppercase  text-amber-500/60">
               Expired: {proxies.filter((p) => getDerivedStatus(p) === 'expired').length}
             </span>
           </div>
@@ -448,8 +458,6 @@ const ProxyTable: FC<ProxyTableProps> = ({ proxies, onRefresh }) => {
           </span>
         </div>
       </div>
-
-      
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen &&

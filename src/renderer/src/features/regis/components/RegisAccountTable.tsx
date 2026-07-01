@@ -65,9 +65,7 @@ const RegisAccountTable: FC<RegisAccountTableProps> = ({ batch, onBack, accounts
           {accounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-20 opacity-30">
               <User className="w-16 h-16 mb-4 text-muted-foreground/20" />
-              <span className="text-[12px] font-black uppercase tracking-[0.2em]">
-                No Units Synchronized
-              </span>
+              <span className="text-[12px] font-black uppercase ">No Units Synchronized</span>
             </div>
           ) : (
             <table className="w-full text-left border-collapse">

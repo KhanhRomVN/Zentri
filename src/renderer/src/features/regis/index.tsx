@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Chrome, Facebook, Instagram, Check, X } from 'lucide-react';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
+import { Button } from '../../components/ui/Button';
 import RegisSidebar from './components/RegisSidebar';
 import RegisGridView from './components/RegisGridView';
 import RegisAccountTable from './components/RegisAccountTable';
@@ -277,19 +278,23 @@ const RegisManager = () => {
         </DrawerBody>
 
         <DrawerFooter>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
             onClick={() => setIsServiceDrawerOpen(false)}
-            className="flex-1 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
           >
             Cancel
-          </button>
-          <button
-            onClick={handleAddService}
+          </Button>
+          <Button
+            variant="solid"
+            size="sm"
+            className="flex-1"
             disabled={!serviceForm.name || !serviceForm.domain}
-            className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all font-semibold text-xs shadow-lg shadow-primary/10 disabled:opacity-50"
+            onClick={handleAddService}
           >
             Provision Node
-          </button>
+          </Button>
         </DrawerFooter>
       </Drawer>
     </div>

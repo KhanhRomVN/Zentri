@@ -102,50 +102,28 @@ const DetailView: FC<DetailViewProps> = ({
   }
 
   return (
-    <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden min-h-[calc(100vh-220px)]">
-      <div className="w-64 border-l border-r border-border bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-hidden relative">
-        <div className="flex-1 space-y-1">
+    <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden min-h-[calc(100vh-135px)]">
+      <div className="w-64 border-r border-border bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-hidden relative">
+        <div className="flex-1 space-y-1 px-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setActiveTab('info');
             }}
             className={cn(
-              'w-full flex items-center gap-3 py-3 text-sm font-medium transition-all relative group',
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'info'
                 ? 'text-[--tab-color]'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-text-primary hover:text-foreground',
             )}
             style={
               {
                 '--tab-color': getTabColor('info').base,
-                background:
-                  activeTab === 'info'
-                    ? `linear-gradient(to right, ${getTabColor('info').bg}, transparent)`
-                    : undefined,
+                background: activeTab === 'info' ? getTabColor('info').bg : undefined,
               } as React.CSSProperties
             }
           >
-            {activeTab === 'info' && (
-              <div
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-lg"
-                style={{
-                  backgroundColor: getTabColor('info').base,
-                  boxShadow: getTabColor('info').glow,
-                }}
-              />
-            )}
-            <User
-              className={cn(
-                'w-5 h-5 ml-6 transition-colors',
-                activeTab === 'info' ? 'text-[--tab-color]' : 'text-muted-foreground/50',
-              )}
-              style={
-                activeTab === 'info'
-                  ? ({ '--tab-color': getTabColor('info').base } as React.CSSProperties)
-                  : undefined
-              }
-            />
+            <User className="w-5 h-5 transition-colors" />
             <span>Information</span>
           </button>
 
@@ -155,41 +133,19 @@ const DetailView: FC<DetailViewProps> = ({
               setActiveTab('services');
             }}
             className={cn(
-              'w-full flex items-center gap-3 py-3 text-sm font-medium transition-all relative group',
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'services'
                 ? 'text-[--tab-color]'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-text-primary hover:text-foreground',
             )}
             style={
               {
                 '--tab-color': getTabColor('services').base,
-                background:
-                  activeTab === 'services'
-                    ? `linear-gradient(to right, ${getTabColor('services').bg}, transparent)`
-                    : undefined,
+                background: activeTab === 'services' ? getTabColor('services').bg : undefined,
               } as React.CSSProperties
             }
           >
-            {activeTab === 'services' && (
-              <div
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-lg"
-                style={{
-                  backgroundColor: getTabColor('services').base,
-                  boxShadow: getTabColor('services').glow,
-                }}
-              />
-            )}
-            <LayoutGrid
-              className={cn(
-                'w-5 h-5 ml-6 transition-colors',
-                activeTab === 'services' ? 'text-[--tab-color]' : 'text-muted-foreground/50',
-              )}
-              style={
-                activeTab === 'services'
-                  ? ({ '--tab-color': getTabColor('services').base } as React.CSSProperties)
-                  : undefined
-              }
-            />
+            <LayoutGrid className="w-5 h-5 transition-colors" />
             <span>Services</span>
           </button>
 
@@ -199,41 +155,19 @@ const DetailView: FC<DetailViewProps> = ({
               setActiveTab('sessions');
             }}
             className={cn(
-              'w-full flex items-center gap-3 py-3 text-sm font-medium transition-all relative group',
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'sessions'
                 ? 'text-[--tab-color]'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-text-primary hover:text-foreground',
             )}
             style={
               {
                 '--tab-color': getTabColor('sessions').base,
-                background:
-                  activeTab === 'sessions'
-                    ? `linear-gradient(to right, ${getTabColor('sessions').bg}, transparent)`
-                    : undefined,
+                background: activeTab === 'sessions' ? getTabColor('sessions').bg : undefined,
               } as React.CSSProperties
             }
           >
-            {activeTab === 'sessions' && (
-              <div
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-lg"
-                style={{
-                  backgroundColor: getTabColor('sessions').base,
-                  boxShadow: getTabColor('sessions').glow,
-                }}
-              />
-            )}
-            <Database
-              className={cn(
-                'w-5 h-5 ml-6 transition-colors',
-                activeTab === 'sessions' ? 'text-[--tab-color]' : 'text-muted-foreground/50',
-              )}
-              style={
-                activeTab === 'sessions'
-                  ? ({ '--tab-color': getTabColor('sessions').base } as React.CSSProperties)
-                  : undefined
-              }
-            />
+            <Database className="w-5 h-5 transition-colors" />
             <span>Sessions</span>
           </button>
 
@@ -243,41 +177,19 @@ const DetailView: FC<DetailViewProps> = ({
               setActiveTab('history');
             }}
             className={cn(
-              'w-full flex items-center gap-3 py-3 text-sm font-medium transition-all relative group',
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'history'
                 ? 'text-[--tab-color]'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-text-primary hover:text-foreground',
             )}
             style={
               {
                 '--tab-color': getTabColor('history').base,
-                background:
-                  activeTab === 'history'
-                    ? `linear-gradient(to right, ${getTabColor('history').bg}, transparent)`
-                    : undefined,
+                background: activeTab === 'history' ? getTabColor('history').bg : undefined,
               } as React.CSSProperties
             }
           >
-            {activeTab === 'history' && (
-              <div
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-lg"
-                style={{
-                  backgroundColor: getTabColor('history').base,
-                  boxShadow: getTabColor('history').glow,
-                }}
-              />
-            )}
-            <Clock
-              className={cn(
-                'w-5 h-5 ml-6 transition-colors',
-                activeTab === 'history' ? 'text-[--tab-color]' : 'text-muted-foreground/50',
-              )}
-              style={
-                activeTab === 'history'
-                  ? ({ '--tab-color': getTabColor('history').base } as React.CSSProperties)
-                  : undefined
-              }
-            />
+            <Clock className="w-5 h-5 transition-colors" />
             <span>History</span>
           </button>
         </div>

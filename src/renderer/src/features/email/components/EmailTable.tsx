@@ -605,16 +605,16 @@ const EmailTable: FC<EmailTableProps> = ({
         <table className="border-collapse table-fixed w-full">
           <thead className="sticky top-0 z-30">
             <tr className="border-b border-border/50 bg-table-header-background shadow-sm">
-              <th className="w-[60px] pl-6 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
+              <th className="w-[60px] pl-6 text-sm font-bold h-10 text-left text-text-primary">
                 STT
               </th>
-              <th className="w-[240px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
+              <th className="w-[240px] text-sm font-bold h-10 text-left text-text-primary">
                 Email
               </th>
-              <th className="w-1/3 text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
+              <th className="w-1/3 text-sm font-bold h-10 text-left text-text-primary">
                 Last Activities
               </th>
-              <th className="w-[300px] text-[10px] uppercase tracking-[0.2em] font-bold h-10 text-left">
+              <th className="w-[300px] text-sm font-bold h-10 text-left text-text-primary">
                 Last Used Proxy
               </th>
             </tr>
@@ -643,41 +643,22 @@ const EmailTable: FC<EmailTableProps> = ({
                       onClick={() => onSelectAccount(account)}
                       onContextMenu={(e) => handleContextMenu(e, account.id)}
                     >
-                      <td className="text-muted-foreground font-mono text-[10px] pl-6 py-2">
+                      <td className="text-muted-foreground font-mono text-xs pl-6 py-2">
                         #{String(originalIndex + 1).padStart(2, '0')}
                       </td>
                       <td className="font-medium">
-                        <div className="flex items-center gap-4">
-                          <div
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span
                             className={cn(
-                              'w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary transition-transform overflow-hidden border border-primary/5',
-                              !isSelected && 'group-hover:scale-110',
-                              isSelected && 'scale-110 shadow-md shadow-primary/20',
+                              'text-[14px] font-bold tracking-tight truncate',
+                              isSelected ? 'text-primary' : 'text-foreground',
                             )}
                           >
-                            {avatars[account.email] ? (
-                              <img
-                                src={avatars[account.email]}
-                                alt="avatar"
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <Mail className="w-4 h-4 opacity-40" />
-                            )}
-                          </div>
-                          <div className="flex flex-col gap-0.5 min-w-0">
-                            <span
-                              className={cn(
-                                'text-[14px] font-bold tracking-tight truncate',
-                                isSelected ? 'text-primary' : 'text-foreground',
-                              )}
-                            >
-                              {account.email}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground/40 font-mono tracking-wider truncate">
-                              {account.password || 'No Password'}
-                            </span>
-                          </div>
+                            {account.email}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/40 font-mono tracking-wider truncate">
+                            {account.password || 'No Password'}
+                          </span>
                         </div>
                       </td>
                       <td>{renderLastActivity(account)}</td>

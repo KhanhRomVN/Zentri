@@ -95,7 +95,7 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
       <div className="p-6 space-y-9">
         {/* Proxy Type - Indigo */}
         <div className="space-y-4">
-          <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] ml-1">
+          <label className="text-[11px] font-black text-muted-foreground/40 uppercase  ml-1">
             Configuration Type
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -122,7 +122,7 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
 
         {/* Source Type - Emerald */}
         <div className="space-y-4">
-          <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] ml-1">
+          <label className="text-[11px] font-black text-muted-foreground/40 uppercase  ml-1">
             Network Source
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -155,7 +155,7 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
 
         {/* Protocol - Amber */}
         <div className="space-y-4">
-          <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] ml-1">
+          <label className="text-[11px] font-black text-muted-foreground/40 uppercase  ml-1">
             Protocol Matrix
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -182,7 +182,7 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
 
         {/* Status - Mixed Variants for semantic meaning */}
         <div className="space-y-4">
-          <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] ml-1">
+          <label className="text-[11px] font-black text-muted-foreground/40 uppercase  ml-1">
             Node Vitality
           </label>
           <div className="grid grid-cols-2 gap-2">

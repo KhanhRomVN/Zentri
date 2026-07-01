@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, GripVertical, ChevronDown, Bug, Key, Mail, Clock } from 'lucide-react';
 import { cn } from '@renderer/shared/lib/utils';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../../../components/ui/Drawer';
+import { Button } from '../../../../components/ui/Button';
 import { ServiceProviderConfig } from '../../../email/types';
 import { SERVICES } from '../../../../constants/services';
 import { CATEGORIES, CategoryItem } from '../../../../constants/categories';
@@ -942,13 +943,17 @@ useEffect(() => {
           </div>
         </DrawerBody>
       <DrawerFooter className="justify-end">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="soft"
+            size="sm"
+            disabled={!name || !url || !!existingServiceWarning || isChecking}
             onClick={() => {
               if (isNew) {
                 const data: Partial<ServiceProviderConfig> = {
@@ -966,7 +971,6 @@ useEffect(() => {
                   }));
                 onSave(data, metadata, authMethods);
               } else {
-                // Edit mode - save changes
                 const data: Partial<ServiceProviderConfig> = {
                   name: name.trim(),
                   websiteUrl: url.trim(),
@@ -983,16 +987,9 @@ useEffect(() => {
                 onSave(data, metadata, authMethods);
               }
             }}
-            disabled={!name || !url || !!existingServiceWarning || isChecking}
-            className={cn(
-              'px-5 py-2.5 rounded-lg transition-all font-semibold text-xs',
-              !name || !url || !!existingServiceWarning || isChecking
-                ? 'bg-card-background text-text-secondary cursor-not-allowed'
-                : 'bg-primary/30 text-primary hover:bg-primary/40 shadow-lg shadow-primary/10',
-            )}
           >
             {isNew ? 'Create Service' : 'Save Changes'}
-          </button>
+          </Button>
         </DrawerFooter>
       <CreateCategoryModal
         isOpen={showCreateCategory}

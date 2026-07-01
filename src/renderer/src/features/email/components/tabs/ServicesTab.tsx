@@ -1,8 +1,12 @@
 import { Search, Plus, ShieldCheck, Lock, LayoutGrid, Globe, Eye, Trash2 } from 'lucide-react';
 import { useRef, FC } from 'react';
 import { cn } from '../../../../shared/lib/utils';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../../components/ui/Dropdown';
-
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+} from '../../../../components/ui/Dropdown';
 
 interface ServicesTabProps {
   serviceSearch: string;
@@ -25,8 +29,6 @@ const ServicesTab: FC<ServicesTabProps> = ({
   onOpenService,
   onDeleteService,
 }) => {
-  
-
   // Derived filtered services
   const filteredServices = (accountServices || []).filter(
     (s: any) =>
@@ -39,29 +41,29 @@ const ServicesTab: FC<ServicesTabProps> = ({
     <div className="flex flex-col h-full overflow-hidden relative">
       {/* Services Sub-Navbar */}
       <div className="h-[48px] flex items-center justify-between px-2 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
-        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
-          Services
-        </span>
+        <span className="text-[11px] font-black uppercase  text-muted-foreground/60">Services</span>
         <div className="flex items-center gap-2">
-        <div className="w-80 flex items-center transition-all duration-500">
-          <div className="relative flex items-center w-full h-9 bg-input-background border border-border rounded-md transition-all duration-300">
-            <Search className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
-            <input
-              type="text"
-              placeholder="Search services..."
-              value={serviceSearch}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setServiceSearch(e.target.value)}
-              className="w-full h-full pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
-            />
+          <div className="w-80 flex items-center transition-all duration-500">
+            <div className="relative flex items-center w-full h-9 bg-input-background border border-border rounded-md transition-all duration-300">
+              <Search className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
+              <input
+                type="text"
+                placeholder="Search services..."
+                value={serviceSearch}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setServiceSearch(e.target.value)
+                }
+                className="w-full h-full pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
+              />
+            </div>
           </div>
-        </div>
-        <button
-          onClick={onAddNewServiceLink}
-          className="w-9 h-9 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
-          title="Link New Service"
-        >
-          <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
-        </button>
+          <button
+            onClick={onAddNewServiceLink}
+            className="w-9 h-9 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
+            title="Link New Service"
+          >
+            <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
+          </button>
         </div>
       </div>
 
@@ -70,9 +72,7 @@ const ServicesTab: FC<ServicesTabProps> = ({
           {filteredServices.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-20">
               <LayoutGrid className="w-8 h-8" />
-              <p className="text-[11px] font-black uppercase tracking-widest">
-                No services linked
-              </p>
+              <p className="text-[11px] font-black uppercase tracking-widest">No services linked</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -129,7 +129,9 @@ const ServicesTab: FC<ServicesTabProps> = ({
                               {service.category}
                             </span>
                           ) : (
-                            <span className="text-[10px] text-muted-foreground/30 italic">No category</span>
+                            <span className="text-[10px] text-muted-foreground/30 italic">
+                              No category
+                            </span>
                           )}
                           {service.lastUsedAt && (
                             <span className="text-[9px] text-muted-foreground/40 font-mono">
@@ -154,13 +156,17 @@ const ServicesTab: FC<ServicesTabProps> = ({
                           if (!Array.isArray(metadata)) {
                             metadata = [];
                           }
-                          const hasEncryption = metadata.some((item: any) => item.feature === 'encryption');
+                          const hasEncryption = metadata.some(
+                            (item: any) => item.feature === 'encryption',
+                          );
                           const hasTOTP = metadata.some((item: any) => item.feature === 'totp');
-                          const hasBackupCodes = metadata.some((item: any) => item.feature === 'backup_codes');
+                          const hasBackupCodes = metadata.some(
+                            (item: any) => item.feature === 'backup_codes',
+                          );
                           const has2FA = hasTOTP || hasBackupCodes;
-                          
+
                           if (!hasEncryption && !has2FA) return null;
-                          
+
                           return (
                             <div className="flex items-center gap-2 pt-1">
                               {hasEncryption && (
@@ -172,7 +178,11 @@ const ServicesTab: FC<ServicesTabProps> = ({
                               {has2FA && (
                                 <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider">
                                   <ShieldCheck className="w-3 h-3" />
-                                  {hasTOTP && hasBackupCodes ? '2FA + Backup' : hasTOTP ? 'TOTP 2FA' : 'Backup Codes'}
+                                  {hasTOTP && hasBackupCodes
+                                    ? '2FA + Backup'
+                                    : hasTOTP
+                                      ? 'TOTP 2FA'
+                                      : 'Backup Codes'}
                                 </div>
                               )}
                             </div>

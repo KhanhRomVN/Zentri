@@ -1,7 +1,22 @@
 import React, { FC, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Loader2, ShieldCheck, Database, Plus, Copy, Edit2, RotateCcw, X } from 'lucide-react';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../components/ui/Dropdown';
+import {
+  Trash2,
+  Loader2,
+  ShieldCheck,
+  Database,
+  Plus,
+  Copy,
+  Edit2,
+  RotateCcw,
+  X,
+} from 'lucide-react';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+} from '../../../components/ui/Dropdown';
 import { cn } from '../../../shared/lib/utils';
 import { Drawer, DrawerHeader, DrawerBody } from '../../../components/ui/Drawer';
 import { generateTOTP, getTOTPTimeRemaining } from '../utils/totp';
@@ -106,7 +121,7 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
         {/* Secrets List */}
         <div className="flex-1 overflow-auto custom-scrollbar">
           <div className="px-4 py-4 flex items-center justify-between sticky top-0 bg-card/10 backdrop-blur-md z-10 border-b border-border/5">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 flex items-center gap-3">
+            <label className="text-[10px] font-black uppercase  text-muted-foreground/40 flex items-center gap-3">
               Service Credentials ({currentSecrets.length})
             </label>
             <button
@@ -130,12 +145,12 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
                 <Database className="w-10 h-10 text-muted-foreground/30" />
               </div>
               <div className="space-y-4">
-                <p className="text-xs font-black tracking-[0.2em] uppercase text-foreground/80">
+                <p className="text-xs font-black  uppercase text-foreground/80">
                   Vault is Isolated
                 </p>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="px-8 py-3 rounded-xl bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-white transition-all border border-primary/20 shadow-2xl shadow-primary/10"
+                  className="px-8 py-3 rounded-xl bg-primary/10 text-primary text-[10px] font-black uppercase  hover:bg-primary hover:text-white transition-all border border-primary/20 shadow-2xl shadow-primary/10"
                 >
                   Start Initialization
                 </button>
@@ -176,10 +191,12 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
                             </div>
                           )}
                         </div>
-                        <div className={cn(
-                          'px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border shrink-0 opacity-80 group-hover:opacity-100 transition-all shadow-sm',
-                          getTypeBadgeStyles(s.secret_type || 'password'),
-                        )}>
+                        <div
+                          className={cn(
+                            'px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border shrink-0 opacity-80 group-hover:opacity-100 transition-all shadow-sm',
+                            getTypeBadgeStyles(s.secret_type || 'password'),
+                          )}
+                        >
                           {s.secret_type || 'password'}
                         </div>
                       </div>
@@ -232,124 +249,262 @@ const ServiceVaultDrawer: FC<ServiceVaultDrawerProps> = ({
       </DrawerBody>
 
       {/* Add Secret Modal */}
-      {isAddModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-[450px] mx-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-              <h3 className="text-sm font-bold text-foreground">Register New Service Secret</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">Identity Label</label>
-                  <input type="text" placeholder="e.g. API Gateway Key" value={newSecret.name}
-                    onChange={(e) => setNewSecret((s) => ({ ...s, name: e.target.value }))}
-                    className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50" />
-                </div>
-                <div className="space-y-2.5 relative">
-                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">Secret Category</label>
-                  <div className="relative">
-                    <input type="text" readOnly value={newSecret.type === 'totp' ? 'TOTP Secret' : 'Plain Text'}
-                      onClick={() => setTypePopoverOpen(!typePopoverOpen)}
-                      className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none focus:border-primary/50 cursor-pointer" />
-                    {typePopoverOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 p-1.5 space-y-1 hover:border-primary transition-colors">
-                        {[{ id: 'text', label: 'Plain Text', icon: <Database className="w-3.5 h-3.5" /> }, { id: 'totp', label: 'TOTP Secret', icon: <ShieldCheck className="w-3.5 h-3.5" /> }].map((type) => (
-                          <button key={type.id} onClick={() => { setNewSecret((s) => ({ ...s, type: type.id })); setTypePopoverOpen(false); }}
-                            className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all',
-                              newSecret.type === type.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
-                            {type.icon}{type.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+      {isAddModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setIsAddModalOpen(false)}
+            />
+            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-[450px] mx-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+                <h3 className="text-sm font-bold text-foreground">Register New Service Secret</h3>
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2.5">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+                      Identity Label
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. API Gateway Key"
+                      value={newSecret.name}
+                      onChange={(e) => setNewSecret((s) => ({ ...s, name: e.target.value }))}
+                      className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                    />
+                  </div>
+                  <div className="space-y-2.5 relative">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+                      Secret Category
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        readOnly
+                        value={newSecret.type === 'totp' ? 'TOTP Secret' : 'Plain Text'}
+                        onClick={() => setTypePopoverOpen(!typePopoverOpen)}
+                        className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none focus:border-primary/50 cursor-pointer"
+                      />
+                      {typePopoverOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 p-1.5 space-y-1 hover:border-primary transition-colors">
+                          {[
+                            {
+                              id: 'text',
+                              label: 'Plain Text',
+                              icon: <Database className="w-3.5 h-3.5" />,
+                            },
+                            {
+                              id: 'totp',
+                              label: 'TOTP Secret',
+                              icon: <ShieldCheck className="w-3.5 h-3.5" />,
+                            },
+                          ].map((type) => (
+                            <button
+                              key={type.id}
+                              onClick={() => {
+                                setNewSecret((s) => ({ ...s, type: type.id }));
+                                setTypePopoverOpen(false);
+                              }}
+                              className={cn(
+                                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all',
+                                newSecret.type === type.id
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                              )}
+                            >
+                              {type.icon}
+                              {type.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+                <div className="space-y-2.5">
+                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+                    Encrypted Secret Value
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Paste your secret value here..."
+                    value={newSecret.value}
+                    onChange={(e) => setNewSecret((s) => ({ ...s, value: e.target.value }))}
+                    className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                  />
+                </div>
               </div>
-              <div className="space-y-2.5">
-                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">Encrypted Secret Value</label>
-                <input type="text" placeholder="Paste your secret value here..." value={newSecret.value}
-                  onChange={(e) => setNewSecret((s) => ({ ...s, value: e.target.value }))}
-                  className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50" />
+              <div className="px-6 py-4 border-t border-border/50 flex gap-3">
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 py-3.5 rounded-xl bg-muted/30 text-[11px] font-bold uppercase tracking-widest hover:bg-muted/50 transition-all border border-border/50 text-muted-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (newSecret.name && newSecret.value && onAddSecret) {
+                      onAddSecret(linkId, newSecret.name, newSecret.value, newSecret.type);
+                      setNewSecret({ name: '', value: '', type: 'text' });
+                      setIsAddModalOpen(false);
+                    }
+                  }}
+                  disabled={!newSecret.name || !newSecret.value}
+                  className="flex-[2] py-3.5 rounded-xl bg-primary text-button-bgText text-[11px] font-black uppercase  hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+                >
+                  <Database className="w-4 h-4" />
+                  Store Securely
+                </button>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-border/50 flex gap-3">
-              <button onClick={() => setIsAddModalOpen(false)}
-                className="flex-1 py-3.5 rounded-xl bg-muted/30 text-[11px] font-bold uppercase tracking-widest hover:bg-muted/50 transition-all border border-border/50 text-muted-foreground">Cancel</button>
-              <button onClick={() => { if (newSecret.name && newSecret.value && onAddSecret) { onAddSecret(linkId, newSecret.name, newSecret.value, newSecret.type); setNewSecret({ name: '', value: '', type: 'text' }); setIsAddModalOpen(false); } }}
-                disabled={!newSecret.name || !newSecret.value}
-                className="flex-[2] py-3.5 rounded-xl bg-primary text-button-bgText text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-primary/20 flex items-center justify-center gap-2">
-                <Database className="w-4 h-4" />Store Securely
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
 
       {/* Edit Secret Modal */}
-      {isEditModalOpen && editingSecret && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setIsEditModalOpen(false); setEditingSecret(null); }} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-[450px] mx-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-              <h3 className="text-sm font-bold text-foreground">Override Existing Metadata</h3>
-              <button onClick={() => { setIsEditModalOpen(false); setEditingSecret(null); }} className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">Identity Label</label>
-                  <input type="text" value={editingSecret.secret_name}
-                    onChange={(e) => setEditingSecret({ ...editingSecret, secret_name: e.target.value })}
-                    className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none focus:border-primary/50" />
-                </div>
-                <div className="space-y-2.5 relative">
-                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">Secret Category</label>
-                  <div className="relative">
-                    <input type="text" readOnly value={editingSecret.secret_type === 'totp' ? 'TOTP Secret' : 'Plain Text'}
-                      onClick={() => setEditTypePopoverOpen(!editTypePopoverOpen)}
-                      className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none focus:border-primary/50 cursor-pointer" />
-                    {editTypePopoverOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 p-1.5 space-y-1 hover:border-primary transition-colors">
-                        {[{ id: 'text', label: 'Plain Text', icon: <Database className="w-3.5 h-3.5" /> }, { id: 'totp', label: 'TOTP Secret', icon: <ShieldCheck className="w-3.5 h-3.5" /> }].map((type) => (
-                          <button key={type.id} onClick={() => { setEditingSecret({ ...editingSecret, secret_type: type.id }); setEditTypePopoverOpen(false); }}
-                            className={cn('w-full flex items-center gap-3 px-3 py-3 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all',
-                              (editingSecret.secret_type || 'text') === type.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
-                            {type.icon}{type.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+      {isEditModalOpen &&
+        editingSecret &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingSecret(null);
+              }}
+            />
+            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-[450px] mx-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+                <h3 className="text-sm font-bold text-foreground">Override Existing Metadata</h3>
+                <button
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingSecret(null);
+                  }}
+                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2.5">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+                      Identity Label
+                    </label>
+                    <input
+                      type="text"
+                      value={editingSecret.secret_name}
+                      onChange={(e) =>
+                        setEditingSecret({ ...editingSecret, secret_name: e.target.value })
+                      }
+                      className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none focus:border-primary/50"
+                    />
+                  </div>
+                  <div className="space-y-2.5 relative">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+                      Secret Category
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        readOnly
+                        value={editingSecret.secret_type === 'totp' ? 'TOTP Secret' : 'Plain Text'}
+                        onClick={() => setEditTypePopoverOpen(!editTypePopoverOpen)}
+                        className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground outline-none focus:border-primary/50 cursor-pointer"
+                      />
+                      {editTypePopoverOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-2xl z-50 p-1.5 space-y-1 hover:border-primary transition-colors">
+                          {[
+                            {
+                              id: 'text',
+                              label: 'Plain Text',
+                              icon: <Database className="w-3.5 h-3.5" />,
+                            },
+                            {
+                              id: 'totp',
+                              label: 'TOTP Secret',
+                              icon: <ShieldCheck className="w-3.5 h-3.5" />,
+                            },
+                          ].map((type) => (
+                            <button
+                              key={type.id}
+                              onClick={() => {
+                                setEditingSecret({ ...editingSecret, secret_type: type.id });
+                                setEditTypePopoverOpen(false);
+                              }}
+                              className={cn(
+                                'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all',
+                                (editingSecret.secret_type || 'text') === type.id
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                              )}
+                            >
+                              {type.icon}
+                              {type.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+                <div className="space-y-2.5">
+                  <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+                    Update Secret Value
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Paste new secret value..."
+                    value={editingSecret.secret_value}
+                    onChange={(e) =>
+                      setEditingSecret({ ...editingSecret, secret_value: e.target.value })
+                    }
+                    className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                  />
+                </div>
               </div>
-              <div className="space-y-2.5">
-                <label className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">Update Secret Value</label>
-                <input type="text" placeholder="Paste new secret value..." value={editingSecret.secret_value}
-                  onChange={(e) => setEditingSecret({ ...editingSecret, secret_value: e.target.value })}
-                  className="w-full h-11 px-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50" />
+              <div className="px-6 py-4 border-t border-border/50 flex gap-3">
+                <button
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingSecret(null);
+                  }}
+                  className="flex-1 py-3.5 rounded-xl bg-muted/30 text-[11px] font-bold uppercase tracking-widest hover:bg-muted/50 transition-all border border-border/50 text-muted-foreground"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={() => {
+                    if (editingSecret.secret_name && editingSecret.secret_value) {
+                      onUpdateSecret?.(
+                        editingSecret.id,
+                        editingSecret.secret_name,
+                        editingSecret.secret_value,
+                        editingSecret.secret_type || 'text',
+                      );
+                      setIsEditModalOpen(false);
+                      setEditingSecret(null);
+                    }
+                  }}
+                  disabled={!editingSecret.secret_name || !editingSecret.secret_value}
+                  className="flex-[2] py-3.5 rounded-xl bg-primary text-button-bgText text-[11px] font-black uppercase  hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Commit Changes
+                </button>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-border/50 flex gap-3">
-              <button onClick={() => { setIsEditModalOpen(false); setEditingSecret(null); }}
-                className="flex-1 py-3.5 rounded-xl bg-muted/30 text-[11px] font-bold uppercase tracking-widest hover:bg-muted/50 transition-all border border-border/50 text-muted-foreground">Discard</button>
-              <button onClick={() => { if (editingSecret.secret_name && editingSecret.secret_value) { onUpdateSecret?.(editingSecret.id, editingSecret.secret_name, editingSecret.secret_value, editingSecret.secret_type || 'text'); setIsEditModalOpen(false); setEditingSecret(null); } }}
-                disabled={!editingSecret.secret_name || !editingSecret.secret_value}
-                className="flex-[2] py-3.5 rounded-xl bg-primary text-button-bgText text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2">
-                <Edit2 className="w-4 h-4" />Commit Changes
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </Drawer>
   );
 };

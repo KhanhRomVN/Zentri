@@ -8,13 +8,16 @@ interface ProfileLaunchModalProps {
   onClose: () => void;
   email: string;
   accountId: string;
-  onLaunch: (config: { 
-    fingerprintId?: string;
-    proxyId?: string;
-  }) => void;
+  onLaunch: (config: { fingerprintId?: string; proxyId?: string }) => void;
 }
 
-const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, email, accountId, onLaunch }) => {
+const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({
+  isOpen,
+  onClose,
+  email,
+  accountId,
+  onLaunch,
+}) => {
   const [fingerprints, setFingerprints] = useState<any[]>([]);
   const [selectedFingerprintId, setSelectedFingerprintId] = useState<string | undefined>();
   const [isLoadingFingerprints, setIsLoadingFingerprints] = useState(false);
@@ -60,7 +63,10 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
     if (selectedProxyId) {
       const fetchHistory = async () => {
         try {
-          const history = await window.electron.ipcRenderer.invoke('proxy:get-history', selectedProxyId);
+          const history = await window.electron.ipcRenderer.invoke(
+            'proxy:get-history',
+            selectedProxyId,
+          );
           setProxyHistory(history || []);
         } catch (error) {
           console.error('Failed to fetch proxy history:', error);
@@ -91,7 +97,10 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
               <p className="text-[10px] text-zinc-500 font-mono truncate max-w-[200px]">{email}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -104,7 +113,9 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
                 Proxy kết nối
               </label>
               {isLoadingProxies && (
-                <span className="text-[8px] text-zinc-500 font-bold uppercase animate-pulse">Đang tải...</span>
+                <span className="text-[8px] text-zinc-500 font-bold uppercase animate-pulse">
+                  Đang tải...
+                </span>
               )}
             </div>
             <div className="relative">
@@ -114,8 +125,17 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
                   selectedProxyId ? 'text-zinc-200 font-bold' : 'text-zinc-500 italic',
                 )}
                 placeholder="Mặc định (Hệ thống)"
-                value={proxySearch !== '' ? proxySearch : selectedProxyId ? `${proxies.find((p) => p.id === selectedProxyId)?.host}:${proxies.find((p) => p.id === selectedProxyId)?.port}` : ''}
-                onChange={(e) => { setProxySearch(e.target.value); setProxyDropdownOpen(true); }}
+                value={
+                  proxySearch !== ''
+                    ? proxySearch
+                    : selectedProxyId
+                      ? `${proxies.find((p) => p.id === selectedProxyId)?.host}:${proxies.find((p) => p.id === selectedProxyId)?.port}`
+                      : ''
+                }
+                onChange={(e) => {
+                  setProxySearch(e.target.value);
+                  setProxyDropdownOpen(true);
+                }}
                 onFocus={() => setProxyDropdownOpen(true)}
                 onBlur={() => setTimeout(() => setProxyDropdownOpen(false), 200)}
               />
@@ -124,52 +144,84 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
                 <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-1 z-[1100] max-h-[300px] overflow-auto custom-scrollbar hover:border-primary transition-colors">
                   <button
                     className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-400 hover:text-white rounded-lg cursor-pointer transition-colors"
-                    onMouseDown={() => { setSelectedProxyId(undefined); setProxySearch(''); setProxyDropdownOpen(false); }}
+                    onMouseDown={() => {
+                      setSelectedProxyId(undefined);
+                      setProxySearch('');
+                      setProxyDropdownOpen(false);
+                    }}
                   >
                     <span className="italic">Mặc định (Hệ thống)</span>
                     {!selectedProxyId && <Check className="w-3.5 h-3.5 text-emerald-500" />}
                   </button>
-                  {proxies.filter((p) => {
-                    const s = proxySearch.toLowerCase();
-                    return p.host.toLowerCase().includes(s) || p.country?.toLowerCase().includes(s) || p.city?.toLowerCase().includes(s) || p.isp?.toLowerCase().includes(s);
-                  }).map((px) => (
-                    <button
-                      key={px.id}
-                      className="flex items-center justify-between w-full px-3 py-2.5 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
-                      onMouseDown={() => { setSelectedProxyId(px.id); setProxySearch(''); setProxyDropdownOpen(false); }}
-                    >
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold font-mono">{px.host}:{px.port}</span>
-                          <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">{px.protocol}</span>
+                  {proxies
+                    .filter((p) => {
+                      const s = proxySearch.toLowerCase();
+                      return (
+                        p.host.toLowerCase().includes(s) ||
+                        p.country?.toLowerCase().includes(s) ||
+                        p.city?.toLowerCase().includes(s) ||
+                        p.isp?.toLowerCase().includes(s)
+                      );
+                    })
+                    .map((px) => (
+                      <button
+                        key={px.id}
+                        className="flex items-center justify-between w-full px-3 py-2.5 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
+                        onMouseDown={() => {
+                          setSelectedProxyId(px.id);
+                          setProxySearch('');
+                          setProxyDropdownOpen(false);
+                        }}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold font-mono">
+                              {px.host}:{px.port}
+                            </span>
+                            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">
+                              {px.protocol}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-500 flex items-center gap-1.5 italic">
+                            <span>{px.country || 'N/A'}</span>
+                            {px.city && <span>• {px.city}</span>}
+                            {px.isp && <span>• {px.isp}</span>}
+                          </div>
                         </div>
-                        <div className="text-[10px] text-zinc-500 flex items-center gap-1.5 italic">
-                          <span>{px.country || 'N/A'}</span>
-                          {px.city && <span>• {px.city}</span>}
-                          {px.isp && <span>• {px.isp}</span>}
-                        </div>
-                      </div>
-                      {selectedProxyId === px.id && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                    </button>
-                  ))}
+                        {selectedProxyId === px.id && (
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        )}
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
             {selectedProxyId && proxyHistory.length > 0 && (
               <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1">
                 <div className="flex items-center gap-2 text-amber-500 font-bold text-[10px] uppercase tracking-wider">
-                  <Shield className="w-3.5 h-3.5" />Cảnh báo lịch sử sử dụng
+                  <Shield className="w-3.5 h-3.5" />
+                  Cảnh báo lịch sử sử dụng
                 </div>
                 <div className="space-y-1">
                   {proxyHistory.slice(0, 3).map((h, i) => (
                     <p key={i} className="text-[10px] text-zinc-400">
-                      • Đã dùng cho <span className="text-zinc-200 font-bold">{h.email_address}</span>
-                      {h.target_site && (<> trên <span className="text-zinc-200 font-bold">{h.target_site}</span></>)}
-                      <span className="text-zinc-500 ml-2">({new Date(h.used_at).toLocaleDateString()})</span>
+                      • Đã dùng cho{' '}
+                      <span className="text-zinc-200 font-bold">{h.email_address}</span>
+                      {h.target_site && (
+                        <>
+                          {' '}
+                          trên <span className="text-zinc-200 font-bold">{h.target_site}</span>
+                        </>
+                      )}
+                      <span className="text-zinc-500 ml-2">
+                        ({new Date(h.used_at).toLocaleDateString()})
+                      </span>
                     </p>
                   ))}
                   {proxyHistory.length > 3 && (
-                    <p className="text-[9px] text-zinc-500 italic pl-3">... và {proxyHistory.length - 3} lần sử dụng khác.</p>
+                    <p className="text-[9px] text-zinc-500 italic pl-3">
+                      ... và {proxyHistory.length - 3} lần sử dụng khác.
+                    </p>
                   )}
                 </div>
               </div>
@@ -183,7 +235,9 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
                 Dấu vân tay (Fingerprint)
               </label>
               {isLoadingFingerprints && (
-                <span className="text-[8px] text-zinc-500 font-bold uppercase animate-pulse">Đang tải...</span>
+                <span className="text-[8px] text-zinc-500 font-bold uppercase animate-pulse">
+                  Đang tải...
+                </span>
               )}
             </div>
             <div className="relative">
@@ -193,8 +247,17 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
                   selectedFingerprintId ? 'text-zinc-200 font-bold' : 'text-zinc-500 italic',
                 )}
                 placeholder="Mặc định (Tự động tạo)"
-                value={fingerprintSearch !== '' ? fingerprintSearch : selectedFingerprintId ? fingerprints.find((f) => f.id === selectedFingerprintId)?.name || '' : ''}
-                onChange={(e) => { setFingerprintSearch(e.target.value); setFingerprintDropdownOpen(true); }}
+                value={
+                  fingerprintSearch !== ''
+                    ? fingerprintSearch
+                    : selectedFingerprintId
+                      ? fingerprints.find((f) => f.id === selectedFingerprintId)?.name || ''
+                      : ''
+                }
+                onChange={(e) => {
+                  setFingerprintSearch(e.target.value);
+                  setFingerprintDropdownOpen(true);
+                }}
                 onFocus={() => setFingerprintDropdownOpen(true)}
                 onBlur={() => setTimeout(() => setFingerprintDropdownOpen(false), 200)}
               />
@@ -203,25 +266,41 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
                 <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-1 z-[1100] max-h-[300px] overflow-auto custom-scrollbar hover:border-primary transition-colors">
                   <button
                     className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-400 hover:text-white rounded-lg cursor-pointer transition-colors"
-                    onMouseDown={() => { setSelectedFingerprintId(undefined); setFingerprintSearch(''); setFingerprintDropdownOpen(false); }}
+                    onMouseDown={() => {
+                      setSelectedFingerprintId(undefined);
+                      setFingerprintSearch('');
+                      setFingerprintDropdownOpen(false);
+                    }}
                   >
                     <span className="italic">Mặc định (Tự động tạo)</span>
                     {!selectedFingerprintId && <Check className="w-3.5 h-3.5 text-emerald-500" />}
                   </button>
                   {fingerprints.length > 0 && <div className="h-px bg-zinc-800 my-1 mx-2" />}
-                  {fingerprints.filter((f) => f.name.toLowerCase().includes(fingerprintSearch.toLowerCase())).map((fp) => (
-                    <button
-                      key={fp.id}
-                      className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
-                      onMouseDown={() => { setSelectedFingerprintId(fp.id); setFingerprintSearch(''); setFingerprintDropdownOpen(false); }}
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-bold">{fp.name}</span>
-                        {fp.description && <span className="text-[10px] text-zinc-500 truncate max-w-[250px]">{fp.description}</span>}
-                      </div>
-                      {selectedFingerprintId === fp.id && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                    </button>
-                  ))}
+                  {fingerprints
+                    .filter((f) => f.name.toLowerCase().includes(fingerprintSearch.toLowerCase()))
+                    .map((fp) => (
+                      <button
+                        key={fp.id}
+                        className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
+                        onMouseDown={() => {
+                          setSelectedFingerprintId(fp.id);
+                          setFingerprintSearch('');
+                          setFingerprintDropdownOpen(false);
+                        }}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-bold">{fp.name}</span>
+                          {fp.description && (
+                            <span className="text-[10px] text-zinc-500 truncate max-w-[250px]">
+                              {fp.description}
+                            </span>
+                          )}
+                        </div>
+                        {selectedFingerprintId === fp.id && (
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        )}
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
@@ -229,10 +308,12 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({ isOpen, onClose, emai
 
           <div className="h-px bg-zinc-800/50" />
           <button
-            onClick={() => onLaunch({ fingerprintId: selectedFingerprintId, proxyId: selectedProxyId })}
+            onClick={() =>
+              onLaunch({ fingerprintId: selectedFingerprintId, proxyId: selectedProxyId })
+            }
             className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20"
           >
-            <span className="text-xs font-black uppercase tracking-[0.2em]">Khởi chạy</span>
+            <span className="text-xs font-black uppercase ">Khởi chạy</span>
           </button>
         </div>
       </div>

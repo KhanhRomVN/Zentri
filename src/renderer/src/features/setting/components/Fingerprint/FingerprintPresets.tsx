@@ -165,9 +165,7 @@ export const FingerprintPresets: FC<FingerprintPresetsProps> = ({ currentId, onS
     <aside className="w-[340px] border-r border-border bg-card/10 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
       <div className="p-5 border-b border-border/50 sticky top-0 bg-background/50 backdrop-blur-xl z-10">
         <div className="flex items-center justify-between">
-          <h3 className="text-[13px] font-black uppercase tracking-[0.2em] text-foreground">
-            Fingerprint Presets
-          </h3>
+          <h3 className="text-[13px] font-black uppercase  text-foreground">Fingerprint Presets</h3>
           <button
             onClick={onAdd}
             className="w-10 h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all active:scale-95 border border-primary/20 flex items-center justify-center group shadow-lg shadow-primary/5"

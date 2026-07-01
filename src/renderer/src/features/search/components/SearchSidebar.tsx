@@ -1,29 +1,116 @@
-import { FC, useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { FC, useState } from 'react';
 import { cn } from '../../../shared/lib/utils';
 import {
-  Search, Plus, Table, X, Pencil, Trash2, Smile,
-  Mail, Users, Database, Star, Heart, Zap, Shield,
-  Globe, Key, Lock, Bell, Calendar, Clock, Tag, Award,
-  Bookmark, Camera, Cloud, Code, Eye, Flag, Gift,
-  Hash, Home, Image, Link, Map, Moon, Music, Package,
-  Phone, Power, Settings, Sun, Target, Truck,
-  User, Video, Wifi, Wind, Layers, Command, Crown,
-  Feather, TrendingUp, Umbrella,
+  Search,
+  Plus,
+  Table,
+  Pencil,
+  Trash2,
+  Mail,
+  Users,
+  Database,
+  Star,
+  Heart,
+  Zap,
+  Shield,
+  Globe,
+  Key,
+  Lock,
+  Bell,
+  Calendar,
+  Clock,
+  Tag,
+  Award,
+  Bookmark,
+  Camera,
+  Cloud,
+  Code,
+  Eye,
+  Flag,
+  Gift,
+  Hash,
+  Home,
+  Image,
+  Link,
+  Map,
+  Moon,
+  Music,
+  Package,
+  Phone,
+  Power,
+  Settings,
+  Sun,
+  Target,
+  Truck,
+  User,
+  Video,
+  Wifi,
+  Wind,
+  Layers,
+  Command,
+  Crown,
+  Feather,
+  TrendingUp,
+  Umbrella,
 } from 'lucide-react';
 import { SmartView } from '../types/search';
 import { useAccentColors } from '../../../hooks/useAccentColors';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../components/ui/Dropdown';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+} from '../../../components/ui/Dropdown';
 
 // Icon map: name → component (mirrored from SmartViewBuilder)
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
-  Mail, Users, Database, Star, Heart, Zap, Shield,
-  Globe, Key, Lock, Bell, Calendar, Clock, Tag, Award,
-  Bookmark, Camera, Cloud, Code, Eye, Flag, Gift,
-  Hash, Home, Image, Link, Map, Moon, Music, Package,
-  Phone, Power, Settings, Sun, Table, Target, Truck,
-  User, Video, Wifi, Wind, Layers, Command, Crown,
-  Feather, TrendingUp, Umbrella,
+  Mail,
+  Users,
+  Database,
+  Star,
+  Heart,
+  Zap,
+  Shield,
+  Globe,
+  Key,
+  Lock,
+  Bell,
+  Calendar,
+  Clock,
+  Tag,
+  Award,
+  Bookmark,
+  Camera,
+  Cloud,
+  Code,
+  Eye,
+  Flag,
+  Gift,
+  Hash,
+  Home,
+  Image,
+  Link,
+  Map,
+  Moon,
+  Music,
+  Package,
+  Phone,
+  Power,
+  Settings,
+  Sun,
+  Table,
+  Target,
+  Truck,
+  User,
+  Video,
+  Wifi,
+  Wind,
+  Layers,
+  Command,
+  Crown,
+  Feather,
+  TrendingUp,
+  Umbrella,
 };
 
 interface SearchSidebarProps {
@@ -120,44 +207,31 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
 
       {/* Views List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar py-2">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 px-2">
           {filteredViews.length === 0 && searchQuery && (
             <div className="flex flex-col items-center justify-center p-12 mt-10 opacity-20">
               <Search className="w-10 h-10 mb-4" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-center">
-                Unseen View
-              </span>
+              <span className="text-[10px] font-black uppercase  text-center">Unseen View</span>
             </div>
           )}
 
           {filteredViews.map((view) => {
             const ViewIcon = view.icon ? ICON_MAP[view.icon] : null;
-            const itemColor = getItemColor(view.id);
             return (
               <Dropdown key={view.id} trigger="contextmenu">
                 <DropdownTrigger asChild>
                   <button
                     onClick={() => onSelectView(view.id)}
                     className={cn(
-                      'group relative flex items-center gap-3 mx-2 px-3 py-2 rounded-r-lg transition-all duration-200 outline-none text-left border-l-2',
+                      'group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 outline-none text-left w-full',
                       selectedViewId === view.id
-                        ? 'text-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-card-hover border-l-transparent',
+                        ? 'text-foreground bg-card-background'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-card-hover',
                     )}
-                    style={{
-                      background:
-                        selectedViewId === view.id
-                          ? itemColor?.bg
-                          : undefined,
-                      borderLeftColor:
-                        selectedViewId === view.id
-                          ? itemColor?.base
-                          : undefined,
-                    }}
                   >
                     <div className="w-8 h-8 shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
                       {ViewIcon ? (
-                        <ViewIcon className="w-5 h-5" style={{ color: itemColor?.base }} />
+                        <ViewIcon className="w-5 h-5 text-foreground/70" />
                       ) : view.domain ? (
                         <img
                           src={`https://www.google.com/s2/favicons?domain=${view.domain}&sz=64`}
@@ -165,13 +239,13 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
                           className="w-5 h-5 object-contain"
                         />
                       ) : (
-                        <Table className="w-5 h-5" style={{ color: itemColor?.base }} />
+                        <Table className="w-5 h-5 text-foreground/70" />
                       )}
                     </div>
 
                     <div className="flex flex-col items-start min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 w-full">
-                        <span className="text-[15px] font-bold tracking-tight truncate text-text-primary">
+                        <span className="text-[13px] font-bold tracking-tight truncate text-text-primary">
                           {view.name}
                         </span>
                         {view.favorite && (
@@ -184,7 +258,7 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
                         )}
                       </div>
                       {view.description && (
-                        <span className="text-[11px] text-muted-foreground/40 truncate w-full mt-0.5">
+                        <span className="text-[10px] text-muted-foreground/40 truncate w-full mt-0.5">
                           {view.description}
                         </span>
                       )}
@@ -197,7 +271,9 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
                       onFavoriteView?.(view.id);
                     }}
                   >
-                    <Star className={`w-3.5 h-3.5 text-amber-400 ${view.favorite ? 'fill-amber-400' : ''}`} />
+                    <Star
+                      className={`w-3.5 h-3.5 text-amber-400 ${view.favorite ? 'fill-amber-400' : ''}`}
+                    />
                     {view.favorite ? 'Unfavorite' : 'Favorite'}
                   </DropdownItem>
                   {view.source !== 'service' && (
@@ -229,8 +305,6 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
           })}
         </div>
       </div>
-
-      
     </div>
   );
 };

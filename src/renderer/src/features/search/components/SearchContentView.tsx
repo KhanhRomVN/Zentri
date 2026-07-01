@@ -1,7 +1,7 @@
-import { FC, useState, useEffect, useCallback } from 'react';
+import { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Table,
+  Table as TableIcon,
   Mail,
   Users,
   Database,
@@ -48,9 +48,33 @@ import {
   Feather,
   TrendingUp,
   Umbrella,
+  GripVertical,
 } from 'lucide-react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
+  ColumnSizingState,
+  ColumnOrderState,
+  flexRender,
+  ColumnDef,
+} from '@tanstack/react-table';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { SmartView } from '../types/search';
 import { useAccentColors } from '../../../hooks/useAccentColors';
+import { FilterCondition } from '../../../constants/operators';
+import { cn } from '../../../shared/lib/utils';
 
 // Icon map: name → component
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -88,7 +112,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Power,
   Settings,
   Sun,
-  Table,
+  TableIcon,
   Target,
   Truck,
   User,
@@ -106,6 +130,23 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 interface SearchContentViewProps {
   selectedView: SmartView | null;
   onOpenAddView: () => void;
+  searchQuery: string;
+  sorting: SortingState;
+  onSortingChange: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
+  columnVisibility: Record<string, boolean>;
+  onColumnVisibilityChange: (
+    updater: Record<string, boolean> | ((old: Record<string, boolean>) => Record<string, boolean>),
+  ) => void;
+  columnSizing: ColumnSizingState;
+  onColumnSizingChange: (
+    updater: ColumnSizingState | ((old: ColumnSizingState) => ColumnSizingState),
+  ) => void;
+  columnOrder: ColumnOrderState;
+  onColumnOrderChange: (
+    updater: ColumnOrderState | ((old: ColumnOrderState) => ColumnOrderState),
+  ) => void;
+  filters: FilterCondition[];
+  onRefresh?: () => void;
 }
 
 let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
@@ -189,9 +230,81 @@ const getFieldValue = (row: any, field: string): string => {
   return '—';
 };
 
-const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
+// ─── Draggable Header Component ─────────────────────────────────────────────
+interface DraggableHeaderProps {
+  header: any;
+  viewColor: any;
+}
+
+const DraggableHeader: FC<DraggableHeaderProps> = ({ header, viewColor }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: header.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+    width: header.getSize(),
+    minWidth: header.column.columnDef.minSize,
+  };
+
+  return (
+    <th
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'h-10 text-sm font-bold text-text-primary whitespace-nowrap text-left px-4 relative border-r border-border last:border-r-0',
+        isDragging && 'z-50',
+      )}
+    >
+      <div className="flex items-center gap-1">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab hover:text-primary/70 transition-colors"
+        >
+          <GripVertical className="w-3 h-3 text-text-secondary/50" />
+        </div>
+        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+      </div>
+      {header.column.getCanResize() && (
+        <div
+          onMouseDown={header.getResizeHandler()}
+          onTouchStart={header.getResizeHandler()}
+          className={cn(
+            'absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none touch-none',
+            header.column.getIsResizing() ? 'bg-primary/60' : 'opacity-0 hover:opacity-100',
+            'hover:bg-primary/30 transition-opacity',
+          )}
+          style={{
+            transform: 'translateX(50%)',
+            pointerEvents: 'auto',
+            zIndex: 10,
+          }}
+        />
+      )}
+    </th>
+  );
+};
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+const SearchContentView: FC<SearchContentViewProps> = ({
+  selectedView,
+  searchQuery,
+  sorting,
+  onSortingChange,
+  columnVisibility,
+  onColumnVisibilityChange,
+  columnSizing,
+  onColumnSizingChange,
+  columnOrder,
+  onColumnOrderChange,
+  filters,
+  onRefresh,
+}) => {
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
-  const [tableSearch, setTableSearch] = useState('');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [avatars, setAvatars] = useState<Record<string, string>>({});
@@ -202,6 +315,16 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
 
   const viewColor = selectedView ? getViewColor(selectedView.id) : null;
 
+  // ─── Sensors for DnD ──────────────────────────────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor),
+  );
+
   // ─── Fetch data when selectedView changes ──────────────────────────────
   const loadData = useCallback(async () => {
     if (!selectedView) return;
@@ -211,8 +334,6 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
       let serviceLinks: any[] = [];
 
       if (selectedView.source === 'service' && selectedView.serviceId) {
-        // Fetch emails linked to this specific service
-        // @ts-ignore
         const [rows, links] = await Promise.all([
           window.electron.ipcRenderer.invoke(
             'sqlite:all',
@@ -234,8 +355,6 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
         emailRows = rows || [];
         serviceLinks = links || [];
       } else {
-        // Fetch all emails (for manual views)
-        // @ts-ignore
         [emailRows, serviceLinks] = await Promise.all([
           window.electron.ipcRenderer.invoke(
             'sqlite:all',
@@ -250,7 +369,6 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
         ]);
       }
 
-      // Map service links to each email row
       const rowsWithServices = (emailRows || []).map((row: any) => {
         const linkedServices = (serviceLinks || [])
           .filter((link: any) => link.email_id === row.id)
@@ -296,7 +414,6 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
       for (const row of rows) {
         if (row.email && !newAvatars[row.email]) {
           try {
-            // @ts-ignore
             const avatarUrl = await window.electron.ipcRenderer.invoke('email:get-avatar', {
               email: row.email,
             });
@@ -320,6 +437,141 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
     if (rows.length > 0) fetchAvatars();
   }, [rows]);
 
+  // ─── Apply filters ────────────────────────────────────────────────────────
+  const applyFilters = useCallback(
+    (data: any[]) => {
+      if (filters.length === 0) return data;
+
+      return data.filter((row) => {
+        return filters.every((filter) => {
+          const fieldValue = getFieldValue(row, filter.column);
+          if (fieldValue === '—' || fieldValue === null || fieldValue === undefined) {
+            return filter.operator === 'not_equal';
+          }
+
+          const strValue = String(fieldValue).toLowerCase();
+          const searchValue = filter.value.toLowerCase();
+
+          switch (filter.operator) {
+            case 'equals':
+              return strValue === searchValue;
+            case 'not_equal':
+              return strValue !== searchValue;
+            case 'greater':
+              return parseFloat(strValue) > parseFloat(searchValue);
+            case 'less':
+              return parseFloat(strValue) < parseFloat(searchValue);
+            case 'contains':
+              return strValue.includes(searchValue);
+            case 'starts_with':
+              return strValue.startsWith(searchValue);
+            case 'ends_with':
+              return strValue.endsWith(searchValue);
+            default:
+              return true;
+          }
+        });
+      });
+    },
+    [filters],
+  );
+
+  // ─── Apply search query ──────────────────────────────────────────────────
+  const applySearch = useCallback(
+    (data: any[]) => {
+      if (!searchQuery) return data;
+      const visibleCols = selectedView?.columns.filter((c) => c.isVisible) || [];
+      return data.filter((row) => {
+        return visibleCols.some((col) => {
+          const val = getFieldValue(row, col.field || '');
+          return val.toLowerCase().includes(searchQuery.toLowerCase());
+        });
+      });
+    },
+    [searchQuery, selectedView],
+  );
+
+  // ─── Build columns for TanStack Table ──────────────────────────────────
+  const columns = useMemo<ColumnDef<any>[]>(() => {
+    if (!selectedView) return [];
+
+    const viewColumns = selectedView.columns.filter((c) => c.isVisible);
+
+    return viewColumns.map((col) => {
+      const isSTT = col.id === 'col_stt';
+      const isEmailCol = col.field === 'email' || col.type === 'email';
+
+      return {
+        id: col.id,
+        accessorKey: col.field || col.id,
+        header: () => <span>{col.label}</span>,
+        cell: ({ row }: any) => {
+          const rowData = row.original;
+          if (isSTT) {
+            return <span className="font-mono text-xs text-muted-foreground">{row.index + 1}</span>;
+          }
+          const fieldValue = getFieldValue(rowData, col.field || '');
+          if (isEmailCol && rowData.email) {
+            return <span className="truncate">{fieldValue}</span>;
+          }
+          return <span>{fieldValue}</span>;
+        },
+        size: isSTT ? 50 : 200,
+        minSize: isSTT ? 50 : 80,
+        enableResizing: !isSTT,
+        enableSorting: !isSTT && col.isSortable !== false,
+        enableHiding: !isSTT,
+      };
+    });
+  }, [selectedView]);
+
+  // ─── Process data ────────────────────────────────────────────────────────
+  const processedData = useMemo(() => {
+    let data = rows;
+    data = applyFilters(data);
+    data = applySearch(data);
+    return data;
+  }, [rows, applyFilters, applySearch]);
+
+  // ─── TanStack Table ──────────────────────────────────────────────────────
+  const table = useReactTable({
+    data: processedData,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: onSortingChange,
+    onColumnVisibilityChange: onColumnVisibilityChange,
+    onColumnSizingChange: onColumnSizingChange,
+    onColumnOrderChange: onColumnOrderChange,
+    state: {
+      sorting,
+      columnVisibility,
+      columnSizing,
+      columnOrder,
+    },
+    columnResizeMode: 'onChange',
+    getRowId: (row: any) => String(row.rowid || row.id),
+  });
+
+  // ─── DnD Handlers ────────────────────────────────────────────────────────
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (active && over && active.id !== over.id) {
+        const oldIndex = columnOrder.indexOf(active.id as string);
+        const newIndex = columnOrder.indexOf(over.id as string);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newOrder = [...columnOrder];
+          newOrder.splice(oldIndex, 1);
+          newOrder.splice(newIndex, 0, active.id as string);
+          onColumnOrderChange(newOrder);
+        }
+      }
+    },
+    [columnOrder, onColumnOrderChange],
+  );
+
+  // ─── Render ──────────────────────────────────────────────────────────────
   if (!selectedView) {
     return (
       <div className="flex-1 flex items-center justify-center opacity-20">
@@ -330,17 +582,8 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
     );
   }
 
-  const visibleColumns = selectedView.columns.filter((c) => c.isVisible);
-
-  // Filter rows by search query
-  const filteredRows = tableSearch
-    ? rows.filter((row) => {
-        return visibleColumns.some((col) => {
-          const val = getFieldValue(row, col.field || '');
-          return val.toLowerCase().includes(tableSearch.toLowerCase());
-        });
-      })
-    : rows;
+  const headerGroups = table.getHeaderGroups();
+  const rowModel = table.getRowModel();
 
   return (
     <motion.div
@@ -350,51 +593,6 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
       transition={{ duration: 0.3 }}
       className="flex-1 flex flex-col h-full overflow-hidden"
     >
-      {/* View Header */}
-      <div className="h-[48px] shrink-0 border-b border-border/50 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <div
-            className="w-7 h-7 rounded flex items-center justify-center shrink-0 border"
-            style={{
-              backgroundColor: viewColor?.bg || 'transparent',
-              borderColor: viewColor?.base || 'transparent',
-            }}
-          >
-            {(() => {
-              const ViewIcon = selectedView.icon ? ICON_MAP[selectedView.icon] : null;
-              if (ViewIcon) {
-                return (
-                  <ViewIcon className="w-[18px] h-[18px]" style={{ color: viewColor?.base }} />
-                );
-              }
-              if (selectedView.domain) {
-                return (
-                  <img
-                    src={`https://www.google.com/s2/favicons?domain=${selectedView.domain}&sz=32`}
-                    alt=""
-                    className="w-4 h-4"
-                  />
-                );
-              }
-              return <Table className="w-[18px] h-[18px]" style={{ color: viewColor?.base }} />;
-            })()}
-          </div>
-          <span className="text-sm font-bold truncate text-text-primary">{selectedView.name}</span>
-          <span className="text-[10px] text-muted-foreground/50 ml-1">
-            {filteredRows.length} records
-          </span>
-        </div>
-        <div className="relative w-64 shrink-0">
-          <input
-            type="text"
-            placeholder="Search terms..."
-            value={tableSearch}
-            onChange={(e) => setTableSearch(e.target.value)}
-            className="w-full h-9 pl-3 pr-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-text-secondary outline-none"
-          />
-        </div>
-      </div>
-
       {/* Table */}
       <div className="flex-1 overflow-auto custom-scrollbar">
         {loading ? (
@@ -404,83 +602,71 @@ const SearchContentView: FC<SearchContentViewProps> = ({ selectedView }) => {
             </span>
           </div>
         ) : (
-          <table className="border-collapse w-full">
-            <thead className="sticky top-0 z-20">
-              <tr className="bg-table-header-background border-b border-border/50">
-                {visibleColumns.map((col) => {
-                  const isSTT = col.id === 'col_stt';
-                  return (
-                    <th
-                      key={col.id}
-                      style={isSTT ? { width: '1%' } : undefined}
-                      className={`py-2 text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground whitespace-nowrap ${isSTT ? 'text-center px-2' : 'text-left px-4'}`}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+              <table className="border-collapse w-full table-fixed">
+                <thead className="sticky top-0 z-20">
+                  {headerGroups.map((headerGroup: any) => (
+                    <tr
+                      key={headerGroup.id}
+                      className="bg-table-header-background border-b border-border/50"
                     >
-                      {col.label}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((row, rowIdx) => (
-                <tr
-                  key={row.id || rowIdx}
-                  className="border-b border-border/20 h-[40px] hover:bg-table-row-hover transition-colors"
-                >
-                  {visibleColumns.map((col) => {
-                    const isSTT = col.id === 'col_stt';
-                    const isEmailCol = col.field === 'email' || col.type === 'email';
-                    const fieldValue = isSTT ? '' : getFieldValue(row, col.field || '');
-                    return (
+                      {headerGroup.headers.map((header: any) => {
+                        if (header.column.getIsVisible() === false) return null;
+                        return (
+                          <DraggableHeader key={header.id} header={header} viewColor={viewColor} />
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody>
+                  {rowModel.rows.map((row: any) => (
+                    <tr
+                      key={row.id}
+                      className="border-b border-border/20 h-[40px] hover:bg-table-row-hover transition-colors"
+                    >
+                      {row.getVisibleCells().map((cell: any) => (
+                        <td
+                          key={cell.id}
+                          className="py-1 text-sm text-foreground/80 truncate px-4"
+                          style={{
+                            width: cell.column.getSize(),
+                            maxWidth: cell.column.getSize(),
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  {rowModel.rows.length === 0 && !loading && (
+                    <tr>
                       <td
-                        key={col.id}
-                        className={`py-1 text-sm text-foreground/80 truncate ${isSTT ? 'text-center px-2' : 'px-4'}`}
+                        colSpan={table.getAllColumns().filter((c: any) => c.getIsVisible()).length}
+                        className="text-center py-12 text-muted-foreground/40 text-sm"
                       >
-                        {isSTT ? (
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {rowIdx + 1}
-                          </span>
-                        ) : isEmailCol && row.email ? (
-                          <span className="flex items-center gap-2 truncate">
-                            {avatars[row.email] ? (
-                              <img
-                                src={avatars[row.email]}
-                                alt=""
-                                className="w-5 h-5 rounded-full shrink-0 object-cover"
-                              />
-                            ) : (
-                              <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
-                            )}
-                            <span className="truncate">{fieldValue}</span>
-                          </span>
-                        ) : (
-                          <span>{fieldValue}</span>
-                        )}
+                        No data found
                       </td>
-                    );
-                  })}
-                </tr>
-              ))}
-              {filteredRows.length === 0 && !loading && (
-                <tr>
-                  <td
-                    colSpan={visibleColumns.length}
-                    className="text-center py-12 text-muted-foreground/40 text-sm"
-                  >
-                    No data found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </SortableContext>
+          </DndContext>
         )}
 
-        {visibleColumns.length === 0 && (
+        {table.getAllColumns().filter((c: any) => c.getIsVisible()).length === 0 && (
           <div className="flex flex-col items-center justify-center h-full opacity-30">
-            <Table className="w-12 h-12 mb-4" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-              No columns defined
-            </span>
+            <TableIcon className="w-12 h-12 mb-4" />
+            <span className="text-[10px] font-black uppercase">No columns defined</span>
           </div>
         )}
       </div>

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../../components/ui/Drawer';
+import { Button } from '../../../components/ui/Button';
 import ColumnBuilder from './ColumnBuilder';
 
 // Icon map: name → component
@@ -222,24 +223,21 @@ const SmartViewBuilder: FC<SmartViewBuilderProps> = ({ isOpen, onClose, onSave, 
         </DrawerBody>
 
       <DrawerFooter className="justify-end">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
           >
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
+          </Button>
+          <Button
+            variant="soft"
+            size="sm"
             disabled={!form.name}
-            className={cn(
-              'px-5 py-2.5 rounded-lg transition-all font-semibold text-xs',
-              !form.name
-                ? 'bg-card-background text-text-secondary cursor-not-allowed'
-                : 'bg-primary/30 text-primary hover:bg-primary/40 shadow-lg shadow-primary/10',
-            )}
+            onClick={handleSave}
           >
             Deploy Smart View
-          </button>
+          </Button>
         </DrawerFooter>
     </Drawer>
   );

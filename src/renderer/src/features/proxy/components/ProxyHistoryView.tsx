@@ -50,7 +50,7 @@ const ProxyHistoryView: FC<ProxyHistoryViewProps> = ({ proxyId, onBack, onClose 
             <HistoryIcon className="w-5 h-5" />
           </div>
           <div className="flex flex-col">
-            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-foreground/90 leading-none">
+            <h2 className="text-sm font-black uppercase  text-foreground/90 leading-none">
               Usage Chronicle
             </h2>
             <span className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-widest mt-1.5 font-mono">
@@ -104,7 +104,7 @@ const ProxyHistoryView: FC<ProxyHistoryViewProps> = ({ proxyId, onBack, onClose 
         ) : (
           <div className="max-w-5xl mx-auto space-y-6">
             <div className="flex items-center px-2">
-              <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-foreground/50">
+              <h3 className="text-[12px] font-black uppercase  text-foreground/50">
                 Detailed Access Log ({history.length})
               </h3>
             </div>

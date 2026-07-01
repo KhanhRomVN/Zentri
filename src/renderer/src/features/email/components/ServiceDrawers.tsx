@@ -5,6 +5,7 @@ import { Account } from '../types';
 import React from 'react';
 import { useServiceDrawer } from '../../../contexts/ServiceDrawerContext';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../../components/ui/Drawer';
+import { Button } from '../../../components/ui/Button';
 
 interface ServiceDrawersProps {
   isServiceDrawerOpen: boolean;
@@ -40,15 +41,6 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
   setNewServiceData,
   globalServices,
   handleAddServiceLink,
-  isQuickCreateModalOpen,
-  setIsQuickCreateModalOpen,
-  quickCreateData,
-  setQuickCreateData,
-  handleQuickCreateService,
-  categorySearch,
-  setCategorySearch,
-  categoryInputOpen,
-  setCategoryInputOpen,
   isEditMode,
   onRestoreService,
   onServicesChanged,
@@ -136,13 +128,13 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                       onFocus={() => setServicePopoverOpen(true)}
                       onBlur={() => setTimeout(() => setServicePopoverOpen(false), 200)}
                       className={cn(
-                        "w-full h-10 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors",
+                        'w-full h-10 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors',
                         (() => {
                           const selectedService = globalServices.find(
                             (s) => s.name.toLowerCase() === linkServiceSearchQuery.toLowerCase(),
                           );
-                          return selectedService?.url ? "pl-10" : "pl-3";
-                        })()
+                          return selectedService?.url ? 'pl-10' : 'pl-3';
+                        })(),
                       )}
                     />
                   </div>
@@ -205,6 +197,38 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
               )}
             </div>
 
+            {/* Selected Service Card */}
+            {newServiceData.serviceId &&
+              (() => {
+                const selectedService = globalServices.find(
+                  (s: any) => s.id === newServiceData.serviceId,
+                );
+                if (!selectedService) return null;
+                return (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-md bg-background border border-border/50 shrink-0">
+                      <img
+                        src={
+                          selectedService.url
+                            ? `https://www.google.com/s2/favicons?domain=${new URL(selectedService.url).hostname}&sz=64`
+                            : ''
+                        }
+                        alt=""
+                        className="w-5 h-5 object-contain"
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-bold text-foreground/80 truncate">
+                        {selectedService.name}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground/50 truncate">
+                        {selectedService.url}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
             {/* Trash Warning */}
             {(() => {
               const existingLink = focusedAccount?.services?.find(
@@ -244,82 +268,73 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
           </div>
 
           {/* Dynamic Metadata */}
-          {newServiceData.serviceId && (() => {
-            const selectedService = globalServices.find(
-              (s: any) => s.id === newServiceData.serviceId,
-            );
-            const metadataDefinitions: any[] = selectedService?.metadata
-              ? typeof selectedService.metadata === 'string'
-                ? JSON.parse(selectedService.metadata)
-                : selectedService.metadata
-              : [];
-            if (metadataDefinitions.length === 0) return null;
-            return (
-              <div className="space-y-4 pt-4 animate-in slide-in-from-bottom-2 duration-300">
-                {metadataDefinitions.map((item: any) => (
-                  <div key={item.key} className="space-y-2.5">
-                    <label className="text-sm font-semibold text-foreground/80">
-                      {item.key}
-                      {item.type === 'array' && (
-                        <span className="text-[10px] lowercase font-normal opacity-50">
-                          (comma separated)
-                        </span>
-                      )}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={`Enter ${item.key.toLowerCase()}...`}
-                      value={
-                        item.type === 'array'
-                          ? Array.isArray(newServiceData.metadata?.[item.key])
-                            ? newServiceData.metadata[item.key].join(', ')
+          {newServiceData.serviceId &&
+            (() => {
+              const selectedService = globalServices.find(
+                (s: any) => s.id === newServiceData.serviceId,
+              );
+              const metadataDefinitions: any[] = selectedService?.metadata
+                ? typeof selectedService.metadata === 'string'
+                  ? JSON.parse(selectedService.metadata)
+                  : selectedService.metadata
+                : [];
+              if (metadataDefinitions.length === 0) return null;
+              return (
+                <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300 !mt-3">
+                  {metadataDefinitions.map((item: any) => (
+                    <div key={item.key} className="space-y-2.5">
+                      <label className="text-sm font-semibold text-foreground/80">
+                        {item.key}
+                        {item.type === 'array' && (
+                          <span className="text-[10px] lowercase font-normal opacity-50">
+                            (comma separated)
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={`Enter ${item.key.toLowerCase()}...`}
+                        value={
+                          item.type === 'array'
+                            ? Array.isArray(newServiceData.metadata?.[item.key])
+                              ? newServiceData.metadata[item.key].join(', ')
+                              : newServiceData.metadata?.[item.key] || ''
                             : newServiceData.metadata?.[item.key] || ''
-                          : newServiceData.metadata?.[item.key] || ''
-                      }
-                      onChange={(e) =>
-                        setNewServiceData((d: any) => ({
-                          ...d,
-                          metadata: {
-                            ...(d.metadata || {}),
-                            [item.key]:
-                              item.type === 'array'
-                                ? e.target.value.split(',').map((s: string) => s.trim())
-                                : e.target.value,
-                          },
-                        }))
-                      }
-                      className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors"
-                    />
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
+                        }
+                        onChange={(e) =>
+                          setNewServiceData((d: any) => ({
+                            ...d,
+                            metadata: {
+                              ...(d.metadata || {}),
+                              [item.key]:
+                                item.type === 'array'
+                                  ? e.target.value.split(',').map((s: string) => s.trim())
+                                  : e.target.value,
+                            },
+                          }))
+                        }
+                        className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors"
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
         </DrawerBody>
 
         <DrawerFooter className="justify-end">
-          <button
-            onClick={() => setIsServiceDrawerOpen(false)}
-            className="px-5 py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors font-semibold border border-border text-xs"
-          >
+          <Button variant="outline" onClick={() => setIsServiceDrawerOpen(false)}>
             Cancel
-          </button>
-          <button
-            onClick={handleAddServiceLink}
+          </Button>
+          <Button
+            variant="soft"
             disabled={!newServiceData.serviceId}
-            className={cn(
-              'px-5 py-2.5 rounded-lg transition-all font-semibold text-xs',
-              !newServiceData.serviceId
-                ? 'bg-card-background text-text-secondary cursor-not-allowed'
-                : 'bg-primary/30 text-primary hover:bg-primary/40 shadow-lg shadow-primary/10',
-            )}
+            onClick={handleAddServiceLink}
           >
             {isEditMode ? 'Update Link' : 'Secure Connection'}
-          </button>
+          </Button>
         </DrawerFooter>
       </Drawer>
-
-      
     </>
   );
 };
