@@ -65,7 +65,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
         size="sm"
         onClick={onToggleFilterBar}
         className={cn(
-          'gap-1 px-2 py-1 text-xs h-7',
+          'gap-1 px-3 text-sm h-9',
           showFilterBar && 'bg-primary/20 text-primary border-primary/50',
         )}
       >
@@ -80,9 +80,9 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
 
       {/* Sort Dropdown */}
       <div className="relative">
-        <Dropdown open={showSortDropdown} onOpenChange={setShowSortDropdown} align="end">
+        <Dropdown open={showSortDropdown} onOpenChange={setShowSortDropdown} align="start">
           <DropdownTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1 px-2 py-1 text-xs h-7">
+<Button variant="outline" size="sm" className="gap-1 px-3 text-sm h-9">
               <ArrowUpDown className="w-3.5 h-3.5" />
               <span>Sort</span>
               {sorting.length > 0 && (
@@ -92,7 +92,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
               )}
             </Button>
           </DropdownTrigger>
-          <DropdownContent className="right-0 left-auto min-w-[200px] max-h-[300px] overflow-y-auto">
+          <DropdownContent className="right-0 left-auto min-w-[240px] max-h-[300px] overflow-y-auto">
             {/* Ascending Toggle */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
               <span className="text-xs font-medium text-text-primary">Sort by</span>
@@ -168,7 +168,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
                       inputClassName="w-3.5 h-3.5"
                     />
                   </div>
-                  <span className="text-xs text-left">{col}</span>
+                  <span className="text-sm text-left">{col}</span>
                 </DropdownItem>
               );
             })}
@@ -190,37 +190,37 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
 
       {/* Column Dropdown */}
       <div className="relative">
-        <Dropdown open={showColumnDropdown} onOpenChange={setShowColumnDropdown} align="end">
+        <Dropdown open={showColumnDropdown} onOpenChange={setShowColumnDropdown} align="start">
           <DropdownTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1 px-2 py-1 text-xs h-7">
+            <Button variant="outline" className="gap-1 px-3 text-xs h-9">
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span>Column</span>
             </Button>
           </DropdownTrigger>
-          <DropdownContent className="right-0 left-auto min-w-[200px] max-h-[300px] overflow-y-auto">
+          <DropdownContent className="right-0 left-auto min-w-[240px] max-h-[300px] overflow-y-auto">
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
               <span className="text-xs font-medium text-text-primary">Manage columns</span>
               <button
                 onClick={() => {
-                  const allVisible = availableColumns.every(col => columnVisibility[col] !== false);
+                  const allVisible = availableColumns.every(
+                    (col) => columnVisibility[col] !== false,
+                  );
                   const newVisibility: Record<string, boolean> = {};
-                  availableColumns.forEach(col => {
+                  availableColumns.forEach((col) => {
                     newVisibility[col] = !allVisible;
                   });
                   onColumnVisibilityChange(newVisibility);
                 }}
                 className={cn(
                   'flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors',
-                  availableColumns.every(col => columnVisibility[col] !== false)
+                  availableColumns.every((col) => columnVisibility[col] !== false)
                     ? 'bg-primary/20 text-primary'
                     : 'bg-card-background text-text-secondary border border-border',
                 )}
               >
-                {availableColumns.every(col => columnVisibility[col] !== false) ? (
-                  'Hide all'
-                ) : (
-                  'Show all'
-                )}
+                {availableColumns.every((col) => columnVisibility[col] !== false)
+                  ? 'Hide all'
+                  : 'Show all'}
               </button>
             </div>
             <div className="px-2 py-1 border-b border-border">
@@ -258,7 +258,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
                         <EyeOff className="w-3.5 h-3.5 text-text-secondary" />
                       )}
                     </div>
-                    <span className="text-xs text-left">{col}</span>
+                    <span className="text-sm text-left">{col}</span>
                     <div className="flex items-center justify-center w-4 h-4 justify-self-center">
                       <GripVertical className="w-3.5 h-3.5 text-text-secondary opacity-40 cursor-grab" />
                     </div>
@@ -273,7 +273,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
       {onRefresh && (
         <button
           onClick={onRefresh}
-          className="flex items-center justify-center size-7 rounded-md border border-border bg-button-outline text-button-outline-text hover:text-button-outline-hover-text hover:border-button-outline-hover-border hover:bg-button-outline-hover transition-colors"
+          className="flex items-center justify-center size-9 rounded-md border border-border bg-button-outline text-button-outline-text hover:text-button-outline-hover-text hover:border-button-outline-hover-border hover:bg-button-outline-hover transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className="w-3.5 h-3.5" />

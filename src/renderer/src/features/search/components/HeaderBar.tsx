@@ -4,7 +4,7 @@ import { SmartView } from '../types/search';
 import SearchToolbar from './SearchToolbar';
 import { SortingState } from '@tanstack/react-table';
 
-interface SearchTopNavbarProps {
+interface HeaderBarProps {
   selectedView: SmartView | null;
   onReset: () => void;
   searchQuery: string;
@@ -18,10 +18,11 @@ interface SearchTopNavbarProps {
   columnVisibility: Record<string, boolean>;
   onColumnVisibilityChange: (visibility: Record<string, boolean>) => void;
   totalRecords: number;
+  onRefresh?: () => void;
 }
 
-const SearchTopNavbar: FC<SearchTopNavbarProps> = ({ 
-  selectedView, 
+const HeaderBar: FC<HeaderBarProps> = ({
+  selectedView,
   onReset,
   searchQuery,
   onSearchChange,
@@ -34,6 +35,7 @@ const SearchTopNavbar: FC<SearchTopNavbarProps> = ({
   columnVisibility,
   onColumnVisibilityChange,
   totalRecords,
+  onRefresh,
 }) => {
   return (
     <header className="h-[48px] shrink-0 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-30 transition-all duration-500">
@@ -42,11 +44,11 @@ const SearchTopNavbar: FC<SearchTopNavbarProps> = ({
           <LayoutDashboard className="w-5 h-5" />
         </button>
         <ChevronRight className="w-4 h-4 text-text-primary" />
-        <span className="text-text-primary text-base font-bold">Search</span>
+        <span className="text-text-primary text-sm font-semibold">Search</span>
         {selectedView && (
           <>
             <ChevronRight className="w-4 h-4 text-text-secondary" />
-            <span className="text-text-primary text-base font-bold">
+            <span className="text-text-primary text-sm font-semibold">
               {selectedView.name}
             </span>
           </>
@@ -63,6 +65,7 @@ const SearchTopNavbar: FC<SearchTopNavbarProps> = ({
           columnVisibility={columnVisibility}
           onColumnVisibilityChange={onColumnVisibilityChange}
           totalRecords={totalRecords}
+          onRefresh={onRefresh}
         />
         <div className="relative w-64 shrink-0">
           <input
@@ -78,4 +81,4 @@ const SearchTopNavbar: FC<SearchTopNavbarProps> = ({
   );
 };
 
-export default SearchTopNavbar;
+export default HeaderBar;

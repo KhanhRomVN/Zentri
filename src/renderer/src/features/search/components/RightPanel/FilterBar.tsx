@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '../../../components/ui/Button';
+import { Button } from '../../../../components/ui/Button';
 import {
   Dropdown,
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
-} from '../../../components/ui/Dropdown';
-import { Tooltip } from '../../../components/ui/Tooltip';
-import { Input } from '../../../components/ui/Input';
+} from '../../../../components/ui/Dropdown';
+import { Tooltip } from '../../../../components/ui/Tooltip';
+import { Input } from '../../../../components/ui/Input';
 import { X, ChevronDown } from 'lucide-react';
-import { OPERATORS, OPERATOR_DESCRIPTIONS, FilterCondition, Operator } from '../../../constants/operators';
+import {
+  OPERATORS,
+  OPERATOR_DESCRIPTIONS,
+  FilterCondition,
+  Operator,
+} from '../../../../constants/operators';
 
 interface FilterBarProps {
   filters: FilterCondition[];
@@ -28,7 +33,9 @@ interface FilterRowProps {
 }
 
 const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemove, onUpdate }) => {
-  const [editColumn, setEditColumn] = useState(filter.column || (availableColumns.length > 0 ? availableColumns[0] : ''));
+  const [editColumn, setEditColumn] = useState(
+    filter.column || (availableColumns.length > 0 ? availableColumns[0] : ''),
+  );
   const [editOperator, setEditOperator] = useState<Operator>(filter.operator || 'equals');
   const [editValue, setEditValue] = useState(filter.value || '');
   const [hasChanges, setHasChanges] = useState(false);
@@ -55,15 +62,15 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
         variant="outline"
         size="sm"
         onClick={() => onRemove(filter.id)}
-        className="h-7 w-7 p-0 shrink-0"
+        className="h-9 w-9 p-0 shrink-0"
       >
         <X className="w-3.5 h-3.5" />
       </Button>
-      <span className="text-xs text-text-secondary font-medium w-10 shrink-0">and</span>
+      <span className="text-sm text-text-secondary font-medium w-10 shrink-0">and</span>
       <div className="flex items-center gap-2 flex-1">
         <Dropdown>
           <DropdownTrigger asChild>
-            <Button variant="outline" size="sm" className="h-7 justify-between min-w-[120px]">
+            <Button variant="outline" size="sm" className="h-9 justify-between min-w-[120px] text-sm">
               <span>{editColumn || 'Select column'}</span>
               <ChevronDown className="w-3.5 h-3.5" />
             </Button>
@@ -98,14 +105,19 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
 
         <Dropdown>
           <DropdownTrigger asChild>
-            <Button variant="outline" size="sm" className="h-7 justify-between min-w-[100px]">
+            <Button variant="outline" size="sm" className="h-9 justify-between min-w-[100px] text-sm">
               <span>{OPERATORS.find((o) => o.value === editOperator)?.label || 'Operator'}</span>
               <ChevronDown className="w-3.5 h-3.5" />
             </Button>
           </DropdownTrigger>
           <DropdownContent className="min-w-[120px]">
             {OPERATORS.map((op) => (
-              <Tooltip key={op.value} content={OPERATOR_DESCRIPTIONS[op.value] || op.label} side="right" align="center">
+              <Tooltip
+                key={op.value}
+                content={OPERATOR_DESCRIPTIONS[op.value] || op.label}
+                side="right"
+                align="center"
+              >
                 <DropdownItem
                   onClick={() => {
                     setEditOperator(op.value);
@@ -127,12 +139,12 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
             setHasChanges(true);
           }}
           placeholder="Value..."
-          className="h-7 text-xs min-w-[120px] flex-1"
+          className="h-9 text-sm min-w-[120px] flex-1"
           onKeyDown={(e) => e.key === 'Enter' && handleUpdate()}
         />
 
         {hasChanges && (
-          <Button variant="solid" size="sm" onClick={handleUpdate} className="h-7 text-xs">
+          <Button variant="solid" size="sm" onClick={handleUpdate} className="h-9 text-sm">
             Apply
           </Button>
         )}
@@ -180,17 +192,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             variant="outline"
             size="sm"
             onClick={onClearFilters}
-            className="h-7 w-7 p-0 shrink-0"
+            className="h-9 w-9 p-0 shrink-0"
             aria-label="Clear all filters"
           >
             <X className="w-3.5 h-3.5" />
           </Button>
         )}
-        <span className="text-xs text-text-secondary font-medium w-10 shrink-0">where</span>
+        <span className="text-sm text-text-secondary font-medium w-10 shrink-0">where</span>
         <div className="flex items-center gap-2 flex-1">
           <Dropdown>
             <DropdownTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 justify-between min-w-[120px]">
+              <Button variant="outline" size="sm" className="h-9 justify-between min-w-[120px] text-sm">
                 <span>{newFilterColumn || 'Select column'}</span>
                 <ChevronDown className="w-3.5 h-3.5" />
               </Button>
@@ -224,7 +236,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           <Dropdown>
             <DropdownTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 justify-between min-w-[100px]">
+              <Button variant="outline" size="sm" className="h-9 justify-between min-w-[100px] text-sm">
                 <span>
                   {OPERATORS.find((o) => o.value === newFilterOperator)?.label || 'Operator'}
                 </span>
@@ -233,11 +245,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </DropdownTrigger>
             <DropdownContent className="min-w-[120px]">
               {OPERATORS.map((op) => (
-                <Tooltip key={op.value} content={OPERATOR_DESCRIPTIONS[op.value] || op.label} side="right" align="center">
-                  <DropdownItem
-                    onClick={() => setNewFilterOperator(op.value)}
-                    className="text-xs"
-                  >
+                <Tooltip
+                  key={op.value}
+                  content={OPERATOR_DESCRIPTIONS[op.value] || op.label}
+                  side="right"
+                  align="center"
+                >
+                  <DropdownItem onClick={() => setNewFilterOperator(op.value)} className="text-xs">
                     {op.label}
                   </DropdownItem>
                 </Tooltip>
@@ -252,17 +266,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               setHasChanges(true);
             }}
             placeholder="Value..."
-            className="h-7 text-xs min-w-[120px] flex-1"
+            className="h-9 text-sm min-w-[120px] flex-1"
             onKeyDown={(e) => e.key === 'Enter' && handleApplyFilter()}
           />
 
           {hasChanges && (
-            <Button variant="solid" size="sm" onClick={handleApplyFilter} className="h-7 text-xs">
+            <Button variant="solid" size="sm" onClick={handleApplyFilter} className="h-9 text-sm">
               Apply
             </Button>
           )}
 
-          <Button variant="outline" size="sm" onClick={handleApplyFilter} className="h-7 text-xs">
+          <Button variant="outline" size="sm" onClick={handleApplyFilter} className="h-9 text-sm">
             Add filter
           </Button>
         </div>
@@ -277,10 +291,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               filter={f}
               availableColumns={availableColumns}
               onRemove={onRemoveFilter}
-              onUpdate={onUpdateFilter || ((id, column, operator, value) => {
-                onRemoveFilter(id);
-                onAddFilter(column, operator, value);
-              })}
+              onUpdate={
+                onUpdateFilter ||
+                ((id, column, operator, value) => {
+                  onRemoveFilter(id);
+                  onAddFilter(column, operator, value);
+                })
+              }
             />
           ))}
         </div>

@@ -1,55 +1,6 @@
-import { FC, useState, useEffect, useCallback, useMemo } from 'react';
+import { FC, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Table as TableIcon,
-  Mail,
-  Users,
-  Database,
-  Star,
-  Heart,
-  Zap,
-  Shield,
-  Globe,
-  Key,
-  Lock,
-  Bell,
-  Calendar,
-  Clock,
-  Tag,
-  Award,
-  Bookmark,
-  Camera,
-  Cloud,
-  Code,
-  Eye,
-  Flag,
-  Gift,
-  Hash,
-  Home,
-  Image,
-  Link,
-  Map,
-  Moon,
-  Music,
-  Package,
-  Phone,
-  Power,
-  Settings,
-  Sun,
-  Target,
-  Truck,
-  User,
-  Video,
-  Wifi,
-  Wind,
-  Layers,
-  Command,
-  Crown,
-  Feather,
-  TrendingUp,
-  Umbrella,
-  GripVertical,
-} from 'lucide-react';
+import { Table as TableIcon, GripVertical } from 'lucide-react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -71,65 +22,14 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { SmartView } from '../types/search';
-import { useAccentColors } from '../../../hooks/useAccentColors';
-import { FilterCondition } from '../../../constants/operators';
-import { cn } from '../../../shared/lib/utils';
+import { SmartView } from '../../types/search';
+import { useAccentColors } from '@renderer/hooks/useAccentColors';
+import { getFieldValue, getViewColor, setAccentColorsCache } from '@renderer/utils/searchHelpers';
+import { cn } from '@renderer/shared/lib/utils';
+import { FilterCondition } from '@renderer/constants';
 
-// Icon map: name → component
-const ICON_MAP: Record<string, React.ComponentType<any>> = {
-  Mail,
-  Users,
-  Database,
-  Star,
-  Heart,
-  Zap,
-  Shield,
-  Globe,
-  Key,
-  Lock,
-  Bell,
-  Calendar,
-  Clock,
-  Tag,
-  Award,
-  Bookmark,
-  Camera,
-  Cloud,
-  Code,
-  Eye,
-  Flag,
-  Gift,
-  Hash,
-  Home,
-  Image,
-  Link,
-  Map,
-  Moon,
-  Music,
-  Package,
-  Phone,
-  Power,
-  Settings,
-  Sun,
-  TableIcon,
-  Target,
-  Truck,
-  User,
-  Video,
-  Wifi,
-  Wind,
-  Layers,
-  Command,
-  Crown,
-  Feather,
-  TrendingUp,
-  Umbrella,
-};
-
-interface SearchContentViewProps {
+interface DataTableProps {
   selectedView: SmartView | null;
-  onOpenAddView: () => void;
   searchQuery: string;
   sorting: SortingState;
   onSortingChange: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
@@ -146,91 +46,11 @@ interface SearchContentViewProps {
     updater: ColumnOrderState | ((old: ColumnOrderState) => ColumnOrderState),
   ) => void;
   filters: FilterCondition[];
-  onRefresh?: () => void;
+  data: any[];
+  loading: boolean;
+  onOpenAddView: () => void;
 }
 
-let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
-let unifiedAccentCache = 'rgb(54, 134, 255)';
-
-const setAccentColorsForSearch = (colors: string[], unified: string) => {
-  accentColorsCache = colors.length > 0 ? colors : [unified];
-  unifiedAccentCache = unified;
-};
-
-const getViewColor = (viewId: string) => {
-  let hash = 0;
-  for (let i = 0; i < viewId.length; i++) {
-    hash = viewId.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % accentColorsCache.length;
-  const color = accentColorsCache[index] || accentColorsCache[0] || unifiedAccentCache;
-  const rgbMatch = color.match(/\d+/g);
-  if (rgbMatch && rgbMatch.length >= 3) {
-    const r = rgbMatch[0],
-      g = rgbMatch[1],
-      b = rgbMatch[2];
-    return {
-      base: color,
-      bg: `rgba(${r}, ${g}, ${b}, 0.08)`,
-      border: `rgba(${r}, ${g}, ${b}, 0.2)`,
-    };
-  }
-  return { base: color, bg: 'var(--sidebar-item-hover)', border: 'var(--divider)' };
-};
-
-// ─── Helpers to resolve field values from a row ────────────────────────────
-const getFieldValue = (row: any, field: string): string => {
-  if (!field || field === '_stt') return '';
-
-  // Direct email fields
-  const emailFields = [
-    'email',
-    'password',
-    'recoveryEmail',
-    'phoneNumber',
-    'status',
-    'createdAt',
-    'lastUsedAt',
-    'totpSecretKey',
-  ];
-  if (emailFields.includes(field)) {
-    const val = row[field];
-    if (val === null || val === undefined) return '—';
-    if (field === 'createdAt' || field === 'lastUsedAt') {
-      try {
-        return new Date(val).toLocaleDateString();
-      } catch {
-        return String(val);
-      }
-    }
-    return String(val);
-  }
-
-  // Service fields (from linked services)
-  if (field.startsWith('services.')) {
-    const serviceField = field.replace('services.', '');
-    const services = row._services || [];
-    if (services.length === 0) return '—';
-    const firstService = services[0];
-    const val = firstService[serviceField];
-    if (val === null || val === undefined) return '—';
-    return String(val);
-  }
-
-  // Proxy fields
-  if (field.startsWith('proxy.')) {
-    const proxyField = field.replace('proxy.', '');
-    const proxy = row._proxy;
-    if (!proxy) return '—';
-    const val = proxy[proxyField];
-    if (val === null || val === undefined) return '—';
-    return String(val);
-  }
-
-  return '—';
-};
-
-// ─── Draggable Header Component ─────────────────────────────────────────────
 interface DraggableHeaderProps {
   header: any;
   viewColor: any;
@@ -260,13 +80,6 @@ const DraggableHeader: FC<DraggableHeaderProps> = ({ header, viewColor }) => {
       )}
     >
       <div className="flex items-center gap-1">
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab hover:text-primary/70 transition-colors"
-        >
-          <GripVertical className="w-3 h-3 text-text-secondary/50" />
-        </div>
         <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
       </div>
       {header.column.getCanResize() && (
@@ -289,8 +102,7 @@ const DraggableHeader: FC<DraggableHeaderProps> = ({ header, viewColor }) => {
   );
 };
 
-// ─── Main Component ──────────────────────────────────────────────────────────
-const SearchContentView: FC<SearchContentViewProps> = ({
+const DataTable: FC<DataTableProps> = ({
   selectedView,
   searchQuery,
   sorting,
@@ -302,15 +114,14 @@ const SearchContentView: FC<SearchContentViewProps> = ({
   columnOrder,
   onColumnOrderChange,
   filters,
-  onRefresh,
+  data,
+  loading,
+  onOpenAddView,
 }) => {
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
-  const [rows, setRows] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [avatars, setAvatars] = useState<Record<string, string>>({});
 
   if (typeof accentColors !== 'undefined' && accentColors.length > 0) {
-    setAccentColorsForSearch(accentColors, UNIFIED_ACCENT);
+    setAccentColorsCache(accentColors, UNIFIED_ACCENT);
   }
 
   const viewColor = selectedView ? getViewColor(selectedView.id) : null;
@@ -325,124 +136,12 @@ const SearchContentView: FC<SearchContentViewProps> = ({
     useSensor(KeyboardSensor),
   );
 
-  // ─── Fetch data when selectedView changes ──────────────────────────────
-  const loadData = useCallback(async () => {
-    if (!selectedView) return;
-    setLoading(true);
-    try {
-      let emailRows: any[] = [];
-      let serviceLinks: any[] = [];
-
-      if (selectedView.source === 'service' && selectedView.serviceId) {
-        const [rows, links] = await Promise.all([
-          window.electron.ipcRenderer.invoke(
-            'sqlite:all',
-            `SELECT e.* FROM emails e
-             JOIN service_emails se ON se.email_id = e.id
-             WHERE se.service_id = ?
-             ORDER BY e.created_at DESC`,
-            [selectedView.serviceId],
-          ),
-          window.electron.ipcRenderer.invoke(
-            'sqlite:all',
-            `SELECT se.*, s.name as serviceName, s.url as serviceUrl
-             FROM service_emails se 
-             JOIN services s ON se.service_id = s.id
-             WHERE se.service_id = ?`,
-            [selectedView.serviceId],
-          ),
-        ]);
-        emailRows = rows || [];
-        serviceLinks = links || [];
-      } else {
-        [emailRows, serviceLinks] = await Promise.all([
-          window.electron.ipcRenderer.invoke(
-            'sqlite:all',
-            'SELECT * FROM emails ORDER BY created_at DESC',
-          ),
-          window.electron.ipcRenderer.invoke(
-            'sqlite:all',
-            `SELECT se.*, s.name as serviceName, s.url as serviceUrl
-             FROM service_emails se 
-             JOIN services s ON se.service_id = s.id`,
-          ),
-        ]);
-      }
-
-      const rowsWithServices = (emailRows || []).map((row: any) => {
-        const linkedServices = (serviceLinks || [])
-          .filter((link: any) => link.email_id === row.id)
-          .map((link: any) => ({
-            name: link.serviceName,
-            url: link.serviceUrl,
-            username: link.username,
-            password: link.password,
-            notes: link.notes,
-          }));
-        return {
-          ...row,
-          _services: linkedServices,
-          _proxy: row.proxyHost
-            ? {
-                host: row.proxyHost,
-                port: row.proxyPort,
-                protocol: row.proxyProtocol,
-                country: row.proxyCountry,
-                city: row.proxyCity,
-              }
-            : null,
-        };
-      });
-
-      setRows(rowsWithServices);
-    } catch (err) {
-      console.error('Failed to load search data:', err);
-      setRows([]);
-    }
-    setLoading(false);
-  }, [selectedView]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Fetch avatars for email rows
-  useEffect(() => {
-    const fetchAvatars = async () => {
-      const newAvatars: Record<string, string> = { ...avatars };
-      let changed = false;
-      for (const row of rows) {
-        if (row.email && !newAvatars[row.email]) {
-          try {
-            const avatarUrl = await window.electron.ipcRenderer.invoke('email:get-avatar', {
-              email: row.email,
-            });
-            if (avatarUrl) {
-              newAvatars[row.email] = avatarUrl;
-              changed = true;
-            } else {
-              const seed = row.email.split('@')[0];
-              newAvatars[row.email] = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
-              changed = true;
-            }
-          } catch {
-            const seed = row.email.split('@')[0];
-            newAvatars[row.email] = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
-            changed = true;
-          }
-        }
-      }
-      if (changed) setAvatars(newAvatars);
-    };
-    if (rows.length > 0) fetchAvatars();
-  }, [rows]);
-
   // ─── Apply filters ────────────────────────────────────────────────────────
   const applyFilters = useCallback(
-    (data: any[]) => {
-      if (filters.length === 0) return data;
+    (rows: any[]) => {
+      if (filters.length === 0) return rows;
 
-      return data.filter((row) => {
+      return rows.filter((row) => {
         return filters.every((filter) => {
           const fieldValue = getFieldValue(row, filter.column);
           if (fieldValue === '—' || fieldValue === null || fieldValue === undefined) {
@@ -478,10 +177,10 @@ const SearchContentView: FC<SearchContentViewProps> = ({
 
   // ─── Apply search query ──────────────────────────────────────────────────
   const applySearch = useCallback(
-    (data: any[]) => {
-      if (!searchQuery) return data;
+    (rows: any[]) => {
+      if (!searchQuery) return rows;
       const visibleCols = selectedView?.columns.filter((c) => c.isVisible) || [];
-      return data.filter((row) => {
+      return rows.filter((row) => {
         return visibleCols.some((col) => {
           const val = getFieldValue(row, col.field || '');
           return val.toLowerCase().includes(searchQuery.toLowerCase());
@@ -527,11 +226,11 @@ const SearchContentView: FC<SearchContentViewProps> = ({
 
   // ─── Process data ────────────────────────────────────────────────────────
   const processedData = useMemo(() => {
-    let data = rows;
-    data = applyFilters(data);
-    data = applySearch(data);
-    return data;
-  }, [rows, applyFilters, applySearch]);
+    let rows = data;
+    rows = applyFilters(rows);
+    rows = applySearch(rows);
+    return rows;
+  }, [data, applyFilters, applySearch]);
 
   // ─── TanStack Table ──────────────────────────────────────────────────────
   const table = useReactTable({
@@ -674,4 +373,4 @@ const SearchContentView: FC<SearchContentViewProps> = ({
   );
 };
 
-export default SearchContentView;
+export default DataTable;

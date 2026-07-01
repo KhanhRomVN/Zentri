@@ -1,14 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import SearchSidebar from './components/SearchSidebar';
-import SearchTopNavbar from './components/SearchTopNavbar';
-import SearchContentView from './components/SearchContentView';
-import SearchToolbar from './components/SearchToolbar';
-import FilterBar from './components/FilterBar';
+import LeftPanel from './components/LeftPanel';
+import RightPanel from './components/RightPanel/RightPanel';
+import HeaderBar from './components/HeaderBar';
+import ViewEditorDrawer from './components/view-editor/ViewEditorDrawer';
 import { SmartView } from './types/search';
-import SmartViewBuilder from './components/SmartViewBuilder';
 import { useSearchTableState } from './hooks/useSearchTableState';
 import { useSearchFilter } from './hooks/useSearchFilter';
+import useSearchData from '../../hooks/useSearchData';
 
 const STORAGE_KEY = 'zentri_search_views';
 const CACHE_KEY = 'zentri_search_recent';
@@ -75,6 +73,12 @@ const SearchManager = () => {
       viewId: selectedViewId,
       availableColumns,
     });
+
+  // Data state
+  const { data, loading, refresh } = useSearchData({
+    selectedView,
+    autoLoad: true,
+  });
 
   // Load views from storage + fetch services on mount
   useEffect(() => {
@@ -304,7 +308,7 @@ const SearchManager = () => {
 
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10">
-      <SearchTopNavbar
+      <HeaderBar
         selectedView={selectedView}
         onReset={resetSelection}
         searchQuery={tableSearch}
@@ -317,11 +321,12 @@ const SearchManager = () => {
         availableColumns={availableColumns}
         columnVisibility={columnVisibility}
         onColumnVisibilityChange={setColumnVisibility}
-        totalRecords={0}
+        totalRecords={data.length}
+        onRefresh={refresh}
       />
 
       <div className="flex-1 flex overflow-hidden">
-        <SearchSidebar
+        <LeftPanel
           views={views}
           selectedViewId={selectedViewId}
           onSelectView={handleSelectView}
@@ -331,41 +336,34 @@ const SearchManager = () => {
           onFavoriteView={handleFavoriteView}
         />
 
-        <div className="flex-1 flex flex-col min-w-0 bg-card/5 backdrop-blur-sm relative z-10 transition-all duration-500">
-          {showFilterBar && (
-            <FilterBar
-              filters={filters}
-              availableColumns={availableColumns}
-              onAddFilter={addFilter}
-              onRemoveFilter={removeFilter}
-              onClearFilters={clearFilters}
-              onUpdateFilter={updateFilter}
-            />
-          )}
-
-          <main className="flex-1 overflow-hidden relative text-foreground flex flex-col">
-            <AnimatePresence mode="wait">
-              <SearchContentView
-                key={selectedViewId || 'empty'}
-                selectedView={selectedView}
-                onOpenAddView={() => setIsBuilderOpen(true)}
-                searchQuery={tableSearch}
-                sorting={sorting}
-                onSortingChange={setSorting}
-                columnVisibility={columnVisibility}
-                onColumnVisibilityChange={setColumnVisibility}
-                columnSizing={columnSizing}
-                onColumnSizingChange={setColumnSizing}
-                columnOrder={columnOrder}
-                onColumnOrderChange={setColumnOrder}
-                filters={filters}
-              />
-            </AnimatePresence>
-          </main>
-        </div>
+        <RightPanel
+          selectedView={selectedView}
+          searchQuery={tableSearch}
+          filters={filters}
+          filterCount={filterCount}
+          showFilterBar={showFilterBar}
+          onToggleFilterBar={() => setShowFilterBar(!showFilterBar)}
+          onAddFilter={addFilter}
+          onRemoveFilter={removeFilter}
+          onClearFilters={clearFilters}
+          onUpdateFilter={updateFilter}
+          sorting={sorting}
+          onSortingChange={setSorting}
+          availableColumns={availableColumns}
+          columnVisibility={columnVisibility}
+          onColumnVisibilityChange={setColumnVisibility}
+          columnSizing={columnSizing}
+          onColumnSizingChange={setColumnSizing}
+          columnOrder={columnOrder}
+          onColumnOrderChange={setColumnOrder}
+          data={data}
+          loading={loading}
+          onRefresh={refresh}
+          onOpenAddView={() => setIsBuilderOpen(true)}
+        />
       </div>
 
-      <SmartViewBuilder
+      <ViewEditorDrawer
         isOpen={isBuilderOpen}
         onClose={handleCloseBuilder}
         onSave={handleCreateView}

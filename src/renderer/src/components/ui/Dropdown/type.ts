@@ -10,7 +10,6 @@ export interface DropdownProps {
   disableAutoFlip?: boolean;
   strategy?: 'fixed' | 'relative';
   className?: string;
-  trigger?: 'click' | 'contextmenu';
 }
 
 export interface DropdownTriggerProps {

@@ -62,7 +62,7 @@ import {
   DropdownItem,
 } from '../../../components/ui/Dropdown';
 
-// Icon map: name → component (mirrored from SmartViewBuilder)
+// Icon map: name → component
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Mail,
   Users,
@@ -113,7 +113,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Umbrella,
 };
 
-interface SearchSidebarProps {
+interface LeftPanelProps {
   selectedViewId: string | null;
   onSelectView: (id: string) => void;
   views: SmartView[];
@@ -127,7 +127,7 @@ interface SearchSidebarProps {
 let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
 let unifiedAccentCache = 'rgb(54, 134, 255)';
 
-const setAccentColorsForSearchSidebar = (colors: string[], unified: string) => {
+const setAccentColorsForLeftPanel = (colors: string[], unified: string) => {
   accentColorsCache = colors.length > 0 ? colors : [unified];
   unifiedAccentCache = unified;
 };
@@ -160,7 +160,7 @@ const getItemColor = (id: string) => {
   };
 };
 
-const SearchSidebar: FC<SearchSidebarProps> = ({
+const LeftPanel: FC<LeftPanelProps> = ({
   selectedViewId,
   onSelectView,
   views,
@@ -174,7 +174,7 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
 
   // Update the global color cache for getItemColor
   if (typeof accentColors !== 'undefined' && accentColors.length > 0) {
-    setAccentColorsForSearchSidebar(accentColors, UNIFIED_ACCENT);
+    setAccentColorsForLeftPanel(accentColors, UNIFIED_ACCENT);
   }
 
   // Views are already sorted by SearchManager (manual > service, favorites, recent, account count, alphabetical)
@@ -309,4 +309,4 @@ const SearchSidebar: FC<SearchSidebarProps> = ({
   );
 };
 
-export default SearchSidebar;
+export default LeftPanel;

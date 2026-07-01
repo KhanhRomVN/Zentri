@@ -29,7 +29,6 @@ export function Dropdown({
   disableAutoFlip = false,
   strategy = 'fixed',
   className,
-  trigger = 'click',
 }: DropdownProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -234,7 +233,7 @@ export function Dropdown({
   }, [open, strategy]);
 
   const childrenArray = React.Children.toArray(children);
-  const triggerElement = childrenArray.find(
+  const trigger = childrenArray.find(
     (child) =>
       React.isValidElement(child) && (child.type as any)?.displayName === 'DropdownTrigger',
   );
@@ -290,19 +289,8 @@ export function Dropdown({
   return (
     <DropdownContext.Provider value={{ close }}>
       <div className={cn('relative inline-block', className)}>
-        <div
-          ref={triggerRef}
-          onClick={trigger === 'click' ? () => setOpen(!open) : undefined}
-          onContextMenu={
-            trigger === 'contextmenu'
-              ? (e) => {
-                  e.preventDefault();
-                  setOpen(!open);
-                }
-              : undefined
-          }
-        >
-          {triggerElement}
+        <div ref={triggerRef} onClick={() => setOpen(!open)}>
+          {trigger}
         </div>
         {open && content && (
           <>
