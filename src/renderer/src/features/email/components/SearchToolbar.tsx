@@ -12,6 +12,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 import {
@@ -35,6 +36,7 @@ interface SearchToolbarProps {
   columnVisibility: Record<string, boolean>;
   onColumnVisibilityChange: (visibility: Record<string, boolean>) => void;
   onRefresh?: () => void;
+  onAddAccount?: () => void;
   totalRecords: number;
   currentPage: number;
   totalPages: number;
@@ -53,6 +55,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
   columnVisibility,
   onColumnVisibilityChange,
   onRefresh,
+  onAddAccount,
   totalRecords,
   currentPage,
   totalPages,
@@ -74,7 +77,6 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
       {/* Filter Button */}
       <Button
         variant="outline"
-        size="sm"
         onClick={onToggleFilterBar}
         className={cn(
           'gap-1 px-3 text-sm h-7',
@@ -94,7 +96,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
       <div className="relative">
         <Dropdown open={showSortDropdown} onOpenChange={setShowSortDropdown} align="start">
           <DropdownTrigger asChild>
-<Button variant="outline" size="sm" className="gap-1 px-3 text-sm h-7">
+            <Button variant="outline" size="sm" className="gap-1 px-3 text-sm h-7">
               <ArrowUpDown className="w-3.5 h-3.5" />
               <span>Sort</span>
               {sorting.length > 0 && (
@@ -180,7 +182,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
                       inputClassName="w-3.5 h-3.5"
                     />
                   </div>
-                  <span className="text-sm text-left">{col === '_stt' ? 'STT' : col}</span>
+                  <span className="text-sm text-left">{col}</span>
                 </DropdownItem>
               );
             })}
@@ -270,7 +272,7 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
                         <EyeOff className="w-3.5 h-3.5 text-text-secondary" />
                       )}
                     </div>
-                    <span className="text-sm text-left">{col === '_stt' ? 'STT' : col}</span>
+                    <span className="text-sm text-left">{col}</span>
                     <div className="flex items-center justify-center w-4 h-4 justify-self-center">
                       <GripVertical className="w-3.5 h-3.5 text-text-secondary opacity-40 cursor-grab" />
                     </div>
@@ -296,7 +298,8 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
           </button>
           <div className="flex items-center h-7 px-1.5 border-y border-border bg-background/50">
             <span className="text-xs text-text-secondary tabular-nums">
-              {totalRecords > 0 ? (startRecord ?? 0) : 0} - {totalRecords > 0 ? (endRecord ?? 0) : 0}
+              {totalRecords > 0 ? (startRecord ?? 0) : 0} -{' '}
+              {totalRecords > 0 ? (endRecord ?? 0) : 0}
             </span>
             <span className="text-xs text-text-secondary mx-1">of</span>
             <span className="text-xs text-text-secondary tabular-nums">{totalRecords}</span>
@@ -322,6 +325,17 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
           aria-label="Refresh"
         >
           <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+      )}
+
+      {/* Add Account Button */}
+      {onAddAccount && (
+        <button
+          onClick={onAddAccount}
+          className="flex items-center justify-center size-7 rounded-md border border-border bg-card-background text-text-secondary hover:text-primary hover:bg-primary/30 transition-all active:scale-90 group"
+          title="Add Account"
+        >
+          <Plus className="w-4 h-4 transition-transform group-hover:rotate-90 duration-500" />
         </button>
       )}
     </div>

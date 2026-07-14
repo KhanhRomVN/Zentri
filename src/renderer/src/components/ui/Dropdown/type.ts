@@ -10,6 +10,9 @@ export interface DropdownProps {
   disableAutoFlip?: boolean;
   strategy?: 'fixed' | 'relative';
   className?: string;
+  trigger?: 'click' | 'contextmenu';
+  /** Manual position override for fixed strategy (e.g., for context menus at cursor position) */
+  position?: { top: number; left: number };
 }
 
 export interface DropdownTriggerProps {

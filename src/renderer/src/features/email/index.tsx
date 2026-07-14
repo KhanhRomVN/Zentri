@@ -1,6 +1,11 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { useHashParams } from '../../hooks/useHashParams';
 import EmailTable from './components/EmailTable';
+import SearchToolbar from './components/SearchToolbar';
+import FilterBar from './components/FilterBar';
+import BookmarkTab from './components/tabs/BookmarkTab';
+import { useEmailTableState } from './hooks/useEmailTableState';
+import { useEmailFilter } from './hooks/useEmailFilter';
 import {
   Plus,
   Mail,
@@ -20,6 +25,26 @@ import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components
 import { Button } from '../../components/ui/Button';
 import { Account } from './types';
 import { v4 as uuidv4 } from 'uuid';
+
+// Helper to get field value from account
+const getFieldValue = (account: any, field: string): string => {
+  switch (field) {
+    case 'Email':
+      return account.email || '';
+    case 'Password':
+      return account.password || '';
+    case 'Recovery Email':
+      return account.recoveryEmail || '';
+    case 'Phone Number':
+      return account.phoneNumber || '';
+    case 'Last Activity':
+      return account.lastActivity?.title || account.lastActivity?.url || '';
+    case 'Last Proxy':
+      return account.lastProxy?.host || '';
+    default:
+      return '';
+  }
+};
 
 const diffChars = (oldStr: string, newStr: string) => {
   let commonPrefix = 0;
@@ -90,8 +115,9 @@ const EmailManager = () => {
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
-  const statusFilter = 'all';
-  const providerFilter = 'all';
+  const [showFilterBar, setShowFilterBar] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +136,114 @@ const EmailManager = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [focusedAccountId, setFocusedAccountId] = useState<string | null>(null);
+
+  // Available columns for filter/sort
+  const availableColumns = useMemo(() => {
+    return ['Email', 'Last Activity', 'Last Proxy', 'Password', 'Recovery Email', 'Phone Number'];
+  }, []);
+
+  // Table state
+  const {
+    sorting,
+    setSorting,
+    columnVisibility,
+    setColumnVisibility,
+    columnSizing,
+    setColumnSizing,
+    columnOrder,
+    setColumnOrder,
+  } = useEmailTableState({
+    viewId: null,
+    defaultColumns: availableColumns,
+  });
+
+  // Filter state
+  const { filters, addFilter, removeFilter, clearFilters, updateFilter, filterCount } =
+    useEmailFilter({
+      viewId: null,
+      availableColumns,
+    });
+
+  const filteredAccounts = useMemo(() => {
+    let result = accounts.filter((account) => {
+      const matchesSearch =
+        account.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        account.recoveryEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        account.phoneNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchesSearch;
+    });
+
+    // Apply filters
+    if (filters.length > 0) {
+      result = result.filter((account) => {
+        return filters.every((filter) => {
+          const fieldValue = getFieldValue(account, filter.column);
+          if (fieldValue === '—' || fieldValue === null || fieldValue === undefined) {
+            return filter.operator === 'not_equal';
+          }
+
+          const strValue = String(fieldValue).toLowerCase();
+          const searchValue = filter.value.toLowerCase();
+
+          switch (filter.operator) {
+            case 'equals':
+              return strValue === searchValue;
+            case 'not_equal':
+              return strValue !== searchValue;
+            case 'greater':
+              return parseFloat(strValue) > parseFloat(searchValue);
+            case 'less':
+              return parseFloat(strValue) < parseFloat(searchValue);
+            case 'contains':
+              return strValue.includes(searchValue);
+            case 'starts_with':
+              return strValue.startsWith(searchValue);
+            case 'ends_with':
+              return strValue.endsWith(searchValue);
+            default:
+              return true;
+          }
+        });
+      });
+    }
+
+    // Apply sorting
+    if (sorting.length > 0) {
+      result = [...result].sort((a, b) => {
+        for (const sort of sorting) {
+          const aVal = getFieldValue(a, sort.id);
+          const bVal = getFieldValue(b, sort.id);
+          if (aVal < bVal) return sort.desc ? 1 : -1;
+          if (aVal > bVal) return sort.desc ? -1 : 1;
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [accounts, searchQuery, filters, sorting]);
+
+  // Pagination calculations
+  const totalRecords = filteredAccounts.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const startRecord = totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const endRecord = Math.min(currentPage * pageSize, totalRecords);
+  const paginatedData = filteredAccounts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Reset to page 1 when data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredAccounts.length]);
 
   // Deep Link: Listen for focus or focus_email param
   useEffect(() => {
@@ -155,7 +289,7 @@ const EmailManager = () => {
     }
   }, [toast.visible]);
 
-  const [activeTab, setActiveTab] = useState<'info' | 'services' | 'sessions' | 'history'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'services' | 'sessions' | 'history' | 'bookmarks'>('info');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [hardDeleteConfirmId, setHardDeleteConfirmId] = useState<string | null>(null);
   const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
@@ -479,21 +613,6 @@ const EmailManager = () => {
     );
   }, [newEmailData.email, accounts]);
 
-  const filteredAccounts = useMemo(() => {
-    return accounts.filter((account) => {
-      const matchesSearch =
-        account.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        account.recoveryEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        account.phoneNumber?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesStatus = statusFilter === 'all' || account.status === statusFilter;
-      const matchesProvider =
-        providerFilter === 'all' || account.emailProviderId === providerFilter;
-
-      return matchesSearch && matchesStatus && matchesProvider;
-    });
-  }, [accounts, searchQuery, statusFilter, providerFilter]);
-
   const toastTypeStyles: Record<string, string> = {
     info: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
     success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
@@ -504,7 +623,7 @@ const EmailManager = () => {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
       {/* Header with Breadcrumbs */}
-      <div className="h-[48px] flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
+      <div className="h-[40px] flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
         <div className="flex items-center gap-2">
           <LayoutDashboard className="w-4 h-4 text-text-primary -mt-0.5" />
           <ChevronRight className="w-3 h-3 text-text-primary" />
@@ -533,49 +652,42 @@ const EmailManager = () => {
             })()}
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* SearchBar */}
-          <div className="w-80 flex items-center transition-all duration-500">
-            <div
-              className={cn(
-                'relative flex items-center w-full h-9 bg-input-background border border-border rounded-md transition-all duration-300',
-                focusedAccountId && 'opacity-50 cursor-not-allowed border-dashed',
-              )}
-            >
-              <input
-                type="text"
-                placeholder={
-                  focusedAccountId ? 'Search disabled (viewing focused item)' : 'Search accounts...'
-                }
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                readOnly={!!focusedAccountId}
-                onClick={() => {
-                  if (focusedAccountId) {
-                    setToast({
-                      visible: true,
-                      message: 'Search disabled while viewing a focused item',
-                      type: 'warning',
-                    });
-                  }
-                }}
-                className="w-full h-full pl-3 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
+        <div className="flex items-center gap-3">
+          <SearchToolbar
+            filtersCount={filterCount}
+            showFilterBar={showFilterBar}
+            onToggleFilterBar={() => setShowFilterBar(!showFilterBar)}
+            sorting={sorting}
+            onSortingChange={setSorting}
+            availableColumns={availableColumns}
+            columnVisibility={columnVisibility}
+            onColumnVisibilityChange={setColumnVisibility}
+            totalRecords={totalRecords}
+            onRefresh={loadData}
+            onAddAccount={() => {
               setSelectedAccount(null);
               setIsDrawerOpen(true);
             }}
-            className="w-9 h-9 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
-            title="Add Account"
-          >
-            <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
-          </button>
+            currentPage={currentPage}
+            totalPages={totalPages}
+            startRecord={startRecord}
+            endRecord={endRecord}
+            onPageChange={handlePageChange}
+          />
         </div>
       </div>
+
+      {/* Filter Bar */}
+      {showFilterBar && (
+        <FilterBar
+          filters={filters}
+          availableColumns={availableColumns}
+          onAddFilter={addFilter}
+          onRemoveFilter={removeFilter}
+          onClearFilters={clearFilters}
+          onUpdateFilter={updateFilter}
+        />
+      )}
 
       {/* Main Content: Table */}
       <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
@@ -628,7 +740,8 @@ const EmailManager = () => {
             </div>
           ) : (
             <EmailTable
-              accounts={filteredAccounts}
+              accounts={paginatedData}
+              allAccounts={filteredAccounts}
               focusedAccountId={focusedAccountId}
               onSelectAccount={(account) => {
                 setFocusedAccountId((prev) => (prev === account.id ? null : account.id));
@@ -640,6 +753,8 @@ const EmailManager = () => {
               onRefreshData={loadData}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
+              sorting={sorting}
+              columnVisibility={columnVisibility}
             />
           )}
         </div>
@@ -1149,7 +1264,7 @@ const EmailManager = () => {
           </div>
         </div>
       </ModalWrapper>
-    </div>
+      </div>
   );
 };
 

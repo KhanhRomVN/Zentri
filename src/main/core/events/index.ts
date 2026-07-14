@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import { setupBrowserHandlers } from './browser';
 import { setupAccountHandlers } from './account';
 import { setupProxyHandlers } from './proxy';
+import { registerBookmarkHandlers } from './bookmarks';
 import { dbManager } from '../database';
 
 // Storage file path
@@ -234,6 +235,7 @@ export function setupEventHandlers() {
   setupAccountHandlers();
   setupServiceHandlers();
   setupProxyHandlers();
+  registerBookmarkHandlers();
 
   // Streaming Fetch Handler
   ipcMain.handle('util:fetch-stream', async (event, input: any) => {

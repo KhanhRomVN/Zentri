@@ -19,6 +19,11 @@ interface HeaderBarProps {
   onColumnVisibilityChange: (visibility: Record<string, boolean>) => void;
   totalRecords: number;
   onRefresh?: () => void;
+  currentPage: number;
+  totalPages: number;
+  startRecord: number;
+  endRecord: number;
+  onPageChange: (page: number) => void;
 }
 
 const HeaderBar: FC<HeaderBarProps> = ({
@@ -36,9 +41,14 @@ const HeaderBar: FC<HeaderBarProps> = ({
   onColumnVisibilityChange,
   totalRecords,
   onRefresh,
+  currentPage,
+  totalPages,
+  startRecord,
+  endRecord,
+  onPageChange,
 }) => {
   return (
-    <header className="h-[48px] shrink-0 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-30 transition-all duration-500">
+    <header className="h-[40px] shrink-0 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-30 transition-all duration-500">
       <div className="flex items-center gap-2">
         <button onClick={onReset} className="text-text-primary hover:text-foreground transition-colors">
           <LayoutDashboard className="w-5 h-5" />
@@ -66,6 +76,11 @@ const HeaderBar: FC<HeaderBarProps> = ({
           onColumnVisibilityChange={onColumnVisibilityChange}
           totalRecords={totalRecords}
           onRefresh={onRefresh}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          startRecord={startRecord}
+          endRecord={endRecord}
+          onPageChange={onPageChange}
         />
         <div className="relative w-64 shrink-0">
           <input
@@ -73,7 +88,7 @@ const HeaderBar: FC<HeaderBarProps> = ({
             placeholder="Search terms..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full h-9 pl-3 pr-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-text-secondary outline-none focus:border-primary/50 transition-colors"
+            className="w-full h-7 pl-3 pr-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-text-secondary outline-none focus:border-primary/50 transition-colors"
           />
         </div>
       </div>

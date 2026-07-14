@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { User, LayoutGrid, Undo2, Trash, Clock, Database } from 'lucide-react';
+import { User, LayoutGrid, Undo2, Trash, Clock, Database, Bookmark } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 import { useAccentColors } from '../../../hooks/useAccentColors';
 
@@ -8,6 +8,7 @@ import InfoTab from './tabs/InfoTab';
 import ServicesTab from './tabs/ServicesTab';
 import SessionsTab from './tabs/SessionsTab';
 import HistoryTab from './tabs/HistoryTab';
+import BookmarkTab from './tabs/BookmarkTab';
 
 // ─── Color Helper ──────────────────────────────────────────────────────────
 let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
@@ -51,8 +52,8 @@ const getTabColor = (tabId: string) => {
 interface DetailViewProps {
   focusedAccount: Account | null;
   accounts: Account[];
-  activeTab: 'info' | 'services' | 'sessions' | 'history';
-  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history') => void;
+  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks';
+  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks') => void;
   avatars: Record<string, string>;
   onSelectAccount: (account: Account) => void;
   onContextMenu: (e: React.MouseEvent, accountId: string) => void;
@@ -192,6 +193,28 @@ const DetailView: FC<DetailViewProps> = ({
             <Clock className="w-5 h-5 transition-colors" />
             <span>History</span>
           </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('bookmarks');
+            }}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
+              activeTab === 'bookmarks'
+                ? 'text-[--tab-color]'
+                : 'text-text-primary hover:text-foreground',
+            )}
+            style={
+              {
+                '--tab-color': getTabColor('bookmarks').base,
+                background: activeTab === 'bookmarks' ? getTabColor('bookmarks').bg : undefined,
+              } as React.CSSProperties
+            }
+          >
+            <Bookmark className="w-5 h-5 transition-colors" />
+            <span>Bookmarks</span>
+          </button>
         </div>
 
         {focusedAccount?.status === 'deleting' && (
@@ -238,8 +261,10 @@ const DetailView: FC<DetailViewProps> = ({
             />
           ) : activeTab === 'sessions' ? (
             <SessionsTab email={editedAccount?.email || ''} accountId={focusedAccount?.id || ''} />
-          ) : (
+          ) : activeTab === 'history' ? (
             <HistoryTab email={editedAccount?.email || ''} />
+          ) : (
+            <BookmarkTab email={editedAccount?.email || ''} />
           )}
         </div>
       </div>

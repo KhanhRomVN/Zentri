@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, createContext, useContext } from 'react';
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { DropdownProps } from './type';
 import { cn } from '@renderer/shared/lib/utils';
 
@@ -29,6 +30,8 @@ export function Dropdown({
   disableAutoFlip = false,
   strategy = 'fixed',
   className,
+  trigger = 'click',
+  position: manualPosition,
 }: DropdownProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -143,6 +146,12 @@ export function Dropdown({
 
   const updatePosition = () => {
     if (strategy === 'fixed') {
+      // Use manual position if provided (e.g., for context menus)
+      if (manualPosition) {
+        setPosition(manualPosition);
+        setIsPositioned(true);
+        return;
+      }
       const pos = calculateFixedPosition();
       if (pos) {
         setPosition(pos);
@@ -182,7 +191,7 @@ export function Dropdown({
     } else {
       setIsPositioned(false);
     }
-  }, [open, side, align, sideOffset, strategy]);
+  }, [open, side, align, sideOffset, strategy, manualPosition]);
 
   // Handle resize and scroll for fixed strategy
   useEffect(() => {
@@ -233,7 +242,7 @@ export function Dropdown({
   }, [open, strategy]);
 
   const childrenArray = React.Children.toArray(children);
-  const trigger = childrenArray.find(
+  const triggerChild = childrenArray.find(
     (child) =>
       React.isValidElement(child) && (child.type as any)?.displayName === 'DropdownTrigger',
   );
@@ -289,25 +298,39 @@ export function Dropdown({
   return (
     <DropdownContext.Provider value={{ close }}>
       <div className={cn('relative inline-block', className)}>
-        <div ref={triggerRef} onClick={() => setOpen(!open)}>
-          {trigger}
+        <div
+          ref={triggerRef}
+          onClick={trigger === 'click' ? () => setOpen(!open) : undefined}
+          onContextMenu={
+            trigger === 'contextmenu'
+              ? (e) => {
+                  e.preventDefault();
+                  setOpen(!open);
+                }
+              : undefined
+          }
+        >
+          {triggerChild}
         </div>
         {open && content && (
           <>
             {strategy === 'fixed' ? (
-              <div
-                ref={contentRef}
-                className="fixed z-[9999]"
-                style={{
-                  top: position.top,
-                  left: position.left,
-                  opacity: isPositioned ? 1 : 0,
-                  transition: 'opacity 0.15s ease',
-                  pointerEvents: 'auto',
-                }}
-              >
-                {content}
-              </div>
+              createPortal(
+                <div
+                  ref={contentRef}
+                  className="fixed z-[9999]"
+                  style={{
+                    top: position.top,
+                    left: position.left,
+                    opacity: isPositioned ? 1 : 0,
+                    transition: 'opacity 0.15s ease',
+                    pointerEvents: 'auto',
+                  }}
+                >
+                  {content}
+                </div>,
+                document.body,
+              )
             ) : (
               <div
                 ref={contentRef}

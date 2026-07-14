@@ -130,7 +130,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed: _setIsCollapsed, activePage
         {/* Header */}
         <div
           className={cn(
-            'w-full h-[48px] flex items-center shrink-0 border-b border-border/50',
+            'w-full h-[40px] flex items-center shrink-0 border-b border-border/50',
             expanded ? 'px-3 justify-start' : 'justify-center',
           )}
         >

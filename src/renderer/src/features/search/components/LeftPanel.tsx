@@ -124,40 +124,9 @@ interface LeftPanelProps {
 }
 
 // ─── Color Helper ──────────────────────────────────────────────────────────
-let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
-let unifiedAccentCache = 'rgb(54, 134, 255)';
-
 const setAccentColorsForLeftPanel = (colors: string[], unified: string) => {
-  accentColorsCache = colors.length > 0 ? colors : [unified];
-  unifiedAccentCache = unified;
-};
-
-const getItemColor = (id: string) => {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % accentColorsCache.length;
-  const color = accentColorsCache[index] || accentColorsCache[0] || unifiedAccentCache;
-
-  const rgbMatch = color.match(/\d+/g);
-  if (rgbMatch && rgbMatch.length >= 3) {
-    const r = rgbMatch[0];
-    const g = rgbMatch[1];
-    const b = rgbMatch[2];
-    return {
-      base: color,
-      bg: `rgba(${r}, ${g}, ${b}, 0.1)`,
-      border: `rgba(${r}, ${g}, ${b}, 0.3)`,
-      hover: `rgba(${r}, ${g}, ${b}, 0.2)`,
-    };
-  }
-  return {
-    base: color || unifiedAccentCache,
-    bg: 'var(--sidebar-item-hover)',
-    border: 'var(--divider)',
-    hover: 'var(--sidebar-item-hover)',
-  };
+  // Cache for potential future use
+  return colors.length > 0 ? colors : [unified];
 };
 
 const LeftPanel: FC<LeftPanelProps> = ({
@@ -170,6 +139,7 @@ const LeftPanel: FC<LeftPanelProps> = ({
   onFavoriteView,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
 
   // Update the global color cache for getItemColor
@@ -186,8 +156,8 @@ const LeftPanel: FC<LeftPanelProps> = ({
   return (
     <div className="w-[360px] shrink-0 border-r border-border bg-card/50 backdrop-blur-xl flex flex-col relative z-20 transition-all duration-500">
       {/* Searchbar + Add Button */}
-      <div className="h-[48px] flex items-center gap-2 px-3 border-b border-border/50">
-        <div className="flex-1 relative flex items-center h-9 bg-input-background border border-border rounded-md transition-all duration-300">
+      <div className="h-10 flex items-center gap-2 px-3 border-b border-border/50">
+        <div className="flex-1 relative flex items-center h-[30px] bg-input-background border border-border rounded-md transition-all duration-300">
           <input
             type="text"
             value={searchQuery}
@@ -198,7 +168,7 @@ const LeftPanel: FC<LeftPanelProps> = ({
         </div>
         <button
           onClick={onOpenAddView}
-          className="w-9 h-9 shrink-0 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/50 transition-all active:scale-90 border border-border group"
+          className="w-[30px] h-[30px] shrink-0 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/50 transition-all active:scale-90 border border-border group"
           title="Add Smart View"
         >
           <Plus className="w-4 h-4 transition-transform group-hover:rotate-90 duration-500" />
@@ -217,26 +187,41 @@ const LeftPanel: FC<LeftPanelProps> = ({
 
           {filteredViews.map((view) => {
             const ViewIcon = view.icon ? ICON_MAP[view.icon] : null;
+            const isOpen = openDropdownId === view.id;
             return (
-              <Dropdown key={view.id} trigger="contextmenu">
+              <Dropdown
+                key={view.id}
+                open={isOpen}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setOpenDropdownId(null);
+                  }
+                }}
+                className="w-full"
+              >
                 <DropdownTrigger asChild>
                   <button
                     onClick={() => onSelectView(view.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setOpenDropdownId(view.id);
+                    }}
                     className={cn(
-                      'group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 outline-none text-left w-full',
+                      'group relative flex items-center gap-3 px-3 py-1 rounded-lg transition-all duration-200 outline-none text-left w-full',
                       selectedViewId === view.id
                         ? 'text-foreground bg-card-background'
                         : 'text-muted-foreground hover:text-foreground hover:bg-card-hover',
                     )}
                   >
-                    <div className="w-8 h-8 shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+                    <div className="w-[26px] h-[26px] shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
                       {ViewIcon ? (
-                        <ViewIcon className="w-5 h-5 text-foreground/70" />
+                        <ViewIcon className="w-4 h-4 text-foreground/70" />
                       ) : view.domain ? (
                         <img
                           src={`https://www.google.com/s2/favicons?domain=${view.domain}&sz=64`}
                           alt={view.name}
-                          className="w-5 h-5 object-contain"
+                          className="w-4 h-4 object-contain"
                         />
                       ) : (
                         <Table className="w-5 h-5 text-foreground/70" />
@@ -269,6 +254,7 @@ const LeftPanel: FC<LeftPanelProps> = ({
                   <DropdownItem
                     onClick={() => {
                       onFavoriteView?.(view.id);
+                      setOpenDropdownId(null);
                     }}
                   >
                     <Star
@@ -282,6 +268,7 @@ const LeftPanel: FC<LeftPanelProps> = ({
                       <DropdownItem
                         onClick={() => {
                           onEditView?.(view);
+                          setOpenDropdownId(null);
                         }}
                       >
                         <Pencil className="w-3.5 h-3.5 text-blue-500/50" />
@@ -292,6 +279,7 @@ const LeftPanel: FC<LeftPanelProps> = ({
                         className="text-error focus:text-error focus:bg-error/10"
                         onClick={() => {
                           onDeleteView?.(view.id);
+                          setOpenDropdownId(null);
                         }}
                       >
                         <Trash2 className="w-3.5 h-3.5" />

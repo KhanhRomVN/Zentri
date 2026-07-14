@@ -1,7 +1,15 @@
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import { ProxyFilterState } from '../types';
-import { Filter, RefreshCcw, Check } from 'lucide-react';
+import { Filter, RefreshCcw, ChevronDown } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+} from '../../../components/ui/Dropdown';
+import { Button } from '../../../components/ui/Button';
+import { FILTER_OPTIONS } from '../constants';
 
 interface ProxyFilterProps {
   filters: ProxyFilterState;
@@ -9,70 +17,55 @@ interface ProxyFilterProps {
   disabled?: boolean;
 }
 
-type ChipVariant = 'indigo' | 'emerald' | 'amber' | 'rose' | 'slate';
-
-const FilterChip: FC<{
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  variant?: ChipVariant;
-}> = ({ label, active, onClick, variant = 'indigo' }) => {
-  const variants: Record<ChipVariant, string> = {
-    indigo: active
-      ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400 shadow-lg shadow-indigo-500/10'
-      : 'bg-muted/5 border-border/50 text-muted-foreground hover:bg-indigo-500/5 hover:border-indigo-500/30 hover:text-indigo-400/80',
-    emerald: active
-      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-lg shadow-emerald-500/10'
-      : 'bg-muted/5 border-border/50 text-muted-foreground hover:bg-emerald-500/5 hover:border-emerald-500/30 hover:text-emerald-400/80',
-    amber: active
-      ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-lg shadow-amber-500/10'
-      : 'bg-muted/5 border-border/50 text-muted-foreground hover:bg-amber-500/5 hover:border-amber-500/30 hover:text-amber-400/80',
-    rose: active
-      ? 'bg-rose-500/20 border-rose-500/50 text-rose-400 shadow-lg shadow-rose-500/10'
-      : 'bg-muted/5 border-border/50 text-muted-foreground hover:bg-rose-500/5 hover:border-rose-500/30 hover:text-rose-400/80',
-    slate: active
-      ? 'bg-slate-500/20 border-slate-500/50 text-slate-400 shadow-lg shadow-slate-500/10'
-      : 'bg-muted/5 border-border/50 text-muted-foreground hover:bg-slate-500/5 hover:border-slate-500/30 hover:text-slate-400/80',
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 border flex-1 min-w-fit',
-        variants[variant],
-      )}
-    >
-      <div className="flex items-center justify-center gap-1.5">
-        {active && <Check className="w-2.5 h-2.5 shrink-0" />}
-        <span className="truncate">{label}</span>
-      </div>
-    </button>
-  );
-};
-
 const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }) => {
+  const [searchColumn, setSearchColumn] = useState('');
+
   const updateFilter = (key: keyof ProxyFilterState, value: string) => {
     if (disabled) return;
     onFilterChange({ ...filters, [key]: value });
   };
 
+  const getLabel = (key: keyof ProxyFilterState, value: string): string => {
+    const options = FILTER_OPTIONS[key as keyof typeof FILTER_OPTIONS];
+    if (!options) return value;
+    const found = options.find((o) => o.value === value);
+    return found?.label || value;
+  };
+
+  const filterGroups: Array<{
+    key: keyof ProxyFilterState;
+    label: string;
+    options: Array<{ value: string; label: string }>;
+  }> = [
+    { key: 'proxyType', label: 'Configuration Type', options: FILTER_OPTIONS.proxyType },
+    { key: 'sourceType', label: 'Network Source', options: FILTER_OPTIONS.sourceType },
+    { key: 'protocol', label: 'Protocol Matrix', options: FILTER_OPTIONS.protocol },
+    { key: 'status', label: 'Node Vitality', options: FILTER_OPTIONS.status },
+  ];
+
+  const hasActiveFilters = filters.proxyType !== 'all' || filters.sourceType !== 'all' || filters.protocol !== 'all' || filters.status !== 'all';
+
   return (
     <div
       className={cn(
-        'w-[360px] border-r border-border/50 bg-muted/5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar transition-all duration-500',
+        'w-[320px] border-r border-border/50 bg-muted/5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar transition-all duration-500',
         disabled && 'opacity-50 pointer-events-none grayscale-[0.5]',
       )}
     >
-      {/* Sidebar Header - Height synced with Table Header */}
-      <div className="min-h-[57px] flex items-center justify-between px-6 border-b border-border/50 sticky top-0 bg-background/50 backdrop-blur-md z-10 transition-all duration-500">
+      {/* Sidebar Header */}
+      <div className="min-h-[48px] flex items-center justify-between px-4 border-b border-border/50 sticky top-0 bg-background/50 backdrop-blur-md z-10 transition-all duration-500">
         <div className="flex items-center gap-2.5">
           <Filter className="w-3.5 h-3.5 text-primary" />
           <span className="text-xs font-black uppercase tracking-[0.25em] text-foreground/80">
             Filter Controls
           </span>
+          {hasActiveFilters && (
+            <span className="ml-1 text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+              {[filters.proxyType, filters.sourceType, filters.protocol, filters.status].filter(v => v !== 'all').length}
+            </span>
+          )}
         </div>
-        {!disabled && (
+        {!disabled && hasActiveFilters && (
           <button
             onClick={() =>
               onFilterChange({
@@ -92,126 +85,48 @@ const ProxyFilter: FC<ProxyFilterProps> = ({ filters, onFilterChange, disabled }
         )}
       </div>
 
-      <div className="p-6 space-y-9">
-        {/* Proxy Type - Indigo */}
-        <div className="space-y-4">
-          <label className="text-[11px] font-black text-muted-foreground/40 uppercase  ml-1">
-            Configuration Type
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            <FilterChip
-              label="All"
-              active={filters.proxyType === 'all'}
-              onClick={() => updateFilter('proxyType', 'all')}
-              variant="indigo"
-            />
-            <FilterChip
-              label="Exclusive"
-              active={filters.proxyType === 'private'}
-              onClick={() => updateFilter('proxyType', 'private')}
-              variant="indigo"
-            />
-            <FilterChip
-              label="Shared"
-              active={filters.proxyType === 'shared'}
-              onClick={() => updateFilter('proxyType', 'shared')}
-              variant="indigo"
-            />
-          </div>
-        </div>
+      <div className="p-4 space-y-6">
+        {filterGroups.map((group) => {
+          const currentValue = filters[group.key] || 'all';
+          const currentLabel = getLabel(group.key, currentValue);
 
-        {/* Source Type - Emerald */}
-        <div className="space-y-4">
-          <label className="text-[11px] font-black text-muted-foreground/40 uppercase  ml-1">
-            Network Source
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <FilterChip
-              label="Any Source"
-              active={filters.sourceType === 'all'}
-              onClick={() => updateFilter('sourceType', 'all')}
-              variant="emerald"
-            />
-            <FilterChip
-              label="Datacenter"
-              active={filters.sourceType === 'datacenter'}
-              onClick={() => updateFilter('sourceType', 'datacenter')}
-              variant="emerald"
-            />
-            <FilterChip
-              label="Residential"
-              active={filters.sourceType === 'residential'}
-              onClick={() => updateFilter('sourceType', 'residential')}
-              variant="emerald"
-            />
-            <FilterChip
-              label="Carrier"
-              active={filters.sourceType === 'mobile'}
-              onClick={() => updateFilter('sourceType', 'mobile')}
-              variant="emerald"
-            />
-          </div>
-        </div>
-
-        {/* Protocol - Amber */}
-        <div className="space-y-4">
-          <label className="text-[11px] font-black text-muted-foreground/40 uppercase  ml-1">
-            Protocol Matrix
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <FilterChip
-              label="All Protocols"
-              active={filters.protocol === 'all'}
-              onClick={() => updateFilter('protocol', 'all')}
-              variant="amber"
-            />
-            <FilterChip
-              label="HTTP(S)"
-              active={filters.protocol === 'http'}
-              onClick={() => updateFilter('protocol', 'http')}
-              variant="amber"
-            />
-            <FilterChip
-              label="SOCKS5"
-              active={filters.protocol === 'socks5'}
-              onClick={() => updateFilter('protocol', 'socks5')}
-              variant="amber"
-            />
-          </div>
-        </div>
-
-        {/* Status - Mixed Variants for semantic meaning */}
-        <div className="space-y-4">
-          <label className="text-[11px] font-black text-muted-foreground/40 uppercase  ml-1">
-            Node Vitality
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <FilterChip
-              label="Any Status"
-              active={filters.status === 'all'}
-              onClick={() => updateFilter('status', 'all')}
-              variant="slate"
-            />
-            <FilterChip
-              label="Active Nodes"
-              active={filters.status === 'active'}
-              onClick={() => updateFilter('status', 'active')}
-              variant="emerald"
-            />
-            <FilterChip
-              label="Expired"
-              active={filters.status === 'expired'}
-              onClick={() => updateFilter('status', 'expired')}
-              variant="amber"
-            />
-            <FilterChip
-              label="Disabled"
-              active={filters.status === 'disabled'}
-              onClick={() => updateFilter('status', 'disabled')}
-              variant="rose"
-            />
-          </div>
-        </div>
+          return (
+            <div key={group.key} className="space-y-2">
+              <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-wider ml-0.5">
+                {group.label}
+              </label>
+              <Dropdown>
+                <DropdownTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-between h-9 text-sm font-medium"
+                  >
+                    <span className="truncate">{currentLabel}</span>
+                    <ChevronDown className="w-3.5 h-3.5 shrink-0 ml-2" />
+                  </Button>
+                </DropdownTrigger>
+                <DropdownContent className="min-w-[200px] max-h-[250px] overflow-y-auto">
+                  {group.options.map((option) => (
+                    <DropdownItem
+                      key={option.value}
+                      onClick={() => {
+                        updateFilter(group.key, option.value);
+                        setSearchColumn('');
+                      }}
+                      className={cn(
+                        'text-sm',
+                        currentValue === option.value && 'bg-primary/10 text-primary font-semibold',
+                      )}
+                    >
+                      {option.label}
+                    </DropdownItem>
+                  ))}
+                </DropdownContent>
+              </Dropdown>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

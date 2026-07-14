@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Button } from '../../../../components/ui/Button';
+import { Button } from '../../../components/ui/Button';
 import {
   Dropdown,
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
-} from '../../../../components/ui/Dropdown';
-import { Tooltip } from '../../../../components/ui/Tooltip';
-import { Input } from '../../../../components/ui/Input';
+} from '../../../components/ui/Dropdown';
+import { Tooltip } from '../../../components/ui/Tooltip';
+import { Input } from '../../../components/ui/Input';
 import { X, ChevronDown } from 'lucide-react';
 import {
   OPERATORS,
   OPERATOR_DESCRIPTIONS,
   FilterCondition,
   Operator,
-} from '../../../../constants/operators';
+} from '../../../constants/operators';
 
 interface FilterBarProps {
   filters: FilterCondition[];
@@ -42,7 +42,6 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
   const [searchColumn, setSearchColumn] = useState('');
 
   useEffect(() => {
-    // Sync with props when filter changes externally
     setEditColumn(filter.column || (availableColumns.length > 0 ? availableColumns[0] : ''));
     setEditOperator(filter.operator || 'equals');
     setEditValue(filter.value || '');
@@ -97,7 +96,7 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
                   }}
                   className="text-sm"
                 >
-                  {col === '_stt' ? 'STT' : col}
+                  {col}
                 </DropdownItem>
               ))}
           </DropdownContent>
@@ -190,7 +189,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   return (
     <div className="px-4 py-1 border-b border-border bg-card-background/50 shrink-0">
-      {/* Row 1: where + dropdowns + input + buttons */}
       <div className="flex items-center gap-2 flex-wrap">
         {filters.length >= 1 && (
           <Button
@@ -216,13 +214,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <div className="px-2 py-1.5 border-b border-border">
                 <Input
                   placeholder="Search columns..."
-                  className="h-6 text-xs"
+                  className="h-5 text-xs"
                   value={searchColumn}
                   onChange={(e) => setSearchColumn(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
-              {availableColumns
+              {filteredColumns
                 .filter((col) => col.toLowerCase().includes(searchColumn.toLowerCase()))
                 .map((col) => (
                   <DropdownItem
@@ -233,7 +231,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     }}
                     className="text-sm"
                   >
-                    {col === '_stt' ? 'STT' : col}
+                    {col}
                   </DropdownItem>
                 ))}
             </DropdownContent>
@@ -256,7 +254,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   side="right"
                   align="center"
                 >
-                  <DropdownItem onClick={() => setNewFilterOperator(op.value)} className="text-xs">
+                  <DropdownItem onClick={() => setNewFilterOperator(op.value)} className="text-sm">
                     {op.label}
                   </DropdownItem>
                 </Tooltip>
@@ -287,7 +285,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
       </div>
 
-      {/* Active filters */}
       {filters.length > 0 && (
         <div className="mt-2 space-y-1.5">
           {filters.map((f) => (

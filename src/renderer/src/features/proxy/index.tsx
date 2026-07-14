@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback, useMemo, SetStateAction } from 'react';
-import { Plus, Search, LayoutGrid, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { LayoutDashboard, ChevronRight, AlertCircle } from 'lucide-react';
 import { Proxy, ProxyFilterState } from './types';
 import ProxyTable from './components/ProxyTable';
 import ProxyFilter from './components/ProxyFilter';
 import ProxyConfigForm from './components/ProxyConfigForm';
+import SearchToolbar from '../search/components/SearchToolbar';
+import { useProxyTableState } from './hooks/useProxyTableState';
+import { PROXY_COLUMNS } from './constants';
 
 const ProxyManager = () => {
   const [proxies, setProxies] = useState<Proxy[]>([]);
@@ -11,6 +14,7 @@ const ProxyManager = () => {
   const [error, setError] = useState<string | null>(null);
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [selectedProxy, setSelectedProxy] = useState<Proxy | null>(null);
+  const [showFilterBar, setShowFilterBar] = useState(true);
 
   const [filters, setFilters] = useState<ProxyFilterState>({
     searchQuery: '',
@@ -21,10 +25,23 @@ const ProxyManager = () => {
     country: 'all',
   });
 
-  const [toast, setToast] = useState({
-    visible: false,
-    message: '',
-    type: 'info' as 'info' | 'success' | 'error' | 'warning',
+  // Table state
+  const availableColumns = useMemo(() => {
+    return PROXY_COLUMNS.filter((c) => c.isVisible).map((c) => c.id);
+  }, []);
+
+  const {
+    sorting,
+    setSorting,
+    columnVisibility,
+    setColumnVisibility,
+    columnSizing,
+    setColumnSizing,
+    columnOrder,
+    setColumnOrder,
+  } = useProxyTableState({
+    viewId: 'proxy',
+    defaultColumns: availableColumns,
   });
 
   const loadData = useCallback(async () => {
@@ -56,9 +73,9 @@ const ProxyManager = () => {
       proxies.forEach(async (proxy) => {
         if (!proxy.host || proxy.status === 'trash' || proxy.status === 'disabled') return;
 
-        const expirationTime = proxy.expiredAt ? new Date(proxy.expiredAt).getTime() : Infinity;
+        const expirationTime = proxy.expired_at ? new Date(proxy.expired_at).getTime() : Infinity;
         const timeToExpiration = expirationTime - now;
-        const lastCheck = proxy.lastCheckedAt || 0;
+        const lastCheck = proxy.last_checked_at ? new Date(proxy.last_checked_at).getTime() : 0;
         const timeSinceLastCheck = now - lastCheck;
 
         // Auto-mark as expired if time is up
@@ -105,7 +122,7 @@ const ProxyManager = () => {
             await window.electron.ipcRenderer.invoke('proxy:update', {
               id: proxy.id,
               data: {
-                lastCheckedAt: now,
+                last_checked_at: new Date(now).toISOString(),
                 isHealthy: isHealthy,
               },
             });
@@ -113,7 +130,7 @@ const ProxyManager = () => {
             // Update local state to show results immediately
             setProxies((prev) =>
               prev.map((p) =>
-                p.id === proxy.id ? { ...p, lastCheckedAt: now, isHealthy: isHealthy } : p,
+                p.id === proxy.id ? { ...p, last_checked_at: new Date(now).toISOString(), isHealthy: isHealthy } : p,
               ),
             );
           } catch (e) {
@@ -151,48 +168,71 @@ const ProxyManager = () => {
     });
   }, [proxies, filters]);
 
+  // Count active filters (excluding searchQuery and country which are handled differently)
+  const filterCount = useMemo(() => {
+    let count = 0;
+    if (filters.proxyType !== 'all') count++;
+    if (filters.sourceType !== 'all') count++;
+    if (filters.protocol !== 'all') count++;
+    if (filters.status !== 'all') count++;
+    if (filters.country !== 'all') count++;
+    return count;
+  }, [filters]);
+
+  const handleRefresh = useCallback(() => {
+    loadData();
+  }, [loadData]);
+
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10 transition-all duration-700">
-      {/* Dynamic Header */}
-      {!isConfiguring && (
-        <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 animate-in fade-in slide-in-from-top-2 duration-500">
-          <div className="flex items-center gap-2 text-xs">
-            <LayoutGrid className="w-4 h-4 text-muted-foreground/50" />
-            <span className="text-muted-foreground/70 font-medium">Network Infrastructure</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="w-80 flex items-center gap-2 px-3 h-9 bg-muted/5 border border-border/10 focus-within:bg-muted/10 focus-within:border-primary/30 transition-all duration-300 rounded-xl translate-y-[1px]">
-              <Search className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-              <input
-                type="text"
-                placeholder="Scan infrastructure (Host, User, ISP)..."
-                value={filters.searchQuery}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))
-                }
-                className="w-full h-full bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/40"
-              />
-            </div>
-
-            <button
-              onClick={() => {
-                setSelectedProxy(null);
-                setIsConfiguring(true);
-              }}
-              className="w-9 h-9 flex items-center justify-center bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all active:scale-90 border border-primary/20 group shadow-lg shadow-primary/5"
-              title="Initialize Provisioning"
-            >
-              <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
-            </button>
-          </div>
+      {/* Header - 48px height matching search feature */}
+      <header className="h-[40px] shrink-0 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-30 transition-all duration-500">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              // Reset selection or navigate to proxy home
+            }}
+            className="text-text-primary hover:text-foreground transition-colors"
+          >
+            <LayoutDashboard className="w-5 h-5" />
+          </button>
+          <ChevronRight className="w-4 h-4 text-text-primary" />
+          <span className="text-text-primary text-sm font-semibold">Proxy</span>
+          {selectedProxy && (
+            <>
+              <ChevronRight className="w-4 h-4 text-text-secondary" />
+              <span className="text-text-primary text-sm font-semibold">
+                {selectedProxy.host}:{selectedProxy.port}
+              </span>
+            </>
+          )}
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <SearchToolbar
+            filtersCount={filterCount}
+            showFilterBar={showFilterBar}
+            onToggleFilterBar={() => setShowFilterBar(!showFilterBar)}
+            sorting={sorting}
+            onSortingChange={setSorting}
+            availableColumns={availableColumns}
+            columnVisibility={columnVisibility}
+            onColumnVisibilityChange={setColumnVisibility}
+            totalRecords={filteredProxies.length}
+            onRefresh={handleRefresh}
+          />
+        </div>
+      </header>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
-        {/* Sidebar Filter with Status Control */}
-        <ProxyFilter filters={filters} onFilterChange={setFilters} disabled={isConfiguring} />
+        {/* Sidebar Filter */}
+        {showFilterBar && (
+          <ProxyFilter
+            filters={filters}
+            onFilterChange={setFilters}
+            disabled={isConfiguring}
+          />
+        )}
         {/* Dynamic Content Panel */}
         <div className="flex-1 bg-card/30 overflow-hidden flex flex-col relative transition-all duration-700">
           {isConfiguring ? (
@@ -202,18 +242,11 @@ const ProxyManager = () => {
               onSuccess={() => {
                 setIsConfiguring(false);
                 loadData();
-                setToast({
-                  visible: true,
-                  message: selectedProxy
-                    ? 'Infrastructure node upgraded successfully'
-                    : 'Gateway provisioning sequence complete',
-                  type: 'success',
-                });
               }}
             />
           ) : loading ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground opacity-50">
-              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+              <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
               <span className="text-[10px] font-bold tracking-[0.3em] uppercase">
                 Booting Infrastructure Registry...
               </span>
@@ -237,11 +270,19 @@ const ProxyManager = () => {
           ) : (
             <ProxyTable
               proxies={filteredProxies}
-              onEdit={(p: SetStateAction<Proxy | null>) => {
+              onEdit={(p) => {
                 setSelectedProxy(p);
                 setIsConfiguring(true);
               }}
-              onRefresh={loadData}
+              onRefresh={handleRefresh}
+              sorting={sorting}
+              onSortingChange={setSorting}
+              columnVisibility={columnVisibility}
+              onColumnVisibilityChange={setColumnVisibility}
+              columnSizing={columnSizing}
+              onColumnSizingChange={setColumnSizing}
+              columnOrder={columnOrder}
+              onColumnOrderChange={setColumnOrder}
             />
           )}
         </div>

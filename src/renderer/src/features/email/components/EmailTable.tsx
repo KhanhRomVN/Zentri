@@ -10,9 +10,11 @@ import DetailView from './DetailView';
 import ServiceDrawers from './ServiceDrawers';
 import ServiceVaultDrawer from './ServiceVaultDrawer';
 import ProfileLaunchModal from './modals/ProfileLaunchModal';
+import { SortingState } from '@tanstack/react-table';
 
 interface EmailTableProps {
   accounts: Account[];
+  allAccounts?: Account[];
   focusedAccountId?: string | null;
   onSelectAccount: (account: Account) => void;
   onSoftDelete: (id: string) => void;
@@ -20,8 +22,10 @@ interface EmailTableProps {
   onHardDelete: (id: string) => void;
   onSaveChanges: (oldAccount: Account, newAccount: Account) => void;
   onRefreshData?: () => void;
-  activeTab: 'info' | 'services' | 'sessions' | 'history';
-  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history') => void;
+  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks';
+  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks') => void;
+  sorting?: SortingState;
+  columnVisibility?: Record<string, boolean>;
 }
 
 interface LinkedService {
@@ -39,6 +43,7 @@ interface LinkedService {
 
 const EmailTable: FC<EmailTableProps> = ({
   accounts,
+  allAccounts = accounts,
   focusedAccountId,
   onSelectAccount,
   onSoftDelete,
@@ -47,6 +52,8 @@ const EmailTable: FC<EmailTableProps> = ({
   onRefreshData,
   activeTab,
   setActiveTab,
+  sorting,
+  columnVisibility,
 }) => {
   // --- States ---
   const [avatars, setAvatars] = useState<Record<string, string>>({});
@@ -597,6 +604,9 @@ const EmailTable: FC<EmailTableProps> = ({
           ]
         : accounts;
 
+  // Use allAccounts for indexing (original order before pagination)
+  const fullAccountList = allAccounts;
+
   // --- Render ---
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-background/30 transition-all duration-500 overflow-hidden">
@@ -623,7 +633,7 @@ const EmailTable: FC<EmailTableProps> = ({
             <AnimatePresence>
               {orderedAccounts.map((account, _index) => {
                 const isSelected = account.id === focusedAccountId;
-                const originalIndex = accounts.findIndex((a) => a.id === account.id);
+                const originalIndex = fullAccountList.findIndex((a) => a.id === account.id);
                 return (
                   <Fragment key={account.id}>
                     <motion.tr

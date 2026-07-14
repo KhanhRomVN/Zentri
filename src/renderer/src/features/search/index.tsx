@@ -43,6 +43,8 @@ const SearchManager = () => {
   const [loaded, setLoaded] = useState(false);
   const [tableSearch, setTableSearch] = useState('');
   const [showFilterBar, setShowFilterBar] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
 
   const selectedView = views.find((v) => v.id === selectedViewId) || null;
 
@@ -79,6 +81,24 @@ const SearchManager = () => {
     selectedView,
     autoLoad: true,
   });
+
+  // Pagination calculations
+  const totalRecords = data.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const startRecord = totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const endRecord = Math.min(currentPage * pageSize, totalRecords);
+  const paginatedData = data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Reset to page 1 when data or selectedView changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedView, data.length]);
 
   // Load views from storage + fetch services on mount
   useEffect(() => {
@@ -321,8 +341,13 @@ const SearchManager = () => {
         availableColumns={availableColumns}
         columnVisibility={columnVisibility}
         onColumnVisibilityChange={setColumnVisibility}
-        totalRecords={data.length}
+        totalRecords={totalRecords}
         onRefresh={refresh}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        startRecord={startRecord}
+        endRecord={endRecord}
+        onPageChange={handlePageChange}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -356,7 +381,7 @@ const SearchManager = () => {
           onColumnSizingChange={setColumnSizing}
           columnOrder={columnOrder}
           onColumnOrderChange={setColumnOrder}
-          data={data}
+          data={paginatedData}
           loading={loading}
           onRefresh={refresh}
           onOpenAddView={() => setIsBuilderOpen(true)}

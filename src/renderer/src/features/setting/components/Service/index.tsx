@@ -103,8 +103,8 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
         <div className="flex-1 overflow-auto custom-scrollbar">
           <table className="border-collapse table-fixed w-full">
             <thead className="sticky top-0 z-30">
-              <tr className="hover:bg-transparent border-b border-border/50 bg-table-headerBg shadow-sm">
-                <th className="w-[40px] text-[10px] uppercase  font-bold h-10 text-center text-muted-foreground">
+              <tr className="hover:bg-transparent border-b border-border/50 bg-table-header-background shadow-sm">
+                <th className="w-[40px] text-sm font-bold h-10 text-center text-text-primary">
                   <input
                     type="checkbox"
                     className="w-3.5 h-3.5 rounded border-border/50 bg-input-background accent-primary cursor-pointer"
@@ -121,19 +121,19 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
                     }}
                   />
                 </th>
-                <th className="w-[50px] pl-4 text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
+                <th className="w-auto pl-4 text-sm font-bold h-10 text-left text-text-primary">
                   STT
                 </th>
-                <th className="text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
+                <th className="text-sm font-bold h-10 text-left text-text-primary">
                   Service
                 </th>
-                <th className="w-[150px] text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
+                <th className="w-[150px] text-sm font-bold h-10 text-left text-text-primary">
                   Category
                 </th>
-                <th className="w-[150px] text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
+                <th className="w-[150px] text-sm font-bold h-10 text-left text-text-primary">
                   Auth
                 </th>
-                <th className="w-[200px] pr-6 text-[10px] uppercase  font-bold h-10 text-left text-muted-foreground">
+                <th className="w-[200px] pr-6 text-sm font-bold h-10 text-left text-text-primary">
                   Metadata Fields
                 </th>
               </tr>
@@ -157,7 +157,7 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
                       <React.Fragment key={service.id}>
                         <tr
                           className={cn(
-                            'group transition-all border-b border-border/20 h-[48px] hover:bg-table-hoverItemBodyBg/50',
+                            'group transition-all border-b border-border/20 h-[48px] hover:bg-table-row-hover',
                             focusedServiceId === service.id &&
                               'bg-primary/5 sticky top-0 z-40 backdrop-blur-md border-b-primary/30',
                           )}
@@ -192,7 +192,7 @@ export const ServiceManager = ({}: ServiceManagerProps) => {
                               onClick={(e) => e.stopPropagation()}
                             />
                           </td>
-                          <td className="text-muted-foreground font-mono text-[10px] pl-4 py-2">
+                          <td className="text-muted-foreground font-mono text-xs pl-4 py-2 whitespace-nowrap">
                             #{String(index + 1).padStart(2, '0')}
                           </td>
                           <td>

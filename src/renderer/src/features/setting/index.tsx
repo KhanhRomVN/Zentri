@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Settings, Database, Plus, Search, LayoutDashboard, ChevronRight, Shield } from 'lucide-react';
+import { Settings, Database, Shield } from 'lucide-react';
 import { GeneralSettings } from './components/General';
 import { ServiceManager } from './components/Service';
 import { FingerprintSettings } from './components/Fingerprint';
+import { SettingHeader } from './components/SettingHeader';
 import { cn } from '../../shared/lib/utils';
 import { useAccentColors } from '../../hooks/useAccentColors';
 
@@ -11,6 +12,7 @@ type Tab = 'general' | 'services' | 'fingerprint';
 const SettingPage = () => {
   const [activeTab, setActiveTab] = useState<Tab>('general');
   const [serviceSearch, setServiceSearch] = useState('');
+  const [fingerprintSearch, setFingerprintSearch] = useState('');
   const { getColorByIndex, toRgba } = useAccentColors();
 
   const tabs = [
@@ -37,72 +39,28 @@ const SettingPage = () => {
     },
   ];
 
+  const handleAddService = () => {
+    const event = new CustomEvent('add-service-click');
+    window.dispatchEvent(event);
+  };
+
+  const handleAddFingerprint = () => {
+    const event = new CustomEvent('add-fingerprint-click');
+    window.dispatchEvent(event);
+  };
+
   return (
     <div className="flex flex-col h-full bg-background text-foreground overflow-hidden">
-      {/* Unified Header */}
-      <header className="h-[48px] flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
-        <div className="flex items-center gap-2">
-          <LayoutDashboard className="w-4 h-4 text-text-primary -mt-0.5" />
-          <ChevronRight className="w-3 h-3 text-text-primary" />
-          <span className="text-text-primary text-sm">Setting</span>
-          <ChevronRight className="w-3 h-3 text-text-secondary" />
-          <span className="text-text-primary text-sm font-medium">
-            {tabs.find((t) => t.id === activeTab)?.label || ''}
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          {activeTab === 'services' && (
-            <>
-              <div className="w-80 flex items-center transition-all duration-500">
-                <div className="relative flex items-center w-full h-9 bg-input-background border border-border rounded-md transition-all duration-300">
-                  <Search className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
-                  <input
-                    type="text"
-                    placeholder="Search services..."
-                    value={serviceSearch}
-                    onChange={(e) => setServiceSearch(e.target.value)}
-                    className="w-full h-full pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  const event = new CustomEvent('add-service-click');
-                  window.dispatchEvent(event);
-                }}
-                className="w-9 h-9 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
-                title="Add Service"
-              >
-                <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
-              </button>
-            </>
-          )}
-          {activeTab === 'fingerprint' && (
-            <>
-              <div className="w-80 flex items-center transition-all duration-500">
-                <div className="relative flex items-center w-full h-9 bg-input-background border border-border rounded-md transition-all duration-300">
-                  <Search className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
-                  <input
-                    type="text"
-                    placeholder="Search fingerprints..."
-                    className="w-full h-full pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  const event = new CustomEvent('add-fingerprint-click');
-                  window.dispatchEvent(event);
-                }}
-                className="w-9 h-9 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
-                title="Add Fingerprint"
-              >
-                <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+      <SettingHeader
+        tabs={tabs}
+        activeTab={activeTab}
+        serviceSearch={serviceSearch}
+        onServiceSearchChange={setServiceSearch}
+        fingerprintSearch={fingerprintSearch}
+        onFingerprintSearchChange={setFingerprintSearch}
+        onAddService={handleAddService}
+        onAddFingerprint={handleAddFingerprint}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Settings Sidebar */}
