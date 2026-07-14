@@ -87,68 +87,107 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email }) => {
       try {
         // @ts-ignore
         const result = await window.electron.ipcRenderer.invoke('email:get-bookmarks', { email });
+        console.log('[BookmarkTab] Full IPC result:', JSON.stringify(result, null, 2));
+        
         if (result.success && result.bookmarks) {
-          // Parse Chrome bookmark structure
-          const roots = result.bookmarks.roots;
+          console.log('[BookmarkTab] Bookmarks data type:', typeof result.bookmarks);
+          console.log('[BookmarkTab] Bookmarks keys:', Object.keys(result.bookmarks));
+          
+          // Handle both cases: result.bookmarks.roots or result.bookmarks directly
+          const bookmarkData = result.bookmarks;
+          const roots = bookmarkData.roots || bookmarkData;
+          console.log('[BookmarkTab] Roots structure:', JSON.stringify(roots, null, 2));
+          
+          // Check if roots is empty or has no valid data
+          if (!roots || Object.keys(roots).length === 0) {
+            console.log('[BookmarkTab] No roots found in bookmark data');
+            setBookmarkData(null);
+            setLoading(false);
+            return;
+          }
+          
           const parsedRoots: BookmarkNode = {
             name: 'Bookmarks',
             type: 'folder',
             children: [],
           };
 
-          // Helper to parse bookmark nodes
-          const parseNode = (node: any): BookmarkNode | null => {
+          // Helper to parse bookmark nodes - more robust
+          const parseNode = (node: any, depth: number = 0): BookmarkNode | null => {
             if (!node) return null;
-            if (node.type === 'folder') {
+            
+            console.log(`[BookmarkTab] Parsing node at depth ${depth}:`, node.name || 'unnamed', node.type);
+            
+            if (node.type === 'folder' || node.children) {
+              // If node has children or is a folder
               const children = (node.children || [])
-                .map((child: any) => parseNode(child))
+                .map((child: any) => parseNode(child, depth + 1))
                 .filter((child: BookmarkNode | null): child is BookmarkNode => child !== null);
+              
+              if (children.length === 0 && depth > 0) {
+                // Skip empty folders (except root)
+                return null;
+              }
+              
               return {
-                name: node.name || 'Untitled',
+                name: node.name || 'Untitled Folder',
                 type: 'folder',
                 children: children.length > 0 ? children : undefined,
                 date_added: node.date_added,
                 date_modified: node.date_modified,
                 id: node.id,
               };
-            } else if (node.type === 'url') {
+            } else if (node.type === 'url' || node.url) {
+              // URL node
               return {
-                name: node.name || 'Untitled',
+                name: node.name || node.title || 'Untitled',
                 type: 'url',
                 url: node.url,
                 date_added: node.date_added,
                 id: node.id,
               };
             }
+            
             return null;
           };
 
           // Parse each root
-          const rootNames = ['bookmark_bar', 'other', 'synced'];
+          const rootNames = ['bookmark_bar', 'other', 'synced', 'mobile'];
+          let hasAnyBookmark = false;
+          
           for (const rootName of rootNames) {
             if (roots[rootName]) {
-              const parsed = parseNode(roots[rootName]);
+              console.log(`[BookmarkTab] Processing root: ${rootName}`);
+              const parsed = parseNode(roots[rootName], 0);
               if (parsed && parsed.children && parsed.children.length > 0) {
                 parsedRoots.children!.push(parsed);
+                hasAnyBookmark = true;
+                console.log(`[BookmarkTab] Root ${rootName} has ${parsed.children.length} items`);
+              } else {
+                console.log(`[BookmarkTab] Root ${rootName} is empty or invalid`);
               }
+            } else {
+              console.log(`[BookmarkTab] Root ${rootName} not found`);
             }
           }
 
-          // Also check for 'mobile' if exists
-          if (roots.mobile) {
-            const parsed = parseNode(roots.mobile);
-            if (parsed && parsed.children && parsed.children.length > 0) {
-              parsedRoots.children!.push(parsed);
-            }
+          if (!hasAnyBookmark) {
+            console.log('[BookmarkTab] No valid bookmarks found in any root');
+            setBookmarkData(null);
+          } else {
+            console.log('[BookmarkTab] Final parsed bookmarks:', parsedRoots);
+            setBookmarkData(parsedRoots);
           }
-
-          setBookmarkData(parsedRoots);
         } else if (result.success && !result.bookmarks) {
+          console.log('[BookmarkTab] Success but no bookmarks data');
           setBookmarkData(null);
         } else {
+          console.log('[BookmarkTab] Error from IPC:', result.error);
           setError(result.error || 'Failed to load bookmarks');
         }
       } catch (err: any) {
+        console.error('[BookmarkTab] Exception caught:', err);
+        console.error('[BookmarkTab] Error stack:', err.stack);
         setError(err.message || 'An error occurred');
       } finally {
         setLoading(false);

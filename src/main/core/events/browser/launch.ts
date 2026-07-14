@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as sqlite3 from 'sqlite3';
 import { ProxyBridgeService } from '../../../services/ProxyBridgeService';
-import { Proxy } from '../../../../shared/types';
+import { Proxy } from '../../../../renderer/src/types/db';
 import * as puppeteer from 'puppeteer-core';
 import { dbManager } from '../../database';
 import { getExecutablePath, getChromeStablePath } from './utils';
@@ -136,18 +136,8 @@ export function setupLaunchHandlers() {
         args.push(`--remote-debugging-port=${cdpPort}`);
         args.push('--remote-debugging-address=127.0.0.1');
 
-        // Add diagnostic tabs to open on startup
-        if (launchMode !== 'normal') {
-          args.push('https://pixelscan.net/fingerprint-check#what_website_see');
-          args.push('https://pixelscan.net/ip');
-          args.push('https://pixelscan.net/vpn-check');
-          args.push('https://pixelscan.net/ip-blacklist-check');
-          args.push('https://pixelscan.net/bot-check');
-          args.push('https://pixelscan.net/dns-check');
-          args.push('https://pixelscan.net/webrtc-check');
-        } else {
-          args.push('chrome://newtab');
-        }
+        // Open new tab on startup
+        args.push('chrome://newtab');
 
         const chromeProcess = spawn(executablePath, args, { detached: true });
 

@@ -760,29 +760,23 @@ const EmailTable: FC<EmailTableProps> = ({
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={() => setContextMenu(null)}
           >
-            {accounts.find((a) => a.id === contextMenu.accountId)?.status === 'deleting' ? (
-              <div
-                onClick={() => {
-                  onRestore(contextMenu.accountId);
-                  setContextMenu(null);
-                }}
-                className="px-3 py-1.5 text-sm hover:bg-sidebar-item-hover cursor-pointer flex items-center gap-2"
-              >
-                <Undo2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Restore Account</span>
-              </div>
-            ) : (
-              <div
-                onClick={() => {
-                  onSoftDelete(contextMenu.accountId);
-                  setContextMenu(null);
-                }}
-                className="px-3 py-1.5 text-sm hover:bg-sidebar-item-hover cursor-pointer flex items-center gap-2"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-red-500/60" />
-                <span>Move to Trash</span>
-              </div>
-            )}
+            <div
+              onClick={() => {
+                const account = accounts.find((a) => a.id === contextMenu.accountId);
+                if (account) {
+                  setPendingLaunch({
+                    accountId: account.id,
+                    email: account.email,
+                  });
+                  setIsLaunchModalOpen(true);
+                }
+                setContextMenu(null);
+              }}
+              className="px-3 py-1.5 text-sm hover:bg-sidebar-item-hover cursor-pointer flex items-center gap-2"
+            >
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Open browser</span>
+            </div>
             <div className="h-px bg-divider my-1" />
             <div
               onClick={() => {
@@ -792,7 +786,7 @@ const EmailTable: FC<EmailTableProps> = ({
               className="px-3 py-1.5 text-sm hover:bg-sidebar-item-hover cursor-pointer flex items-center gap-2 text-error focus:text-error focus:bg-error/10"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Permanently</span>
+              <span>Delete permanently</span>
             </div>
           </div>,
           document.body,

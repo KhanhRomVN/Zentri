@@ -1,7 +1,16 @@
 import { FC, useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { Shield, X, ChevronDown, Settings2, Check } from 'lucide-react';
+import { Shield, Check, ChevronDown } from 'lucide-react';
 import { cn } from '../../../../shared/lib/utils';
+import Modal from '../../../../components/ui/Modal/Modal';
+import ModalHeader from '../../../../components/ui/Modal/ModalHeader';
+import ModalBody from '../../../../components/ui/Modal/ModalBody';
+import ModalFooter from '../../../../components/ui/Modal/ModalFooter';
+import Input from '../../../../components/ui/Input/Input';
+import Dropdown from '../../../../components/ui/Dropdown/Dropdown';
+import { DropdownTrigger } from '../../../../components/ui/Dropdown/DropdownTrigger';
+import { DropdownContent } from '../../../../components/ui/Dropdown/DropdownContent';
+import { DropdownItem } from '../../../../components/ui/Dropdown/DropdownItem';
+import Button from '../../../../components/ui/Button/Button';
 
 interface ProfileLaunchModalProps {
   isOpen: boolean;
@@ -28,8 +37,6 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({
   const [proxySearch, setProxySearch] = useState('');
   const [fingerprintSearch, setFingerprintSearch] = useState('');
   const [proxyHistory, setProxyHistory] = useState<any[]>([]);
-  const [proxyDropdownOpen, setProxyDropdownOpen] = useState(false);
-  const [fingerprintDropdownOpen, setFingerprintDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -78,247 +85,257 @@ const ProfileLaunchModal: FC<ProfileLaunchModalProps> = ({
     }
   }, [selectedProxyId]);
 
-  if (!isOpen) return null;
+  const selectedProxy = proxies.find((p) => p.id === selectedProxyId);
+  const selectedFingerprint = fingerprints.find((f) => f.id === selectedFingerprintId);
 
-  return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-950/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-              <Settings2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-black uppercase tracking-widest text-white">
-                Cấu hình Wayfern Browser
-              </h2>
-              <p className="text-[10px] text-zinc-500 font-mono truncate max-w-[200px]">{email}</p>
-            </div>
+  const filteredProxies = proxies.filter((p) => {
+    const s = proxySearch.toLowerCase();
+    return (
+      p.host.toLowerCase().includes(s) ||
+      p.country?.toLowerCase().includes(s) ||
+      p.city?.toLowerCase().includes(s) ||
+      p.isp?.toLowerCase().includes(s)
+    );
+  });
+
+  const filteredFingerprints = fingerprints.filter((f) =>
+    f.name.toLowerCase().includes(fingerprintSearch.toLowerCase()),
+  );
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalHeader
+        title="Wayfern Browser Configuration"
+        description={email}
+        onClose={onClose}
+      />
+      <ModalBody className="space-y-6 py-4">
+        {/* Proxy Section */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-secondary uppercase tracking-widest">
+              Proxy Connection
+            </label>
+            {isLoadingProxies && (
+              <span className="text-[10px] text-secondary font-bold uppercase animate-pulse">
+                Loading...
+              </span>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        <div className="p-6 space-y-6">
-          {/* Proxy Section */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                Proxy kết nối
-              </label>
-              {isLoadingProxies && (
-                <span className="text-[8px] text-zinc-500 font-bold uppercase animate-pulse">
-                  Đang tải...
-                </span>
-              )}
-            </div>
-            <div className="relative">
-              <input
-                className={cn(
-                  'w-full h-11 rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 pr-10 text-xs transition-all focus:outline-none focus:border-zinc-700',
-                  selectedProxyId ? 'text-zinc-200 font-bold' : 'text-zinc-500 italic',
-                )}
-                placeholder="Mặc định (Hệ thống)"
+          <Dropdown
+            open={proxySearch !== '' || !!selectedProxyId}
+            onOpenChange={(open) => {
+              if (!open) {
+                setProxySearch('');
+              }
+            }}
+            align="start"
+            side="bottom"
+            strategy="fixed"
+            className="w-full"
+          >
+            <DropdownTrigger>
+              <Input
+                placeholder="Default (System)"
                 value={
                   proxySearch !== ''
                     ? proxySearch
-                    : selectedProxyId
-                      ? `${proxies.find((p) => p.id === selectedProxyId)?.host}:${proxies.find((p) => p.id === selectedProxyId)?.port}`
+                    : selectedProxyId && selectedProxy
+                      ? `${selectedProxy.host}:${selectedProxy.port}`
                       : ''
                 }
                 onChange={(e) => {
                   setProxySearch(e.target.value);
-                  setProxyDropdownOpen(true);
                 }}
-                onFocus={() => setProxyDropdownOpen(true)}
-                onBlur={() => setTimeout(() => setProxyDropdownOpen(false), 200)}
+                className="w-full"
+                inputClassName={cn(
+                  'cursor-pointer',
+                  selectedProxyId && 'font-bold text-primary',
+                )}
+                rightIcon={<ChevronDown className="w-4 h-4 text-secondary" />}
               />
-              <ChevronDown className="w-4 h-4 text-zinc-700 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-              {proxyDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-1 z-[1100] max-h-[300px] overflow-auto custom-scrollbar hover:border-primary transition-colors">
-                  <button
-                    className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-400 hover:text-white rounded-lg cursor-pointer transition-colors"
-                    onMouseDown={() => {
-                      setSelectedProxyId(undefined);
-                      setProxySearch('');
-                      setProxyDropdownOpen(false);
-                    }}
-                  >
-                    <span className="italic">Mặc định (Hệ thống)</span>
-                    {!selectedProxyId && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                  </button>
-                  {proxies
-                    .filter((p) => {
-                      const s = proxySearch.toLowerCase();
-                      return (
-                        p.host.toLowerCase().includes(s) ||
-                        p.country?.toLowerCase().includes(s) ||
-                        p.city?.toLowerCase().includes(s) ||
-                        p.isp?.toLowerCase().includes(s)
-                      );
-                    })
-                    .map((px) => (
-                      <button
-                        key={px.id}
-                        className="flex items-center justify-between w-full px-3 py-2.5 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
-                        onMouseDown={() => {
-                          setSelectedProxyId(px.id);
-                          setProxySearch('');
-                          setProxyDropdownOpen(false);
-                        }}
-                      >
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold font-mono">
-                              {px.host}:{px.port}
-                            </span>
-                            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">
-                              {px.protocol}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-zinc-500 flex items-center gap-1.5 italic">
-                            <span>{px.country || 'N/A'}</span>
-                            {px.city && <span>• {px.city}</span>}
-                            {px.isp && <span>• {px.isp}</span>}
-                          </div>
-                        </div>
-                        {selectedProxyId === px.id && (
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                        )}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-            {selectedProxyId && proxyHistory.length > 0 && (
-              <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1">
-                <div className="flex items-center gap-2 text-amber-500 font-bold text-[10px] uppercase tracking-wider">
-                  <Shield className="w-3.5 h-3.5" />
-                  Cảnh báo lịch sử sử dụng
-                </div>
-                <div className="space-y-1">
-                  {proxyHistory.slice(0, 3).map((h, i) => (
-                    <p key={i} className="text-[10px] text-zinc-400">
-                      • Đã dùng cho{' '}
-                      <span className="text-zinc-200 font-bold">{h.email_address}</span>
-                      {h.target_site && (
-                        <>
-                          {' '}
-                          trên <span className="text-zinc-200 font-bold">{h.target_site}</span>
-                        </>
-                      )}
-                      <span className="text-zinc-500 ml-2">
-                        ({new Date(h.used_at).toLocaleDateString()})
+            </DropdownTrigger>
+            <DropdownContent className="min-w-[300px] max-h-[300px] overflow-auto custom-scrollbar bg-dropdown-background border border-border rounded-xl shadow-2xl p-1">
+              <DropdownItem
+                onClick={() => {
+                  setSelectedProxyId(undefined);
+                  setProxySearch('');
+                }}
+                icon={!selectedProxyId ? <Check className="w-3.5 h-3.5 text-success" /> : undefined}
+                closeOnSelect
+              >
+                <span className="italic">Default (System)</span>
+              </DropdownItem>
+              {filteredProxies.map((px) => (
+                <DropdownItem
+                  key={px.id}
+                  onClick={() => {
+                    setSelectedProxyId(px.id);
+                    setProxySearch('');
+                  }}
+                  icon={
+                    selectedProxyId === px.id ? (
+                      <Check className="w-3.5 h-3.5 text-success" />
+                    ) : undefined
+                  }
+                  closeOnSelect
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold font-mono">
+                        {px.host}:{px.port}
                       </span>
-                    </p>
-                  ))}
-                  {proxyHistory.length > 3 && (
-                    <p className="text-[9px] text-zinc-500 italic pl-3">
-                      ... và {proxyHistory.length - 3} lần sử dụng khác.
-                    </p>
-                  )}
-                </div>
+                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">
+                        {px.protocol}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-secondary flex items-center gap-1.5 italic">
+                      <span>{px.country || 'N/A'}</span>
+                      {px.city && <span>• {px.city}</span>}
+                      {px.isp && <span>• {px.isp}</span>}
+                    </div>
+                  </div>
+                </DropdownItem>
+              ))}
+            </DropdownContent>
+          </Dropdown>
+
+          {selectedProxyId && proxyHistory.length > 0 && (
+            <div className="p-3 bg-warn/5 border border-warn/10 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2 text-warn font-bold text-[10px] uppercase tracking-wider">
+                <Shield className="w-3.5 h-3.5" />
+                Usage History Warning
               </div>
+              <div className="space-y-1">
+                {proxyHistory.slice(0, 3).map((h, i) => (
+                  <p key={i} className="text-[10px] text-secondary">
+                    • Used for{' '}
+                    <span className="text-primary font-bold">{h.email_address}</span>
+                    {h.target_site && (
+                      <>
+                        {' '}
+                        on <span className="text-primary font-bold">{h.target_site}</span>
+                      </>
+                    )}
+                    <span className="text-secondary ml-2">
+                      ({new Date(h.used_at).toLocaleDateString()})
+                    </span>
+                  </p>
+                ))}
+                {proxyHistory.length > 3 && (
+                  <p className="text-[9px] text-secondary italic pl-3">
+                    ... and {proxyHistory.length - 3} other uses.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Fingerprint Section */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-secondary uppercase tracking-widest">
+              Fingerprint
+            </label>
+            {isLoadingFingerprints && (
+              <span className="text-[10px] text-secondary font-bold uppercase animate-pulse">
+                Loading...
+              </span>
             )}
           </div>
 
-          {/* Fingerprint Section */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                Dấu vân tay (Fingerprint)
-              </label>
-              {isLoadingFingerprints && (
-                <span className="text-[8px] text-zinc-500 font-bold uppercase animate-pulse">
-                  Đang tải...
-                </span>
-              )}
-            </div>
-            <div className="relative">
-              <input
-                className={cn(
-                  'w-full h-11 rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 pr-10 text-xs transition-all focus:outline-none focus:border-zinc-700',
-                  selectedFingerprintId ? 'text-zinc-200 font-bold' : 'text-zinc-500 italic',
-                )}
-                placeholder="Mặc định (Tự động tạo)"
+          <Dropdown
+            open={fingerprintSearch !== '' || !!selectedFingerprintId}
+            onOpenChange={(open) => {
+              if (!open) {
+                setFingerprintSearch('');
+              }
+            }}
+            align="start"
+            side="bottom"
+            strategy="fixed"
+            className="w-full"
+          >
+            <DropdownTrigger>
+              <Input
+                placeholder="Default (Auto-generated)"
                 value={
                   fingerprintSearch !== ''
                     ? fingerprintSearch
-                    : selectedFingerprintId
-                      ? fingerprints.find((f) => f.id === selectedFingerprintId)?.name || ''
+                    : selectedFingerprintId && selectedFingerprint
+                      ? selectedFingerprint.name
                       : ''
                 }
                 onChange={(e) => {
                   setFingerprintSearch(e.target.value);
-                  setFingerprintDropdownOpen(true);
                 }}
-                onFocus={() => setFingerprintDropdownOpen(true)}
-                onBlur={() => setTimeout(() => setFingerprintDropdownOpen(false), 200)}
+                className="w-full"
+                inputClassName={cn(
+                  'cursor-pointer',
+                  selectedFingerprintId && 'font-bold text-primary',
+                )}
+                rightIcon={<ChevronDown className="w-4 h-4 text-secondary" />}
               />
-              <ChevronDown className="w-4 h-4 text-zinc-700 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-              {fingerprintDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-1 z-[1100] max-h-[300px] overflow-auto custom-scrollbar hover:border-primary transition-colors">
-                  <button
-                    className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-400 hover:text-white rounded-lg cursor-pointer transition-colors"
-                    onMouseDown={() => {
-                      setSelectedFingerprintId(undefined);
-                      setFingerprintSearch('');
-                      setFingerprintDropdownOpen(false);
-                    }}
-                  >
-                    <span className="italic">Mặc định (Tự động tạo)</span>
-                    {!selectedFingerprintId && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                  </button>
-                  {fingerprints.length > 0 && <div className="h-px bg-zinc-800 my-1 mx-2" />}
-                  {fingerprints
-                    .filter((f) => f.name.toLowerCase().includes(fingerprintSearch.toLowerCase()))
-                    .map((fp) => (
-                      <button
-                        key={fp.id}
-                        className="flex items-center justify-between w-full px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
-                        onMouseDown={() => {
-                          setSelectedFingerprintId(fp.id);
-                          setFingerprintSearch('');
-                          setFingerprintDropdownOpen(false);
-                        }}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-bold">{fp.name}</span>
-                          {fp.description && (
-                            <span className="text-[10px] text-zinc-500 truncate max-w-[250px]">
-                              {fp.description}
-                            </span>
-                          )}
-                        </div>
-                        {selectedFingerprintId === fp.id && (
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                        )}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="h-px bg-zinc-800/50" />
-          <button
-            onClick={() =>
-              onLaunch({ fingerprintId: selectedFingerprintId, proxyId: selectedProxyId })
-            }
-            className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20"
-          >
-            <span className="text-xs font-black uppercase ">Khởi chạy</span>
-          </button>
+            </DropdownTrigger>
+            <DropdownContent className="min-w-[300px] max-h-[300px] overflow-auto custom-scrollbar bg-dropdown-background border border-border rounded-xl shadow-2xl p-1">
+              <DropdownItem
+                onClick={() => {
+                  setSelectedFingerprintId(undefined);
+                  setFingerprintSearch('');
+                }}
+                icon={
+                  !selectedFingerprintId ? (
+                    <Check className="w-3.5 h-3.5 text-success" />
+                  ) : undefined
+                }
+                closeOnSelect
+              >
+                <span className="italic">Default (Auto-generated)</span>
+              </DropdownItem>
+              {fingerprints.length > 0 && <div className="h-px bg-border my-1 mx-2" />}
+              {filteredFingerprints.map((fp) => (
+                <DropdownItem
+                  key={fp.id}
+                  onClick={() => {
+                    setSelectedFingerprintId(fp.id);
+                    setFingerprintSearch('');
+                  }}
+                  icon={
+                    selectedFingerprintId === fp.id ? (
+                      <Check className="w-3.5 h-3.5 text-success" />
+                    ) : undefined
+                  }
+                  closeOnSelect
+                >
+                  <div className="flex flex-col">
+                    <span className="font-bold">{fp.name}</span>
+                    {fp.description && (
+                      <span className="text-[10px] text-secondary truncate max-w-[250px]">
+                        {fp.description}
+                      </span>
+                    )}
+                  </div>
+                </DropdownItem>
+              ))}
+            </DropdownContent>
+          </Dropdown>
         </div>
-      </div>
-    </div>,
-    document.body,
+      </ModalBody>
+
+      <ModalFooter>
+        <Button
+          variant="soft"
+          onClick={() =>
+            onLaunch({ fingerprintId: selectedFingerprintId, proxyId: selectedProxyId })
+          }
+          fullWidth
+        >
+          <span className="text-xs font-black uppercase">Launch</span>
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 };
 

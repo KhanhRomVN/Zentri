@@ -263,8 +263,8 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
   if (loading) {
     return (
       <div className="p-8 flex flex-col items-center justify-center h-full">
-        <Database className="w-8 h-8 text-zinc-700 animate-pulse mb-4" />
-        <p className="text-zinc-500 text-sm">Loading sessions...</p>
+        <Database className="w-8 h-8 text-secondary animate-pulse mb-4" />
+        <p className="text-secondary text-sm">Loading sessions...</p>
       </div>
     );
   }
