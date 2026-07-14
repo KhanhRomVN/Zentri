@@ -16,10 +16,10 @@ import {
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
-} from '../../../components/ui/Dropdown';
-import { cn } from '../../../shared/lib/utils';
-import { Drawer, DrawerHeader, DrawerBody } from '../../../components/ui/Drawer';
-import { generateTOTP, getTOTPTimeRemaining } from '../utils/totp';
+} from '../../../../components/ui/Dropdown';
+import { cn } from '../../../../shared/lib/utils';
+import { Drawer, DrawerHeader, DrawerBody } from '../../../../components/ui/Drawer';
+import { generateTOTP, getTOTPTimeRemaining } from '../../utils/totp';
 
 interface ServiceVaultDrawerProps {
   isOpen: boolean;

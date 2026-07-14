@@ -1,11 +1,11 @@
 import { FC } from 'react';
-import { Plus, X, Check, Database } from 'lucide-react';
-import { cn } from '../../../shared/lib/utils';
-import { Account } from '../types';
+import { Plus, Database } from 'lucide-react';
 import React from 'react';
-import { useServiceDrawer } from '../../../contexts/ServiceDrawerContext';
-import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../../components/ui/Drawer';
-import { Button } from '../../../components/ui/Button';
+import { Account } from '../../types';
+import { Drawer, DrawerBody, DrawerFooter, DrawerHeader } from '@renderer/components/ui/Drawer';
+import { useServiceDrawer } from '@renderer/contexts/ServiceDrawerContext';
+import { cn } from '@renderer/shared/lib/utils';
+import { Button } from '@renderer/components/ui/Button';
 
 interface ServiceDrawersProps {
   isServiceDrawerOpen: boolean;

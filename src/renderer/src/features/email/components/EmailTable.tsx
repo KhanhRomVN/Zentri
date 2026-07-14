@@ -1,16 +1,16 @@
 import { FC, useState, useCallback, useRef, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Globe, Eye, Key, Undo2, X, Mail } from 'lucide-react';
+import { Trash2, Globe, Eye, Key, Undo2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../../../shared/lib/utils';
 import { Account, Service } from '../types';
 import { SERVICES } from '../../../constants/services';
-import DetailView from './DetailView';
-import ServiceDrawers from './ServiceDrawers';
-import ServiceVaultDrawer from './ServiceVaultDrawer';
+import ServiceVaultDrawer from './drawers/ServiceVaultDrawer';
 import ProfileLaunchModal from './modals/ProfileLaunchModal';
 import { SortingState } from '@tanstack/react-table';
+import EmailDetailView from './EmailDetailView';
+import ServiceDrawer from '@renderer/features/setting/components/Service/ServiceDrawer';
 
 interface EmailTableProps {
   accounts: Account[];
@@ -46,14 +46,11 @@ const EmailTable: FC<EmailTableProps> = ({
   allAccounts = accounts,
   focusedAccountId,
   onSelectAccount,
-  onSoftDelete,
   onRestore,
   onHardDelete,
   onRefreshData,
   activeTab,
   setActiveTab,
-  sorting,
-  columnVisibility,
 }) => {
   // --- States ---
   const [avatars, setAvatars] = useState<Record<string, string>>({});
@@ -714,7 +711,7 @@ const EmailTable: FC<EmailTableProps> = ({
                             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                             className="overflow-hidden"
                           >
-                            <DetailView
+                            <EmailDetailView
                               focusedAccount={focusedAccount!}
                               accounts={accounts}
                               activeTab={activeTab}
@@ -851,7 +848,7 @@ const EmailTable: FC<EmailTableProps> = ({
           document.body,
         )}
 
-      <ServiceDrawers
+      <ServiceDrawer
         isServiceDrawerOpen={isServiceDrawerOpen}
         setIsServiceDrawerOpen={setIsServiceDrawerOpen}
         linkServiceSearchQuery={linkServiceSearchQuery}

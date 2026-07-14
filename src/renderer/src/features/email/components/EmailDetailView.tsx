@@ -49,7 +49,7 @@ const getTabColor = (tabId: string) => {
   };
 };
 
-interface DetailViewProps {
+interface EmailDetailViewProps {
   focusedAccount: Account | null;
   accounts: Account[];
   activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks';
@@ -75,7 +75,7 @@ interface DetailViewProps {
   onDeleteService?: (linkId: string) => void;
 }
 
-const DetailView: FC<DetailViewProps> = ({
+const EmailDetailView: FC<EmailDetailViewProps> = ({
   focusedAccount,
   activeTab,
   setActiveTab,
@@ -272,4 +272,4 @@ const DetailView: FC<DetailViewProps> = ({
   );
 };
 
-export default DetailView;
+export default EmailDetailView;

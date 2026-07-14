@@ -26,7 +26,7 @@ import { Checkbox } from '../../../components/ui/Checkbox';
 import { Button } from '../../../components/ui/Button';
 import { SortingState } from '@tanstack/react-table';
 
-interface SearchToolbarProps {
+interface HeaderBarProps {
   filtersCount: number;
   showFilterBar: boolean;
   onToggleFilterBar: () => void;
@@ -45,7 +45,7 @@ interface SearchToolbarProps {
   onPageChange: (page: number) => void;
 }
 
-export const SearchToolbar: React.FC<SearchToolbarProps> = ({
+export const HeaderBar: React.FC<HeaderBarProps> = ({
   filtersCount,
   showFilterBar,
   onToggleFilterBar,
@@ -342,4 +342,4 @@ export const SearchToolbar: React.FC<SearchToolbarProps> = ({
   );
 };
 
-export default SearchToolbar;
+export default HeaderBar;

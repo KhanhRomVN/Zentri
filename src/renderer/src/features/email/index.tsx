@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { useHashParams } from '../../hooks/useHashParams';
 import EmailTable from './components/EmailTable';
-import SearchToolbar from './components/SearchToolbar';
+import HeaderBar from './components/HeaderBar';
 import FilterBar from './components/FilterBar';
 import BookmarkTab from './components/tabs/BookmarkTab';
 import { useEmailTableState } from './hooks/useEmailTableState';
@@ -653,7 +653,7 @@ const EmailManager = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <SearchToolbar
+          <HeaderBar
             filtersCount={filterCount}
             showFilterBar={showFilterBar}
             onToggleFilterBar={() => setShowFilterBar(!showFilterBar)}
