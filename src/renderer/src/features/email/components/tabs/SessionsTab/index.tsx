@@ -1,6 +1,5 @@
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
-import { cn } from '../../../../shared/lib/utils';
-import ProfileLaunchModal from '../modals/ProfileLaunchModal';
+import ProfileLaunchModal from '../../modals/ProfileLaunchModal';
 import {
   Database,
   Clock,
@@ -11,7 +10,12 @@ import {
   ExternalLink,
   ChevronLeft,
 } from 'lucide-react';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../../components/ui/Dropdown';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+} from '../../../../../components/ui/Dropdown';
 
 interface SessionsTabProps {
   email: string;
@@ -350,7 +354,9 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
                           </div>
                         </td>
                         <td className="p-4 text-center">
-                          <span className="text-xs font-mono text-zinc-400">{group.totalCookies}</span>
+                          <span className="text-xs font-mono text-zinc-400">
+                            {group.totalCookies}
+                          </span>
                         </td>
                         <td className="p-4 text-xs text-zinc-500 text-center">
                           <div className="flex items-center justify-center space-x-2">
@@ -400,7 +406,9 @@ const SessionsTab: FC<SessionsTabProps> = ({ email, accountId }) => {
                                   </span>
                                 </div>
                               </td>
-                              <td className="p-2 text-center text-[10px] text-zinc-600">{sub.count}</td>
+                              <td className="p-2 text-center text-[10px] text-zinc-600">
+                                {sub.count}
+                              </td>
                               <td className="p-2 text-[10px] text-zinc-600 text-center">
                                 {new Date(sub.expiryDate).toLocaleDateString()}
                               </td>

@@ -1,6 +1,5 @@
 import { FC } from 'react';
 import { LayoutDashboard, ChevronRight, Search, Plus } from 'lucide-react';
-import { cn } from '../../../shared/lib/utils';
 
 interface Tab {
   id: string;

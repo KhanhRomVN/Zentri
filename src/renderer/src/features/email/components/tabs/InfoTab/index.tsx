@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { Shield, Key, Hash, Activity, X } from 'lucide-react';
-import { cn } from '../../../../shared/lib/utils';
-import { Account } from '../../types';
+import { cn } from '../../../../../shared/lib/utils';
+import { Account } from '../../../types';
 
 interface InfoTabProps {
   editedAccount: Account | null;

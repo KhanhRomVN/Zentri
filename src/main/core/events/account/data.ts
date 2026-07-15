@@ -493,4 +493,77 @@ export function setupDataHandlers() {
       }
     },
   );
+
+  ipcMain.handle(
+    'email:delete-history-item',
+    async (_event, { email, url, time }: { email: string; url: string; time: number }) => {
+      try {
+        const dbDir = path.dirname(dbManager.dbPath);
+        const userDataPath = app.getPath('userData');
+        const profileDir = path.join(dbDir, 'profiles', email);
+        const historyPath = path.join(profileDir, 'Default', 'History');
+
+        if (!fs.existsSync(historyPath)) {
+          return { success: false, error: 'History file not found' };
+        }
+
+        const tempPath = path.join(userDataPath, `temp_delete_${Date.now()}.db`);
+        fs.copyFileSync(historyPath, tempPath);
+        const db = new sqlite3.Database(tempPath);
+
+        // Chuyển đổi time từ milliseconds sang microseconds (thời gian của Chrome)
+        const visitTimeMicro = (time + 11644473600000) * 1000;
+
+        // Tìm url_id từ url
+        const urlRow: any = await new Promise((resolve) => {
+          db.get('SELECT id FROM urls WHERE url = ?', [url], (_err, row) => {
+            resolve(row);
+          });
+        });
+
+        if (!urlRow) {
+          db.close();
+          fs.unlinkSync(tempPath);
+          return { success: false, error: 'URL not found in history' };
+        }
+
+        const urlId = urlRow.id;
+
+        // Xóa record trong visits
+        await new Promise((resolve, reject) => {
+          db.run('DELETE FROM visits WHERE url = ? AND visit_time = ?', [urlId, visitTimeMicro], function(err) {
+            if (err) reject(err);
+            else resolve(this);
+          });
+        });
+
+        // Kiểm tra xem còn record nào trong visits tham chiếu đến urlId không
+        const remainingVisits: any = await new Promise((resolve) => {
+          db.get('SELECT COUNT(*) as count FROM visits WHERE url = ?', [urlId], (_err, row) => {
+            resolve(row);
+          });
+        });
+
+        // Nếu không còn record nào, xóa luôn record trong urls
+        if (remainingVisits && remainingVisits.count === 0) {
+          await new Promise((resolve, reject) => {
+            db.run('DELETE FROM urls WHERE id = ?', [urlId], function(err) {
+              if (err) reject(err);
+              else resolve(this);
+            });
+          });
+        }
+
+        db.close();
+
+        // Ghi đè file History gốc
+        fs.copyFileSync(tempPath, historyPath);
+        fs.unlinkSync(tempPath);
+
+        return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e.message };
+      }
+    },
+  );
 }

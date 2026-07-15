@@ -3,7 +3,7 @@ import { useHashParams } from '../../hooks/useHashParams';
 import EmailTable from './components/EmailTable';
 import HeaderBar from './components/HeaderBar';
 import FilterBar from './components/FilterBar';
-import BookmarkTab from './components/tabs/BookmarkTab';
+import BookmarkTab from './components/tabs/BookmarkTab/index';
 import { useEmailTableState } from './hooks/useEmailTableState';
 import { useEmailFilter } from './hooks/useEmailFilter';
 import {

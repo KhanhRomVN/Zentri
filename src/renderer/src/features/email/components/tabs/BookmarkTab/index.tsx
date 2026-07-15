@@ -1,6 +1,14 @@
 import { FC, useState, useEffect, useMemo } from 'react';
-import { Bookmark, Folder, ChevronRight, ChevronDown, Globe, Loader2, AlertCircle } from 'lucide-react';
-import { cn } from '../../../../shared/lib/utils';
+import {
+  Bookmark,
+  Folder,
+  ChevronRight,
+  ChevronDown,
+  Globe,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
+import { cn } from '../../../../../shared/lib/utils';
 
 interface BookmarkNode {
   name: string;
@@ -28,7 +36,7 @@ const BookmarkTreeItem: FC<{
         <div
           className={cn(
             'flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-primary/5 transition-colors',
-            level === 0 && 'font-bold text-foreground/80'
+            level === 0 && 'font-bold text-foreground/80',
           )}
           onClick={() => setExpanded(!expanded)}
         >
@@ -88,16 +96,16 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email }) => {
         // @ts-ignore
         const result = await window.electron.ipcRenderer.invoke('email:get-bookmarks', { email });
         console.log('[BookmarkTab] Full IPC result:', JSON.stringify(result, null, 2));
-        
+
         if (result.success && result.bookmarks) {
           console.log('[BookmarkTab] Bookmarks data type:', typeof result.bookmarks);
           console.log('[BookmarkTab] Bookmarks keys:', Object.keys(result.bookmarks));
-          
+
           // Handle both cases: result.bookmarks.roots or result.bookmarks directly
           const bookmarkData = result.bookmarks;
           const roots = bookmarkData.roots || bookmarkData;
           console.log('[BookmarkTab] Roots structure:', JSON.stringify(roots, null, 2));
-          
+
           // Check if roots is empty or has no valid data
           if (!roots || Object.keys(roots).length === 0) {
             console.log('[BookmarkTab] No roots found in bookmark data');
@@ -105,7 +113,7 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email }) => {
             setLoading(false);
             return;
           }
-          
+
           const parsedRoots: BookmarkNode = {
             name: 'Bookmarks',
             type: 'folder',
@@ -115,20 +123,24 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email }) => {
           // Helper to parse bookmark nodes - more robust
           const parseNode = (node: any, depth: number = 0): BookmarkNode | null => {
             if (!node) return null;
-            
-            console.log(`[BookmarkTab] Parsing node at depth ${depth}:`, node.name || 'unnamed', node.type);
-            
+
+            console.log(
+              `[BookmarkTab] Parsing node at depth ${depth}:`,
+              node.name || 'unnamed',
+              node.type,
+            );
+
             if (node.type === 'folder' || node.children) {
               // If node has children or is a folder
               const children = (node.children || [])
                 .map((child: any) => parseNode(child, depth + 1))
                 .filter((child: BookmarkNode | null): child is BookmarkNode => child !== null);
-              
+
               if (children.length === 0 && depth > 0) {
                 // Skip empty folders (except root)
                 return null;
               }
-              
+
               return {
                 name: node.name || 'Untitled Folder',
                 type: 'folder',
@@ -147,14 +159,14 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email }) => {
                 id: node.id,
               };
             }
-            
+
             return null;
           };
 
           // Parse each root
           const rootNames = ['bookmark_bar', 'other', 'synced', 'mobile'];
           let hasAnyBookmark = false;
-          
+
           for (const rootName of rootNames) {
             if (roots[rootName]) {
               console.log(`[BookmarkTab] Processing root: ${rootName}`);
@@ -252,7 +264,9 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email }) => {
           </div>
         </div>
         <div className="space-y-3">
-          <h3 className="text-lg font-black tracking-tight text-foreground/80">No Bookmarks Found</h3>
+          <h3 className="text-lg font-black tracking-tight text-foreground/80">
+            No Bookmarks Found
+          </h3>
           <p className="text-xs text-muted-foreground max-w-[280px] leading-relaxed mx-auto font-medium opacity-60">
             No Chrome bookmarks found for this account.
           </p>

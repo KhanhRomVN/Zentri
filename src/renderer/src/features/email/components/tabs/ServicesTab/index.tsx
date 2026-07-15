@@ -1,12 +1,12 @@
 import { Search, Plus, ShieldCheck, Lock, LayoutGrid, Globe, Eye, Trash2 } from 'lucide-react';
-import { useRef, FC } from 'react';
-import { cn } from '../../../../shared/lib/utils';
+import { FC } from 'react';
+import { cn } from '../../../../../shared/lib/utils';
 import {
   Dropdown,
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
-} from '../../../../components/ui/Dropdown';
+} from '../../../../../components/ui/Dropdown';
 
 interface ServicesTabProps {
   serviceSearch: string;

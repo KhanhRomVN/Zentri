@@ -4,11 +4,11 @@ import { cn } from '../../../shared/lib/utils';
 import { useAccentColors } from '../../../hooks/useAccentColors';
 
 import { Account } from '../types';
-import InfoTab from './tabs/InfoTab';
-import ServicesTab from './tabs/ServicesTab';
-import SessionsTab from './tabs/SessionsTab';
-import HistoryTab from './tabs/HistoryTab';
-import BookmarkTab from './tabs/BookmarkTab';
+import InfoTab from './tabs/InfoTab/index';
+import ServicesTab from './tabs/ServicesTab/index';
+import SessionsTab from './tabs/SessionsTab/index';
+import HistoryTab from './tabs/HistoryTab/index';
+import BookmarkTab from './tabs/BookmarkTab/index';
 
 // ─── Color Helper ──────────────────────────────────────────────────────────
 let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
