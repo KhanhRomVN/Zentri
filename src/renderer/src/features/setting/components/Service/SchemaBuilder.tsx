@@ -148,10 +148,8 @@ export const SchemaBuilder: React.FC<SchemaBuilderProps> = ({ fields, onChange }
         <CodeBlock
           code={code}
           language="json"
-          readOnly={false}
           onChange={handleCodeChange}
           showLineNumbers={false}
-          themed={true}
           editorOptions={{
             fontSize: 12,
             minimap: { enabled: false },

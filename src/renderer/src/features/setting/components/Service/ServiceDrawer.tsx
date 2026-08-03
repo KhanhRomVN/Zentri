@@ -3,6 +3,7 @@ import { X, Plus, GripVertical, ChevronDown, Bug, Key, Mail, Clock } from 'lucid
 import { cn } from '@renderer/shared/lib/utils';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../../../components/ui/Drawer';
 import { Button } from '../../../../components/ui/Button';
+import { Switch } from '../../../../components/ui/Switch';
 import { ServiceProviderConfig } from '../../../email/types';
 import { SERVICES } from '../../../../constants/services';
 import { CATEGORIES, CategoryItem } from '../../../../constants/categories';
@@ -17,6 +18,7 @@ interface ServiceDrawerProps {
     data: Partial<ServiceProviderConfig>,
     metadata: { key: string; value: string }[],
     authMethods: string[],
+    twoFa?: { has_totp: boolean; has_backup_codes: boolean },
   ) => void;
   editService?: Partial<ServiceProviderConfig> | null;
   isNew?: boolean;
@@ -484,6 +486,7 @@ const ServiceDrawer: React.FC<ServiceDrawerProps> = ({
   const [faviconLoaded, setFaviconLoaded] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
   const [authMethods, setAuthMethods] = useState<string[]>([]);
+  const [twoFa, setTwoFa] = useState({ has_totp: false, has_backup_codes: false });
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [newCategoryTitle, setNewCategoryTitle] = useState('');
 
@@ -496,6 +499,7 @@ useEffect(() => {
         setTagsList(editService.defaultTags || []);
         setDescription((editService as any).description || '');
         setAuthMethods((editService as any).authMethods || []);
+        setTwoFa((editService as any).two_fa || { has_totp: false, has_backup_codes: false });
         const meta = editService.metadata || [];
         setMetadataFields(
           Array.isArray(meta)
@@ -515,6 +519,7 @@ useEffect(() => {
         setMetadataFields([]);
         setSelectedTemplate('');
         setAuthMethods([]);
+        setTwoFa({ has_totp: false, has_backup_codes: false });
       }
       setErrors({});
       setExistingServiceWarning(null);
@@ -573,6 +578,8 @@ useEffect(() => {
             })),
           );
         if (template.auth_method?.length) setAuthMethods(template.auth_method);
+        if (template.two_fa) setTwoFa(template.two_fa);
+        else setTwoFa({ has_totp: false, has_backup_codes: false });
         // Check for existing service with same name or URL
         checkExistingService(template.name, template.url || '');
       }
@@ -679,6 +686,7 @@ useEffect(() => {
         onClose={onClose}
       />
       <DrawerBody className="space-y-6">
+        {isNew && (
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground/80">Service Template</label>
             <CustomSelect
@@ -689,6 +697,7 @@ useEffect(() => {
               showFavicon
             />
           </div>
+        )}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground/80">
               Name <span className="text-red-500">*</span>
@@ -801,6 +810,34 @@ useEffect(() => {
               className="w-full h-24 px-3 py-2 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50 resize-none"
             />
           </div>
+        {/* ─── 2FA Section ─── */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-foreground/80">
+            Two-Factor Authentication (2FA)
+          </h3>
+          <div className="space-y-2">
+            <label className="flex items-center justify-between p-3 bg-muted/20 border border-border/50 rounded-md cursor-pointer hover:bg-muted/30 transition-all">
+              <div>
+                <span className="text-sm font-bold text-foreground">TOTP</span>
+                <p className="text-[10px] text-muted-foreground/50">Time-based One-Time Password</p>
+              </div>
+              <Switch
+                checked={twoFa.has_totp}
+                onCheckedChange={(checked) => setTwoFa((prev) => ({ ...prev, has_totp: checked }))}
+              />
+            </label>
+            <label className="flex items-center justify-between p-3 bg-muted/20 border border-border/50 rounded-md cursor-pointer hover:bg-muted/30 transition-all">
+              <div>
+                <span className="text-sm font-bold text-foreground">Backup Codes</span>
+                <p className="text-[10px] text-muted-foreground/50">One-time use recovery codes</p>
+              </div>
+              <Switch
+                checked={twoFa.has_backup_codes}
+                onCheckedChange={(checked) => setTwoFa((prev) => ({ ...prev, has_backup_codes: checked }))}
+              />
+            </label>
+          </div>
+        </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-sm font-semibold text-foreground/80">Metadata Fields</label>
@@ -969,7 +1006,7 @@ useEffect(() => {
                     key: f.name.trim(),
                     value: JSON.stringify({ type: f.type, feature: f.feature || undefined }),
                   }));
-                onSave(data, metadata, authMethods);
+                onSave(data, metadata, authMethods, twoFa);
               } else {
                 const data: Partial<ServiceProviderConfig> = {
                   name: name.trim(),
@@ -984,7 +1021,7 @@ useEffect(() => {
                     key: f.name.trim(),
                     value: JSON.stringify({ type: f.type, feature: f.feature || undefined }),
                   }));
-                onSave(data, metadata, authMethods);
+                onSave(data, metadata, authMethods, twoFa);
               }
             }}
           >

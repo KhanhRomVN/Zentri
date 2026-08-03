@@ -154,32 +154,72 @@ export function setupProfileHandlers() {
   });
 
   ipcMain.handle(
-    'email:add-service-link',
+    'service_emails:insert',
     async (
       _event,
       {
         emailId,
         serviceId,
+        metadata,
+        twoFa,
       }: {
         emailId: string;
         serviceId: string;
+        metadata?: Record<string, any>;
+        twoFa?: { totp?: string; backupCodes?: string[] };
       },
     ) => {
       try {
         const id = crypto.randomUUID();
         const query = `
-          INSERT INTO service_emails (id, email_id, service_id)
-          VALUES (?, ?, ?)
+          INSERT INTO service_emails (id, email_id, service_id, metadata, two_fa)
+          VALUES (?, ?, ?, ?, ?)
         `;
         const params = [
           id,
           emailId,
           serviceId,
+          metadata ? JSON.stringify(metadata) : null,
+          twoFa ? JSON.stringify(twoFa) : null,
         ];
         await dbManager.run(query, params);
         return { success: true, id };
       } catch (error: any) {
         console.error('Error adding service link:', error);
+        return { success: false, error: error.message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'service_emails:update',
+    async (
+      _event,
+      {
+        linkId,
+        metadata,
+        twoFa,
+      }: {
+        linkId: string;
+        metadata?: Record<string, any>;
+        twoFa?: { totp?: string; backupCodes?: string[] };
+      },
+    ) => {
+      try {
+        const query = `
+          UPDATE service_emails SET metadata = ?, two_fa = ? WHERE id = ?
+        `;
+        const twoFaStr = twoFa ? JSON.stringify(twoFa) : null;
+        console.log('[DEBUG] IPC service_emails:update — linkId:', linkId, 'two_fa:', twoFaStr);
+        const result = await dbManager.run(query, [
+          metadata ? JSON.stringify(metadata) : null,
+          twoFaStr,
+          linkId,
+        ]);
+        console.log('[DEBUG] IPC service_emails:update — result:', JSON.stringify(result));
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error updating service link:', error);
         return { success: false, error: error.message };
       }
     },

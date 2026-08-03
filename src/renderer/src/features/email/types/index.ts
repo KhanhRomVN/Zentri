@@ -1,4 +1,5 @@
-import { Email, Service, ActivityItem, Cookie } from '../../../../../shared/types';
+import { Email, Service } from '../../../types/db';
+
 export interface MetadataItem {
   key: string;
   value: string;
@@ -6,7 +7,17 @@ export interface MetadataItem {
   label?: string;
 }
 
-export type { Service, ActivityItem, Cookie };
+export type { Service };
+
+export interface Cookie {
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;
+  expires?: string;
+  httpOnly?: boolean;
+  secure?: boolean;
+}
 
 export interface ServiceProviderConfig {
   id: string;
@@ -16,6 +27,7 @@ export interface ServiceProviderConfig {
   defaultCategories: string[];
   description: string;
   metadata?: MetadataItem[];
+  authMethods?: string[];
 }
 
 export interface LinkedService {

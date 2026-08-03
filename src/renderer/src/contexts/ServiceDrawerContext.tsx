@@ -20,7 +20,7 @@ export const useServiceDrawer = () => {
 
 interface ServiceDrawerProviderProps {
   children: ReactNode;
-  onSave?: (data: Partial<ServiceProviderConfig>, metadata: { key: string; value: string }[], authMethods: string[]) => Promise<void>;
+  onSave?: (data: Partial<ServiceProviderConfig>, metadata: { key: string; value: string }[], authMethods: string[], twoFa?: { has_totp: boolean; has_backup_codes: boolean }) => Promise<void>;
 }
 
 export const ServiceDrawerProvider: React.FC<ServiceDrawerProviderProps> = ({ children, onSave }) => {
@@ -53,9 +53,10 @@ export const ServiceDrawerProvider: React.FC<ServiceDrawerProviderProps> = ({ ch
     data: Partial<ServiceProviderConfig>,
     metadata: { key: string; value: string }[],
     authMethods: string[],
+    twoFa?: { has_totp: boolean; has_backup_codes: boolean },
   ) => {
     if (onSave) {
-      await onSave(data, metadata, authMethods);
+      await onSave(data, metadata, authMethods, twoFa);
     }
     closeDrawer();
   };

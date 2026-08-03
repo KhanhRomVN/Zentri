@@ -29,13 +29,15 @@ export const SERVICES: Service[] = [
     auth_method: ['google_oauth', 'basic_auth'],
     metadata: {
       fields: [
-        { name: 'name', type: 'string' },
-        { name: 'username', type: 'string' },
-        { name: 'password', type: 'string', feature: 'encryption' },
-        { name: '2fa_secret', type: 'string', feature: 'totp' },
-        { name: 'backup_codes', type: 'array', feature: 'backup_codes' },
-        { name: 'profile_url', type: 'string', feature: 'url' },
+        { name: 'Name', type: 'string' },
+        { name: 'Username', type: 'string' },
+        { name: 'Password', type: 'string' },
+        { name: 'ProfileURL', type: 'string' },
       ],
+    },
+    two_fa: {
+      has_totp: true,
+      has_backup_codes: true,
     },
   },
 ] as const;

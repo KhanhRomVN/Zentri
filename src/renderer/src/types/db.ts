@@ -10,7 +10,7 @@ export interface Email {
   id: string;
   email: string;
   password?: string | null;
-  status: 'active' | 'banned';
+  status: 'active' | 'banned' | 'deleting';
   phone_number?: string | null;
   recovery_email?: string | null;
   totp_secret_key?: string | null;
@@ -59,7 +59,6 @@ export interface ProxyHistory {
 export interface ServiceField {
   name: string;
   type: 'string' | 'array' | 'json' | 'number';
-  feature?: 'encryption' | 'totp' | 'backup_codes' | 'url';
 }
 
 export interface Service {
@@ -74,6 +73,10 @@ export interface Service {
     [key: string]: unknown;
   } | null;
   auth_method?: string[] | null;
+  two_fa?: {
+    has_totp: boolean;
+    has_backup_codes: boolean;
+  } | null;
   layout_config?: {
     gridCols?: number;
     fields?: Array<{

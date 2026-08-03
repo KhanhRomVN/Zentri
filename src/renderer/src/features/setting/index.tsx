@@ -1,18 +1,16 @@
 import { useState } from 'react';
-import { Settings, Database, Shield } from 'lucide-react';
+import { Settings, Database } from 'lucide-react';
 import { GeneralSettings } from './components/General';
 import { ServiceManager } from './components/Service';
-import { FingerprintSettings } from './components/Fingerprint';
 import { SettingHeader } from './components/SettingHeader';
 import { cn } from '../../shared/lib/utils';
 import { useAccentColors } from '../../hooks/useAccentColors';
 
-type Tab = 'general' | 'services' | 'fingerprint';
+type Tab = 'general' | 'services';
 
 const SettingPage = () => {
   const [activeTab, setActiveTab] = useState<Tab>('general');
   const [serviceSearch, setServiceSearch] = useState('');
-  const [fingerprintSearch, setFingerprintSearch] = useState('');
   const { getColorByIndex, toRgba } = useAccentColors();
 
   const tabs = [
@@ -30,22 +28,10 @@ const SettingPage = () => {
       description: 'Manage custom service providers',
       color: '#f59e0b',
     },
-    {
-      id: 'fingerprint',
-      label: 'Fingerprint',
-      icon: Shield,
-      description: 'Global browser fingerprint templates',
-      color: '#8b5cf6',
-    },
   ];
 
   const handleAddService = () => {
     const event = new CustomEvent('add-service-click');
-    window.dispatchEvent(event);
-  };
-
-  const handleAddFingerprint = () => {
-    const event = new CustomEvent('add-fingerprint-click');
     window.dispatchEvent(event);
   };
 
@@ -56,14 +42,13 @@ const SettingPage = () => {
         activeTab={activeTab}
         serviceSearch={serviceSearch}
         onServiceSearchChange={setServiceSearch}
-        fingerprintSearch={fingerprintSearch}
-        onFingerprintSearchChange={setFingerprintSearch}
+        fingerprintSearch=""
+        onFingerprintSearchChange={() => {}}
         onAddService={handleAddService}
-        onAddFingerprint={handleAddFingerprint}
+        onAddFingerprint={() => {}}
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Settings Sidebar */}
         <aside className="w-[280px] border-r border-border bg-card/10 flex flex-col shrink-0">
           <nav className="flex-1 py-4 space-y-1 overflow-y-auto custom-scrollbar px-2">
             {tabs.map((tab, index) => {
@@ -96,7 +81,6 @@ const SettingPage = () => {
           </nav>
         </aside>
 
-        {/* Settings Content */}
         <main className="flex-1 flex flex-col overflow-hidden bg-background/50">
           <div className="flex-1 overflow-hidden">
             <div className="h-full">
@@ -106,7 +90,6 @@ const SettingPage = () => {
                 </div>
               )}
               {activeTab === 'services' && <ServiceManager serviceSearch={serviceSearch} setServiceSearch={setServiceSearch} />}
-              {activeTab === 'fingerprint' && <FingerprintSettings />}
             </div>
           </div>
         </main>

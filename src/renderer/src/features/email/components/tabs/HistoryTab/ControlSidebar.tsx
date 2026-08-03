@@ -1,4 +1,5 @@
 import { FC, useState, useEffect, useMemo } from 'react';
+import { memo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   format,
@@ -134,7 +135,10 @@ const HistoryCalendar: FC<{
           return (
             <button
               key={day.toISOString()}
-              onClick={() => onDateSelect(dateStr)}
+              onClick={() => {
+                console.log('[DEBUG] HistoryCalendar date clicked:', dateStr, 'current selectedDate:', selectedDate);
+                onDateSelect(dateStr);
+              }}
               className={`
                 relative aspect-square flex flex-col items-center justify-center rounded-lg transition-all text-[13px] font-mono font-bold
                 ${
@@ -247,4 +251,4 @@ const ControlSidebar: FC<ControlSidebarProps> = ({
   );
 };
 
-export default ControlSidebar;
+export default memo(ControlSidebar);

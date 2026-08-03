@@ -1,4 +1,5 @@
 import { FC, useState } from 'react';
+import { memo } from 'react';
 import {
   History,
   Search,
@@ -8,6 +9,7 @@ import {
   Globe,
   X,
 } from 'lucide-react';
+import { EmptyState } from '../../../../../components/ui/EmptyState';
 
 interface ProcessedItem {
   url: string;
@@ -214,31 +216,22 @@ const HistoryList: FC<HistoryListProps> = ({
   query,
   onQueryChange,
 }) => {
+  console.log('[DEBUG] HistoryList render — groups:', groups.length);
   return (
-    <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background/20 ml-px">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-background/20 ml-px">
       <FilterBar query={query} onQueryChange={onQueryChange} count={groups.length} />
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         {groups.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center p-8 text-center gap-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/10 to-transparent blur-2xl rounded-full" />
-              <div className="relative w-28 h-28 rounded-3xl bg-gradient-to-br from-primary/5 via-background/50 to-primary/5 border border-primary/10 backdrop-blur-sm flex items-center justify-center shadow-[0_8px_32px_rgba(99,102,241,0.08)]">
-                <History className="w-14 h-14 text-primary/40" />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-lg font-light tracking-[0.02em] text-foreground/80 bg-gradient-to-r from-foreground/90 via-foreground/70 to-foreground/50 bg-clip-text">
-                No history found
-              </h3>
-              <p className="text-[13px] text-muted-foreground/45 max-w-[280px] leading-relaxed font-light tracking-wide">
-                {query
-                  ? 'Nothing matches your current search.'
-                  : 'Your browsing journey starts here. Every page you visit will be recorded.'}
-              </p>
-            </div>
-
+          <EmptyState
+            icon={<History className="w-14 h-14 text-primary/40" />}
+            title="No history found"
+            description={
+              query
+                ? 'Nothing matches your current search.'
+                : 'Your browsing journey starts here. Every page you visit will be recorded.'
+            }
+          >
             {query && (
               <button
                 onClick={() => onQueryChange('')}
@@ -247,7 +240,7 @@ const HistoryList: FC<HistoryListProps> = ({
                 Clear search
               </button>
             )}
-          </div>
+          </EmptyState>
         ) : (
           <div>
             {groups.map((group) => (
@@ -260,4 +253,4 @@ const HistoryList: FC<HistoryListProps> = ({
   );
 };
 
-export default HistoryList;
+export default memo(HistoryList);

@@ -1,6 +1,18 @@
+import React from 'react';
 import { cn } from '../../../shared/lib/utils';
 import { DropdownItemProps, DropdownSeparatorProps } from './type';
 import { useDropdownContext } from './Dropdown';
+
+function extractText(node: React.ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (!node) return '';
+  if (Array.isArray(node)) return node.map(extractText).join(' ');
+  if (React.isValidElement(node)) {
+    const props = node.props as { children?: React.ReactNode };
+    return extractText(props.children);
+  }
+  return '';
+}
 
 export function DropdownItem({
   children,
@@ -10,9 +22,18 @@ export function DropdownItem({
   icon,
   closeOnSelect = true,
   variant = 'default',
+  noPadding = false,
   ...props
 }: DropdownItemProps) {
-  const { close } = useDropdownContext();
+  const { close, searchText } = useDropdownContext();
+
+  // Filter by search text
+  if (searchText) {
+    const itemText = extractText(children);
+    if (!itemText.toLowerCase().includes(searchText.toLowerCase())) {
+      return null;
+    }
+  }
 
   const handleClick = () => {
     if (disabled) return;
@@ -29,7 +50,8 @@ export function DropdownItem({
       tabIndex={disabled ? -1 : 0}
       aria-disabled={disabled}
       className={cn(
-        'w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors cursor-pointer whitespace-nowrap relative',
+        'w-full flex items-center gap-2 text-sm transition-colors cursor-pointer whitespace-nowrap relative',
+        !noPadding && 'px-3 py-1.5',
         variant === 'error'
           ? 'text-error hover:bg-error/10'
           : 'text-text-primary hover:bg-dropdown-item-hover',

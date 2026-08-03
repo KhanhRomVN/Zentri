@@ -13,6 +13,8 @@ export interface DropdownProps {
   trigger?: 'click' | 'contextmenu';
   /** Manual position override for fixed strategy (e.g., for context menus at cursor position) */
   position?: { top: number; left: number };
+  /** Enable search bar as first item in dropdown */
+  searchable?: boolean;
 }
 
 export interface DropdownTriggerProps {
@@ -33,6 +35,7 @@ export interface DropdownItemProps extends React.HTMLAttributes<HTMLDivElement> 
   icon?: React.ReactNode;
   closeOnSelect?: boolean;
   variant?: 'default' | 'error';
+  noPadding?: boolean;
   items?: DropdownItemProps[]; // Nested submenu items
 }
 

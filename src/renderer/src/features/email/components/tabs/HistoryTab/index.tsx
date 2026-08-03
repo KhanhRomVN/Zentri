@@ -1,4 +1,4 @@
-import { FC, useState, useEffect, useMemo } from 'react';
+import { FC, useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { Loader2, History } from 'lucide-react';
 import {
   format,
@@ -139,9 +139,22 @@ function buildGroup(items: ProcessedItem[]): TimeGroup {
   };
 }
 
-// ─── HistoryTab ───────────────────────────────────────────────────────────────
+// ─── HistoryContentView ──────────────────────────────────────────────────────
+// Tự quản lý fetch + loading để không bị unmount khi đổi ngày
 
-const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
+const HistoryContentView: FC<{ email: string }> = memo(({ email }) => {
+  console.log('[DEBUG] HistoryContentView render');
+
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const init = new Date().toISOString().split('T')[0];
+    console.log('[DEBUG] HistoryContentView useState init selectedDate:', init);
+    return init;
+  });
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'auth' | 'security' | 'search'>('all');
+
+  // Fetch state — nằm trong HistoryContentView để không unmount component
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -150,12 +163,9 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
     intervals: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 })),
     totalVisits: 0,
   });
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'auth' | 'security' | 'search'>('all');
 
-  const fetchHistory = async (date: string) => {
+  const fetchHistory = useCallback(async (date: string) => {
+    console.log('[DEBUG] HistoryContentView fetchHistory called — date:', date, 'email:', email);
     setLoading(true);
     setError(null);
     try {
@@ -165,6 +175,7 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
         date,
       });
       if (result.success) {
+        console.log('[DEBUG] HistoryContentView fetchHistory success — items:', result.history?.length);
         setHistory(result.history);
         setStats(result.stats);
       } else {
@@ -175,16 +186,27 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [email]);
 
+  // [DEBUG] Log mount/unmount
   useEffect(() => {
+    console.log('[DEBUG] HistoryContentView MOUNTED');
+    return () => {
+      console.log('[DEBUG] HistoryContentView UNMOUNTED');
+    };
+  }, []);
+
+  // Fetch khi đổi ngày hoặc email
+  useEffect(() => {
+    console.log('[DEBUG] HistoryContentView selectedDate/email changed → fetchHistory:', { email, selectedDate });
     if (email) {
       fetchHistory(selectedDate);
     }
-  }, [email, selectedDate]);
+  }, [email, selectedDate, fetchHistory]);
 
   // Reset domain filter khi đổi ngày
   useEffect(() => {
+    console.log('[DEBUG] HistoryContentView resetting filters for new date:', selectedDate);
     setSelectedDomain(null);
     setQuery('');
     setFilter('all');
@@ -224,42 +246,67 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
   // Group into time clusters
   const timeGroups = useMemo(() => groupByTimeCluster(filteredHistory), [filteredHistory]);
 
+  // ─── Loading state (trong HistoryContentView, không unmount) ──────────────
   if (loading) {
+    console.log('[DEBUG] HistoryContentView showing LOADING spinner (inside component)');
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-4 opacity-50">
-        <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse" />
-          <Loader2 className="w-10 h-10 animate-spin text-primary relative z-10" />
+      <div className="w-full flex-1 min-h-0 flex overflow-hidden bg-background/5">
+        <ControlSidebar
+          email={email}
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+          topWebsites={stats.topWebsites}
+          selectedDomain={selectedDomain}
+          onDomainSelect={setSelectedDomain}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-50">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse" />
+            <Loader2 className="w-10 h-10 animate-spin text-primary relative z-10" />
+          </div>
+          <span className="text-[10px] font-black tracking-[0.4em] uppercase text-primary/50">
+            Decoding Chronicle...
+          </span>
         </div>
-        <span className="text-[10px] font-black tracking-[0.4em] uppercase text-primary/50">
-          Decoding Chronicle...
-        </span>
       </div>
     );
   }
 
+  // ─── Error state (trong HistoryContentView, không unmount) ─────────────────
   if (error) {
+    console.log('[DEBUG] HistoryContentView showing ERROR state:', error);
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-center gap-5">
-        <div className="w-16 h-16 rounded-2xl bg-error/10 flex items-center justify-center text-error border border-error/10">
-          <History className="w-8 h-8 opacity-50" />
+      <div className="w-full flex-1 min-h-0 flex overflow-hidden bg-background/5">
+        <ControlSidebar
+          email={email}
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+          topWebsites={stats.topWebsites}
+          selectedDomain={selectedDomain}
+          onDomainSelect={setSelectedDomain}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-error/10 flex items-center justify-center text-error border border-error/10">
+            <History className="w-8 h-8 opacity-50" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-foreground/90">Error loading history</h3>
+            <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">{error}</p>
+          </div>
+          <button
+            onClick={() => fetchHistory(selectedDate)}
+            className="px-6 py-2 bg-primary/10 text-primary rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all border border-primary/20 active:scale-95"
+          >
+            Retry
+          </button>
         </div>
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-foreground/90">Error loading history</h3>
-          <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">{error}</p>
-        </div>
-        <button
-          onClick={() => fetchHistory(selectedDate)}
-          className="px-6 py-2 bg-primary/10 text-primary rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all border border-primary/20 active:scale-95"
-        >
-          Retry
-        </button>
       </div>
     );
   }
 
+  // ─── Normal state ──────────────────────────────────────────────────────────
   return (
-    <div className="w-full flex h-full overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500 bg-background/5">
+    <div className="w-full flex-1 min-h-0 flex overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500 bg-background/5">
       <ControlSidebar
         email={email}
         selectedDate={selectedDate}
@@ -278,6 +325,14 @@ const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
       />
     </div>
   );
+});
+
+// ─── HistoryTab ───────────────────────────────────────────────────────────────
+// Wrapper đơn giản — không còn quản lý loading/history/stats
+
+const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
+  console.log('[DEBUG] HistoryTab render');
+  return <HistoryContentView email={email} />;
 };
 
 export default HistoryTab;

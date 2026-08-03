@@ -168,8 +168,8 @@ const EmailManager = () => {
     let result = accounts.filter((account) => {
       const matchesSearch =
         account.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        account.recoveryEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        account.phoneNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+        account.recovery_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        account.phone_number?.toLowerCase().includes(searchQuery.toLowerCase());
 
       return matchesSearch;
     });
@@ -229,9 +229,9 @@ const EmailManager = () => {
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const startRecord = totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0;
   const endRecord = Math.min(currentPage * pageSize, totalRecords);
-  const paginatedData = filteredAccounts.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
+  const paginatedData = useMemo(
+    () => filteredAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredAccounts, currentPage, pageSize],
   );
 
   const handlePageChange = (page: number) => {
@@ -328,19 +328,28 @@ const EmailManager = () => {
         // Find services linked to this email
         const linkedServices = serviceLinks
           .filter((link: any) => link.email_id === row.id)
-          .map((link: any) => ({
-            id: link.id,
-            serviceId: link.service_id,
-            name: link.serviceName,
-            url: link.serviceUrl,
-            username: link.username,
-            password: link.password,
-            notes: link.notes,
-            status: link.status,
-            lastUsedAt: link.last_used_at,
-            secretCount: link.secretCount || 0,
-            metadata: link.metadata ? JSON.parse(link.metadata) : {},
-          }));
+          .map((link: any) => {
+            console.log('[DEBUG] loadData — link.id:', link.id, 'raw two_fa:', link.two_fa, 'type:', typeof link.two_fa);
+            const parsedTwoFa = link.two_fa
+              ? typeof link.two_fa === 'string'
+                ? JSON.parse(link.two_fa)
+                : link.two_fa
+              : {};
+            return {
+              id: link.id,
+              serviceId: link.service_id,
+              name: link.serviceName,
+              url: link.serviceUrl,
+              username: link.username,
+              password: link.password,
+              notes: link.notes,
+              status: link.status,
+              lastUsedAt: link.last_used_at,
+              secretCount: link.secretCount || 0,
+              metadata: link.metadata ? JSON.parse(link.metadata) : {},
+              twoFa: parsedTwoFa,
+            };
+          });
 
         return {
           id: row.id,
@@ -501,10 +510,10 @@ const EmailManager = () => {
           [
             updated.email,
             updated.password,
-            updated.recoveryEmail,
-            updated.phoneNumber,
-            updated.totpSecretKey,
-            updated.backupCodes,
+            updated.recovery_email,
+            updated.phone_number,
+            updated.totp_secret_key,
+            updated.backup_codes,
             updated.id,
           ],
         );

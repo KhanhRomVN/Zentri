@@ -99,6 +99,7 @@ export class DbManager {
           config_json TEXT,
           metadata TEXT,
           auth_method TEXT,
+          two_fa TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
@@ -107,6 +108,8 @@ export class DbManager {
           id TEXT PRIMARY KEY,
           email_id TEXT,
           service_id TEXT,
+          metadata TEXT,
+          two_fa TEXT,
           FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
           FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
       );
@@ -271,45 +274,38 @@ export class DbManager {
       }
     }
 
-    
+    const hasTwoFa = serviceColumns.some((c) => c.name === 'two_fa');
+    if (!hasTwoFa) {
+      try {
+        await this.rawRun('ALTER TABLE services ADD COLUMN two_fa TEXT');
+        console.log('[DB] Migration: Added two_fa to services table');
+      } catch (e) {
+        console.error('[DB] Migration failed (two_fa):', e);
+      }
+    }
 
-    // Migration for service_emails: strip down to only id, email_id, service_id
+    // Migration for service_emails: add metadata and two_fa columns
     // SQLite doesn't support DROP COLUMN easily, so we recreate the table
     const serviceEmailColumns = await this.rawAll<{ name: string }>(
       'PRAGMA table_info(service_emails)',
     );
-    const hasExtraColumns = serviceEmailColumns.some(
-      (c) => ['password', 'username', 'notes', 'metadata', 'status', 'scheduled_deletion_at', 'last_used_at', 'created_at', 'updated_at'].includes(c.name)
-    );
-    if (hasExtraColumns) {
+    const hasMetadataCol = serviceEmailColumns.some((c) => c.name === 'metadata');
+    if (!hasMetadataCol) {
       try {
-        // Backup existing links
-        await this.rawRun(`
-          CREATE TABLE IF NOT EXISTS service_emails_backup AS
-          SELECT id, email_id, service_id FROM service_emails
-        `);
-        // Drop old table
-        await this.rawRun('DROP TABLE service_emails');
-        // Recreate with minimal columns
-        await this.rawRun(`
-          CREATE TABLE service_emails (
-            id TEXT PRIMARY KEY,
-            email_id TEXT,
-            service_id TEXT,
-            FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
-            FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
-          )
-        `);
-        // Restore data
-        await this.rawRun(`
-          INSERT INTO service_emails (id, email_id, service_id)
-          SELECT id, email_id, service_id FROM service_emails_backup
-        `);
-        // Drop backup
-        await this.rawRun('DROP TABLE service_emails_backup');
-        console.log('[DB] Migration: Stripped service_emails to minimal columns (id, email_id, service_id)');
+        await this.rawRun('ALTER TABLE service_emails ADD COLUMN metadata TEXT');
+        console.log('[DB] Migration: Added metadata to service_emails');
       } catch (e) {
-        console.error('[DB] Migration failed (service_emails strip):', e);
+        console.error('[DB] Migration failed (service_emails metadata):', e);
+      }
+    }
+
+    const hasTwoFaCol = serviceEmailColumns.some((c) => c.name === 'two_fa');
+    if (!hasTwoFaCol) {
+      try {
+        await this.rawRun('ALTER TABLE service_emails ADD COLUMN two_fa TEXT');
+        console.log('[DB] Migration: Added two_fa to service_emails');
+      } catch (e) {
+        console.error('[DB] Migration failed (service_emails two_fa):', e);
       }
     }
 

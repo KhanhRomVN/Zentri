@@ -422,6 +422,59 @@ export function setupEventHandlers() {
   });
   console.log('[storage:open-zentri-folder] Handler registered');
 
+  // Open email profile folder in system file explorer
+  ipcMain.handle('email:open-profile-folder', async (_event, email: string) => {
+    console.log('[email:open-profile-folder] Received email:', email);
+    if (!email) {
+      console.log('[email:open-profile-folder] email is empty, returning');
+      return;
+    }
+    const dbDir = path.dirname(dbManager.dbPath);
+    const folderPath = path.join(dbDir, 'profiles', email);
+    console.log('[email:open-profile-folder] Opening folder:', folderPath);
+
+    if (!fs.existsSync(folderPath)) {
+      console.log('[email:open-profile-folder] Folder does not exist:', folderPath);
+      throw new Error(`Profile folder not found for ${email}`);
+    }
+
+    const platform = process.platform;
+    try {
+      if (platform === 'win32') {
+        const child = spawn('explorer', [folderPath], { detached: true, stdio: 'ignore' });
+        child.unref();
+      } else if (platform === 'darwin') {
+        const child = spawn('open', [folderPath], { detached: true, stdio: 'ignore' });
+        child.unref();
+      } else {
+        const child = spawn('nautilus', ['--no-desktop', folderPath], {
+          detached: true,
+          stdio: 'ignore',
+          env: { ...process.env }
+        });
+        child.on('error', (err) => {
+          console.error('[email:open-profile-folder] nautilus failed:', err.message);
+          const fb = spawn('xdg-open', [folderPath], {
+            detached: true,
+            stdio: 'ignore',
+            env: { ...process.env }
+          });
+          fb.on('error', (fbErr) => {
+            console.error('[email:open-profile-folder] xdg-open also failed:', fbErr.message);
+          });
+          fb.unref();
+        });
+        child.unref();
+      }
+      console.log('[email:open-profile-folder] Spawned file explorer for:', folderPath);
+      return folderPath;
+    } catch (error: any) {
+      console.error('[email:open-profile-folder] Failed to spawn:', error.message);
+      throw new Error(`Failed to open folder: ${error.message}`);
+    }
+  });
+  console.log('[email:open-profile-folder] Handler registered');
+
   // 2. Read file data from storage folder
   ipcMain.handle(
     'storage:read-data',

@@ -8,6 +8,9 @@ import { Proxy } from '../../../../renderer/src/types/db';
 import * as puppeteer from 'puppeteer-core';
 import { dbManager } from '../../database';
 import { getExecutablePath, getChromeStablePath } from './utils';
+import { buildFingerprintScript } from './fingerprint-injector';
+
+const activeBrowsers = new Map<string, { port: number; process: ReturnType<typeof spawn> }>();
 
 export function setupLaunchHandlers() {
   ipcMain.handle(
@@ -22,6 +25,7 @@ export function setupLaunchHandlers() {
         email,
         browserPath,
         fingerprintId,
+        fingerprintConfig,
         proxyId,
         launchMode,
       }: {
@@ -32,18 +36,19 @@ export function setupLaunchHandlers() {
         email?: string;
         browserPath?: string;
         fingerprintId?: string;
+        fingerprintConfig?: object;
         proxyId?: string;
         launchMode?: 'normal' | 'secure';
       },
     ) => {
       try {
+        console.log('[BrowserLaunch] Launch request:', JSON.stringify({ provider, accountId, email, fingerprintId, proxyId, launchMode, url }));
         const userDataPath = app.getPath('userData');
         let executablePath = '';
 
         if (launchMode === 'normal') {
           executablePath = getChromeStablePath();
           if (!executablePath) {
-             // Fallback to default if chrome stable not found
              executablePath = getExecutablePath(browserPath);
           }
         } else {
@@ -51,7 +56,7 @@ export function setupLaunchHandlers() {
         }
 
         if (!executablePath) {
-          throw new Error('Browser (Donut/Chrome/Chromium) not found.');
+          throw new Error('Browser (Chromium/Chrome) not found.');
         }
 
         let browserProfileDir = '';
@@ -75,7 +80,8 @@ export function setupLaunchHandlers() {
 
         let proxyServer = '';
         let proxyAuth: { username?: string; password?: string } | null = null;
-        let isWayfern = executablePath.toLowerCase().includes('wayfern');
+        const isFingerprintChromium = executablePath.toLowerCase().includes('fingerprint-chromium') || executablePath.toLowerCase().includes('ungoogled-chromium');
+        console.log('[BrowserLaunch] executablePath:', executablePath, 'isFingerprintChromium:', isFingerprintChromium);
         let proxyBridgePort: number | null = null;
 
         if (proxyId) {
@@ -85,35 +91,29 @@ export function setupLaunchHandlers() {
           );
           if (px) {
             if (px.protocol?.toUpperCase() === 'SOCKS5' || px.protocol?.toUpperCase() === 'SOCKS') {
-              // Start a local bridge for SOCKS5 proxies to ensure compatibility and speed
               try {
                 proxyBridgePort = await ProxyBridgeService.startBridge(px);
-                proxyServer = `socks5://127.0.0.1:${proxyBridgePort}`;
+                proxyServer = 'socks5://127.0.0.1:' + proxyBridgePort;
               } catch (err) {
                 console.error('[BrowserLaunch] Failed to start proxy bridge:', err);
-                // Fallback to direct connection (might fail auth)
-                proxyServer = `socks5://${px.host}:${px.port}`;
+                proxyServer = 'socks5://' + px.host + ':' + px.port;
               }
             } else {
-              // For HTTP/HTTPS, direct is usually fine, or we could bridge them too
-              proxyServer = `${px.protocol}://${px.host}:${px.port}`;
+              proxyServer = px.protocol + '://' + px.host + ':' + px.port;
               if (px.username && px.password) {
                 proxyAuth = { username: px.username, password: px.password };
               }
             }
-            console.log(`[BrowserLaunch] Using Proxy: ${proxyServer} (Bridge: ${!!proxyBridgePort}, Auth: ${!!proxyAuth})`);
+            console.log('[BrowserLaunch] Using Proxy:', proxyServer);
           }
         }
 
-        const extensionPath = path.join(process.cwd(), 'zentri-extension', 'dist');
-
         const args = [
-          `--user-data-dir=${browserProfileDir}`,
+          '--user-data-dir=' + browserProfileDir,
           '--no-first-run',
           '--no-default-browser-check',
           '--start-maximized',
-          `--load-extension=${extensionPath}`,
-          `--disable-extensions-except=${extensionPath}`,
+          '--ozone-platform=x11',
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-infobars',
@@ -127,61 +127,100 @@ export function setupLaunchHandlers() {
           '--use-mock-keychain',
         ];
 
-        if (proxyServer) {
-          args.push(`--proxy-server=${proxyServer}`);
+        const extensionPath = path.join(process.cwd(), 'zentri-extension', 'dist');
+        if (fs.existsSync(extensionPath)) {
+          args.push('--load-extension=' + extensionPath);
+          args.push('--disable-extensions-except=' + extensionPath);
         }
 
-        // Always enable CDP port to manage fingerprinting and proxy auth
+        if (proxyServer) {
+          args.push('--proxy-server=' + proxyServer);
+        }
+
         const cdpPort = 9222 + Math.floor(Math.random() * 1000);
-        args.push(`--remote-debugging-port=${cdpPort}`);
+        args.push('--remote-debugging-port=' + cdpPort);
         args.push('--remote-debugging-address=127.0.0.1');
 
-        // Open new tab on startup
-        args.push('chrome://newtab');
+        if (url) {
+          args.push(url);
+        } else {
+          args.push('chrome://newtab');
+        }
 
         const chromeProcess = spawn(executablePath, args, { detached: true });
 
+        if (accountId) {
+          activeBrowsers.set(accountId, { port: cdpPort, process: chromeProcess });
+          console.log('[BrowserLaunch] Tracked browser for', accountId, 'on port', cdpPort);
+        }
+
         if (cdpPort) {
-          console.log(`[BrowserLaunch] Attempting to connect to CDP on port ${cdpPort}...`);
+          console.log('[BrowserLaunch] Attempting to connect to CDP on port', cdpPort, '...');
           (async () => {
             try {
-              let connected = false;
               for (let i = 0; i < 60; i++) {
                 try {
-                  const browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${cdpPort}` });
-                  connected = true;
+                  const browser = await puppeteer.connect({ browserURL: 'http://127.0.0.1:' + cdpPort });
                   console.log('[BrowserLaunch] CDP Connected successfully!');
 
                   let wayfernConfig: any = null;
-                  if (fingerprintId) {
-                    const fp = await dbManager.get<{ config_json: string }>('SELECT config_json FROM fingerprints WHERE id = ?', [fingerprintId]);
+
+                  if (fingerprintConfig) {
+                    console.log('[CDP] Using fingerprintConfig from frontend');
+                    wayfernConfig = { ...fingerprintConfig as any };
+                  } else if (fingerprintId) {
+                    const fp = await dbManager.get<{ config_json: string }>(
+                      'SELECT config_json FROM fingerprints WHERE id = ?',
+                      [fingerprintId],
+                    );
                     if (fp?.config_json) {
-                      const zentriConfig = JSON.parse(fp.config_json);
-                      let languages = zentriConfig.languages;
-                      if (typeof languages === 'string') {
-                        try { languages = JSON.parse(languages); } catch (e) { languages = [languages]; }
-                      }
-                      wayfernConfig = {
-                        ...zentriConfig,
-                        userAgent: zentriConfig.userAgent || zentriConfig.ua,
-                        platformVersion: zentriConfig.osVersion || zentriConfig.os_version,
-                        os_version: zentriConfig.os_version || zentriConfig.osVersion,
-                        canvasNoiseSeed: zentriConfig.canvasNoiseSeed?.toString(),
-                        languages: Array.isArray(languages) ? languages : [],
-                      };
-                      if (isWayfern) {
-                        ['fonts', 'plugins', 'mimeTypes', 'voices', 'webglParameters', 'webgl2Parameters', 'mediaDevices', 'screen', 'navigator'].forEach(field => {
-                          if (wayfernConfig[field] && typeof wayfernConfig[field] === 'object') wayfernConfig[field] = JSON.stringify(wayfernConfig[field]);
-                        });
-                      }
+                      wayfernConfig = JSON.parse(fp.config_json);
                     }
                   }
 
-                  const setupSession = async (target: any) => {
-                    try {
-                      const client = await target.createCDPSession();
+                  if (wayfernConfig) {
+                    let languages = wayfernConfig.languages;
+                    if (typeof languages === 'string') {
+                      try { languages = JSON.parse(languages); } catch (e) { languages = [languages]; }
+                    }
+                    wayfernConfig = {
+                      ...wayfernConfig,
+                      userAgent: wayfernConfig.userAgent || wayfernConfig.ua,
+                      platformVersion: wayfernConfig.osVersion || wayfernConfig.os_version,
+                      os_version: wayfernConfig.os_version || wayfernConfig.osVersion,
+                      canvasNoiseSeed: wayfernConfig.canvasNoiseSeed?.toString(),
+                      languages: Array.isArray(languages) ? languages : [],
+                    };
+                  }
 
-                      if (proxyAuth) {
+                  // Store CDP sessions per target for reuse on navigation
+                  const sessionMap = new Map<any, any>();
+
+                  const evaluateScript = async (client: any, label: string) => {
+                    if (!wayfernConfig || launchMode === 'normal') return;
+                    const script = buildFingerprintScript(wayfernConfig);
+                    try {
+                      await client.send('Runtime.enable');
+                      await client.send('Runtime.evaluate', { expression: script });
+                      console.log('[CDP] Fingerprint injected:', label);
+                    } catch (e: any) {
+                      console.log('[CDP] Inject failed for', label, '-', e?.message?.split('\n')[0]);
+                    }
+                  };
+
+                  const setupPageTarget = async (target: any, isNew: boolean) => {
+                    const targetUrl = target.url();
+                    const label = targetUrl || 'empty';
+
+                    try {
+                      let client = sessionMap.get(target);
+                      if (!client) {
+                        client = await target.createCDPSession();
+                        sessionMap.set(target, client);
+                      }
+
+                      // Setup proxy auth
+                      if (proxyAuth && isNew) {
                         await client.send('Fetch.enable', { handleAuthRequests: true });
                         client.on('Fetch.authRequired', async (event: any) => {
                           try {
@@ -199,24 +238,40 @@ export function setupLaunchHandlers() {
                         });
                       }
 
-                      if (wayfernConfig && launchMode !== 'normal') {
-                        await client.send('Wayfern.setFingerprint', wayfernConfig).catch((err: { message: any; }) => {
-                           console.warn('[CDP] Wayfern.setFingerprint failed (Normal Chrome?):', err.message);
-                        });
+                      // Inject script for future navigations (only once per target)
+                      if (isNew && wayfernConfig && launchMode !== 'normal') {
+                        const script = buildFingerprintScript(wayfernConfig);
+                        await client.send('Page.addScriptToEvaluateOnNewDocument', { source: script });
                       }
+
+                      // Run script immediately for current page
+                      await evaluateScript(client, label);
                     } catch (err) {
-                      console.error('[BrowserLaunch] CDP Error in setupSession:', err);
+                      console.error('[CDP] Setup error for', label, ':', err);
                     }
                   };
 
-                  // Initial setup for all current targets
-                  const currentTargets = browser.targets();
-                  for (const t of currentTargets) {
-                    await setupSession(t);
+                  // Fire on every new target
+                  browser.on('targetcreated', async (target: any) => {
+                    if (target.type() === 'page') {
+                      await setupPageTarget(target, true);
+                    }
+                  });
+
+                  // Fire on URL change within same target (navigation)
+                  browser.on('targetchanged', async (target: any) => {
+                    if (target.type() === 'page') {
+                      await setupPageTarget(target, false);
+                    }
+                  });
+
+                  // Setup existing targets
+                  for (const t of browser.targets()) {
+                    if (t.type() === 'page') {
+                      await setupPageTarget(t, true);
+                    }
                   }
 
-                  // Listen for future targets
-                  browser.on('targetcreated', setupSession);
                   break;
                 } catch (e) {
                   await new Promise((r) => setTimeout(r, 500));
@@ -228,9 +283,13 @@ export function setupLaunchHandlers() {
           })();
         }
 
-        if (!_event.sender.isDestroyed()) _event.sender.send('email:browser-opened', { accountId });
+        if (!_event.sender.isDestroyed() && accountId) _event.sender.send('email:browser-opened', { accountId });
 
         chromeProcess.on('exit', async () => {
+          if (accountId) {
+            activeBrowsers.delete(accountId);
+            console.log('[BrowserLaunch] Untracked browser for', accountId);
+          }
           await new Promise((resolve) => setTimeout(resolve, 1000));
           let cookieCount = 0;
           try {
@@ -241,7 +300,7 @@ export function setupLaunchHandlers() {
             ];
             const foundPath = possibleCookiePaths.find((p) => fs.existsSync(p));
             if (foundPath) {
-              const tempCookieFile = path.join(userDataPath, `temp_cookies_${Date.now()}.db`);
+              const tempCookieFile = path.join(userDataPath, 'temp_cookies_' + Date.now() + '.db');
               fs.copyFileSync(foundPath, tempCookieFile);
               const db = new sqlite3.Database(tempCookieFile);
               cookieCount = await new Promise<number>((resolve) => {
@@ -261,7 +320,7 @@ export function setupLaunchHandlers() {
 
         return { success: true };
       } catch (error) {
-        console.error('Error opening Real Chrome:', error);
+        console.error('Error opening browser:', error);
         throw error;
       }
     },
@@ -279,11 +338,42 @@ export function setupLaunchHandlers() {
         } else {
           realProfileDir = path.join(userDataPath, 'browser_profiles', email);
         }
-        spawn(executablePath, [`--user-data-dir=${realProfileDir}`, '--no-first-run', 'https://mail.google.com/mail/u/0/h/'], { detached: true });
+        spawn(executablePath, ['--user-data-dir=' + realProfileDir, '--no-first-run', 'https://mail.google.com/mail/u/0/h/'], { detached: true });
         return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message };
       }
     },
   );
+
+  ipcMain.handle('email:is-profile-open', async (_event, accountId: string) => {
+    const entry = activeBrowsers.get(accountId);
+    if (!entry) return false;
+
+    try {
+      const res = await fetch('http://127.0.0.1:' + entry.port + '/json/version', {
+        signal: AbortSignal.timeout(1500),
+      });
+      if (res.ok) return true;
+    } catch {
+      activeBrowsers.delete(accountId);
+      return false;
+    }
+
+    activeBrowsers.delete(accountId);
+    return false;
+  });
+
+  ipcMain.handle('email:close-profile', async (_event, accountId: string) => {
+    const entry = activeBrowsers.get(accountId);
+    if (!entry) return { success: false, error: 'No active browser found for this account' };
+
+    try {
+      entry.process.kill('SIGTERM');
+      activeBrowsers.delete(accountId);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
 }

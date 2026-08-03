@@ -12,13 +12,14 @@ function App() {
     data: Partial<import('./features/email/types').ServiceProviderConfig>,
     metadata: { key: string; value: string }[],
     authMethods: string[],
+    twoFa?: { has_totp: boolean; has_backup_codes: boolean },
   ) => {
     const id = data.id || (data.name || '').toLowerCase().replace(/\s+/g, '-');
     try {
       // @ts-ignore
       await window.electron.ipcRenderer.invoke(
         'sqlite:run',
-        `INSERT OR REPLACE INTO services (id, name, url, tags, category, description, metadata, config_json, auth_method, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        `INSERT OR REPLACE INTO services (id, name, url, tags, category, description, metadata, config_json, auth_method, two_fa, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
         [
           id,
           data.name,
@@ -29,6 +30,7 @@ function App() {
           JSON.stringify(metadata),
           JSON.stringify({}),
           JSON.stringify(authMethods),
+          JSON.stringify(twoFa || { has_totp: false, has_backup_codes: false }),
         ],
       );
       // Trigger a reload of services in the ServiceManager

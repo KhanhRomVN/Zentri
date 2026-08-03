@@ -3,8 +3,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 
 export const POSSIBLE_BROWSER_PATHS = [
-  '/usr/bin/donutbrowser',
-  '/usr/bin/donut',
   '/usr/bin/google-chrome',
   '/usr/bin/google-chrome-stable',
   '/usr/bin/chromium',
@@ -13,55 +11,67 @@ export const POSSIBLE_BROWSER_PATHS = [
   '/snap/bin/google-chrome',
 ];
 
-export const getDonutCoreVersion = () => {
-  const homeDir = os.homedir();
-  const basePath = path.join(homeDir, '.local/share/DonutBrowser/binaries/wayfern');
-  if (!fs.existsSync(basePath)) return '0.0.0';
-
-  try {
-    const versions = fs.readdirSync(basePath);
-    if (!versions || versions.length === 0) return '0.0.0';
-
-    // Sort versions descending
-    versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
-
-    return versions[0];
-  } catch (e) {
-    console.error('Failed to find Donut Core Version:', e);
-  }
-  return '0.0.0';
-};
-
-export const getDonutCorePath = () => {
-  const homeDir = os.homedir();
-  const basePath = path.join(homeDir, '.local/share/DonutBrowser/binaries/wayfern');
+/**
+ * Find the fingerprint-chromium browser (ungoogled-chromium with fingerprint patches).
+ * Searches in ~/.local/share/Zentri/binaries/fingerprint-chromium/
+ */
+/**
+ * Search for ungoogled-chromium-* directories in a given base path.
+ * Returns the newest version found (sorted by directory name, descending).
+ */
+function findChromiumInDir(basePath: string): string | null {
   if (!fs.existsSync(basePath)) return null;
 
   try {
-    const latestVersion = getDonutCoreVersion();
-    if (latestVersion === '0.0.0') return null;
+    const entries = fs.readdirSync(basePath);
+    const chromiumDirs = entries
+      .filter((e) => e.startsWith('ungoogled-chromium-'))
+      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
 
-    const executablePath = path.join(basePath, latestVersion, 'chrome');
-    if (fs.existsSync(executablePath)) {
-      console.log(`[Donut] Found internal core: ${executablePath}`);
-      return executablePath;
+    for (const dir of chromiumDirs) {
+      const execPath = path.join(basePath, dir, 'chrome');
+      if (fs.existsSync(execPath)) {
+        console.log(`[FingerprintChromium] Found: ${execPath}`);
+        return execPath;
+      }
     }
   } catch (e) {
-    console.error('Failed to find Donut Core:', e);
+    console.error('[FingerprintChromium] Failed to search in', basePath, ':', e);
   }
   return null;
-};
+}
+
+export function getFingerprintChromiumPath(): string | null {
+  // Priority 1: System-installed at /opt/ungoogled-chromium/
+  const optPath = '/opt/ungoogled-chromium/chrome';
+  if (fs.existsSync(optPath)) {
+    console.log(`[FingerprintChromium] Found: ${optPath}`);
+    return optPath;
+  }
+
+  // Priority 2: Project directory (CWD) — for development
+  const cwdResult = findChromiumInDir(process.cwd());
+  if (cwdResult) return cwdResult;
+
+  // Priority 3: Local binaries directory
+  const homeDir = os.homedir();
+  const localBinPath = path.join(homeDir, '.local/share/Zentri/binaries/fingerprint-chromium');
+  const localResult = findChromiumInDir(localBinPath);
+  if (localResult) return localResult;
+
+  return null;
+}
 
 export function getExecutablePath(customPath?: string) {
   if (customPath && fs.existsSync(customPath)) {
     return customPath;
   }
 
-  // Primary: Try to find Donut's internal Wayfern core
-  const donutCore = getDonutCorePath();
-  if (donutCore) return donutCore;
+  // Priority 1: Fingerprint Chromium (free, patched for fingerprint)
+  const fpChromium = getFingerprintChromiumPath();
+  if (fpChromium) return fpChromium;
 
-  // Fallback: System paths
+  // Priority 2: System paths
   for (const p of POSSIBLE_BROWSER_PATHS) {
     if (fs.existsSync(p)) return p;
   }

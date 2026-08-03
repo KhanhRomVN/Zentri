@@ -223,7 +223,6 @@ const Sidebar = memo(
             })}
           </nav>
 
-          {/* Settings at bottom */}
           <div
             className={cn('mt-auto flex flex-col gap-1 w-full py-2', expanded ? 'px-2' : 'px-0')}
           >

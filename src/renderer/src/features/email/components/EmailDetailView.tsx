@@ -6,7 +6,6 @@ import { useAccentColors } from '../../../hooks/useAccentColors';
 import { Account } from '../types';
 import InfoTab from './tabs/InfoTab/index';
 import ServicesTab from './tabs/ServicesTab/index';
-import SessionsTab from './tabs/SessionsTab/index';
 import HistoryTab from './tabs/HistoryTab/index';
 import BookmarkTab from './tabs/BookmarkTab/index';
 
@@ -57,7 +56,7 @@ interface EmailDetailViewProps {
   avatars: Record<string, string>;
   onSelectAccount: (account: Account) => void;
   onContextMenu: (e: React.MouseEvent, accountId: string) => void;
-  onServiceContextMenu: (e: React.MouseEvent, linkId: string) => void;
+  onServiceContextMenu?: (e: React.MouseEvent, linkId: string) => void;
   onRestore: (id: string) => void;
   onHardDelete: (id: string) => void;
   editedAccount: Account | null;
@@ -79,7 +78,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
   focusedAccount,
   activeTab,
   setActiveTab,
-  onServiceContextMenu,
+  onServiceContextMenu: _onServiceContextMenu,
   onRestore,
   onHardDelete,
   editedAccount,
@@ -103,7 +102,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
   }
 
   return (
-    <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden min-h-[calc(100vh-135px)]">
+    <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden h-[calc(100vh-135px)]">
       <div className="w-64 border-r border-border bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-hidden relative">
         <div className="flex-1 space-y-1 px-2">
           <button
@@ -148,28 +147,6 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
           >
             <LayoutGrid className="w-5 h-5 transition-colors" />
             <span>Services</span>
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveTab('sessions');
-            }}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
-              activeTab === 'sessions'
-                ? 'text-[--tab-color]'
-                : 'text-text-primary hover:text-foreground',
-            )}
-            style={
-              {
-                '--tab-color': getTabColor('sessions').base,
-                background: activeTab === 'sessions' ? getTabColor('sessions').bg : undefined,
-              } as React.CSSProperties
-            }
-          >
-            <Database className="w-5 h-5 transition-colors" />
-            <span>Sessions</span>
           </button>
 
           <button
@@ -238,8 +215,13 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden bg-background/20 backdrop-blur-3xl">
-        <div className="flex-1 overflow-auto custom-scrollbar">
-          {activeTab === 'info' ? (
+        {activeTab === 'history' ? (
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <HistoryTab email={editedAccount?.email || ''} />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            {activeTab === 'info' ? (
             <InfoTab
               editedAccount={editedAccount}
               setEditedAccount={setEditedAccount}
@@ -255,18 +237,15 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
               accountServices={accountServices}
               onAddNewServiceLink={onAddNewServiceLink}
               onEditServiceLink={onEditServiceLink}
-              onServiceContextMenu={onServiceContextMenu}
               onOpenService={onOpenService}
               onDeleteService={onDeleteService}
+              email={editedAccount?.email || ''}
             />
-          ) : activeTab === 'sessions' ? (
-            <SessionsTab email={editedAccount?.email || ''} accountId={focusedAccount?.id || ''} />
-          ) : activeTab === 'history' ? (
-            <HistoryTab email={editedAccount?.email || ''} />
           ) : (
-            <BookmarkTab email={editedAccount?.email || ''} />
+            <BookmarkTab email={editedAccount?.email || ''} accountId={editedAccount?.id} />
           )}
         </div>
+        )}
       </div>
     </div>
   );
