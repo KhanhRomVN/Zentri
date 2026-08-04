@@ -1,7 +1,7 @@
 import { FC, useMemo } from 'react';
 import { Check, Filter, X, Search } from 'lucide-react';
 import { cn } from '../../../../../shared/lib/utils';
-import Modal from '../../../../../components/ui/Modal/Modal';
+import ModalHeader from '../../../../../components/ui/Modal/ModalHeader';
 import Input from '../../../../../components/ui/Input/Input';
 import { Fingerprint } from '../fingerprint';
 import { FilterOptions } from './types';
@@ -11,9 +11,9 @@ function baseBrowserName(name: string): string {
   return name.split(' ')[0];
 }
 
-interface PickerViewProps {
-  isOpen: boolean;
+interface FingerprintPickerProps {
   onClose: () => void;
+  onBack: () => void;
   fingerprints: Fingerprint[];
   selectedFingerprintId: string | undefined;
   fpSearch: string;
@@ -23,13 +23,20 @@ interface PickerViewProps {
   onSearchChange: (v: string) => void;
   onToggleFilter: (type: 'groups' | 'browsers', value: string) => void;
   onSelect: (fp: Fingerprint) => void;
-  onBack: () => void;
 }
 
-const PickerView: FC<PickerViewProps> = ({
-  isOpen, onClose, fingerprints, selectedFingerprintId,
-  fpSearch, fpFilters, filterOptions, filteredFingerprints,
-  onSearchChange, onToggleFilter, onSelect, onBack,
+const FingerprintPicker: FC<FingerprintPickerProps> = ({
+  onClose,
+  onBack,
+  fingerprints,
+  selectedFingerprintId,
+  fpSearch,
+  fpFilters,
+  filterOptions,
+  filteredFingerprints,
+  onSearchChange,
+  onToggleFilter,
+  onSelect,
 }) => {
   // Deduplicate browser names to base names only
   const baseBrowserOptions = useMemo(() => {
@@ -41,15 +48,14 @@ const PickerView: FC<PickerViewProps> = ({
   }, [filterOptions.browsers]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} onBack={onBack} className="max-w-xl">
-      <div className="flex flex-col max-h-[80vh]">
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
-          <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">Select Fingerprint</p>
-            <p className="text-[10px] text-secondary">{fingerprints.length} variants available</p>
-          </div>
-        </div>
-
+    <>
+      <ModalHeader
+        title="Select Fingerprint"
+        description={`${fingerprints.length} variants available`}
+        onBack={onBack}
+        onClose={onClose}
+      />
+      <div className="flex flex-col flex-1 min-h-0">
         <div className="px-5 py-3 space-y-2 border-b border-border shrink-0">
           <Input
             placeholder="Search by OS, browser, resolution..."
@@ -57,12 +63,20 @@ const PickerView: FC<PickerViewProps> = ({
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full"
             leftIcon={<Search className="w-3.5 h-3.5 text-secondary" />}
-            rightIcon={fpSearch ? <button onClick={() => onSearchChange('')} className="p-0.5 hover:bg-muted rounded"><X className="w-3.5 h-3.5 text-secondary" /></button> : undefined}
+            rightIcon={
+              fpSearch ? (
+                <button onClick={() => onSearchChange('')} className="p-0.5 hover:bg-muted rounded">
+                  <X className="w-3.5 h-3.5 text-secondary" />
+                </button>
+              ) : undefined
+            }
           />
 
           {/* OS Filter */}
           <div className="flex flex-wrap gap-1.5">
-            <span className="text-[9px] text-muted-foreground uppercase tracking-wider self-center mr-0.5">OS:</span>
+            <span className="text-[9px] text-muted-foreground uppercase tracking-wider self-center mr-0.5">
+              OS:
+            </span>
             {filterOptions.groups.map((g) => (
               <button
                 key={g}
@@ -81,7 +95,9 @@ const PickerView: FC<PickerViewProps> = ({
 
           {/* Browser Filter */}
           <div className="flex flex-wrap gap-1.5">
-            <span className="text-[9px] text-muted-foreground uppercase tracking-wider self-center mr-0.5">Browser:</span>
+            <span className="text-[9px] text-muted-foreground uppercase tracking-wider self-center mr-0.5">
+              Browser:
+            </span>
             {baseBrowserOptions.map((b) => (
               <button
                 key={b}
@@ -99,7 +115,9 @@ const PickerView: FC<PickerViewProps> = ({
                 }}
                 className={cn(
                   'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all',
-                  filterOptions.browsers.filter((x) => baseBrowserName(x) === b).some((v) => fpFilters.browsers.includes(v))
+                  filterOptions.browsers
+                    .filter((x) => baseBrowserName(x) === b)
+                    .some((v) => fpFilters.browsers.includes(v))
                     ? 'bg-primary/20 text-primary'
                     : 'bg-muted text-secondary hover:bg-muted/80',
                 )}
@@ -133,14 +151,16 @@ const PickerView: FC<PickerViewProps> = ({
                   <p className="text-sm font-bold text-foreground truncate">{fp.name}</p>
                   <p className="text-[10px] text-secondary truncate">{fp.description}</p>
                 </div>
-                {selectedFingerprintId === fp.id && <Check className="w-5 h-5 text-success shrink-0" />}
+                {selectedFingerprintId === fp.id && (
+                  <Check className="w-5 h-5 text-success shrink-0" />
+                )}
               </div>
             ))}
           </div>
         </div>
       </div>
-    </Modal>
+    </>
   );
 };
 
-export default PickerView;
+export default FingerprintPicker;

@@ -1,7 +1,6 @@
 import { FC } from 'react';
 import { Shield, Check, ChevronDown, Globe, MapPin, Clock, Monitor } from 'lucide-react';
 import { cn } from '../../../../../shared/lib/utils';
-import Modal from '../../../../../components/ui/Modal/Modal';
 import ModalHeader from '../../../../../components/ui/Modal/ModalHeader';
 import ModalBody from '../../../../../components/ui/Modal/ModalBody';
 import ModalFooter from '../../../../../components/ui/Modal/ModalFooter';
@@ -15,8 +14,7 @@ import { IpApiResponse } from '../fingerprint-generator';
 import { Fingerprint } from '../fingerprint';
 import { OS_ICONS } from './types';
 
-interface MainViewProps {
-  isOpen: boolean;
+interface LaunchConfigProps {
   onClose: () => void;
   email: string;
   targetUrl?: string;
@@ -39,15 +37,28 @@ interface MainViewProps {
   onLaunch: () => void;
 }
 
-const MainView: FC<MainViewProps> = ({
-  isOpen, onClose, email, targetUrl, targetTitle,
-  ipData, isLoadingIp, ipError,
-  fingerprints, selectedFingerprint,
-  selectedProxyId, selectedProxy, proxySearch, proxyHistory, filteredProxies,
-  onProxySearchChange, onSelectProxy, onOpenPicker, onLaunch,
+const LaunchConfig: FC<LaunchConfigProps> = ({
+  onClose,
+  email,
+  targetUrl,
+  targetTitle,
+  ipData,
+  isLoadingIp,
+  ipError,
+  fingerprints,
+  selectedFingerprint,
+  selectedProxyId,
+  selectedProxy,
+  proxySearch,
+  proxyHistory,
+  filteredProxies,
+  onProxySearchChange,
+  onSelectProxy,
+  onOpenPicker,
+  onLaunch,
 }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-xl">
+    <>
       <ModalHeader title="Browser Configuration" description={email} onClose={onClose} />
       <ModalBody className="space-y-5 py-4">
         {targetUrl && (
@@ -55,12 +66,15 @@ const MainView: FC<MainViewProps> = ({
             <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center p-1.5 border border-border shadow-sm shrink-0">
               <img
                 src={`https://www.google.com/s2/favicons?domain=${targetUrl}&sz=64`}
-                className="w-full h-full object-contain" alt=""
+                className="w-full h-full object-contain"
+                alt=""
                 onError={(e: any) => (e.target.style.display = 'none')}
               />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">{targetTitle || targetUrl}</p>
+              <p className="text-sm font-bold text-foreground truncate">
+                {targetTitle || targetUrl}
+              </p>
               <p className="text-xs text-muted-foreground/60 truncate font-mono">{targetUrl}</p>
             </div>
           </div>
@@ -87,14 +101,18 @@ const MainView: FC<MainViewProps> = ({
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <div className="flex items-center gap-1.5">
                 <MapPin className="w-3 h-3 text-secondary shrink-0" />
-                <span className="text-xs text-foreground">{ipData.city}, {ipData.country}</span>
+                <span className="text-xs text-foreground">
+                  {ipData.city}, {ipData.country}
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Clock className="w-3 h-3 text-secondary shrink-0" />
                 <span className="text-xs text-foreground">{ipData.timezone}</span>
               </div>
               <div className="flex items-center gap-1.5 col-span-2">
-                <span className="text-[10px] text-secondary truncate">{ipData.isp} • {ipData.org}</span>
+                <span className="text-[10px] text-secondary truncate">
+                  {ipData.isp} • {ipData.org}
+                </span>
               </div>
             </div>
           </div>
@@ -104,13 +122,24 @@ const MainView: FC<MainViewProps> = ({
           <label className="text-xs font-bold text-secondary">Proxy Connection</label>
           <Dropdown
             open={proxySearch !== '' || !!selectedProxyId}
-            onOpenChange={(open) => { if (!open) onProxySearchChange(''); }}
-            align="start" side="bottom" strategy="fixed" className="w-full"
+            onOpenChange={(open) => {
+              if (!open) onProxySearchChange('');
+            }}
+            align="start"
+            side="bottom"
+            strategy="fixed"
+            className="w-full"
           >
             <DropdownTrigger>
               <Input
                 placeholder="Default (System)"
-                value={proxySearch !== '' ? proxySearch : selectedProxyId && selectedProxy ? `${selectedProxy.host}:${selectedProxy.port}` : ''}
+                value={
+                  proxySearch !== ''
+                    ? proxySearch
+                    : selectedProxyId && selectedProxy
+                      ? `${selectedProxy.host}:${selectedProxy.port}`
+                      : ''
+                }
                 onChange={(e) => onProxySearchChange(e.target.value)}
                 className="w-full"
                 inputClassName={cn('cursor-pointer', selectedProxyId && 'font-bold text-primary')}
@@ -129,16 +158,26 @@ const MainView: FC<MainViewProps> = ({
                 <DropdownItem
                   key={px.id}
                   onClick={() => onSelectProxy(px.id)}
-                  icon={selectedProxyId === px.id ? <Check className="w-3.5 h-3.5 text-success" /> : undefined}
+                  icon={
+                    selectedProxyId === px.id ? (
+                      <Check className="w-3.5 h-3.5 text-success" />
+                    ) : undefined
+                  }
                   closeOnSelect
                 >
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold font-mono">{px.host}:{px.port}</span>
-                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">{px.protocol}</span>
+                      <span className="font-bold font-mono">
+                        {px.host}:{px.port}
+                      </span>
+                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">
+                        {px.protocol}
+                      </span>
                     </div>
                     <div className="text-[10px] text-secondary flex items-center gap-1.5 italic">
-                      <span>{px.country || 'N/A'}</span>{px.city && <span>• {px.city}</span>}{px.isp && <span>• {px.isp}</span>}
+                      <span>{px.country || 'N/A'}</span>
+                      {px.city && <span>• {px.city}</span>}
+                      {px.isp && <span>• {px.isp}</span>}
                     </div>
                   </div>
                 </DropdownItem>
@@ -154,11 +193,22 @@ const MainView: FC<MainViewProps> = ({
                 {proxyHistory.slice(0, 3).map((h, i) => (
                   <p key={i} className="text-[10px] text-secondary">
                     • Used for <span className="text-primary font-bold">{h.email_address}</span>
-                    {h.target_site && <> on <span className="text-primary font-bold">{h.target_site}</span></>}
-                    <span className="text-secondary ml-2">({new Date(h.used_at).toLocaleDateString()})</span>
+                    {h.target_site && (
+                      <>
+                        {' '}
+                        on <span className="text-primary font-bold">{h.target_site}</span>
+                      </>
+                    )}
+                    <span className="text-secondary ml-2">
+                      ({new Date(h.used_at).toLocaleDateString()})
+                    </span>
                   </p>
                 ))}
-                {proxyHistory.length > 3 && <p className="text-[9px] text-secondary italic pl-3">... and {proxyHistory.length - 3} other uses.</p>}
+                {proxyHistory.length > 3 && (
+                  <p className="text-[9px] text-secondary italic pl-3">
+                    ... and {proxyHistory.length - 3} other uses.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -167,7 +217,9 @@ const MainView: FC<MainViewProps> = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-secondary">Fingerprint</label>
-            <span className="text-[10px] text-success font-bold">{fingerprints.length} variants</span>
+            <span className="text-[10px] text-success font-bold">
+              {fingerprints.length} variants
+            </span>
           </div>
           <div
             onClick={onOpenPicker}
@@ -179,10 +231,16 @@ const MainView: FC<MainViewProps> = ({
           >
             {selectedFingerprint ? (
               <div className="flex items-center gap-3">
-                <span className="text-xl">{OS_ICONS[selectedFingerprint.group || 'Other'] || '💻'}</span>
+                <span className="text-xl">
+                  {OS_ICONS[selectedFingerprint.group || 'Other'] || '💻'}
+                </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground truncate">{selectedFingerprint.name}</p>
-                  <p className="text-[10px] text-secondary truncate">{selectedFingerprint.description}</p>
+                  <p className="text-sm font-bold text-foreground truncate">
+                    {selectedFingerprint.name}
+                  </p>
+                  <p className="text-[10px] text-secondary truncate">
+                    {selectedFingerprint.description}
+                  </p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-secondary" />
               </div>
@@ -191,7 +249,9 @@ const MainView: FC<MainViewProps> = ({
                 <Monitor className="w-5 h-5 text-secondary" />
                 <div className="flex-1">
                   <p className="text-sm text-secondary">Select a fingerprint</p>
-                  <p className="text-[10px] text-muted-foreground/50">Auto-generated based on your IP location</p>
+                  <p className="text-[10px] text-muted-foreground/50">
+                    Auto-generated based on your IP location
+                  </p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-secondary" />
               </div>
@@ -204,8 +264,8 @@ const MainView: FC<MainViewProps> = ({
           <span className="text-xs font-black uppercase">Launch</span>
         </Button>
       </ModalFooter>
-    </Modal>
+    </>
   );
 };
 
-export default MainView;
+export default LaunchConfig;

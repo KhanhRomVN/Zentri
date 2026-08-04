@@ -9,6 +9,7 @@ import * as puppeteer from 'puppeteer-core';
 import { dbManager } from '../../database';
 import { getExecutablePath, getChromeStablePath } from './utils';
 import { buildFingerprintScript } from './fingerprint-injector';
+import { onPageNavigated } from './site-history';
 
 const activeBrowsers = new Map<string, { port: number; process: ReturnType<typeof spawn> }>();
 
@@ -193,6 +194,8 @@ export function setupLaunchHandlers() {
                     };
                   }
 
+                  console.log('[SiteHistory:DEBUG] wayfernConfig is ' + (wayfernConfig ? 'SET' : 'NULL') + ' | fingerprintConfig=' + Boolean(fingerprintConfig) + ' | fingerprintId=' + (fingerprintId || 'none'));
+
                   // Store CDP sessions per target for reuse on navigation
                   const sessionMap = new Map<any, any>();
 
@@ -262,6 +265,15 @@ export function setupLaunchHandlers() {
                   browser.on('targetchanged', async (target: any) => {
                     if (target.type() === 'page') {
                       await setupPageTarget(target, false);
+                      // Track fingerprint + IP history for this domain
+                      var cdpClient = sessionMap.get(target);
+                      var tUrl = target.url();
+                      console.log('[SiteHistory:DEBUG] targetchanged fired | url=' + (tUrl || '(empty)').substring(0, 80) + ' | hasCdpClient=' + Boolean(cdpClient) + ' | hasFpConfig=' + Boolean(wayfernConfig));
+                      if (cdpClient) {
+                        onPageNavigated(browserProfileDir, cdpClient, wayfernConfig, tUrl).catch(function (e) {
+                          console.error('[SiteHistory] Error:', e.message);
+                        });
+                      }
                     }
                   });
 

@@ -1,11 +1,13 @@
 import { FC, useState, useEffect, useMemo } from 'react';
-import { generateFingerprints, IpApiResponse } from '../fingerprint-generator';
-import { Fingerprint } from '../fingerprint';
+import { Fingerprint, FingerprintConfig } from '../fingerprint';
 import { extractFilters } from './types';
-import MainView from './MainView';
-import PickerView from './PickerView';
-import DetailView from './DetailView';
+import Modal from '../../../../../components/ui/Modal/Modal';
+import LaunchConfig from './LaunchConfig';
+import FingerprintPicker from './FingerprintPicker';
+import FingerprintDetail from './FingerprintDetail';
 import { BrowserLaunchModalProps } from './types';
+import { IpApiResponse } from './fingerprint-generator/types';
+import { generateFingerprints } from './fingerprint-generator';
 
 const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
   const { isOpen, onClose, email, targetUrl, targetTitle, onLaunch } = props;
@@ -125,7 +127,10 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
   const toggleFilter = (type: 'groups' | 'browsers', value: string) => {
     setFpFilters((prev) => {
       const arr = prev[type];
-      return { ...prev, [type]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
+      return {
+        ...prev,
+        [type]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value],
+      };
     });
   };
 
@@ -134,8 +139,12 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
     setView('detail');
   };
 
-  const handleConfirmSelection = () => {
-    if (previewFp) setSelectedFingerprintId(previewFp.id);
+  const handleConfirmSelection = (config: FingerprintConfig) => {
+    if (previewFp) {
+      const updatedFp = { ...previewFp, config };
+      setSelectedFingerprintId(updatedFp.id);
+      setFingerprints((prev) => prev.map((f) => (f.id === updatedFp.id ? updatedFp : f)));
+    }
     setView('main');
     setPreviewFp(null);
     setFpSearch('');
@@ -150,66 +159,68 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
     });
   };
 
+  const handleBackToMain = () => {
+    setView('main');
+    setFpSearch('');
+    setFpFilters({ groups: [], browsers: [] });
+  };
+
   // ── Render ─────────────────────────────────────────────────────────
-  if (view === 'detail' && previewFp) {
-    return (
-      <DetailView
-        isOpen={isOpen}
-        onClose={onClose}
-        fingerprint={previewFp}
-        onConfirm={handleConfirmSelection}
-        onBack={() => setView('picker')}
-      />
-    );
-  }
-
-  if (view === 'picker') {
-    return (
-      <PickerView
-        isOpen={isOpen}
-        onClose={onClose}
-        fingerprints={fingerprints}
-        selectedFingerprintId={selectedFingerprintId}
-        fpSearch={fpSearch}
-        fpFilters={fpFilters}
-        filterOptions={filterOptions}
-        filteredFingerprints={filteredFingerprints}
-        onSearchChange={setFpSearch}
-        onToggleFilter={toggleFilter}
-        onSelect={handleSelectFingerprint}
-        onBack={() => {
-          setView('main');
-          setFpSearch('');
-          setFpFilters({ groups: [], browsers: [] });
-        }}
-      />
-    );
-  }
-
   return (
-    <MainView
-      isOpen={isOpen}
-      onClose={onClose}
-      email={email}
-      targetUrl={targetUrl}
-      targetTitle={targetTitle}
-      ipData={ipData}
-      isLoadingIp={isLoadingIp}
-      ipError={ipError}
-      fingerprints={fingerprints}
-      selectedFingerprintId={selectedFingerprintId}
-      selectedFingerprint={selectedFingerprint}
-      proxies={proxies}
-      selectedProxyId={selectedProxyId}
-      selectedProxy={selectedProxy}
-      proxySearch={proxySearch}
-      proxyHistory={proxyHistory}
-      filteredProxies={filteredProxies}
-      onProxySearchChange={setProxySearch}
-      onSelectProxy={(id) => { setSelectedProxyId(id); setProxySearch(''); }}
-      onOpenPicker={() => setView('picker')}
-      onLaunch={handleLaunch}
-    />
+    <Modal isOpen={isOpen} onClose={onClose} className="max-w-xl" hideCloseButton hideBackButton>
+      {view === 'detail' && previewFp && (
+        <FingerprintDetail
+          onClose={onClose}
+          onBack={() => setView('picker')}
+          fingerprint={previewFp}
+          onConfirm={handleConfirmSelection}
+        />
+      )}
+
+      {view === 'picker' && (
+        <FingerprintPicker
+          onClose={onClose}
+          onBack={handleBackToMain}
+          fingerprints={fingerprints}
+          selectedFingerprintId={selectedFingerprintId}
+          fpSearch={fpSearch}
+          fpFilters={fpFilters}
+          filterOptions={filterOptions}
+          filteredFingerprints={filteredFingerprints}
+          onSearchChange={setFpSearch}
+          onToggleFilter={toggleFilter}
+          onSelect={handleSelectFingerprint}
+        />
+      )}
+
+      {view === 'main' && (
+        <LaunchConfig
+          onClose={onClose}
+          email={email}
+          targetUrl={targetUrl}
+          targetTitle={targetTitle}
+          ipData={ipData}
+          isLoadingIp={isLoadingIp}
+          ipError={ipError}
+          fingerprints={fingerprints}
+          selectedFingerprintId={selectedFingerprintId}
+          selectedFingerprint={selectedFingerprint}
+          proxies={proxies}
+          selectedProxyId={selectedProxyId}
+          selectedProxy={selectedProxy}
+          proxySearch={proxySearch}
+          proxyHistory={proxyHistory}
+          filteredProxies={filteredProxies}
+          onProxySearchChange={setProxySearch}
+          onSelectProxy={(id) => {
+            setSelectedProxyId(id);
+            setProxySearch('');
+          }}
+          onOpenPicker={() => setView('picker')}
+          onLaunch={handleLaunch}
+        />
+      )}
+    </Modal>
   );
 };
 

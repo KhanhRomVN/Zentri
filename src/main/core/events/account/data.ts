@@ -566,4 +566,39 @@ export function setupDataHandlers() {
       }
     },
   );
+
+  ipcMain.handle(
+    'email:get-fingerprint-history',
+    async (_event, { email }: { email: string }) => {
+      try {
+        const dbDir = path.dirname(dbManager.dbPath);
+        const profileDir = path.join(dbDir, 'profiles', email);
+        const fpHistoryPath = path.join(profileDir, 'fp-ip-history.db');
+
+        if (!fs.existsSync(fpHistoryPath)) {
+          return { success: true, entries: [] };
+        }
+
+        const userDataPath = app.getPath('userData');
+        const tempPath = path.join(userDataPath, `temp_fphist_${Date.now()}.db`);
+        fs.copyFileSync(fpHistoryPath, tempPath);
+        const db = new sqlite3.Database(tempPath);
+
+        const rows: any[] = await new Promise((resolve) => {
+          db.all(
+            'SELECT domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at, ended_at FROM site_fingerprint_history ORDER BY started_at DESC',
+            (_err, rows) => {
+              db.close();
+              resolve(rows || []);
+            },
+          );
+        });
+        fs.unlinkSync(tempPath);
+
+        return { success: true, entries: rows };
+      } catch (e: any) {
+        return { success: false, error: e.message };
+      }
+    },
+  );
 }

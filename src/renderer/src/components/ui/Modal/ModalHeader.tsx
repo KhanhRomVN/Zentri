@@ -1,11 +1,12 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, ArrowLeft } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 
 interface ModalHeaderProps {
   title?: string;
   description?: string;
   onClose?: () => void;
+  onBack?: () => void;
   showCloseButton?: boolean;
   className?: string;
 }
@@ -14,11 +15,20 @@ export const ModalHeader: React.FC<ModalHeaderProps> = ({
   title,
   description,
   onClose,
+  onBack,
   showCloseButton = true,
   className,
 }) => {
   return (
     <div className={cn('px-5 border-b border-divider shrink-0 flex items-center gap-3', description ? 'pt-5 pb-2' : 'py-3', className)}>
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="p-1.5 rounded-lg text-text-secondary hover:text-primary hover:bg-primary/10 transition-all shrink-0"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+      )}
       <div className="flex-1 min-w-0">
         {title && <h3 className="text-base font-bold text-text-primary">{title}</h3>}
         {description && (

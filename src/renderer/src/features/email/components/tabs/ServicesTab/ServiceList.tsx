@@ -1,4 +1,4 @@
-import { Globe, Eye, Trash2, ShieldCheck, LayoutGrid } from 'lucide-react';
+import { Globe, Eye, Trash2, LayoutGrid } from 'lucide-react';
 import { FC } from 'react';
 import { cn } from '../../../../../shared/lib/utils';
 import {
@@ -8,7 +8,6 @@ import {
   DropdownItem,
 } from '../../../../../components/ui/Dropdown';
 import { EmptyState } from '../../../../../components/ui/EmptyState';
-import { getServiceById } from '../../../../../constants/services';
 
 interface ServiceListProps {
   filteredServices: any[];
@@ -72,45 +71,6 @@ const ServiceList: FC<ServiceListProps> = ({
                         </div>
                       </div>
                     </div>
-
-                    {/* Security Badges */}
-                    {(() => {
-                      let metadata = service.metadata;
-                      if (!metadata) {
-                        metadata = [];
-                      } else if (typeof metadata === 'string') {
-                        try {
-                          metadata = JSON.parse(metadata);
-                        } catch {
-                          metadata = [];
-                        }
-                      }
-                      if (!Array.isArray(metadata)) {
-                        metadata = [];
-                      }
-                      const svc = getServiceById(service.serviceId);
-                      const twoFa = svc?.two_fa || { has_totp: false, has_backup_codes: false };
-                      const hasTOTP = twoFa.has_totp;
-                      const hasBackupCodes = twoFa.has_backup_codes;
-                      const has2FA = hasTOTP || hasBackupCodes;
-
-                      if (!has2FA) return null;
-
-                      return (
-                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                          {has2FA && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[8px] font-bold uppercase tracking-wider">
-                              <ShieldCheck className="w-2.5 h-2.5" />
-                              {hasTOTP && hasBackupCodes
-                                ? '2FA+Backup'
-                                : hasTOTP
-                                  ? 'TOTP'
-                                  : 'Backup'}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
                   </div>
                 </DropdownTrigger>
                 <DropdownContent>

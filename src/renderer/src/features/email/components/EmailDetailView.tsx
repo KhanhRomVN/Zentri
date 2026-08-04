@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { User, LayoutGrid, Undo2, Trash, Clock, Database, Bookmark } from 'lucide-react';
+import { User, LayoutGrid, Undo2, Trash, Clock, Shield, Bookmark } from 'lucide-react';
 import { cn } from '../../../shared/lib/utils';
 import { useAccentColors } from '../../../hooks/useAccentColors';
 
@@ -8,6 +8,7 @@ import InfoTab from './tabs/InfoTab/index';
 import ServicesTab from './tabs/ServicesTab/index';
 import HistoryTab from './tabs/HistoryTab/index';
 import BookmarkTab from './tabs/BookmarkTab/index';
+import FingerprintTab from './tabs/FingerprintTab/index';
 
 // ─── Color Helper ──────────────────────────────────────────────────────────
 let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
@@ -51,8 +52,8 @@ const getTabColor = (tabId: string) => {
 interface EmailDetailViewProps {
   focusedAccount: Account | null;
   accounts: Account[];
-  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks';
-  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks') => void;
+  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint';
+  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint') => void;
   avatars: Record<string, string>;
   onSelectAccount: (account: Account) => void;
   onContextMenu: (e: React.MouseEvent, accountId: string) => void;
@@ -192,6 +193,28 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
             <Bookmark className="w-5 h-5 transition-colors" />
             <span>Bookmarks</span>
           </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('fingerprint');
+            }}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
+              activeTab === 'fingerprint'
+                ? 'text-[--tab-color]'
+                : 'text-text-primary hover:text-foreground',
+            )}
+            style={
+              {
+                '--tab-color': getTabColor('fingerprint').base,
+                background: activeTab === 'fingerprint' ? getTabColor('fingerprint').bg : undefined,
+              } as React.CSSProperties
+            }
+          >
+            <Shield className="w-5 h-5 transition-colors" />
+            <span>Fingerprint</span>
+          </button>
         </div>
 
         {focusedAccount?.status === 'deleting' && (
@@ -218,6 +241,10 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
         {activeTab === 'history' ? (
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <HistoryTab email={editedAccount?.email || ''} />
+          </div>
+        ) : activeTab === 'fingerprint' ? (
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <FingerprintTab email={editedAccount?.email || ''} />
           </div>
         ) : (
           <div className="flex-1 overflow-auto custom-scrollbar">

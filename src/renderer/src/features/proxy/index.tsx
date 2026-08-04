@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { LayoutDashboard, ChevronRight, AlertCircle } from 'lucide-react';
 import { Proxy, ProxyFilterState } from './types';
 import ProxyTable from './components/ProxyTable';
-import ProxyFilter from './components/ProxyFilter';
 import ProxyConfigForm from './components/ProxyConfigForm';
 import SearchToolbar from '../search/components/SearchToolbar';
 import { useProxyTableState } from './hooks/useProxyTableState';
@@ -130,7 +129,9 @@ const ProxyManager = () => {
             // Update local state to show results immediately
             setProxies((prev) =>
               prev.map((p) =>
-                p.id === proxy.id ? { ...p, last_checked_at: new Date(now).toISOString(), isHealthy: isHealthy } : p,
+                p.id === proxy.id
+                  ? { ...p, last_checked_at: new Date(now).toISOString(), isHealthy: isHealthy }
+                  : p,
               ),
             );
           } catch (e) {
@@ -225,14 +226,6 @@ const ProxyManager = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
-        {/* Sidebar Filter */}
-        {showFilterBar && (
-          <ProxyFilter
-            filters={filters}
-            onFilterChange={setFilters}
-            disabled={isConfiguring}
-          />
-        )}
         {/* Dynamic Content Panel */}
         <div className="flex-1 bg-card/30 overflow-hidden flex flex-col relative transition-all duration-700">
           {isConfiguring ? (

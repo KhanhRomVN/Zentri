@@ -1,0 +1,1 @@
+export { generateFingerprints } from './generator';

@@ -10,6 +10,8 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   className,
   closeOnBackdropClick = true,
+  hideCloseButton = false,
+  hideBackButton = false,
 }) => {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -48,15 +50,17 @@ export const Modal: React.FC<ModalProps> = ({
         )}
       >
         {/* Top-right close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {!hideCloseButton && (
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Top-left back button */}
-        {onBack && (
+        {!hideBackButton && onBack && (
           <button
             onClick={onBack}
             className="absolute top-3 left-3 z-20 w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"

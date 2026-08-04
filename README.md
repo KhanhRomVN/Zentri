@@ -99,9 +99,7 @@ Please read [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for details on our code of
 
 MIT
 
-Linux, Chrome 147, Auto Language & TimeZone, 1920x1080
-
-trong src/renderer/src/features/email/components/tabs/ServicesTab
-1/ giảm width src/renderer/src/features/email/components/tabs/ServicesTab/ServiceList.tsx. xóa các hiệu ứng activeCard shadow và outline. ko có padding để serviceCard dính liền vào listPanel.
-2/ phần heroSection sẽ ko cần padding để dính liền vào ServiceVieư và có kích cỡ text nhỏ lại 1 chút. ở góc phải trên heroSection sẽ là nơi chứa các groupButton, tức là đưa Edit, Open và Delete lên trên
-3/ sectionBox cần có border-border, rounded-md, có bg-card-background, hover:border-primary
+trong src/renderer/src/features/email/components/modals/BrowserLaunchModal/FingerprintDetail.tsx
+1/ mục "App Version" cần có inputbar full width thay vì 1/2 width
+2/ đua mục "RAM (GB)" xuống dưới nằm cùng với "Perf. Memory (MB)"
+3/

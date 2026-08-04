@@ -7,4 +7,6 @@ export interface ModalProps {
   children?: React.ReactNode;
   className?: string;
   closeOnBackdropClick?: boolean;
+  hideCloseButton?: boolean;
+  hideBackButton?: boolean;
 }

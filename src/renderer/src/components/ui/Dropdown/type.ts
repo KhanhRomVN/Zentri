@@ -42,3 +42,8 @@ export interface DropdownItemProps extends React.HTMLAttributes<HTMLDivElement> 
 export interface DropdownSeparatorProps {
   className?: string;
 }
+
+export interface DropdownLabelProps {
+  children: React.ReactNode;
+  className?: string;
+}
