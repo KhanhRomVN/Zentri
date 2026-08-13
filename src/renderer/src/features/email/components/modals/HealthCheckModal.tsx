@@ -1,4 +1,25 @@
+/**
+ * ------------------------------------------------------------------
+ * HealthCheckModal
+ * ------------------------------------------------------------------
+ * Modal that performs a pre-launch health diagnostic on an email
+ * account's browser profile. Shows animated scanning progress,
+ * cleanliness score, IP/Geo/WebRTC details, and allows the user
+ * to discard or force-launch.
+ *
+ * Main features:
+ * - Animated scanning with circular progress indicator
+ * - Health score with pass/fail threshold (≥90)
+ * - Diagnostic details: IP, Location, Connection, WebRTC
+ * - Auto-launch on clean score, manual override on warning
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC, useState, useEffect } from 'react';
+
+// ── UI ──
 import {
   Shield,
   Globe,
@@ -9,8 +30,11 @@ import {
   AlertTriangle,
   ExternalLink,
 } from 'lucide-react';
+
+// ── React DOM ──
 import { createPortal } from 'react-dom';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface HealthCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,12 +45,15 @@ interface HealthCheckModalProps {
   onSuccess: () => void;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, onSuccess }) => {
+  // ── State ──
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
 
+  // ── Callbacks ──
   const performCheck = async () => {
     setLoading(true);
     setError(null);
@@ -65,6 +92,7 @@ const HealthCheckModal: FC<HealthCheckModalProps> = ({ isOpen, onClose, email, o
     }
   };
 
+  // ── Effects ──
   useEffect(() => {
     if (isOpen) {
       performCheck();

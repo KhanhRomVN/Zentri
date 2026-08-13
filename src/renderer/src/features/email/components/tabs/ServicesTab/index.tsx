@@ -1,8 +1,32 @@
-import { Search, Plus, LayoutGrid } from 'lucide-react';
+/**
+ * ------------------------------------------------------------------
+ * ServicesTab
+ * ------------------------------------------------------------------
+ * Tab panel for managing services linked to an email account.
+ * Provides a two-panel layout: service list on the left and
+ * service detail view on the right. Supports search filtering
+ * and auto-selection of the first service.
+ *
+ * Main features:
+ * - Search bar for filtering linked services
+ * - Two-panel layout: list + detail view
+ * - Auto-select first service on list change
+ * - Link new service button
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC, useState, useEffect, useMemo } from 'react';
+
+// ── UI ──
+import { Search, Plus, LayoutGrid } from 'lucide-react';
+
+// ── Components ──
 import ServiceList from './ServiceList';
 import ServiceDetail from './ServiceView';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface ServicesTabProps {
   serviceSearch: string;
   setServiceSearch: (val: string) => void;
@@ -14,6 +38,7 @@ interface ServicesTabProps {
   email?: string;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const ServicesTab: FC<ServicesTabProps> = ({
   serviceSearch,
   setServiceSearch,
@@ -24,9 +49,10 @@ const ServicesTab: FC<ServicesTabProps> = ({
   onDeleteService,
   email,
 }) => {
+  // ── State ──
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
-  // Derived filtered services
+  // ── Derived ──
   const filteredServices = (accountServices || []).filter(
     (s: any) =>
       !serviceSearch ||
@@ -39,6 +65,7 @@ const ServicesTab: FC<ServicesTabProps> = ({
     [accountServices, selectedServiceId],
   );
 
+  // ── Effects ──
   // Auto-select first service when list changes
   useEffect(() => {
     if (filteredServices.length > 0 && !selectedServiceId) {

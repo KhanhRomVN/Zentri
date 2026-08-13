@@ -1,5 +1,21 @@
+/**
+ * ------------------------------------------------------------------
+ * TOTP Utilities
+ * ------------------------------------------------------------------
+ * Time-based One-Time Password (TOTP) generation and validation
+ * using CryptoJS for HMAC-SHA1. Supports standard base32-encoded
+ * TOTP secrets.
+ *
+ * Main functions:
+ * - generateTOTP()        : Generate a 6-digit TOTP code from a base32 secret
+ * - getTOTPTimeRemaining(): Get seconds remaining in the current 30s window
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
 import CryptoJS from 'crypto-js';
 
+// ─── Functions ──────────────────────────────────────────────────────────
 /**
  * Decodes a base32 string to a hex string
  */

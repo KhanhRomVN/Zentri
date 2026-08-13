@@ -308,7 +308,7 @@ async function trackSiteVisit(
 export async function onPageNavigated(
   profileDir: string,
   client: any,
-  wayfernConfig: Record<string, any> | null,
+  fpConfig: Record<string, any> | null,
   url: string,
 ): Promise<void> {
   console.log(TAG_DBG, 'onPageNavigated() — called | url:', url?.slice(0, 80));
@@ -320,10 +320,10 @@ export async function onPageNavigated(
   }
 
   // Get fingerprint config: prefer app-selected, fallback to real browser fingerprint
-  let fpConfig: Record<string, any> | null = wayfernConfig;
-  if (!fpConfig) {
-    fpConfig = await collectRealFingerprint(client);
-    if (!fpConfig) {
+  let resolvedFp: Record<string, any> | null = fpConfig;
+  if (!resolvedFp) {
+    resolvedFp = await collectRealFingerprint(client);
+    if (!resolvedFp) {
       console.log(TAG, 'onPageNavigated() — could not collect fingerprint → EXIT (domain:', domain, ')');
       return;
     }
@@ -335,11 +335,11 @@ export async function onPageNavigated(
     return;
   }
 
-  const fpHash = hashFingerprintConfig(fpConfig);
+  const fpHash = hashFingerprintConfig(resolvedFp);
 
   const db = openDb(profileDir);
   try {
-    await trackSiteVisit(db, domain, fpConfig, fpHash, ip);
+    await trackSiteVisit(db, domain, resolvedFp, fpHash, ip);
   } catch (e: any) {
     console.error(TAG, 'trackSiteVisit() — error:', e?.message);
   } finally {

@@ -1,11 +1,36 @@
+/**
+ * ------------------------------------------------------------------
+ * BookmarkCard
+ * ------------------------------------------------------------------
+ * Individual bookmark card rendered in the Kanban board. Displays
+ * favicon, bookmark name (with search highlighting), and hostname.
+ * Click opens a context dropdown with Open, Edit, and Delete actions.
+ *
+ * Main features:
+ * - Favicon with fallback to Globe icon
+ * - Search query highlighting in bookmark name
+ * - Click-triggered dropdown menu (fixed strategy)
+ * - Edit/Delete disabled when profile is running
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC, useState, useCallback } from 'react';
+
+// ── UI ──
 import { Globe, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+
+// ── UI Components ──
 import Dropdown from '../../../../../../components/ui/Dropdown/Dropdown';
 import { DropdownTrigger } from '../../../../../../components/ui/Dropdown/DropdownTrigger';
 import { DropdownContent } from '../../../../../../components/ui/Dropdown/DropdownContent';
 import { DropdownItem } from '../../../../../../components/ui/Dropdown/DropdownItem';
+
+// ── Types ──
 import type { BookmarkNode } from '../types';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface BookmarkCardProps {
   bookmark: BookmarkNode;
   searchQuery?: string;
@@ -15,9 +40,11 @@ interface BookmarkCardProps {
   onDelete?: (bookmark: BookmarkNode) => void;
 }
 
+// ─── Constants ──────────────────────────────────────────────────────────
 const faviconUrl = (hostname: string) =>
   `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
 
+// ─── Component ──────────────────────────────────────────────────────────
 const BookmarkCard: FC<BookmarkCardProps> = ({
   bookmark,
   searchQuery,

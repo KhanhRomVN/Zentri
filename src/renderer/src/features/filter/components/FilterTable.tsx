@@ -1,6 +1,6 @@
 import { FC, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Table as TableIcon, GripVertical } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Table as TableIcon } from 'lucide-react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -22,17 +22,26 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { SmartView } from '../../types/search';
+import { SmartView } from '../types/search';
 import { useAccentColors } from '@renderer/hooks/useAccentColors';
-import { getFieldValue, getViewColor, setAccentColorsCache } from '@renderer/utils/searchHelpers';
+import { getFieldValue, setAccentColorsCache } from '@renderer/utils/searchHelpers';
 import { cn } from '@renderer/shared/lib/utils';
-import { FilterCondition } from '@renderer/constants';
+import { FilterCondition, Operator } from '@renderer/constants';
 
-interface DataTableProps {
+interface FilterTableProps {
   selectedView: SmartView | null;
   searchQuery: string;
+  filters: FilterCondition[];
+  filterCount: number;
+  showFilterBar: boolean;
+  onToggleFilterBar: () => void;
+  onAddFilter: (column: string, operator: Operator, value: string) => void;
+  onRemoveFilter: (id: string) => void;
+  onClearFilters: () => void;
+  onUpdateFilter: (id: string, column: string, operator: Operator, value: string) => void;
   sorting: SortingState;
   onSortingChange: (updater: SortingState | ((old: SortingState) => SortingState)) => void;
+  availableColumns: string[];
   columnVisibility: Record<string, boolean>;
   onColumnVisibilityChange: (
     updater: Record<string, boolean> | ((old: Record<string, boolean>) => Record<string, boolean>),
@@ -45,19 +54,18 @@ interface DataTableProps {
   onColumnOrderChange: (
     updater: ColumnOrderState | ((old: ColumnOrderState) => ColumnOrderState),
   ) => void;
-  filters: FilterCondition[];
   data: any[];
   loading: boolean;
+  onRefresh?: () => void;
   onOpenAddView: () => void;
 }
 
 interface DraggableHeaderProps {
   header: any;
-  viewColor: any;
 }
 
-const DraggableHeader: FC<DraggableHeaderProps> = ({ header, viewColor }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+const DraggableHeader: FC<DraggableHeaderProps> = ({ header }) => {
+  const { setNodeRef, transform, transition, isDragging } = useSortable({
     id: header.id,
   });
 
@@ -102,9 +110,10 @@ const DraggableHeader: FC<DraggableHeaderProps> = ({ header, viewColor }) => {
   );
 };
 
-const DataTable: FC<DataTableProps> = ({
+const FilterTable: FC<FilterTableProps> = ({
   selectedView,
   searchQuery,
+  filters,
   sorting,
   onSortingChange,
   columnVisibility,
@@ -113,18 +122,14 @@ const DataTable: FC<DataTableProps> = ({
   onColumnSizingChange,
   columnOrder,
   onColumnOrderChange,
-  filters,
   data,
   loading,
-  onOpenAddView,
 }) => {
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
 
   if (typeof accentColors !== 'undefined' && accentColors.length > 0) {
     setAccentColorsCache(accentColors, UNIFIED_ACCENT);
   }
-
-  const viewColor = selectedView ? getViewColor(selectedView.id) : null;
 
   // ─── Sensors for DnD ──────────────────────────────────────────────────────
   const sensors = useSensors(
@@ -270,107 +275,114 @@ const DataTable: FC<DataTableProps> = ({
     [columnOrder, onColumnOrderChange],
   );
 
-  // ─── Render ──────────────────────────────────────────────────────────────
-  if (!selectedView) {
-    return (
-      <div className="flex-1 flex items-center justify-center opacity-20">
-        <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">
-          Select a view to begin
-        </span>
-      </div>
-    );
-  }
+  const renderContent = () => {
+    if (!selectedView) {
+      return (
+        <div className="flex-1 flex items-center justify-center opacity-20">
+          <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">
+            Select a view to begin
+          </span>
+        </div>
+      );
+    }
 
-  const headerGroups = table.getHeaderGroups();
-  const rowModel = table.getRowModel();
+    const headerGroups = table.getHeaderGroups();
+    const rowModel = table.getRowModel();
+
+    return (
+      <motion.div
+        key={selectedView.id}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex-1 flex flex-col h-full overflow-hidden"
+      >
+        {/* Table */}
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          {loading ? (
+            <div className="flex items-center justify-center h-full opacity-30">
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">
+                Loading...
+              </span>
+            </div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                <table className="border-collapse w-full table-fixed">
+                  <thead className="sticky top-0 z-20">
+                    {headerGroups.map((headerGroup: any) => (
+                      <tr
+                        key={headerGroup.id}
+                        className="bg-table-header-background border-b border-border/50"
+                      >
+                        {headerGroup.headers.map((header: any) => {
+                          if (header.column.getIsVisible() === false) return null;
+                          return <DraggableHeader key={header.id} header={header} />;
+                        })}
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody>
+                    {rowModel.rows.map((row: any) => (
+                      <tr
+                        key={row.id}
+                        className="border-b border-border/20 h-[40px] hover:bg-table-row-hover transition-colors"
+                      >
+                        {row.getVisibleCells().map((cell: any) => (
+                          <td
+                            key={cell.id}
+                            className="py-1 text-sm text-foreground/80 truncate px-4"
+                            style={{
+                              width: cell.column.getSize(),
+                              maxWidth: cell.column.getSize(),
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {rowModel.rows.length === 0 && !loading && (
+                      <tr>
+                        <td
+                          colSpan={table.getAllColumns().filter((c: any) => c.getIsVisible()).length}
+                          className="text-center py-12 text-muted-foreground/40 text-sm"
+                        >
+                          No data found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </SortableContext>
+            </DndContext>
+          )}
+
+          {table.getAllColumns().filter((c: any) => c.getIsVisible()).length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full opacity-30">
+              <TableIcon className="w-12 h-12 mb-4" />
+              <span className="text-[10px] font-black uppercase">No columns defined</span>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
 
   return (
-    <motion.div
-      key={selectedView.id}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="flex-1 flex flex-col h-full overflow-hidden"
-    >
-      {/* Table */}
-      <div className="flex-1 overflow-auto custom-scrollbar">
-        {loading ? (
-          <div className="flex items-center justify-center h-full opacity-30">
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">
-              Loading...
-            </span>
-          </div>
-        ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-              <table className="border-collapse w-full table-fixed">
-                <thead className="sticky top-0 z-20">
-                  {headerGroups.map((headerGroup: any) => (
-                    <tr
-                      key={headerGroup.id}
-                      className="bg-table-header-background border-b border-border/50"
-                    >
-                      {headerGroup.headers.map((header: any) => {
-                        if (header.column.getIsVisible() === false) return null;
-                        return (
-                          <DraggableHeader key={header.id} header={header} viewColor={viewColor} />
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody>
-                  {rowModel.rows.map((row: any) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-border/20 h-[40px] hover:bg-table-row-hover transition-colors"
-                    >
-                      {row.getVisibleCells().map((cell: any) => (
-                        <td
-                          key={cell.id}
-                          className="py-1 text-sm text-foreground/80 truncate px-4"
-                          style={{
-                            width: cell.column.getSize(),
-                            maxWidth: cell.column.getSize(),
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                  {rowModel.rows.length === 0 && !loading && (
-                    <tr>
-                      <td
-                        colSpan={table.getAllColumns().filter((c: any) => c.getIsVisible()).length}
-                        className="text-center py-12 text-muted-foreground/40 text-sm"
-                      >
-                        No data found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </SortableContext>
-          </DndContext>
-        )}
-
-        {table.getAllColumns().filter((c: any) => c.getIsVisible()).length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full opacity-30">
-            <TableIcon className="w-12 h-12 mb-4" />
-            <span className="text-[10px] font-black uppercase">No columns defined</span>
-          </div>
-        )}
-      </div>
-    </motion.div>
+    <div className="flex-1 flex flex-col min-w-0 bg-card/5 backdrop-blur-sm relative z-10 transition-all duration-500">
+      <main className="flex-1 overflow-hidden relative text-foreground flex flex-col">
+        <AnimatePresence mode="wait">{renderContent()}</AnimatePresence>
+      </main>
+    </div>
   );
 };
 
-export default DataTable;
+export default FilterTable;

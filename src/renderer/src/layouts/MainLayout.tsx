@@ -4,7 +4,7 @@ import Dashboard from '../features/dashboard';
 import EmailManager from '../features/email';
 import RegisManager from '../features/regis';
 import ProxyManager from '../features/proxy';
-import SearchManager from '../features/search';
+import SearchManager from '../features/filter';
 import SettingPage from '../features/setting';
 
 const PAGE_COMPONENTS: Record<string, React.ComponentType> = {

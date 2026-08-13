@@ -378,6 +378,50 @@ export class DbManager {
         console.error('[DB] Migration failed (proxy_history):', e);
       }
     }
+
+    // Migration for proxy health metrics (Version 3)
+    const proxyColsV3 = await this.rawAll<{ name: string }>(
+      "PRAGMA table_info('proxies')",
+    );
+    const hasLatency = proxyColsV3.some((c) => c.name === 'latency');
+
+    if (!hasLatency) {
+      try {
+        await this.rawRun('ALTER TABLE proxies ADD COLUMN latency INTEGER');
+        await this.rawRun('ALTER TABLE proxies ADD COLUMN success_rate INTEGER');
+        await this.rawRun('ALTER TABLE proxies ADD COLUMN quota_total TEXT');
+        await this.rawRun('ALTER TABLE proxies ADD COLUMN quota_used REAL');
+        await this.rawRun('ALTER TABLE proxies ADD COLUMN last_seen_min INTEGER');
+        console.log('[DB] Migration: Added health metrics columns to proxies');
+      } catch (e) {
+        console.error('[DB] Migration failed (proxy health metrics):', e);
+      }
+    }
+
+    // Migration for proxy_health_history table
+    const healthHistoryExists = await this.rawAll<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='proxy_health_history'",
+    );
+    if (healthHistoryExists.length === 0) {
+      try {
+        await this.rawRun(`
+          CREATE TABLE IF NOT EXISTS proxy_health_history (
+            id TEXT PRIMARY KEY,
+            proxy_id TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            is_healthy INTEGER NOT NULL DEFAULT 0,
+            latency INTEGER,
+            FOREIGN KEY (proxy_id) REFERENCES proxies(id) ON DELETE CASCADE
+          )
+        `);
+        await this.rawRun(
+          'CREATE INDEX IF NOT EXISTS idx_health_history_proxy ON proxy_health_history(proxy_id, timestamp DESC)',
+        );
+        console.log('[DB] Migration: Created proxy_health_history table');
+      } catch (e) {
+        console.error('[DB] Migration failed (proxy_health_history):', e);
+      }
+    }
   }
 
   async run(query: string, params: any[] = []): Promise<{ lastID: number; changes: number }> {

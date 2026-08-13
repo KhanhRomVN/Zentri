@@ -1,17 +1,41 @@
+/**
+ * ------------------------------------------------------------------
+ * useEmailTableState
+ * ------------------------------------------------------------------
+ * Hook for managing TanStack Table state: sorting, column visibility,
+ * column sizing, and column order. Initializes defaults from the
+ * provided column list.
+ *
+ * Main features:
+ * - Sorting state with updater callback
+ * - Column visibility toggle with batch init
+ * - Column sizing with updater callback
+ * - Column order with updater callback
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { useState, useCallback, useEffect } from 'react';
+
+// ── Types ──
 import { SortingState, ColumnSizingState, ColumnOrderState } from '@tanstack/react-table';
 
+// ─── Types ──────────────────────────────────────────────────────────────
 interface UseEmailTableStateOptions {
   viewId: string | null;
   defaultColumns: string[];
 }
 
+// ─── Hook ───────────────────────────────────────────────────────────────
 export const useEmailTableState = ({ viewId, defaultColumns }: UseEmailTableStateOptions) => {
+  // ── State ──
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
 
+  // ── Effects ──
   // Initialize column visibility and order when defaultColumns change
   useEffect(() => {
     if (defaultColumns.length > 0) {
@@ -24,6 +48,7 @@ export const useEmailTableState = ({ viewId, defaultColumns }: UseEmailTableStat
     }
   }, [defaultColumns]);
 
+  // ── Callbacks ──
   const handleSortingChange = useCallback(
     (updater: SortingState | ((old: SortingState) => SortingState)) => {
       setSorting(updater);

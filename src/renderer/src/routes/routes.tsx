@@ -4,7 +4,7 @@ import Dashboard from '../features/dashboard';
 import EmailManager from '../features/email';
 import RegisManager from '../features/regis';
 import ProxyManager from '../features/proxy';
-import SearchManager from '../features/search';
+import FilterPage from '../features/filter';
 import SettingPage from '../features/setting';
 
 export const routes: RouteObject[] = [
@@ -30,7 +30,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'search',
-        element: <SearchManager />,
+        element: <FilterPage />,
       },
       {
         path: 'setting',

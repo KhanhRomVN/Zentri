@@ -1,11 +1,13 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { useHashParams } from '../../hooks/useHashParams';
 import EmailTable from './components/EmailTable';
-import HeaderBar from './components/HeaderBar';
 import FilterBar from './components/FilterBar';
-import BookmarkTab from './components/tabs/BookmarkTab/index';
+import StatsStrip from './components/StatsStrip';
+import FilterPanel from './components/FilterPanel';
 import { useEmailTableState } from './hooks/useEmailTableState';
 import { useEmailFilter } from './hooks/useEmailFilter';
+import ViewsService from './services/api.service';
+import type { SavedView } from './components/modals/FilterModal/types';
 import {
   Plus,
   Mail,
@@ -19,6 +21,8 @@ import {
   Trash2,
   Undo2,
   X,
+  RefreshCw,
+  Upload,
 } from 'lucide-react';
 import { cn } from '../../shared/lib/utils';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
@@ -118,6 +122,7 @@ const EmailManager = () => {
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
+  const [selectedView, setSelectedView] = useState<SavedView | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,26 +148,16 @@ const EmailManager = () => {
   }, []);
 
   // Table state
-  const {
-    sorting,
-    setSorting,
-    columnVisibility,
-    setColumnVisibility,
-    columnSizing,
-    setColumnSizing,
-    columnOrder,
-    setColumnOrder,
-  } = useEmailTableState({
+  const { sorting, columnVisibility } = useEmailTableState({
     viewId: null,
     defaultColumns: availableColumns,
   });
 
   // Filter state
-  const { filters, addFilter, removeFilter, clearFilters, updateFilter, filterCount } =
-    useEmailFilter({
-      viewId: null,
-      availableColumns,
-    });
+  const { filters, addFilter, removeFilter, clearFilters, updateFilter } = useEmailFilter({
+    viewId: null,
+    availableColumns,
+  });
 
   const filteredAccounts = useMemo(() => {
     let result = accounts.filter((account) => {
@@ -174,7 +169,12 @@ const EmailManager = () => {
       return matchesSearch;
     });
 
-    // Apply filters
+    // Apply view filters first if a view is selected
+    if (selectedView && selectedView.filters.length > 0) {
+      result = ViewsService.applyViewFilters(result, selectedView.filters);
+    }
+
+    // Apply manual filters
     if (filters.length > 0) {
       result = result.filter((account) => {
         return filters.every((filter) => {
@@ -222,23 +222,15 @@ const EmailManager = () => {
     }
 
     return result;
-  }, [accounts, searchQuery, filters, sorting]);
+  }, [accounts, searchQuery, selectedView, filters, sorting]);
 
   // Pagination calculations
   const totalRecords = filteredAccounts.length;
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
-  const startRecord = totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0;
-  const endRecord = Math.min(currentPage * pageSize, totalRecords);
   const paginatedData = useMemo(
     () => filteredAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [filteredAccounts, currentPage, pageSize],
   );
-
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
 
   // Reset to page 1 when data changes
   useEffect(() => {
@@ -289,7 +281,9 @@ const EmailManager = () => {
     }
   }, [toast.visible]);
 
-  const [activeTab, setActiveTab] = useState<'info' | 'services' | 'sessions' | 'history' | 'bookmarks'>('info');
+  const [activeTab, setActiveTab] = useState<
+    'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint'
+  >('info');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [hardDeleteConfirmId, setHardDeleteConfirmId] = useState<string | null>(null);
   const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
@@ -329,7 +323,14 @@ const EmailManager = () => {
         const linkedServices = serviceLinks
           .filter((link: any) => link.email_id === row.id)
           .map((link: any) => {
-            console.log('[DEBUG] loadData — link.id:', link.id, 'raw two_fa:', link.two_fa, 'type:', typeof link.two_fa);
+            console.log(
+              '[DEBUG] loadData — link.id:',
+              link.id,
+              'raw two_fa:',
+              link.two_fa,
+              'type:',
+              typeof link.two_fa,
+            );
             const parsedTwoFa = link.two_fa
               ? typeof link.two_fa === 'string'
                 ? JSON.parse(link.two_fa)
@@ -632,59 +633,15 @@ const EmailManager = () => {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
       {/* Header with Breadcrumbs */}
-      <div className="h-[40px] flex items-center justify-between px-4 border-b border-border shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10 transition-all duration-500">
+      <header className="h-10 shrink-0 border-b border-t border-r border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-30">
         <div className="flex items-center gap-2">
-          <LayoutDashboard className="w-4 h-4 text-text-primary -mt-0.5" />
-          <ChevronRight className="w-3 h-3 text-text-primary" />
-          <span className="text-text-primary text-sm">Email</span>
-          {focusedAccountId &&
-            (() => {
-              const focused = accounts.find((a) => a.id === focusedAccountId);
-              const tabLabels: Record<string, string> = {
-                info: 'Information',
-                services: 'Services',
-                sessions: 'Sessions',
-                history: 'History',
-              };
-              return (
-                <>
-                  <ChevronRight className="w-3 h-3 text-text-secondary" />
-                  <span className="text-text-primary text-sm font-medium truncate max-w-[200px]">
-                    {focused?.email || ''}
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-text-secondary" />
-                  <span className="text-text-primary text-sm font-medium">
-                    {tabLabels[activeTab] || ''}
-                  </span>
-                </>
-              );
-            })()}
+          <button className="text-text-primary hover:text-teal transition-colors">
+            <LayoutDashboard className="size-5" />
+          </button>
+          <ChevronRight className="size-4 text-text-secondary" />
+          <span className="text-text-primary text-sm font-semibold">Email</span>
         </div>
-
-        <div className="flex items-center gap-3">
-          <HeaderBar
-            filtersCount={filterCount}
-            showFilterBar={showFilterBar}
-            onToggleFilterBar={() => setShowFilterBar(!showFilterBar)}
-            sorting={sorting}
-            onSortingChange={setSorting}
-            availableColumns={availableColumns}
-            columnVisibility={columnVisibility}
-            onColumnVisibilityChange={setColumnVisibility}
-            totalRecords={totalRecords}
-            onRefresh={loadData}
-            onAddAccount={() => {
-              setSelectedAccount(null);
-              setIsDrawerOpen(true);
-            }}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            startRecord={startRecord}
-            endRecord={endRecord}
-            onPageChange={handlePageChange}
-          />
-        </div>
-      </div>
+      </header>
 
       {/* Filter Bar */}
       {showFilterBar && (
@@ -699,73 +656,107 @@ const EmailManager = () => {
       )}
 
       {/* Main Content: Table */}
-      <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
-        <div className="flex-1 bg-card/30 border-b border-border/50 overflow-hidden flex flex-col">
-          {loading && accounts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground opacity-50">
-              <Loader2 className="w-10 h-10 animate-spin text-primary" />
-              <span className="text-[10px] font-bold tracking-[0.3em] uppercase">
-                Indexing accounts...
-              </span>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full gap-6 p-8 text-center bg-destructive/5">
-              <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
-                <AlertCircle className="w-10 h-10" />
-              </div>
-              <div className="max-w-md space-y-2">
-                <h2 className="text-sm font-bold text-foreground">Sync Failure</h2>
-                <p className="text-xs text-muted-foreground leading-relaxed">{error}</p>
-              </div>
-              <button
-                onClick={loadData}
-                className="px-6 py-2.5 bg-background border border-border hover:bg-muted rounded-xl text-xs font-bold transition-all active:scale-95"
-              >
-                Restore Connection
-              </button>
-            </div>
-          ) : accounts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-8 p-8 text-center">
-              <div className="relative">
-                <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
-                <div className="relative w-28 h-28 rounded-3xl bg-muted/50 border border-border/50 flex items-center justify-center transform rotate-12">
-                  <Mail className="w-12 h-12 text-muted-foreground/30 -rotate-12" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-bold tracking-tight">No email accounts yet</p>
-                <p className="text-xs text-muted-foreground max-w-[240px] leading-relaxed mx-auto">
-                  Add your first email account to get started with profile management and service
-                  linking.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsDrawerOpen(true)}
-                className="flex items-center gap-2 bg-primary/10 text-primary px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                Add Account
-              </button>
-            </div>
-          ) : (
-            <EmailTable
-              accounts={paginatedData}
-              allAccounts={filteredAccounts}
-              focusedAccountId={focusedAccountId}
-              onSelectAccount={(account) => {
-                setFocusedAccountId((prev) => (prev === account.id ? null : account.id));
-              }}
-              onSoftDelete={(id) => setDeleteConfirmId(id)}
-              onRestore={(id) => setRestoreConfirmId(id)}
-              onHardDelete={(id) => setHardDeleteConfirmId(id)}
-              onSaveChanges={(oldAcc, newAcc) => setDiffPayload({ old: oldAcc, new: newAcc })}
-              onRefreshData={loadData}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              sorting={sorting}
-              columnVisibility={columnVisibility}
+      <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden p-3">
+        {/* Page title */}
+        <div className="flex items-end justify-between mb-4 shrink-0">
+          <div>
+            <h1 className="font-display text-[22px] font-semibold text-text-primary tracking-tight">
+              Email Registry
+            </h1>
+            <p className="text-[12.5px] text-text-secondary/60 mt-1">
+              Manage your email accounts — monitor status, linked services, and account health in
+              real time.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={loadData}>
+              <RefreshCw className="size-3.5" />
+              Refresh
+            </Button>
+            <Button variant="outline" onClick={() => setIsDrawerOpen(true)}>
+              <Upload className="size-3.5" />
+              Import
+            </Button>
+            <Button variant="solid" onClick={() => setIsDrawerOpen(true)}>
+              <Plus className="size-3.5" />
+              Add Email
+            </Button>
+          </div>
+        </div>
+        <div className="flex-1 bg-card/30 border-b border-border/50 overflow-hidden flex flex-col gap-4">
+          <StatsStrip accounts={accounts} />
+          <div className="flex-1 flex flex-row overflow-hidden gap-4 pt-1">
+            <FilterPanel
+              accounts={accounts}
+              onViewSelect={setSelectedView}
+              selectedViewId={selectedView?.id || null}
             />
-          )}
+            {loading && accounts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground opacity-50 flex-1">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                <span className="text-[10px] font-bold tracking-[0.3em] uppercase">
+                  Indexing accounts...
+                </span>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-full gap-6 p-8 text-center bg-destructive/5 flex-1">
+                <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+                  <AlertCircle className="w-10 h-10" />
+                </div>
+                <div className="max-w-md space-y-2">
+                  <h2 className="text-sm font-bold text-foreground">Sync Failure</h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{error}</p>
+                </div>
+                <button
+                  onClick={loadData}
+                  className="px-6 py-2.5 bg-background border border-border hover:bg-muted rounded-xl text-xs font-bold transition-all active:scale-95"
+                >
+                  Restore Connection
+                </button>
+              </div>
+            ) : accounts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full gap-8 p-8 text-center flex-1">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
+                  <div className="relative w-28 h-28 rounded-3xl bg-muted/50 border border-border/50 flex items-center justify-center transform rotate-12">
+                    <Mail className="w-12 h-12 text-muted-foreground/30 -rotate-12" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-bold tracking-tight">No email accounts yet</p>
+                  <p className="text-xs text-muted-foreground max-w-[240px] leading-relaxed mx-auto">
+                    Add your first email account to get started with profile management and service
+                    linking.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsDrawerOpen(true)}
+                  className="flex items-center gap-2 bg-primary/10 text-primary px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Account
+                </button>
+              </div>
+            ) : (
+              <EmailTable
+                accounts={paginatedData}
+                allAccounts={filteredAccounts}
+                focusedAccountId={focusedAccountId}
+                onSelectAccount={(account) => {
+                  setFocusedAccountId((prev) => (prev === account.id ? null : account.id));
+                }}
+                onSoftDelete={(id) => setDeleteConfirmId(id)}
+                onRestore={(id) => setRestoreConfirmId(id)}
+                onHardDelete={(id) => setHardDeleteConfirmId(id)}
+                onSaveChanges={(oldAcc, newAcc) => setDiffPayload({ old: oldAcc, new: newAcc })}
+                onRefreshData={loadData}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                sorting={sorting}
+                columnVisibility={columnVisibility}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -1273,7 +1264,7 @@ const EmailManager = () => {
           </div>
         </div>
       </ModalWrapper>
-      </div>
+    </div>
   );
 };
 

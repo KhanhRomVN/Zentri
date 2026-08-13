@@ -1,6 +1,25 @@
-import { FC, useState, useEffect, useMemo } from 'react';
-import { memo } from 'react';
+/**
+ * ------------------------------------------------------------------
+ * ControlSidebar
+ * ------------------------------------------------------------------
+ * Sidebar for the History tab. Contains a calendar month picker
+ * with activity dots and a top-domains list for filtering history
+ * by domain. Uses memoized sub-components for performance.
+ *
+ * Main features:
+ * - HistoryCalendar: month navigator with activity indicators
+ * - DomainSidebar: clickable top domains list with favicons
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
+import { FC, useState, useEffect, useMemo, memo } from 'react';
+
+// ── UI ──
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+// ── Utils ──
 import {
   format,
   addMonths,
@@ -17,29 +36,12 @@ import {
   getMonth,
 } from 'date-fns';
 
-interface HistoryItem {
-  url: string;
-  title: string;
-  time: number;
-  duration: number;
-}
-
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface TopWebsite {
   domain: string;
   count: number;
   duration: number;
   url: string;
-}
-
-interface HistoryStats {
-  topWebsites: TopWebsite[];
-  intervals: ActivityInterval[];
-  totalVisits: number;
-}
-
-interface ActivityInterval {
-  hour: number;
-  count: number;
 }
 
 interface ControlSidebarProps {
@@ -51,7 +53,7 @@ interface ControlSidebarProps {
   onDomainSelect: (domain: string | null) => void;
 }
 
-// ─── HistoryCalendar ──────────────────────────────────────────────────────────
+// ─── HistoryCalendar ────────────────────────────────────────────────────
 
 const HistoryCalendar: FC<{
   email: string;
@@ -136,7 +138,12 @@ const HistoryCalendar: FC<{
             <button
               key={day.toISOString()}
               onClick={() => {
-                console.log('[DEBUG] HistoryCalendar date clicked:', dateStr, 'current selectedDate:', selectedDate);
+                console.log(
+                  '[DEBUG] HistoryCalendar date clicked:',
+                  dateStr,
+                  'current selectedDate:',
+                  selectedDate,
+                );
                 onDateSelect(dateStr);
               }}
               className={`
@@ -231,14 +238,10 @@ const ControlSidebar: FC<ControlSidebarProps> = ({
   onDomainSelect,
 }) => {
   return (
-    <aside className="w-[320px] flex flex-col border-r border-border overflow-y-auto custom-scrollbar shrink-0 bg-background/20">
+    <aside className="w-[320px] flex flex-col border-r border-border overflow-y-scroll overscroll-contain custom-scrollbar shrink-0 bg-background/20">
       {/* Calendar */}
       <div className="border-b border-border/20">
-        <HistoryCalendar
-          email={email}
-          selectedDate={selectedDate}
-          onDateSelect={onDateSelect}
-        />
+        <HistoryCalendar email={email} selectedDate={selectedDate} onDateSelect={onDateSelect} />
       </div>
 
       {/* Domain list */}

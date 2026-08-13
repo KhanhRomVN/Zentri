@@ -6,6 +6,9 @@
 // Re-export operators from operators.ts
 export * from './operators';
 
+// Re-export countries
+export * from './countries';
+
 // Search-related constants
 export const TYPE_LABELS: Record<string, string> = {
   text: 'STRING',

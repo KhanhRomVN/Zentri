@@ -1,4 +1,26 @@
+/**
+ * ------------------------------------------------------------------
+ * ServiceView
+ * ------------------------------------------------------------------
+ * Detail view for a linked service. Displays service hero with
+ * metadata, TOTP code with live countdown, backup codes, custom
+ * metadata fields, and filtered activity history for that service's
+ * domain.
+ *
+ * Main features:
+ * - Service hero with favicon, tags, and action buttons
+ * - TOTP live code generation with copy-to-clipboard
+ * - Backup codes display with expand/collapse
+ * - Custom metadata fields from service template
+ * - Domain-filtered activity history with date picker
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC, useState, useEffect, useMemo, useCallback } from 'react';
+
+// ── UI ──
 import {
   ShieldCheck,
   History,
@@ -10,14 +32,23 @@ import {
   Link,
   MoreHorizontal,
 } from 'lucide-react';
+
+// ── Utils ──
 import { format } from 'date-fns';
 import { cn } from '../../../../../shared/lib/utils';
-import { Button } from '../../../../../components/ui/Button';
 import { generateTotp, isValidBase32, getCodeColor } from '../../../../../shared/lib/totp';
+
+// ── UI Components ──
+import { Button } from '../../../../../components/ui/Button';
 import { EmptyState } from '../../../../../components/ui/EmptyState';
+
+// ── Components ──
 import HistoryList from '../HistoryTab/HistoryList';
+
+// ── Constants ──
 import { getServiceById } from '../../../../../constants/services';
 
+// ─── Helpers ────────────────────────────────────────────────────────────
 function getDomain(url: string): string {
   try {
     return new URL(url).hostname.replace('www.', '');
@@ -411,7 +442,7 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
   if (!service) return null;
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar">
+    <div className="flex-1 overflow-y-scroll overscroll-contain custom-scrollbar">
       <ServiceHero
         service={service}
         onEditServiceLink={onEditServiceLink}

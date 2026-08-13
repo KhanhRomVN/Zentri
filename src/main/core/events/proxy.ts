@@ -1,8 +1,41 @@
 import { ipcMain } from 'electron';
 import * as crypto from 'crypto';
 import { dbManager } from '../database';
-import { Proxy } from '../../../shared/types';
 import { ProxyDiagnosticService } from '../../services/ProxyDiagnosticService';
+
+// Local proxy data type matching the DB + renderer types
+interface ProxyData {
+  id: string;
+  ipVersion?: number | null;
+  proxyType?: string | null;
+  sourceType?: string | null;
+  rotationType?: string | null;
+  pricingType?: string | null;
+  protocol?: string | null;
+  host?: string | null;
+  port?: number | null;
+  username?: string | null;
+  password?: string | null;
+  country?: string | null;
+  city?: string | null;
+  isp?: string | null;
+  durationDays?: number | null;
+  bandwidthGb?: number | null;
+  price?: number | null;
+  status?: string;
+  metadata?: any;
+  expiredAt?: string | null;
+  lastCheckedAt?: string | null;
+  purchaseUrl?: string | null;
+  isHealthy?: number | null;
+  latency?: number | null;
+  successRate?: number | null;
+  quotaTotal?: string | null;
+  quotaUsed?: number | null;
+  lastSeenMin?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export function setupProxyHandlers() {
   console.log('✅ Setting up Proxy Handlers...');
@@ -44,6 +77,12 @@ export function setupProxyHandlers() {
         expiredAt: row.expired_at,
         lastCheckedAt: row.last_checked_at,
         purchaseUrl: row.purchase_url,
+        isHealthy: row.is_healthy,
+        latency: row.latency,
+        successRate: row.success_rate,
+        quotaTotal: row.quota_total,
+        quotaUsed: row.quota_used,
+        lastSeenMin: row.last_seen_min,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));
@@ -54,7 +93,7 @@ export function setupProxyHandlers() {
   });
 
   // Create proxy
-  ipcMain.handle('proxy:create', async (_event, data: Partial<Proxy>) => {
+  ipcMain.handle('proxy:create', async (_event, data: Partial<ProxyData>) => {
     try {
       const id = data.id || crypto.randomUUID();
       const query = `
@@ -102,7 +141,7 @@ export function setupProxyHandlers() {
   // Update proxy
   ipcMain.handle(
     'proxy:update',
-    async (_event, { id, data }: { id: string; data: Partial<Proxy> }) => {
+    async (_event, { id, data }: { id: string; data: Partial<ProxyData> }) => {
       try {
         const fields = Object.entries(data)
           .filter(([key]) => key !== 'id' && key !== 'createdAt' && key !== 'updatedAt')
@@ -181,4 +220,24 @@ export function setupProxyHandlers() {
       }
     },
   );
+
+  // Get proxy health history (last 24 checks)
+  ipcMain.handle('proxy:get-health-history', async (_event, proxyId: string) => {
+    try {
+      const rows = await dbManager.all(
+        'SELECT * FROM proxy_health_history WHERE proxy_id = ? ORDER BY timestamp DESC LIMIT 24',
+        [proxyId],
+      );
+      return rows.map((row: any) => ({
+        id: row.id,
+        proxyId: row.proxy_id,
+        timestamp: row.timestamp,
+        isHealthy: row.is_healthy === 1,
+        latency: row.latency,
+      }));
+    } catch (error) {
+      console.error('[proxy:get-health-history] FAILED:', error);
+      return [];
+    }
+  });
 }

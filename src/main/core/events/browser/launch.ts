@@ -164,44 +164,41 @@ export function setupLaunchHandlers() {
                   const browser = await puppeteer.connect({ browserURL: 'http://127.0.0.1:' + cdpPort });
                   console.log('[BrowserLaunch] CDP Connected successfully!');
 
-                  let wayfernConfig: any = null;
+                  let fpConfig: any = null;
 
                   if (fingerprintConfig) {
-                    console.log('[CDP] Using fingerprintConfig from frontend');
-                    wayfernConfig = { ...fingerprintConfig as any };
+                    fpConfig = { ...fingerprintConfig as any };
                   } else if (fingerprintId) {
                     const fp = await dbManager.get<{ config_json: string }>(
                       'SELECT config_json FROM fingerprints WHERE id = ?',
                       [fingerprintId],
                     );
                     if (fp?.config_json) {
-                      wayfernConfig = JSON.parse(fp.config_json);
+                      fpConfig = JSON.parse(fp.config_json);
                     }
                   }
 
-                  if (wayfernConfig) {
-                    let languages = wayfernConfig.languages;
+                  if (fpConfig) {
+                    let languages = fpConfig.languages;
                     if (typeof languages === 'string') {
                       try { languages = JSON.parse(languages); } catch (e) { languages = [languages]; }
                     }
-                    wayfernConfig = {
-                      ...wayfernConfig,
-                      userAgent: wayfernConfig.userAgent || wayfernConfig.ua,
-                      platformVersion: wayfernConfig.osVersion || wayfernConfig.os_version,
-                      os_version: wayfernConfig.os_version || wayfernConfig.osVersion,
-                      canvasNoiseSeed: wayfernConfig.canvasNoiseSeed?.toString(),
+                    fpConfig = {
+                      ...fpConfig,
+                      userAgent: fpConfig.userAgent || fpConfig.ua,
+                      platformVersion: fpConfig.osVersion || fpConfig.os_version,
+                      os_version: fpConfig.os_version || fpConfig.osVersion,
+                      canvasNoiseSeed: fpConfig.canvasNoiseSeed?.toString(),
                       languages: Array.isArray(languages) ? languages : [],
                     };
                   }
-
-                  console.log('[SiteHistory:DEBUG] wayfernConfig is ' + (wayfernConfig ? 'SET' : 'NULL') + ' | fingerprintConfig=' + Boolean(fingerprintConfig) + ' | fingerprintId=' + (fingerprintId || 'none'));
 
                   // Store CDP sessions per target for reuse on navigation
                   const sessionMap = new Map<any, any>();
 
                   const evaluateScript = async (client: any, label: string) => {
-                    if (!wayfernConfig || launchMode === 'normal') return;
-                    const script = buildFingerprintScript(wayfernConfig);
+                    if (!fpConfig || launchMode === 'normal') return;
+                    const script = buildFingerprintScript(fpConfig);
                     try {
                       await client.send('Runtime.enable');
                       await client.send('Runtime.evaluate', { expression: script });
@@ -242,8 +239,8 @@ export function setupLaunchHandlers() {
                       }
 
                       // Inject script for future navigations (only once per target)
-                      if (isNew && wayfernConfig && launchMode !== 'normal') {
-                        const script = buildFingerprintScript(wayfernConfig);
+                      if (isNew && fpConfig && launchMode !== 'normal') {
+                        const script = buildFingerprintScript(fpConfig);
                         await client.send('Page.addScriptToEvaluateOnNewDocument', { source: script });
                       }
 
@@ -268,9 +265,8 @@ export function setupLaunchHandlers() {
                       // Track fingerprint + IP history for this domain
                       var cdpClient = sessionMap.get(target);
                       var tUrl = target.url();
-                      console.log('[SiteHistory:DEBUG] targetchanged fired | url=' + (tUrl || '(empty)').substring(0, 80) + ' | hasCdpClient=' + Boolean(cdpClient) + ' | hasFpConfig=' + Boolean(wayfernConfig));
                       if (cdpClient) {
-                        onPageNavigated(browserProfileDir, cdpClient, wayfernConfig, tUrl).catch(function (e) {
+                        onPageNavigated(browserProfileDir, cdpClient, fpConfig, tUrl).catch(function (e) {
                           console.error('[SiteHistory] Error:', e.message);
                         });
                       }

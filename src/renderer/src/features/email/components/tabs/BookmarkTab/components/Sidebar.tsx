@@ -110,7 +110,7 @@ const Sidebar: FC<SidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-2 space-y-0.5">
+      <div className="flex-1 overflow-y-scroll overscroll-contain custom-scrollbar px-2 py-2 space-y-0.5">
         {/* Overview label */}
         <div className="px-3 pt-1 pb-1.5">
           <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/40">

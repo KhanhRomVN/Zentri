@@ -1,8 +1,32 @@
+/**
+ * ------------------------------------------------------------------
+ * InfoTab
+ * ------------------------------------------------------------------
+ * Account information editor tab. Displays and allows editing of
+ * email, password, recovery email, phone number, TOTP secret key,
+ * and backup codes with inline validation.
+ *
+ * Main features:
+ * - Editable fields with validation error display
+ * - TOTP key input with visual digit display
+ * - Backup codes management (add/remove with color-coded badges)
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC } from 'react';
-import { Shield, Key, Hash, Activity, X } from 'lucide-react';
+
+// ── UI ──
+import { Key, Hash, Activity, X } from 'lucide-react';
+
+// ── Utils ──
 import { cn } from '../../../../../shared/lib/utils';
+
+// ── Types ──
 import { Account } from '../../../types';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface InfoTabProps {
   editedAccount: Account | null;
   setEditedAccount: React.Dispatch<React.SetStateAction<Account | null>>;
@@ -12,6 +36,7 @@ interface InfoTabProps {
   setBackupCodeSearch: (val: string) => void;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const InfoTab: FC<InfoTabProps> = ({
   editedAccount,
   setEditedAccount,
@@ -20,17 +45,20 @@ const InfoTab: FC<InfoTabProps> = ({
   backupCodeSearch,
   setBackupCodeSearch,
 }) => {
+  // ── Constants ──
   const inputBaseClass =
     'w-full h-10 px-3 rounded-md bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50';
 
+  // ── Derived ──
   const parsedBackupCodes: string[] = (() => {
     try {
-      return editedAccount?.backupCodes ? JSON.parse(editedAccount.backupCodes) : [];
+      return editedAccount?.backup_codes ? JSON.parse(editedAccount.backup_codes) : [];
     } catch {
       return [];
     }
   })();
 
+  // ── Handlers ──
   const handleAddBackupCode = () => {
     const newCode = backupCodeSearch.trim();
     if (!newCode) return;
@@ -40,7 +68,7 @@ const InfoTab: FC<InfoTabProps> = ({
         prev
           ? {
               ...prev,
-              backupCodes: JSON.stringify([...currentCodes, newCode]),
+              backup_codes: JSON.stringify([...currentCodes, newCode]),
             }
           : null,
       );
@@ -54,7 +82,7 @@ const InfoTab: FC<InfoTabProps> = ({
       prev
         ? {
             ...prev,
-            backupCodes: JSON.stringify(currentCodes.filter((c: string) => c !== code)),
+            backup_codes: JSON.stringify(currentCodes.filter((c: string) => c !== code)),
           }
         : null,
     );
@@ -130,11 +158,11 @@ const InfoTab: FC<InfoTabProps> = ({
             </label>
             <input
               type="text"
-              value={editedAccount?.recoveryEmail || ''}
+              value={editedAccount?.recovery_email || ''}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const val = e.target.value;
                 setEditedAccount((prev: Account | null) =>
-                  prev ? { ...prev, recoveryEmail: val } : null,
+                  prev ? { ...prev, recovery_email: val } : null,
                 );
               }}
               onBlur={(e: React.FocusEvent<HTMLInputElement>) =>
@@ -157,11 +185,11 @@ const InfoTab: FC<InfoTabProps> = ({
             </label>
             <input
               type="text"
-              value={editedAccount?.phoneNumber || ''}
+              value={editedAccount?.phone_number || ''}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const val = e.target.value;
                 setEditedAccount((prev: Account | null) =>
-                  prev ? { ...prev, phoneNumber: val } : null,
+                  prev ? { ...prev, phone_number: val } : null,
                 );
               }}
               onBlur={(e: React.FocusEvent<HTMLInputElement>) =>
@@ -189,16 +217,16 @@ const InfoTab: FC<InfoTabProps> = ({
               <input
                 type="text"
                 placeholder="Enter TOTP key..."
-                value={editedAccount?.totpSecretKey || ''}
+                value={editedAccount?.totp_secret_key || ''}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setEditedAccount((prev: Account | null) =>
-                    prev ? { ...prev, totpSecretKey: e.target.value } : null,
+                    prev ? { ...prev, totp_secret_key: e.target.value } : null,
                   )
                 }
                 className={cn(inputBaseClass, 'pl-10', 'border-border/50')}
               />
             </div>
-            {editedAccount?.totpSecretKey && (
+            {editedAccount?.totp_secret_key && (
               <div className="flex gap-2 pt-2">
                 {[0, 0, 0, 0, 0, 0].map((digit, i) => (
                   <div

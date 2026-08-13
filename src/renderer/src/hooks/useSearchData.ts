@@ -11,7 +11,7 @@ import {
   EmailRow,
   ServiceLink,
 } from '../services/searchService';
-import { SmartView } from '../features/search/types/search';
+import { SmartView } from '../features/filter/types/search';
 
 interface UseSearchDataOptions {
   selectedView: SmartView | null;
@@ -73,34 +73,37 @@ export const useSearchData = ({
   }, [loadData]);
 
   // ─── Fetch Avatars ─────────────────────────────────────────────────────
-  const fetchAvatars = useCallback(async (rows: any[]) => {
-    const newAvatars: Record<string, string> = { ...avatars };
-    let changed = false;
+  const fetchAvatars = useCallback(
+    async (rows: any[]) => {
+      const newAvatars: Record<string, string> = { ...avatars };
+      let changed = false;
 
-    for (const row of rows) {
-      if (row.email && !newAvatars[row.email]) {
-        try {
-          const avatarUrl = await fetchAvatar(row.email);
-          if (avatarUrl) {
-            newAvatars[row.email] = avatarUrl;
-            changed = true;
-          } else {
+      for (const row of rows) {
+        if (row.email && !newAvatars[row.email]) {
+          try {
+            const avatarUrl = await fetchAvatar(row.email);
+            if (avatarUrl) {
+              newAvatars[row.email] = avatarUrl;
+              changed = true;
+            } else {
+              const seed = row.email.split('@')[0];
+              newAvatars[row.email] = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+              changed = true;
+            }
+          } catch {
             const seed = row.email.split('@')[0];
             newAvatars[row.email] = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
             changed = true;
           }
-        } catch {
-          const seed = row.email.split('@')[0];
-          newAvatars[row.email] = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
-          changed = true;
         }
       }
-    }
 
-    if (changed) {
-      setAvatars(newAvatars);
-    }
-  }, [avatars]);
+      if (changed) {
+        setAvatars(newAvatars);
+      }
+    },
+    [avatars],
+  );
 
   // ─── Auto-load on selectedView change ─────────────────────────────────
   useEffect(() => {

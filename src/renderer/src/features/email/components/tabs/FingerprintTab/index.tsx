@@ -1,7 +1,31 @@
+/**
+ * ------------------------------------------------------------------
+ * FingerprintTab
+ * ------------------------------------------------------------------
+ * Displays browser fingerprint history for an email account,
+ * grouped by domain. Shows active sessions with live indicators
+ * and past sessions with time ranges. Each entry includes
+ * fingerprint hash, public IP, and expandable config JSON.
+ *
+ * Main features:
+ * - Domain-grouped fingerprint entries with expand/collapse
+ * - Active session indicator (pulsing green dot)
+ * - Past session time ranges (amber dot)
+ * - Toggleable config JSON preview
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { useEffect, useState } from 'react';
+
+// ── UI ──
 import { Shield, Globe, Clock, Wifi, Hash, ChevronRight, Eye, EyeOff } from 'lucide-react';
+
+// ── Utils ──
 import { format } from 'date-fns';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface FingerprintEntry {
   domain: string;
   fingerprint_hash: string;
@@ -16,6 +40,7 @@ interface FingerprintTabProps {
   email: string;
 }
 
+// ─── Sub-Component: ConfigPreview ───────────────────────────────────────
 function ConfigPreview({ json }: { json: string | null }) {
   const [show, setShow] = useState(false);
   if (!json) return <span className="text-xs text-muted-foreground italic">no config</span>;
@@ -98,7 +123,7 @@ export default function FingerprintTab({ email }: FingerprintTabProps) {
   const domains = Array.from(grouped.entries());
 
   return (
-    <div className="flex-1 overflow-auto custom-scrollbar p-4 space-y-2">
+    <div className="flex-1 overflow-y-scroll overscroll-contain custom-scrollbar p-4 space-y-2">
       {domains.map(([domain, domainEntries]) => {
         const isExpanded = expandedDomain === domain;
         const active = domainEntries.find((e) => !e.ended_at);

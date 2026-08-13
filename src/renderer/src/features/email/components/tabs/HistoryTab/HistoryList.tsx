@@ -1,5 +1,26 @@
-import { FC, useState } from 'react';
-import { memo } from 'react';
+/**
+ * ------------------------------------------------------------------
+ * HistoryList
+ * ------------------------------------------------------------------
+ * Renders browser history grouped by time clusters. Each group
+ * displays a sticky header with time range and visit count.
+ * Individual rows show favicon, title, domain, path, and
+ * action buttons (copy, open, delete) on hover.
+ *
+ * Main features:
+ * - Time-cluster grouping with sticky headers
+ * - History item rows with favicon, domain, path
+ * - Copy URL, open in browser, delete actions
+ * - Search/filter bar with entry count
+ * - Empty state with clear-search CTA
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
+import { FC, useState, memo } from 'react';
+
+// ── UI ──
 import {
   History,
   Search,
@@ -9,8 +30,11 @@ import {
   Globe,
   X,
 } from 'lucide-react';
+
+// ── UI Components ──
 import { EmptyState } from '../../../../../components/ui/EmptyState';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface ProcessedItem {
   url: string;
   title: string;
@@ -221,7 +245,7 @@ const HistoryList: FC<HistoryListProps> = ({
     <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-background/20 ml-px">
       <FilterBar query={query} onQueryChange={onQueryChange} count={groups.length} />
 
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-scroll overscroll-contain custom-scrollbar">
         {groups.length === 0 ? (
           <EmptyState
             icon={<History className="w-14 h-14 text-primary/40" />}

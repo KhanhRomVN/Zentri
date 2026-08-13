@@ -1,4 +1,28 @@
+/**
+ * ------------------------------------------------------------------
+ * FilterBar
+ * ------------------------------------------------------------------
+ * Inline filter builder bar for the Email table. Allows users to
+ * construct WHERE-like filter conditions with column, operator,
+ * and value. Supports adding, editing, and removing filter rows.
+ *
+ * Main features:
+ * - Add filter conditions with column/operator/value dropdowns
+ * - Edit existing filter rows inline with Apply button
+ * - Remove individual filters or clear all
+ * - Searchable column dropdowns
+ * - Operator tooltips with descriptions
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import React, { useState, useEffect, useMemo } from 'react';
+
+// ── UI ──
+import { X, ChevronDown } from 'lucide-react';
+
+// ── UI Components ──
 import { Button } from '../../../components/ui/Button';
 import {
   Dropdown,
@@ -8,7 +32,8 @@ import {
 } from '../../../components/ui/Dropdown';
 import { Tooltip } from '../../../components/ui/Tooltip';
 import { Input } from '../../../components/ui/Input';
-import { X, ChevronDown } from 'lucide-react';
+
+// ── Types ──
 import {
   OPERATORS,
   OPERATOR_DESCRIPTIONS,
@@ -16,6 +41,7 @@ import {
   Operator,
 } from '../../../constants/operators';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface FilterBarProps {
   filters: FilterCondition[];
   availableColumns: string[];
@@ -32,7 +58,9 @@ interface FilterRowProps {
   onUpdate: (id: string, column: string, operator: Operator, value: string) => void;
 }
 
+// ─── Sub-Component: FilterRow ───────────────────────────────────────────
 const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemove, onUpdate }) => {
+  // ── State ──
   const [editColumn, setEditColumn] = useState(
     filter.column || (availableColumns.length > 0 ? availableColumns[0] : ''),
   );
@@ -41,6 +69,7 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
   const [hasChanges, setHasChanges] = useState(false);
   const [searchColumn, setSearchColumn] = useState('');
 
+  // ── Effects ──
   useEffect(() => {
     setEditColumn(filter.column || (availableColumns.length > 0 ? availableColumns[0] : ''));
     setEditOperator(filter.operator || 'equals');
@@ -48,6 +77,7 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
     setHasChanges(false);
   }, [filter, availableColumns]);
 
+  // ── Handlers ──
   const handleUpdate = () => {
     if (hasChanges) {
       onUpdate(filter.id, editColumn || '', editOperator, editValue || '');
@@ -55,6 +85,7 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
     }
   };
 
+  // ── Render ──
   return (
     <div className="flex items-center gap-2">
       <Button
@@ -152,6 +183,7 @@ const FilterRow: React.FC<FilterRowProps> = ({ filter, availableColumns, onRemov
   );
 };
 
+// ─── Component: FilterBar ───────────────────────────────────────────────
 export const FilterBar: React.FC<FilterBarProps> = ({
   filters,
   availableColumns,
@@ -160,24 +192,29 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onClearFilters,
   onUpdateFilter,
 }) => {
+  // ── Derived ──
   const filteredColumns = useMemo(() => {
     const sttVariants = ['STT', 'stt', 'col_stt', '_stt'];
     return availableColumns.filter(col => !sttVariants.includes(col));
   }, [availableColumns]);
 
   const defaultColumn = filteredColumns.length > 0 ? filteredColumns[0] : '';
+
+  // ── State ──
   const [newFilterColumn, setNewFilterColumn] = useState<string>(defaultColumn);
   const [newFilterOperator, setNewFilterOperator] = useState<Operator>('equals');
   const [newFilterValue, setNewFilterValue] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [searchColumn, setSearchColumn] = useState('');
 
+  // ── Effects ──
   useEffect(() => {
     if (filteredColumns.length > 0 && !newFilterColumn) {
       setNewFilterColumn(filteredColumns[0]);
     }
   }, [filteredColumns, newFilterColumn]);
 
+  // ── Handlers ──
   const handleApplyFilter = () => {
     if (newFilterColumn) {
       onAddFilter(newFilterColumn, newFilterOperator, newFilterValue);
@@ -187,6 +224,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     }
   };
 
+  // ── Render ──
   return (
     <div className="px-4 py-1 border-b border-border bg-card-background/50 shrink-0">
       <div className="flex items-center gap-2 flex-wrap">

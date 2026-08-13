@@ -42,6 +42,13 @@ export interface Proxy {
   last_checked_at?: string | null;
   purchase_url?: string | null;
   status: 'active' | 'expired' | 'disabled' | 'error';
+  // Health metrics (V3 migration)
+  latency?: number | null;
+  success_rate?: number | null;
+  quota_total?: string | null;
+  quota_used?: number | null;
+  last_seen_min?: number | null;
+  is_healthy?: number | null;
   created_at: string;
   updated_at: string;
 }

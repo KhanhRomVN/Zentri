@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Database, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import Interface from '../Interface';
 
 export const GeneralSettings = () => {
   const [sqlitePath, setSqlitePath] = useState('');
@@ -71,6 +72,8 @@ export const GeneralSettings = () => {
           </p>
         </div>
       </div>
+
+      <Interface />
     </div>
   );
 };

@@ -1,3 +1,21 @@
+/**
+ * ------------------------------------------------------------------
+ * BookmarkTab Types
+ * ------------------------------------------------------------------
+ * Type definitions for bookmark parsing and display. Models
+ * Chrome bookmark JSON structure, parsed hierarchy, and UI state
+ * for the Kanban board and sidebar.
+ *
+ * Main types:
+ * - RawBookmarkNode     : Raw node from Chrome bookmark JSON
+ * - BookmarkNode        : Parsed node with depth tracking
+ * - BookmarkGroup       : Sidebar group (bookmark-bar, other, etc.)
+ * - KanbanColumnData    : Single Kanban column with bookmarks
+ * - ParsedBookmarkData  : Complete parsed bookmark tree
+ * ------------------------------------------------------------------
+ */
+
+// ─── Types ──────────────────────────────────────────────────────────────
 // --- Raw bookmark node từ Chrome JSON ---
 export interface RawBookmarkNode {
   name: string;

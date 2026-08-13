@@ -1,8 +1,32 @@
+/**
+ * ------------------------------------------------------------------
+ * KanbanColumn
+ * ------------------------------------------------------------------
+ * A single column in the Kanban board. Displays a folder header
+ * with the column name and bookmark count, and a scrollable list
+ * of BookmarkCard components.
+ *
+ * Main features:
+ * - Column header with folder icon and count badge
+ * - Scrollable bookmark list (hidden scrollbar)
+ * - Empty state when column has no bookmarks
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC } from 'react';
+
+// ── UI ──
 import { Folder } from 'lucide-react';
+
+// ── Components ──
 import BookmarkCard from './BookmarkCard';
+
+// ── Types ──
 import type { KanbanColumnData, BookmarkNode } from '../types';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface KanbanColumnProps {
   column: KanbanColumnData;
   searchQuery?: string;
@@ -12,6 +36,7 @@ interface KanbanColumnProps {
   onDelete?: (bookmark: BookmarkNode) => void;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const KanbanColumn: FC<KanbanColumnProps> = ({ column, searchQuery, isProfileRunning, onOpen, onEdit, onDelete }) => {
   return (
     <div className="flex-shrink-0 w-72 flex flex-col rounded-xl border border-border overflow-hidden">

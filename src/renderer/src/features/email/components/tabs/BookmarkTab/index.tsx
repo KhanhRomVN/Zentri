@@ -1,20 +1,54 @@
+/**
+ * ------------------------------------------------------------------
+ * BookmarkTab
+ * ------------------------------------------------------------------
+ * Tab panel displaying Chrome bookmarks for an email account.
+ * Renders a sidebar with bookmark groups and a Kanban board for
+ * the selected group. Supports opening, editing, and deleting
+ * bookmarks with optimistic UI updates via IPC.
+ *
+ * Main features:
+ * - Sidebar navigation for bookmark-bar and other groups
+ * - Kanban board layout with search filtering
+ * - Edit bookmark name/URL with file persistence
+ * - Delete bookmark with optimistic removal
+ * - Launch bookmark URL via BrowserLaunchModal
+ * - Real-time profile running state detection
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC, useState, useMemo, useEffect, useCallback } from 'react';
+
+// ── React DOM ──
 import { createPortal } from 'react-dom';
+
+// ── UI ──
 import { Loader2, AlertCircle, Bookmark } from 'lucide-react';
+
+// ── Hooks ──
 import { useBookmarkData } from './hooks/useBookmarkData';
+
+// ── Components ──
 import Sidebar from './components/Sidebar';
 import KanbanBoard from './components/KanbanBoard';
 import EditBookmarkModal from './components/EditBookmarkModal';
 import DeleteBookmarkModal from './components/DeleteBookmarkModal';
 import BrowserLaunchModal from '../../modals/BrowserLaunchModal';
+
+// ── Types ──
 import type { BookmarkGroup, BookmarkNode } from './types';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface BookmarkTabProps {
   email: string;
   accountId?: string;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const BookmarkTab: FC<BookmarkTabProps> = ({ email, accountId }) => {
+  // ── State ──
   const { loading, error, parsed } = useBookmarkData(email);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,6 +64,7 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email, accountId }) => {
     Record<string, { name?: string; url?: string } | null>
   >({});
 
+  // ── Effects ──
   // Kiểm tra profile đang chạy
   useEffect(() => {
     if (!accountId) return;
@@ -68,6 +103,7 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email, accountId }) => {
     };
   }, [accountId]);
 
+  // ── Derived ──
   // Xác định group đang được chọn
   const selectedGroup = useMemo<BookmarkGroup | null>(() => {
     if (!parsed) return null;
@@ -82,8 +118,7 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email, accountId }) => {
     return parsed.bookmarkBar;
   }, [parsed, selectedId]);
 
-  // ─── Handlers ──────────────────────────────────────────────────────────
-
+  // ── Handlers ──
   const handleOpenBookmark = useCallback((bm: BookmarkNode) => {
     setLaunchBookmark(bm);
   }, []);
@@ -97,7 +132,7 @@ const BookmarkTab: FC<BookmarkTabProps> = ({ email, accountId }) => {
         await window.electron.ipcRenderer.invoke('email:open-login', {
           accountId,
           email,
-          provider: 'wayfern',
+          provider: 'fingerprint-chromium',
           url: launchBookmark.url,
           fingerprintId: config.fingerprintId,
           fingerprintConfig: (config as any).fingerprintConfig,

@@ -1,6 +1,30 @@
-import { Globe, Eye, Trash2, LayoutGrid } from 'lucide-react';
+/**
+ * ------------------------------------------------------------------
+ * ServiceList
+ * ------------------------------------------------------------------
+ * Left panel of the Services tab. Renders a list of linked service
+ * cards with favicon, name, and domain. Supports context menu
+ * actions: open in browser, view info, and delete.
+ *
+ * Main features:
+ * - Service cards with favicon and domain display
+ * - Right-click context menu (Dropdown with contextmenu trigger)
+ * - Selected state highlighting
+ * - Empty state when no services are linked
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC } from 'react';
+
+// ── UI ──
+import { Globe, Eye, Trash2, LayoutGrid } from 'lucide-react';
+
+// ── Utils ──
 import { cn } from '../../../../../shared/lib/utils';
+
+// ── UI Components ──
 import {
   Dropdown,
   DropdownTrigger,
@@ -9,6 +33,7 @@ import {
 } from '../../../../../components/ui/Dropdown';
 import { EmptyState } from '../../../../../components/ui/EmptyState';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface ServiceListProps {
   filteredServices: any[];
   selectedServiceId: string | null;
@@ -18,6 +43,7 @@ interface ServiceListProps {
   onDeleteService?: (linkId: string) => void;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const ServiceList: FC<ServiceListProps> = ({
   filteredServices,
   selectedServiceId,
@@ -28,7 +54,7 @@ const ServiceList: FC<ServiceListProps> = ({
 }) => {
   return (
     <div className="w-[35%] min-w-[240px] max-w-[360px] border-r border-border bg-card/5 backdrop-blur-sm overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-scroll overscroll-contain custom-scrollbar">
         {filteredServices.length === 0 ? (
           <EmptyState
             icon={<LayoutGrid />}

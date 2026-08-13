@@ -1,5 +1,25 @@
+/**
+ * ------------------------------------------------------------------
+ * Email Types
+ * ------------------------------------------------------------------
+ * TypeScript type definitions for the Email feature.
+ * Defines Account, LinkedService, and related interfaces used
+ * across the email management module.
+ *
+ * Main types:
+ * - Account              : Extended email account with linked services and activity
+ * - LinkedService        : Service linked to an email account
+ * - ServiceProviderConfig: Configuration for a supported service provider
+ * - Cookie               : Browser cookie shape
+ * - MetadataItem         : Key-value metadata item
+ * - ProfileMetadata      : Account profile metadata with cookies
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
 import { Email, Service } from '../../../types/db';
 
+// ─── Types ──────────────────────────────────────────────────────────────
 export interface MetadataItem {
   key: string;
   value: string;

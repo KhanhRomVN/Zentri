@@ -1,58 +1,68 @@
-/**
- * Proxy feature constants
- */
-
 import { Proxy } from '../../../types/db';
 
 export const PROXY_COLUMNS = [
-  { id: 'stt', label: '#', field: '_stt', isVisible: true, isSortable: false, isFilterable: false, size: 60, minSize: 50 },
-  { id: 'host', label: 'Host / IP', field: 'host', isVisible: true, isSortable: true, isFilterable: true, size: 280, minSize: 150 },
-  { id: 'port', label: 'Port', field: 'port', isVisible: true, isSortable: true, isFilterable: false, size: 80, minSize: 60 },
-  { id: 'protocol', label: 'Protocol', field: 'protocol', isVisible: true, isSortable: true, isFilterable: true, size: 100, minSize: 80 },
-  { id: 'location', label: 'Location', field: 'location', isVisible: true, isSortable: true, isFilterable: true, size: 200, minSize: 120 },
-  { id: 'status', label: 'Status', field: 'status', isVisible: true, isSortable: true, isFilterable: true, size: 160, minSize: 120 },
-  { id: 'quota', label: 'Quota', field: 'quota', isVisible: true, isSortable: true, isFilterable: false, size: 180, minSize: 120 },
-  { id: 'isp', label: 'ISP', field: 'isp', isVisible: false, isSortable: true, isFilterable: true, size: 160, minSize: 100 },
-  { id: 'proxyType', label: 'Type', field: 'proxyType', isVisible: false, isSortable: true, isFilterable: true, size: 100, minSize: 80 },
-  { id: 'sourceType', label: 'Source', field: 'sourceType', isVisible: false, isSortable: true, isFilterable: true, size: 120, minSize: 90 },
-  { id: 'username', label: 'Username', field: 'username', isVisible: false, isSortable: true, isFilterable: true, size: 140, minSize: 100 },
-];
+  { id: 'checkbox', label: '', width: 38, fixed: true },
+  { id: 'status', label: 'Status', width: 118, sortable: false },
+  { id: 'endpoint', label: 'Host / Port', width: 230, sortable: true },
+  { id: 'badges', label: 'Protocol · Type', width: 158, sortable: false },
+  { id: 'location', label: 'Location', width: 168, sortable: true },
+  { id: 'isp', label: 'ISP', width: 150, sortable: true },
+  { id: 'latency', label: 'Latency', width: 150, sortable: true },
+  { id: 'success', label: 'Success Rate', width: 104, sortable: true },
+  { id: 'quota', label: 'Quota', width: 150, sortable: false },
+  { id: 'seen', label: 'Last Seen', width: 96, sortable: true },
+  { id: 'actions', label: '', width: 44, fixed: true },
+] as const;
 
-export const FILTER_OPTIONS = {
-  proxyType: [
-    { value: 'all', label: 'All' },
-    { value: 'private', label: 'Exclusive' },
-    { value: 'shared', label: 'Shared' },
-  ],
-  sourceType: [
-    { value: 'all', label: 'Any Source' },
-    { value: 'datacenter', label: 'Datacenter' },
-    { value: 'residential', label: 'Residential' },
-    { value: 'mobile', label: 'Carrier' },
-  ],
-  protocol: [
-    { value: 'all', label: 'All Protocols' },
-    { value: 'http', label: 'HTTP(S)' },
-    { value: 'socks5', label: 'SOCKS5' },
-  ],
-  status: [
-    { value: 'all', label: 'Any Status' },
-    { value: 'active', label: 'Active Nodes' },
-    { value: 'expired', label: 'Expired' },
-    { value: 'disabled', label: 'Disabled' },
-  ],
+export const DISPLAY_STATUS_CONFIG: Record<string, {
+  label: string;
+  dotClass: string;
+  textClass: string;
+}> = {
+  healthy: { label: 'Healthy', dotClass: 'bg-green', textClass: 'text-green' },
+  degraded: { label: 'Degraded', dotClass: 'bg-yellow', textClass: 'text-yellow' },
+  dead: { label: 'Dead', dotClass: 'bg-red', textClass: 'text-red' },
+  testing: { label: 'Testing', dotClass: 'bg-violet', textClass: 'text-violet' },
 };
 
-export const STATUS_STYLES: Record<string, string> = {
-  active: 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-lg shadow-emerald-500/10',
-  expired: 'bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-lg shadow-amber-500/10',
-  disabled: 'bg-rose-500/20 border-rose-500/50 text-rose-400 shadow-lg shadow-rose-500/10',
-  trash: 'bg-slate-500/20 border-slate-500/50 text-slate-400 shadow-lg shadow-slate-500/10',
-  error: 'bg-rose-500/20 border-rose-500/50 text-rose-400 shadow-lg shadow-rose-500/10',
+export const STATUS_ORDER: Record<string, number> = {
+  healthy: 0,
+  testing: 1,
+  degraded: 2,
+  dead: 3,
 };
 
 export const PROTOCOL_COLORS: Record<string, string> = {
-  socks5: 'text-amber-400',
-  https: 'text-indigo-400',
-  http: 'text-blue-400',
+  http: 'bg-blue/10 text-blue border-blue/20',
+  socks5: 'bg-purple/10 text-purple border-purple/20',
 };
+
+export const TYPE_COLORS: Record<string, string> = {
+  private: 'bg-teal/10 text-teal border-teal/20',
+  shared: 'bg-text-secondary/10 text-text-secondary border-text-secondary/20',
+};
+
+export const SOURCE_LABELS: Record<string, string> = {
+  datacenter: 'Datacenter',
+  residential: 'Residential',
+  mobile: 'Mobile',
+};
+
+/**
+ * Derive display status from DB fields.
+ * active + is_healthy=1 → healthy
+ * active + is_healthy=0 → degraded
+ * expired → dead
+ * disabled → dead
+ * error → dead
+ */
+export function deriveDisplayStatus(p: Proxy): string {
+  if (p.status === 'expired' || p.status === 'disabled' || p.status === 'error') return 'dead';
+  if (p.status === 'active') {
+    if (p.is_healthy === 1) return 'healthy';
+    if (p.is_healthy === 0) return 'degraded';
+    // Not yet checked
+    return 'testing';
+  }
+  return 'dead';
+}

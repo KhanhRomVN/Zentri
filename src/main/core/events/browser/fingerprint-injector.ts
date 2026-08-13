@@ -1,6 +1,5 @@
 /**
  * Build a JavaScript injection script that overrides browser fingerprint APIs.
- * Used as fallback when Wayfern.setFingerprint is unavailable (free users).
  */
 
 export function buildFingerprintScript(config: Record<string, any>): string {

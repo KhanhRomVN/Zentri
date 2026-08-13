@@ -113,7 +113,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Umbrella,
 };
 
-interface LeftPanelProps {
+interface FilterListProps {
   selectedViewId: string | null;
   onSelectView: (id: string) => void;
   views: SmartView[];
@@ -124,12 +124,12 @@ interface LeftPanelProps {
 }
 
 // ─── Color Helper ──────────────────────────────────────────────────────────
-const setAccentColorsForLeftPanel = (colors: string[], unified: string) => {
+const setAccentColorsForFilterList = (colors: string[], unified: string) => {
   // Cache for potential future use
   return colors.length > 0 ? colors : [unified];
 };
 
-const LeftPanel: FC<LeftPanelProps> = ({
+const FilterList: FC<FilterListProps> = ({
   selectedViewId,
   onSelectView,
   views,
@@ -144,7 +144,7 @@ const LeftPanel: FC<LeftPanelProps> = ({
 
   // Update the global color cache for getItemColor
   if (typeof accentColors !== 'undefined' && accentColors.length > 0) {
-    setAccentColorsForLeftPanel(accentColors, UNIFIED_ACCENT);
+    setAccentColorsForFilterList(accentColors, UNIFIED_ACCENT);
   }
 
   // Views are already sorted by SearchManager (manual > service, favorites, recent, account count, alphabetical)
@@ -297,4 +297,4 @@ const LeftPanel: FC<LeftPanelProps> = ({
   );
 };
 
-export default LeftPanel;
+export default FilterList;

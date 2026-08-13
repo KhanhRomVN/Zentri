@@ -1,5 +1,17 @@
-// Fingerprint configuration — shared type used by generator and injector
+/**
+ * ------------------------------------------------------------------
+ * Fingerprint Types
+ * ------------------------------------------------------------------
+ * Shared type definitions for browser fingerprint configuration.
+ * Used by the fingerprint generator and injector modules.
+ *
+ * Main types:
+ * - FingerprintConfig : Full browser fingerprint configuration (~60 fields)
+ * - Fingerprint        : Named fingerprint with metadata and config
+ * ------------------------------------------------------------------
+ */
 
+// ─── Types ──────────────────────────────────────────────────────────────
 export interface FingerprintConfig {
   userAgent?: string;
   appVersion?: string;

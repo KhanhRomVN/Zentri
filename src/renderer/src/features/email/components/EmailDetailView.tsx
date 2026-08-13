@@ -1,16 +1,44 @@
+/**
+ * ------------------------------------------------------------------
+ * EmailDetailView
+ * ------------------------------------------------------------------
+ * Detail panel displayed when an email account row is expanded.
+ * Renders a tab sidebar (Info, Services, History, Bookmarks,
+ * Fingerprint) with accent-color-coded tab buttons, and the
+ * corresponding tab content in the main area.
+ *
+ * Main features:
+ * - Tab navigation with dynamic accent colors per tab
+ * - Restore / permanently delete actions for trashed accounts
+ * - Delegates content rendering to InfoTab, ServicesTab,
+ *   HistoryTab, BookmarkTab, and FingerprintTab
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC } from 'react';
+
+// ── UI ──
 import { User, LayoutGrid, Undo2, Trash, Clock, Shield, Bookmark } from 'lucide-react';
+
+// ── Utils ──
 import { cn } from '../../../shared/lib/utils';
+
+// ── Hooks ──
 import { useAccentColors } from '../../../hooks/useAccentColors';
 
+// ── Types ──
 import { Account } from '../types';
+
+// ── Tabs ──
 import InfoTab from './tabs/InfoTab/index';
 import ServicesTab from './tabs/ServicesTab/index';
 import HistoryTab from './tabs/HistoryTab/index';
 import BookmarkTab from './tabs/BookmarkTab/index';
 import FingerprintTab from './tabs/FingerprintTab/index';
 
-// ─── Color Helper ──────────────────────────────────────────────────────────
+// ─── Functions ──────────────────────────────────────────────────────────
 let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
 let unifiedAccentCache = 'rgb(54, 134, 255)';
 
@@ -49,6 +77,7 @@ const getTabColor = (tabId: string) => {
   };
 };
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface EmailDetailViewProps {
   focusedAccount: Account | null;
   accounts: Account[];
@@ -75,6 +104,7 @@ interface EmailDetailViewProps {
   onDeleteService?: (linkId: string) => void;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const EmailDetailView: FC<EmailDetailViewProps> = ({
   focusedAccount,
   activeTab,
@@ -96,15 +126,17 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
   onOpenService,
   onDeleteService,
 }) => {
+  // ── Hooks ──
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
 
   if (typeof accentColors !== 'undefined' && accentColors.length > 0) {
     setAccentColorsForDetailView(accentColors, UNIFIED_ACCENT);
   }
 
+  // ── Render ──
   return (
     <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden h-[calc(100vh-135px)]">
-      <div className="w-64 border-r border-border bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-hidden relative">
+      <div className="w-64 border-r border-border bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-y-scroll overscroll-contain custom-scrollbar relative">
         <div className="flex-1 space-y-1 px-2">
           <button
             onClick={(e) => {
@@ -247,7 +279,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
             <FingerprintTab email={editedAccount?.email || ''} />
           </div>
         ) : (
-          <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="flex-1 overflow-y-scroll overscroll-contain custom-scrollbar">
             {activeTab === 'info' ? (
             <InfoTab
               editedAccount={editedAccount}

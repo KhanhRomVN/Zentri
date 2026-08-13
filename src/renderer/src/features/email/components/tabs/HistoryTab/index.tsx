@@ -1,11 +1,36 @@
+/**
+ * ------------------------------------------------------------------
+ * HistoryTab
+ * ------------------------------------------------------------------
+ * Browser history viewer for an email account. Fetches history
+ * by date, groups visits into time clusters, and provides filtering
+ * by domain, tag (auth/security/search), and text query. Uses a
+ * memoized inner component to avoid unmounting on date changes.
+ *
+ * Main features:
+ * - Date picker via ControlSidebar with top websites list
+ * - Domain-based filtering from sidebar
+ * - Tag detection: auth, security, search
+ * - Time-cluster grouping for chronological display
+ * - Text search across title, URL, and domain
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC, useState, useEffect, useMemo, memo, useCallback } from 'react';
+
+// ── UI ──
 import { Loader2, History } from 'lucide-react';
-import {
-  format,
-} from 'date-fns';
+
+// ── Utils ──
+import { format } from 'date-fns';
+
+// ── Components ──
 import ControlSidebar from './ControlSidebar';
 import HistoryList from './HistoryList';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface HistoryItem {
   url: string;
   title: string;
@@ -35,8 +60,7 @@ interface HistoryTabProps {
   email: string;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
+// ─── Helpers ────────────────────────────────────────────────────────────
 function getDomain(url: string): string {
   try {
     return new URL(url).hostname.replace('www.', '');
@@ -139,7 +163,7 @@ function buildGroup(items: ProcessedItem[]): TimeGroup {
   };
 }
 
-// ─── HistoryContentView ──────────────────────────────────────────────────────
+// ─── HistoryContentView ─────────────────────────────────────────────────
 // Tự quản lý fetch + loading để không bị unmount khi đổi ngày
 
 const HistoryContentView: FC<{ email: string }> = memo(({ email }) => {

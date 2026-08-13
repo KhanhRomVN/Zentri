@@ -58,9 +58,13 @@ export function Checkbox({
       <div
         className={cn(
           'flex items-center justify-center rounded border transition-colors',
-          'border-border bg-card-background',
-          'hover:border-border-hover focus-within:ring-2 focus-within:ring-primary/30 focus-within:outline-none',
-          isChecked && 'bg-button-solid-background border-button-solid-background hover:bg-button-solid-background/90',
+          className
+            ? className
+            : cn(
+                'border-border bg-card-background',
+                'hover:border-border-hover focus-within:ring-2 focus-within:ring-primary/30 focus-within:outline-none',
+                isChecked && 'bg-button-solid-background border-button-solid-background hover:bg-button-solid-background/90',
+              ),
           disabled && 'opacity-50 cursor-not-allowed hover:border-border',
           sizeClasses[size],
           inputClassName,
@@ -69,7 +73,8 @@ export function Checkbox({
         {isChecked && (
           <Check
             className={cn(
-              'text-button-solid-text transition-opacity',
+              className ? 'text-current' : 'text-button-solid-text',
+              'transition-opacity',
               iconSizeClasses[size],
             )}
             strokeWidth={2.5}

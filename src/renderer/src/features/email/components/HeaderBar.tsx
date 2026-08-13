@@ -1,4 +1,25 @@
+/**
+ * ------------------------------------------------------------------
+ * HeaderBar
+ * ------------------------------------------------------------------
+ * Toolbar for the Email table. Provides filter toggle, sort
+ * dropdown, column visibility manager, pagination controls,
+ * refresh, and add-account actions.
+ *
+ * Main features:
+ * - Filter button with active filter count badge
+ * - Sort dropdown with column checkboxes and asc/desc toggle
+ * - Column visibility dropdown with show/hide all
+ * - Pagination with prev/next and record range display
+ * - Refresh and Add Account icon buttons
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import React, { useState } from 'react';
+
+// ── UI ──
 import {
   ListFilter,
   ArrowUpDown,
@@ -14,7 +35,11 @@ import {
   ChevronRight,
   Plus,
 } from 'lucide-react';
+
+// ── Utils ──
 import { cn } from '../../../shared/lib/utils';
+
+// ── UI Components ──
 import {
   Dropdown,
   DropdownTrigger,
@@ -24,8 +49,11 @@ import {
 } from '../../../components/ui/Dropdown';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import { Button } from '../../../components/ui/Button';
+
+// ── Types ──
 import { SortingState } from '@tanstack/react-table';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface HeaderBarProps {
   filtersCount: number;
   showFilterBar: boolean;
@@ -45,6 +73,7 @@ interface HeaderBarProps {
   onPageChange: (page: number) => void;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 export const HeaderBar: React.FC<HeaderBarProps> = ({
   filtersCount,
   showFilterBar,
@@ -63,15 +92,18 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   endRecord,
   onPageChange,
 }) => {
+  // ── State ──
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [sortSearchTerm, setSortSearchTerm] = useState('');
   const [isAscending, setIsAscending] = useState(true);
 
+  // ── Derived ──
   const filteredColumns = availableColumns.filter((col) =>
     col.toLowerCase().includes(sortSearchTerm.toLowerCase()),
   );
 
+  // ── Render ──
   return (
     <div className="flex items-center gap-1">
       {/* Filter Button */}

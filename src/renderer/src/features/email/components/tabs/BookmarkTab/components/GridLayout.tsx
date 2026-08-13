@@ -1,7 +1,29 @@
+/**
+ * ------------------------------------------------------------------
+ * GridLayout
+ * ------------------------------------------------------------------
+ * Responsive grid layout for bookmark cards. Renders bookmarks
+ * in a CSS grid that auto-fills columns (min 280px). Falls back
+ * to an empty-state message when no bookmarks are present.
+ *
+ * Main features:
+ * - Auto-fill responsive grid (min 280px columns)
+ * - Empty state when bookmark list is empty
+ * - Delegates rendering to BookmarkCard
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
 import { FC } from 'react';
+
+// ── Components ──
 import BookmarkCard from './BookmarkCard';
+
+// ── Types ──
 import type { BookmarkNode } from '../types';
 
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface GridLayoutProps {
   bookmarks: BookmarkNode[];
   searchQuery?: string;
@@ -11,6 +33,7 @@ interface GridLayoutProps {
   onDelete?: (bookmark: BookmarkNode) => void;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const GridLayout: FC<GridLayoutProps> = ({ bookmarks, searchQuery, isProfileRunning, onOpen, onEdit, onDelete }) => {
   if (bookmarks.length === 0) {
     return (

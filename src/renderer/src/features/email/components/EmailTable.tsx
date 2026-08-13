@@ -1,12 +1,11 @@
 import { FC, useState, useCallback, useRef, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Globe, Eye, Key, Undo2, X, FolderOpen } from 'lucide-react';
+import { Trash2, Globe, Eye, Undo2, X, FolderOpen, RefreshCw, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../../../shared/lib/utils';
 import { Account, Service } from '../types';
 import { SERVICES } from '../../../constants/services';
-import ServiceVaultDrawer from './drawers/ServiceVaultDrawer';
 import BrowserLaunchModal from './modals/BrowserLaunchModal';
 import { SortingState } from '@tanstack/react-table';
 import EmailDetailView from './EmailDetailView';
@@ -28,10 +27,16 @@ interface EmailTableProps {
   onHardDelete: (id: string) => void;
   onSaveChanges: (oldAccount: Account, newAccount: Account) => void;
   onRefreshData?: () => void;
-  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks';
-  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks') => void;
+  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint';
+  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint') => void;
   sorting?: SortingState;
   columnVisibility?: Record<string, boolean>;
+  currentPage?: number;
+  totalPages?: number;
+  totalRecords?: number;
+  startRecord?: number;
+  endRecord?: number;
+  onPageChange?: (page: number) => void;
 }
 
 interface LinkedService {
@@ -57,6 +62,12 @@ const EmailTable: FC<EmailTableProps> = ({
   onRefreshData,
   activeTab,
   setActiveTab,
+  currentPage,
+  totalPages,
+  totalRecords,
+  startRecord,
+  endRecord,
+  onPageChange,
 }) => {
   // --- States ---
   const [avatars, setAvatars] = useState<Record<string, string>>({});
@@ -69,8 +80,9 @@ const EmailTable: FC<EmailTableProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [backupCodeSearch, setBackupCodeSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
+  const [tableSearchQuery, setTableSearchQuery] = useState('');
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
-  const [browserVersion, setBrowserVersion] = useState('...');
+  const browserVersion = '...';
   const [pendingLaunch, setPendingLaunch] = useState<{
     accountId: string;
     email: string;
@@ -129,9 +141,6 @@ const EmailTable: FC<EmailTableProps> = ({
   const [categoryInputOpen, setCategoryInputOpen] = useState(false);
   const [globalServices, setGlobalServices] = useState<Service[]>([]);
   const [isEditServiceMode, setIsEditServiceMode] = useState(false);
-  const [isSecretsDrawerOpen, setIsSecretsDrawerOpen] = useState(false);
-  const [currentSecrets, setCurrentSecrets] = useState<any[]>([]);
-  const [loadingSecrets, setLoadingSecrets] = useState(false);
 
   // Two-phase animation: row moves first, then section expands
   const [showDetail, setShowDetail] = useState(false);
@@ -368,19 +377,6 @@ const EmailTable: FC<EmailTableProps> = ({
     loadGlobalServices();
   }, [isServiceDrawerOpen, accountServices]);
 
-  useEffect(() => {
-    const fetchVersion = async () => {
-      try {
-        // @ts-ignore
-        const version = await window.electron.ipcRenderer.invoke('browser:get-version');
-        setBrowserVersion(version || '0.0.0');
-      } catch (err) {
-        console.error('Failed to fetch browser version', err);
-      }
-    };
-    fetchVersion();
-  }, []);
-
   // --- Handlers ---
   const handleContextMenu = (e: React.MouseEvent, accountId: string) => {
     e.preventDefault();
@@ -440,7 +436,7 @@ const EmailTable: FC<EmailTableProps> = ({
       email: focusedAccount.email,
       url: link.url,
       title: link.name,
-      provider: 'wayfern',
+      provider: 'fingerprint-chromium',
     });
     setIsLaunchModalOpen(true);
   };
@@ -490,42 +486,6 @@ const EmailTable: FC<EmailTableProps> = ({
       console.error('Failed to launch browser:', error);
     }
     setPendingLaunch(null);
-  };
-
-  const handleViewSecrets = async (linkId: string) => {
-    const link = (focusedAccount?.services as unknown as LinkedService[])?.find(
-      (s) => s.id === linkId,
-    );
-    if (!link) return;
-
-    setNewServiceData((d) => ({
-      ...d,
-      linkId: link.id,
-      serviceName: link.name,
-      serviceUrl: link.url,
-    }));
-    setIsSecretsDrawerOpen(true);
-    setLoadingSecrets(true);
-    // Secrets are now managed via service metadata fields - no separate table
-    setCurrentSecrets([]);
-    setLoadingSecrets(false);
-  };
-
-  const handleAddSecret = async (_linkId: string, _name: string, _value: string, _type: string) => {
-    // Secrets now managed via service metadata - no separate table
-  };
-
-  const handleUpdateSecret = async (
-    _secretId: string,
-    _name: string,
-    _value: string,
-    _type: string,
-  ) => {
-    // Secrets now managed via service metadata - no separate table
-  };
-
-  const handleDeleteSecret = async (_secretId: string) => {
-    // Secrets now managed via service metadata - no separate table
   };
 
   const handleOpenNewServiceDrawer = () => {
@@ -735,7 +695,19 @@ const EmailTable: FC<EmailTableProps> = ({
     // Push running browsers to top
     const running = base.filter((a) => runningBrowsers.has(a.id));
     const notRunning = base.filter((a) => !runningBrowsers.has(a.id));
-    return [...running, ...notRunning];
+    const sorted = [...running, ...notRunning];
+
+    // Filter by search query
+    if (!tableSearchQuery.trim()) return sorted;
+    const q = tableSearchQuery.toLowerCase();
+    return sorted.filter((a) => {
+      if (a.email.toLowerCase().includes(q)) return true;
+      if (a.password?.toLowerCase().includes(q)) return true;
+      if (a.lastProxy?.host?.toLowerCase().includes(q)) return true;
+      if (a.lastActivity?.url?.toLowerCase().includes(q)) return true;
+      if (a.lastActivity?.title?.toLowerCase().includes(q)) return true;
+      return false;
+    });
   })();
 
   // Use allAccounts for indexing (original order before pagination)
@@ -743,28 +715,49 @@ const EmailTable: FC<EmailTableProps> = ({
 
   // --- Render ---
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-background/30 transition-all duration-500 overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col bg-card-background border border-border rounded-lg overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2.5 px-3 py-2 border-b border-border shrink-0">
+        <div className="flex items-center gap-2 bg-input-background border border-border rounded-lg px-2.5 py-1.5 flex-1 max-w-[420px]">
+          <Search className="size-3.5 text-text-secondary/60 shrink-0" />
+          <input
+            value={tableSearchQuery}
+            onChange={(e) => setTableSearchQuery(e.target.value)}
+            placeholder="Search email, password, proxy, activity…"
+            className="bg-transparent border-none outline-none text-text-primary text-[12.5px] w-full font-sans placeholder:text-text-secondary/40"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <button
+            onClick={onRefreshData}
+            className="size-7 rounded-md border border-border bg-card-background text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className="size-3.5" />
+          </button>
+        </div>
+      </div>
       {/* Inline Table (merged from ListView) */}
       <div className="flex-1 overflow-auto custom-scrollbar flex flex-col min-h-0">
         <table className="border-collapse table-fixed w-full">
           <thead className="sticky top-0 z-30">
             <tr className="border-b border-border/50 bg-table-header-background shadow-sm">
-              <th className="w-[60px] pl-6 text-sm font-bold h-10 text-left text-text-primary">
+              <th className="w-[60px] pl-6 text-sm font-bold h-10 text-left text-text-secondary">
                 STT
               </th>
-              <th className="w-[240px] text-sm font-bold h-10 text-left text-text-primary">
+              <th className="w-[240px] text-sm font-bold h-10 text-left text-text-secondary">
                 Email
               </th>
-              <th className="w-1/3 text-sm font-bold h-10 text-left text-text-primary">
+              <th className="w-1/3 text-sm font-bold h-10 text-left text-text-secondary">
                 Last Activities
               </th>
-              <th className="w-[300px] text-sm font-bold h-10 text-left text-text-primary">
+              <th className="w-[300px] text-sm font-bold h-10 text-left text-text-secondary">
                 Last Used Proxy
               </th>
-              <th className="w-[80px] text-sm font-bold h-10 text-center text-text-primary">
+              <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
                 Services
               </th>
-              <th className="w-[110px] text-sm font-bold h-10 text-center text-text-primary">
+              <th className="w-[110px] text-sm font-bold h-10 text-center text-text-secondary">
                 2FA
               </th>
             </tr>
@@ -1041,11 +1034,6 @@ const EmailTable: FC<EmailTableProps> = ({
                 <Eye className="w-4 h-4 text-blue-500/50" />
                 View / Edit
               </DropdownItem>
-              <DropdownItem onClick={() => handleViewSecrets(serviceContextMenu.linkId)}>
-                <Key className="w-4 h-4 text-primary/50" />
-                Secrets Vault
-              </DropdownItem>
-              <div className="h-px bg-border/20 my-1 mx-2" />
               <DropdownItem
                 className="text-error focus:text-error focus:bg-error/10"
                 onClick={() => {
@@ -1092,19 +1080,6 @@ const EmailTable: FC<EmailTableProps> = ({
         setCategoryInputOpen={setCategoryInputOpen}
         isEditMode={isEditServiceMode}
         onRestoreService={handleRestoreService}
-      />
-
-      <ServiceVaultDrawer
-        isOpen={isSecretsDrawerOpen}
-        onClose={() => setIsSecretsDrawerOpen(false)}
-        linkId={newServiceData.linkId || ''}
-        serviceName={newServiceData.serviceName}
-        serviceUrl={newServiceData.serviceUrl}
-        currentSecrets={currentSecrets}
-        loadingSecrets={loadingSecrets}
-        onAddSecret={handleAddSecret}
-        onUpdateSecret={handleUpdateSecret}
-        onDeleteSecret={handleDeleteSecret}
       />
 
       {serviceDeleteConfirmId &&
@@ -1202,6 +1177,36 @@ const EmailTable: FC<EmailTableProps> = ({
         targetTitle={pendingLaunch?.title}
         onLaunch={handleExecuteLaunch}
       />
+
+      {/* Footer */}
+      {!focusedAccountId && currentPage != null && totalPages != null && (
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border/50 text-xs text-text-secondary font-mono shrink-0 bg-table-footer-background">
+          <span>
+            {totalRecords != null && totalRecords > 0
+              ? `Showing ${(startRecord ?? 0).toLocaleString()}–${(endRecord ?? 0).toLocaleString()} of ${totalRecords.toLocaleString()}`
+              : 'No results'}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onPageChange?.(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="px-2 py-0.5 rounded disabled:opacity-30 hover:bg-table-row-hover"
+            >
+              ‹
+            </button>
+            <span className="px-1">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => onPageChange?.(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="px-2 py-0.5 rounded disabled:opacity-30 hover:bg-table-row-hover"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
