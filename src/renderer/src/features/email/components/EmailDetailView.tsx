@@ -20,7 +20,7 @@
 import { FC } from 'react';
 
 // ── UI ──
-import { User, LayoutGrid, Undo2, Trash, Clock, Shield, Bookmark } from 'lucide-react';
+import { User, LayoutGrid, Clock, Shield, ShieldCheck, Bookmark } from 'lucide-react';
 
 // ── Utils ──
 import { cn } from '../../../shared/lib/utils';
@@ -32,11 +32,12 @@ import { useAccentColors } from '../../../hooks/useAccentColors';
 import { Account } from '../types';
 
 // ── Tabs ──
-import InfoTab from './tabs/InfoTab/index';
-import ServicesTab from './tabs/ServicesTab/index';
-import HistoryTab from './tabs/HistoryTab/index';
-import BookmarkTab from './tabs/BookmarkTab/index';
-import FingerprintTab from './tabs/FingerprintTab/index';
+import InfoTab from './tabs/Information/index';
+import ServicesTab from './tabs/Services/index';
+import HistoryTab from './tabs/History/index';
+import BookmarkTab from './tabs/Bookmark/index';
+import FingerprintTab from './tabs/Footprint/index';
+import SecurityTab from './tabs/Security/index';
 
 // ─── Functions ──────────────────────────────────────────────────────────
 let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
@@ -81,14 +82,21 @@ const getTabColor = (tabId: string) => {
 interface EmailDetailViewProps {
   focusedAccount: Account | null;
   accounts: Account[];
-  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint';
-  setActiveTab: (tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint') => void;
+  activeTab:
+    | 'info'
+    | 'services'
+    | 'sessions'
+    | 'history'
+    | 'bookmarks'
+    | 'fingerprint'
+    | 'security';
+  setActiveTab: (
+    tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint' | 'security',
+  ) => void;
   avatars: Record<string, string>;
   onSelectAccount: (account: Account) => void;
   onContextMenu: (e: React.MouseEvent, accountId: string) => void;
   onServiceContextMenu?: (e: React.MouseEvent, linkId: string) => void;
-  onRestore: (id: string) => void;
-  onHardDelete: (id: string) => void;
   editedAccount: Account | null;
   setEditedAccount: React.Dispatch<React.SetStateAction<Account | null>>;
   validateField: (name: string, value: string) => void;
@@ -106,12 +114,9 @@ interface EmailDetailViewProps {
 
 // ─── Component ──────────────────────────────────────────────────────────
 const EmailDetailView: FC<EmailDetailViewProps> = ({
-  focusedAccount,
   activeTab,
   setActiveTab,
   onServiceContextMenu: _onServiceContextMenu,
-  onRestore,
-  onHardDelete,
   editedAccount,
   setEditedAccount,
   validateField,
@@ -135,7 +140,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
 
   // ── Render ──
   return (
-    <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden h-[calc(100vh-135px)]">
+    <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden h-full">
       <div className="w-64 border-r border-border bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-y-scroll overscroll-contain custom-scrollbar relative">
         <div className="flex-1 space-y-1 px-2">
           <button
@@ -147,7 +152,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
               'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'info'
                 ? 'text-[--tab-color]'
-                : 'text-text-primary hover:text-foreground',
+                : 'text-text-secondary hover:text-foreground',
             )}
             style={
               {
@@ -169,7 +174,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
               'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'services'
                 ? 'text-[--tab-color]'
-                : 'text-text-primary hover:text-foreground',
+                : 'text-text-secondary hover:text-foreground',
             )}
             style={
               {
@@ -191,7 +196,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
               'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'history'
                 ? 'text-[--tab-color]'
-                : 'text-text-primary hover:text-foreground',
+                : 'text-text-secondary hover:text-foreground',
             )}
             style={
               {
@@ -213,7 +218,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
               'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'bookmarks'
                 ? 'text-[--tab-color]'
-                : 'text-text-primary hover:text-foreground',
+                : 'text-text-secondary hover:text-foreground',
             )}
             style={
               {
@@ -235,7 +240,7 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
               'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
               activeTab === 'fingerprint'
                 ? 'text-[--tab-color]'
-                : 'text-text-primary hover:text-foreground',
+                : 'text-text-secondary hover:text-foreground',
             )}
             style={
               {
@@ -247,26 +252,29 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
             <Shield className="w-5 h-5 transition-colors" />
             <span>Fingerprint</span>
           </button>
-        </div>
 
-        {focusedAccount?.status === 'deleting' && (
-          <div className="p-4 border-t border-border/30 bg-amber-500/5 space-y-3 shrink-0">
-            <button
-              onClick={() => onRestore(focusedAccount.id)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-wider hover:bg-emerald-500 hover:text-white transition-all border border-emerald-500/20"
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-              Restore
-            </button>
-            <button
-              onClick={() => onHardDelete(focusedAccount.id)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
-            >
-              <Trash className="w-3.5 h-3.5" />
-              Delete Permanently
-            </button>
-          </div>
-        )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('security');
+            }}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
+              activeTab === 'security'
+                ? 'text-[--tab-color]'
+                : 'text-text-secondary hover:text-foreground',
+            )}
+            style={
+              {
+                '--tab-color': getTabColor('security').base,
+                background: activeTab === 'security' ? getTabColor('security').bg : undefined,
+              } as React.CSSProperties
+            }
+          >
+            <ShieldCheck className="w-5 h-5 transition-colors" />
+            <span>Security</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden bg-background/20 backdrop-blur-3xl">
@@ -278,32 +286,34 @@ const EmailDetailView: FC<EmailDetailViewProps> = ({
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <FingerprintTab email={editedAccount?.email || ''} />
           </div>
+        ) : activeTab === 'security' ? (
+          <SecurityTab account={editedAccount} />
         ) : (
           <div className="flex-1 overflow-y-scroll overscroll-contain custom-scrollbar">
             {activeTab === 'info' ? (
-            <InfoTab
-              editedAccount={editedAccount}
-              setEditedAccount={setEditedAccount}
-              validateField={validateField}
-              errors={errors}
-              backupCodeSearch={backupCodeSearch}
-              setBackupCodeSearch={setBackupCodeSearch}
-            />
-          ) : activeTab === 'services' ? (
-            <ServicesTab
-              serviceSearch={serviceSearch}
-              setServiceSearch={setServiceSearch}
-              accountServices={accountServices}
-              onAddNewServiceLink={onAddNewServiceLink}
-              onEditServiceLink={onEditServiceLink}
-              onOpenService={onOpenService}
-              onDeleteService={onDeleteService}
-              email={editedAccount?.email || ''}
-            />
-          ) : (
-            <BookmarkTab email={editedAccount?.email || ''} accountId={editedAccount?.id} />
-          )}
-        </div>
+              <InfoTab
+                editedAccount={editedAccount}
+                setEditedAccount={setEditedAccount}
+                validateField={validateField}
+                errors={errors}
+                backupCodeSearch={backupCodeSearch}
+                setBackupCodeSearch={setBackupCodeSearch}
+              />
+            ) : activeTab === 'services' ? (
+              <ServicesTab
+                serviceSearch={serviceSearch}
+                setServiceSearch={setServiceSearch}
+                accountServices={accountServices}
+                onAddNewServiceLink={onAddNewServiceLink}
+                onEditServiceLink={onEditServiceLink}
+                onOpenService={onOpenService}
+                onDeleteService={onDeleteService}
+                email={editedAccount?.email || ''}
+              />
+            ) : (
+              <BookmarkTab email={editedAccount?.email || ''} accountId={editedAccount?.id} />
+            )}
+          </div>
         )}
       </div>
     </div>

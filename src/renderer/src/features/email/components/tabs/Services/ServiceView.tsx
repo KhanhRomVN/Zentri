@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------
  * Detail view for a linked service. Displays service hero with
  * metadata, TOTP code with live countdown, backup codes, custom
- * metadata fields, and filtered activity history for that service's
+ * metadata fields, and fingerprint history for that service's
  * domain.
  *
  * Main features:
@@ -12,7 +12,7 @@
  * - TOTP live code generation with copy-to-clipboard
  * - Backup codes display with expand/collapse
  * - Custom metadata fields from service template
- * - Domain-filtered activity history with date picker
+ * - Domain-filtered fingerprint history with config preview
  * ------------------------------------------------------------------
  */
 
@@ -21,17 +21,7 @@
 import { FC, useState, useEffect, useMemo, useCallback } from 'react';
 
 // ── UI ──
-import {
-  ShieldCheck,
-  History,
-  Clock,
-  Eye,
-  Globe,
-  Trash2,
-  List,
-  Link,
-  MoreHorizontal,
-} from 'lucide-react';
+import { ShieldCheck, Clock, Eye, Globe, Trash2, List, Link, MoreHorizontal } from 'lucide-react';
 
 // ── Utils ──
 import { format } from 'date-fns';
@@ -41,9 +31,6 @@ import { generateTotp, isValidBase32, getCodeColor } from '../../../../../shared
 // ── UI Components ──
 import { Button } from '../../../../../components/ui/Button';
 import { EmptyState } from '../../../../../components/ui/EmptyState';
-
-// ── Components ──
-import HistoryList from '../HistoryTab/HistoryList';
 
 // ── Constants ──
 import { getServiceById } from '../../../../../constants/services';
@@ -57,104 +44,17 @@ function getDomain(url: string): string {
   }
 }
 
-type TagType = 'auth' | 'security' | 'search' | 'social' | null;
-
-function detectTag(url: string, title: string): TagType {
-  const u = url.toLowerCase();
-  const t = title.toLowerCase();
-  if (
-    u.includes('signin') ||
-    u.includes('login') ||
-    u.includes('auth') ||
-    u.includes('accounts') ||
-    t.includes('sign in') ||
-    t.includes('welcome') ||
-    t.includes('2-step')
-  )
-    return 'auth';
-  if (
-    u.includes('pixelscan') ||
-    u.includes('vpn-check') ||
-    u.includes('dns-check') ||
-    u.includes('blacklist') ||
-    u.includes('fingerprint') ||
-    t.includes('security') ||
-    t.includes('check') ||
-    t.includes('bot detection')
-  )
-    return 'security';
-  if (u.includes('google.com/search') || u.includes('bing.com/search') || u.includes('search?'))
-    return 'search';
-  return null;
-}
-
-interface ProcessedItem {
-  url: string;
-  title: string;
-  time: number;
-  duration: number;
-  timeLabel: string;
-  durationLabel: string;
-  domain: string;
-  tag: TagType;
-}
-interface TimeGroup {
-  key: string;
-  label: string;
-  sublabel: string;
-  items: ProcessedItem[];
-}
-
-function groupByTimeCluster(items: ProcessedItem[]): TimeGroup[] {
-  if (items.length === 0) return [];
-  const groups: TimeGroup[] = [];
-  let currentGroup: ProcessedItem[] = [items[0]];
-  for (let i = 1; i < items.length; i++) {
-    const prev = items[i - 1];
-    const curr = items[i];
-    const diffMin = Math.abs(prev.time - curr.time) / 1000 / 60;
-    if ((diffMin < 3 && prev.domain === curr.domain) || diffMin < 1) {
-      currentGroup.push(curr);
-    } else {
-      groups.push(buildGroup(currentGroup));
-      currentGroup = [curr];
-    }
-  }
-  groups.push(buildGroup(currentGroup));
-  return groups;
-}
-
-function buildGroup(items: ProcessedItem[]): TimeGroup {
-  const first = items[0];
-  const last = items[items.length - 1];
-  const timeRange =
-    first.timeLabel === last.timeLabel ? first.timeLabel : `${last.timeLabel} – ${first.timeLabel}`;
-  const domainCount: Record<string, number> = {};
-  for (const item of items) {
-    domainCount[item.domain] = (domainCount[item.domain] || 0) + 1;
-  }
-  const dominantDomain = Object.entries(domainCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
-  return {
-    key: `${first.time}`,
-    label: timeRange,
-    sublabel: `${items.length} visit${items.length > 1 ? 's' : ''} · ${dominantDomain}`,
-    items,
-  };
-}
-
 const ServiceHero: FC<{
   service: any;
   onEditServiceLink: (linkId: string) => void;
   onOpenService?: (linkId: string) => void;
   onDeleteService?: (linkId: string) => void;
-  lastUsedFromHistory?: string | null;
-}> = ({ service, onEditServiceLink, onOpenService, onDeleteService, lastUsedFromHistory }) => {
+}> = ({ service, onEditServiceLink, onOpenService, onDeleteService }) => {
   const faviconUrl = service.url
     ? `https://www.google.com/s2/favicons?domain=${service.url}&sz=64`
     : '';
-  const detectedTag = detectTag(service.url, service.name || '');
   const serviceTags: string[] = Array.isArray(service.tags) ? service.tags : [];
-  const allTags: string[] = [...new Set([detectedTag, ...serviceTags].filter(Boolean) as string[])];
+  const allTags: string[] = [...new Set(serviceTags.filter(Boolean) as string[])];
   return (
     <div className="flex items-start gap-3 px-4 py-4 border-b border-border">
       <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center p-1.5 border border-border shadow-sm shrink-0">
@@ -176,17 +76,12 @@ const ServiceHero: FC<{
         </div>
         <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground/60">
           <span className="truncate font-mono">{service.url || 'No URL'}</span>
-          {lastUsedFromHistory ? (
-            <span className="flex items-center gap-1 text-[10px] font-mono">
-              <Clock className="w-3 h-3" />
-              {new Date(lastUsedFromHistory).toLocaleString()}
-            </span>
-          ) : service.lastUsedAt ? (
+          {service.lastUsedAt && (
             <span className="flex items-center gap-1 text-[10px] font-mono">
               <Clock className="w-3 h-3" />
               {new Date(service.lastUsedAt).toLocaleString()}
             </span>
-          ) : null}
+          )}
         </div>
         {allTags.length > 0 && (
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
@@ -377,66 +272,52 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
     }
   }, [service.serviceId]);
 
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyItems, setHistoryItems] = useState<any[]>([]);
-  const [historyError, setHistoryError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [fingerprintLoading, setFingerprintLoading] = useState(false);
+  const [fingerprintEntries, setFingerprintEntries] = useState<any[]>([]);
+  const [fingerprintError, setFingerprintError] = useState<string | null>(null);
+  const [expandedFingerprint, setExpandedFingerprint] = useState<string | null>(null);
 
-  const fetchHistory = useCallback(async () => {
+  const fetchFingerprintHistory = useCallback(async () => {
     if (!email || !service.url) return;
-    setHistoryLoading(true);
-    setHistoryError(null);
+    setFingerprintLoading(true);
+    setFingerprintError(null);
     try {
       // @ts-ignore
-      const result = await window.electron.ipcRenderer.invoke('email:get-history', {
+      const result = await window.electron.ipcRenderer.invoke('email:get-fingerprint-history', {
         email,
-        date: selectedDate,
       });
-      if (result.success && result.history) {
+      if (result.success && result.entries) {
         const domain = getDomain(service.url);
-        setHistoryItems(
-          result.history.filter((item: any) => {
+        // Filter entries by service domain
+        setFingerprintEntries(
+          result.entries.filter((entry: any) => {
             try {
-              return getDomain(item.url) === domain;
+              return entry.domain === domain;
             } catch {
               return false;
             }
           }),
         );
       } else {
-        setHistoryError(result.error || 'Failed to load history');
+        setFingerprintError(result.error || 'Failed to load fingerprint history');
       }
     } catch (err: any) {
-      setHistoryError(err.message || 'An error occurred');
+      setFingerprintError(err.message || 'An error occurred');
     } finally {
-      setHistoryLoading(false);
+      setFingerprintLoading(false);
     }
-  }, [email, service.url, selectedDate]);
+  }, [email, service.url]);
 
   useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+    fetchFingerprintHistory();
+  }, [fetchFingerprintHistory]);
 
-  const processedHistory = useMemo<ProcessedItem[]>(
-    () =>
-      historyItems.map((item: any) => {
-        const date = new Date(item.time);
-        return {
-          ...item,
-          timeLabel: format(date, 'HH:mm'),
-          durationLabel: `${item.duration || 0}s`,
-          domain: getDomain(item.url),
-          tag: detectTag(item.url, item.title || ''),
-        };
-      }),
-    [historyItems],
-  );
-  const timeGroups = useMemo(() => groupByTimeCluster(processedHistory), [processedHistory]);
-  const lastUsedFromHistory = useMemo(() => {
-    if (historyItems.length === 0) return null;
-    const latest = historyItems.reduce((a, b) => (a.time > b.time ? a : b));
-    return latest.time;
-  }, [historyItems]);
+  const processedFingerprints = useMemo(() => {
+    // Sort by started_at descending
+    return [...fingerprintEntries].sort((a, b) => {
+      return new Date(b.started_at).getTime() - new Date(a.started_at).getTime();
+    });
+  }, [fingerprintEntries]);
   const formatAuthMethod = (method: string): string =>
     method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   if (!service) return null;
@@ -448,7 +329,6 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
         onEditServiceLink={onEditServiceLink}
         onOpenService={onOpenService}
         onDeleteService={onDeleteService}
-        lastUsedFromHistory={lastUsedFromHistory}
       />
       <div className="space-y-4 px-4 mt-4">
         <div className="grid grid-cols-2 gap-4">
@@ -459,7 +339,7 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
                 {authMethods.length > 0 ? authMethods.map(formatAuthMethod).join(', ') : 'None'}
               </FieldRow>
               <FieldRow label="Last Used">
-                {lastUsedFromHistory ? new Date(lastUsedFromHistory).toLocaleString() : 'Never'}
+                {service.lastUsedAt ? new Date(service.lastUsedAt).toLocaleString() : 'Never'}
               </FieldRow>
             </div>
           </SectionBox>
@@ -594,91 +474,117 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
         </SectionBox>
 
         <SectionBox
-          title="Activity History"
+          title="Fingerprint History"
           className="col-span-full"
-          headerExtra={
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => {
-                  const d = new Date(selectedDate);
-                  d.setDate(d.getDate() - 1);
-                  setSelectedDate(d.toISOString().split('T')[0]);
-                }}
-                className="p-1 rounded-md hover:bg-primary/10 transition-colors text-muted-foreground/60 hover:text-foreground"
-                title="Previous day"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <div
-                className="px-3 py-1 text-xs font-mono bg-input-background border border-border rounded-md cursor-pointer hover:border-primary transition-colors min-w-[100px] text-center select-none"
-                onClick={() => {
-                  const input = document.getElementById('history-date-picker') as HTMLInputElement;
-                  if (input) input.showPicker?.();
-                }}
-              >
-                {new Date(selectedDate).toLocaleDateString('vi-VN', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                })}
-              </div>
-              <input
-                id="history-date-picker"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="hidden"
-              />
-              <button
-                onClick={() => {
-                  const d = new Date(selectedDate);
-                  d.setDate(d.getDate() + 1);
-                  setSelectedDate(d.toISOString().split('T')[0]);
-                }}
-                className="p-1 rounded-md hover:bg-primary/10 transition-colors text-muted-foreground/60 hover:text-foreground"
-                title="Next day"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </div>
-          }
+          icon={<ShieldCheck className="w-3.5 h-3.5 text-violet-400" />}
         >
-          {historyLoading ? (
+          {fingerprintLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
             </div>
-          ) : historyError ? (
+          ) : fingerprintError ? (
             <div className="text-center py-8 text-muted-foreground/60 text-sm">
-              <span className="text-error/60">Error: {historyError}</span>
+              <span className="text-error/60">Error: {fingerprintError}</span>
             </div>
-          ) : timeGroups.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground/40 text-sm">
-              <History className="w-8 h-8 mx-auto mb-2 opacity-20" />
-              No activity for this service
-            </div>
+          ) : processedFingerprints.length === 0 ? (
+            <EmptyState
+              variant="default"
+              icon={<ShieldCheck className="w-6 h-6" />}
+              title="No fingerprint history"
+              description="Fingerprints will appear when you browse this service with a fingerprint profile."
+              className="h-auto py-8"
+            />
           ) : (
-            <div className="-mx-4 -mb-4 mt-1">
-              <HistoryList
-                groups={timeGroups}
-                email={email}
-                query=""
-                onQueryChange={() => {}}
-                onRefresh={fetchHistory}
-              />
+            <div className="space-y-2 -mx-4 -mb-4 px-4 pb-4">
+              {processedFingerprints.map((entry, index) => {
+                const isActive = !entry.ended_at;
+                const isExpanded = expandedFingerprint === entry.fingerprint_hash;
+
+                return (
+                  <div
+                    key={index}
+                    className="rounded-lg border border-border/40 bg-card/20 overflow-hidden hover:border-primary/30 transition-colors"
+                  >
+                    <div className="px-3 py-2.5">
+                      <div className="flex items-center gap-2 mb-2">
+                        {isActive ? (
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Active now
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-xs text-amber-500 font-medium">
+                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            {entry.started_at && entry.ended_at
+                              ? `${format(new Date(entry.started_at), 'MMM d, HH:mm')} → ${format(new Date(entry.ended_at), 'MMM d, HH:mm')}`
+                              : 'Past session'}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Clock className="w-3 h-3 shrink-0" />
+                          <span className="truncate">
+                            {format(new Date(entry.started_at), 'MMM d, yyyy HH:mm')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Globe className="w-3 h-3 shrink-0" />
+                          <span className="font-mono text-[11px]">{entry.public_ip}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                          <ShieldCheck className="w-3 h-3 shrink-0" />
+                          <span
+                            className="font-mono text-[11px] truncate"
+                            title={entry.fingerprint_hash}
+                          >
+                            {entry.fingerprint_hash}
+                          </span>
+                        </div>
+                      </div>
+
+                      {entry.fingerprint_config_json && (
+                        <div className="mt-2 pt-2 border-t border-border/20">
+                          {!isExpanded ? (
+                            <button
+                              onClick={() => setExpandedFingerprint(entry.fingerprint_hash)}
+                              className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+                            >
+                              <Eye className="w-3 h-3" />
+                              View config ({Math.round(entry.fingerprint_config_json.length / 1024)}
+                              KB)
+                            </button>
+                          ) : (
+                            <div>
+                              <button
+                                onClick={() => setExpandedFingerprint(null)}
+                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-1 transition-colors"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Hide config
+                              </button>
+                              <pre className="text-[10px] font-mono bg-muted/30 rounded-lg p-2 max-h-48 overflow-auto whitespace-pre-wrap break-all">
+                                {(() => {
+                                  try {
+                                    return JSON.stringify(
+                                      JSON.parse(entry.fingerprint_config_json),
+                                      null,
+                                      2,
+                                    );
+                                  } catch {
+                                    return entry.fingerprint_config_json;
+                                  }
+                                })()}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </SectionBox>

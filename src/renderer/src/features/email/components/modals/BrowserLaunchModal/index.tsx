@@ -1,13 +1,66 @@
 import { FC, useState, useEffect, useMemo } from 'react';
-import { Fingerprint, FingerprintConfig } from '../fingerprint';
-import { extractFilters } from './types';
+import { Fingerprint, FingerprintConfig } from '../../../../../types/fingerprint-profile';
 import Modal from '../../../../../components/ui/Modal/Modal';
 import LaunchConfig from './LaunchConfig';
 import FingerprintPicker from './FingerprintPicker';
 import FingerprintDetail from './FingerprintDetail';
-import { BrowserLaunchModalProps } from './types';
-import { IpApiResponse } from './fingerprint-generator/types';
-import { generateFingerprints } from './fingerprint-generator';
+import { IpApiResponse } from '../../../../../types/ip-api';
+import { generateFingerprints } from '../../../../../services/fingerprintGenerator';
+import { fetchIpInfo } from '../../../../../services/ipApi';
+
+/**
+ * ------------------------------------------------------------------
+ * BrowserLaunchModal Types
+ * ------------------------------------------------------------------
+ * Type definitions and helpers for the BrowserLaunchModal.
+ * Includes launch configuration props, filter options extraction,
+ * and OS icon mappings.
+ *
+ * Main types:
+ * - BrowserLaunchModalProps : Props for the launch modal
+ * - FilterOptions           : Available filter groups and browsers
+ * - extractFilters()        : Extract unique groups/browsers from fingerprints
+ * ------------------------------------------------------------------
+ */
+
+export interface BrowserLaunchModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  email: string;
+  accountId: string;
+  targetUrl?: string;
+  targetTitle?: string;
+  onLaunch: (config: {
+    fingerprintId?: string;
+    proxyId?: string;
+    fingerprintConfig?: object;
+  }) => void;
+}
+
+export interface FilterOptions {
+  groups: string[];
+  browsers: string[];
+}
+
+// ─── Constants ──────────────────────────────────────────────────────────
+export const OS_ICONS: Record<string, string> = {
+  Windows: '\u{1FA9F}',
+  macOS: '\u{1F34E}',
+  Linux: '\u{1F427}',
+  Android: '\u{1F4F1}',
+  Other: '\u{1F4BB}',
+};
+
+// ─── Functions ──────────────────────────────────────────────────────────
+export function extractFilters(fps: Fingerprint[]): FilterOptions {
+  const groups = new Set<string>();
+  const browsers = new Set<string>();
+  for (const fp of fps) {
+    if (fp.group) groups.add(fp.group);
+    if (fp.browser) browsers.add(fp.browser);
+  }
+  return { groups: Array.from(groups).sort(), browsers: Array.from(browsers).sort() };
+}
 
 const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
   const { isOpen, onClose, email, targetUrl, targetTitle, onLaunch } = props;
@@ -45,14 +98,9 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
         setFpFilters({ groups: [], browsers: [] });
 
         try {
-          const ipRes = await fetch('http://ip-api.com/json');
-          if (ipRes.ok) {
-            const data: IpApiResponse = await ipRes.json();
-            if (data.status === 'success') {
-              setIpData(data);
-              setFingerprints(generateFingerprints(data));
-            } else setIpError('Failed to get IP info');
-          } else setIpError('IP API unavailable');
+          const data = await fetchIpInfo();
+          setIpData(data);
+          setFingerprints(generateFingerprints(data));
         } catch (err) {
           console.error('[IP] Fetch error:', err);
           setIpError('Network error fetching IP');

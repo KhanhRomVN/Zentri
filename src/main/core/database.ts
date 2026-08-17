@@ -75,19 +75,14 @@ export class DbManager {
           id TEXT PRIMARY KEY,
           email TEXT NOT NULL,
           password TEXT,
-          status TEXT DEFAULT 'active',
           phone_number TEXT,
           recovery_email TEXT,
-          totp_secret_key TEXT,
+          totp TEXT,
           backup_codes TEXT,
-          scheduled_deletion_at DATETIME,
-          last_used_at DATETIME,
           inbox_cache TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
-
-      CREATE INDEX IF NOT EXISTS idx_emails_status ON emails(status);
 
       CREATE TABLE IF NOT EXISTS services (
           id TEXT PRIMARY KEY,
@@ -220,16 +215,6 @@ export class DbManager {
 
   private async applyMigrations(): Promise<void> {
     const columns = await this.rawAll<{ name: string }>('PRAGMA table_info(emails)');
-
-    const hasDeletionColumn = columns.some((c) => c.name === 'scheduled_deletion_at');
-    if (!hasDeletionColumn) {
-      try {
-        await this.rawRun('ALTER TABLE emails ADD COLUMN scheduled_deletion_at DATETIME');
-        console.log('[DB] Migration: Added scheduled_deletion_at to emails table');
-      } catch (e) {
-        console.error('[DB] Migration failed (scheduled_deletion_at):', e);
-      }
-    }
 
     const hasInboxCache = columns.some((c) => c.name === 'inbox_cache');
     if (!hasInboxCache) {

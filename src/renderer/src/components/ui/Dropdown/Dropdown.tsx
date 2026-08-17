@@ -2,13 +2,12 @@ import { useState, useRef, useEffect, createContext, useContext } from 'react';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { DropdownProps } from './type';
-import { cn } from '@renderer/shared/lib/utils';
+import { cn } from '@renderer/shared/utils/cn';
 
 type Position = { top: number; left: number; width?: number };
 
 interface DropdownContextType {
   close: () => void;
-  searchText: string;
 }
 
 const DropdownContext = createContext<DropdownContextType | null>(null);
@@ -21,7 +20,7 @@ export function useDropdownContext() {
   return context;
 }
 
-export function Dropdown({
+export const Dropdown = React.memo(function Dropdown({
   children,
   open: controlledOpen,
   onOpenChange,
@@ -33,25 +32,19 @@ export function Dropdown({
   className,
   trigger = 'click',
   position: manualPosition,
-  searchable = false,
 }: DropdownProps) {
   const [internalOpen, setInternalOpen] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = (value: boolean) => {
     if (controlledOpen === undefined) setInternalOpen(value);
     onOpenChange?.(value);
   };
 
-  const close = () => {
-    setOpen(false);
-    setSearchText('');
-  };
+  const close = () => setOpen(false);
 
   const triggerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<Position>({ top: 0, left: 0 });
+  const [position, setPosition] = useState<Position>({ top: 0, left: 0, width: undefined });
   const [isPositioned, setIsPositioned] = useState(false);
 
   // Calculate position for fixed strategy
@@ -64,6 +57,18 @@ export function Dropdown({
       width: window.innerWidth,
       height: window.innerHeight,
     };
+
+    console.log('[Dropdown] Calculate position:', {
+      triggerRect: {
+        width: triggerRect.width,
+        height: triggerRect.height,
+        left: triggerRect.left,
+        top: triggerRect.top,
+      },
+      contentRect: { width: contentRect.width, height: contentRect.height },
+      align,
+      side,
+    });
 
     let top = 0;
     let left = 0;
@@ -148,7 +153,7 @@ export function Dropdown({
       finalLeft = viewport.width - contentRect.width - margin;
     }
 
-    return { top: finalTop, left: finalLeft, width: Math.max(triggerRect.width, 200) };
+    return { top: finalTop, left: finalLeft, width: triggerRect.width };
   };
 
   const updatePosition = () => {
@@ -161,6 +166,7 @@ export function Dropdown({
       }
       const pos = calculateFixedPosition();
       if (pos) {
+        console.log('[Dropdown] Setting position:', pos, 'isPositioned:', isPositioned);
         setPosition(pos);
         setIsPositioned(true);
       }
@@ -191,10 +197,19 @@ export function Dropdown({
 
   // Update position when open or props change
   useEffect(() => {
-    if (open) {
-      // Double rAF: frame 1 để portal mount + ref gắn, frame 2 để layout/paint hoàn tất rồi mới đo
+    console.log(
+      '[Dropdown] Open changed:',
+      open,
+      'contentRef:',
+      !!contentRef.current,
+      'strategy:',
+      strategy,
+    );
+    if (open && contentRef.current) {
+      // Double requestAnimationFrame to ensure content has rendered with correct dimensions
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          console.log('[Dropdown] About to call updatePosition');
           updatePosition();
         });
       });
@@ -203,12 +218,33 @@ export function Dropdown({
     }
   }, [open, side, align, sideOffset, strategy, manualPosition]);
 
+  // Watch for content size changes and recalculate position
+  useEffect(() => {
+    if (!open || !contentRef.current || strategy !== 'fixed') return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      updatePosition();
+    });
+
+    resizeObserver.observe(contentRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [open, strategy]);
+
   // Handle resize and scroll for fixed strategy
   useEffect(() => {
     if (!open || strategy !== 'fixed') return;
 
+    let rafId: number | null = null;
+
     const handleUpdate = () => {
-      requestAnimationFrame(updatePosition);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      rafId = requestAnimationFrame(updatePosition);
     };
 
     const getScrollableParents = (element: HTMLElement | null): HTMLElement[] => {
@@ -243,6 +279,10 @@ export function Dropdown({
     });
 
     return () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       window.removeEventListener('resize', handleUpdate);
       window.removeEventListener('scroll', handleUpdate, true);
       scrollableParents.forEach((parent) => {
@@ -250,17 +290,6 @@ export function Dropdown({
       });
     };
   }, [open, strategy]);
-
-  // Auto-focus search input when dropdown opens with searchable enabled
-  useEffect(() => {
-    if (open && searchable && searchInputRef.current) {
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [open, searchable]);
 
   const childrenArray = React.Children.toArray(children);
   const triggerChild = childrenArray.find(
@@ -317,7 +346,7 @@ export function Dropdown({
   };
 
   return (
-    <DropdownContext.Provider value={{ close, searchText }}>
+    <DropdownContext.Provider value={{ close }}>
       <div className={cn('relative inline-block', className)}>
         <div
           ref={triggerRef}
@@ -333,64 +362,45 @@ export function Dropdown({
         >
           {triggerChild}
         </div>
-        {open && content && (() => {
-          const wrappedContent = searchable
-            ? React.cloneElement(content as React.ReactElement<any>, {
-                children: [
-                  <div
-                    key="dropdown-search"
-                    onKeyDown={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                      placeholder="Search..."
-                      className="w-full h-full px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none bg-transparent"
-                    />
-                  </div>,
-                  ...React.Children.toArray((content as React.ReactElement<any>).props.children),
-                ],
-              })
-            : content;
-
-          return strategy === 'fixed' ? (
-            createPortal(
+        {open && content && (
+          <>
+            {strategy === 'fixed' ? (
+              createPortal(
+                <div
+                  ref={contentRef}
+                  className="fixed z-[9999]"
+                  style={{
+                    top: position.top,
+                    left: position.left,
+                    width: position.width,
+                    opacity: isPositioned ? 1 : 0,
+                    transition: 'opacity 0.15s ease',
+                    pointerEvents: 'auto',
+                  }}
+                >
+                  {content}
+                </div>,
+                document.body,
+              )
+            ) : (
               <div
                 ref={contentRef}
-                className="fixed z-[9999]"
+                className={getRelativePositionClasses()}
                 style={{
-                  top: position.top,
-                  left: position.left,
-                  width: position.width,
                   opacity: isPositioned ? 1 : 0,
                   transition: 'opacity 0.15s ease',
                   pointerEvents: 'auto',
                 }}
               >
-                {wrappedContent}
-              </div>,
-              document.body,
-            )
-          ) : (
-            <div
-              ref={contentRef}
-              className={getRelativePositionClasses()}
-              style={{
-                opacity: isPositioned ? 1 : 0,
-                transition: 'opacity 0.15s ease',
-                pointerEvents: 'auto',
-              }}
-            >
-              {wrappedContent}
-            </div>
-          );
-        })()}
+                {content}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </DropdownContext.Provider>
   );
-}
+});
 
 Dropdown.displayName = 'Dropdown';
 

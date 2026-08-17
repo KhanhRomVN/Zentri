@@ -10,14 +10,10 @@ export interface Email {
   id: string;
   email: string;
   password?: string | null;
-  status: 'active' | 'banned' | 'deleting';
   phone_number?: string | null;
   recovery_email?: string | null;
-  totp_secret_key?: string | null;
+  totp?: string | null;
   backup_codes?: string | null;
-  profile_folder_id?: string | null;
-  scheduled_deletion_at?: string | null;
-  last_used_at?: string | null;
   created_at: string;
   updated_at: string;
 }

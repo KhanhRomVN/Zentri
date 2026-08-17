@@ -15,10 +15,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Search, X, Check } from 'lucide-react';
+import { Search, Check } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../../../../components/ui/Modal';
 import { Button } from '../../../../../components/ui/Button';
-import { Input } from '../../../../../components/ui/Input';
 import { cn } from '../../../../../shared/lib/utils';
 import { AVAILABLE_FIELDS } from '../FilterModal/types';
 
@@ -37,16 +36,6 @@ interface TableGroup {
     type: string;
   }>;
 }
-
-// Sample data for preview (3 rows per field)
-const SAMPLE_DATA: Record<string, string[]> = {
-  'emails.email': ['alice@corp.io', 'bob@corp.io', 'chen.wu@corp.io'],
-  'emails.status': ['Active', 'Suspended', 'Active'],
-  'emails.created_at': ['2025-11-02', '2025-12-18', '2026-01-05'],
-  'proxies.host': ['103.21.9.4', '45.10.88.2', '198.51.100.7'],
-  'proxies.status': ['Active', 'Expired', 'Active'],
-  'proxies.country': ['US', 'UK', 'SG'],
-};
 
 const PREVIEW_ROW_COUNT = 3;
 
@@ -69,10 +58,11 @@ export const FieldPickerModal: React.FC<FieldPickerModalProps> = ({
   const [tableQuery, setTableQuery] = useState('');
   const [fieldQuery, setFieldQuery] = useState('');
   const [hoveredColumn, setHoveredColumn] = useState<string | null>(null);
+  const [tableData, setTableData] = useState<Record<string, unknown>[]>([]);
 
-  // Group fields by table
+  // Group fields by table (using actual table name from field.name prefix)
   const tableGroups: TableGroup[] = AVAILABLE_FIELDS.reduce((acc, field) => {
-    const tableName = field.tableName || 'Other';
+    const tableName = field.name.split('.')[0] || field.tableName || 'Other';
     let group = acc.find((g) => g.tableName === tableName);
     if (!group) {
       group = { tableName, fields: [] };
@@ -108,6 +98,32 @@ export const FieldPickerModal: React.FC<FieldPickerModalProps> = ({
 
   // Get active table data
   const activeTableData = tableGroups.find((g) => g.tableName === activeTable);
+
+  // Fetch real data when active table changes
+  useEffect(() => {
+    if (!activeTable) {
+      setTableData([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const tableName = activeTable.toLowerCase();
+        const result = await window.electron.ipcRenderer.invoke(
+          'sqlite:all',
+          `SELECT * FROM ${tableName} LIMIT ${PREVIEW_ROW_COUNT}`,
+        );
+        if (!cancelled) setTableData(result || []);
+      } catch {
+        if (!cancelled) setTableData([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTable]);
 
   // Filter fields by search query
   const filteredFields = activeTableData
@@ -185,10 +201,10 @@ export const FieldPickerModal: React.FC<FieldPickerModalProps> = ({
                   </span>
                   <span
                     className={cn(
-                      'text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full',
+                      'text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-md',
                       activeTable === group.tableName
                         ? 'bg-primary/20 text-primary'
-                        : 'bg-input-background text-muted-foreground',
+                        : 'bg-input-background text-secondary',
                     )}
                   >
                     {group.fields.length}
@@ -261,13 +277,14 @@ export const FieldPickerModal: React.FC<FieldPickerModalProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: PREVIEW_ROW_COUNT }).map((_, rowIndex) => (
+                  {tableData.map((row, rowIndex) => (
                     <tr key={rowIndex}>
                       {filteredFields.map((field, colIndex) => {
                         const isSelected = selectedField === field.name;
                         const isHovered = hoveredColumn === field.name;
-                        const sampleData = SAMPLE_DATA[field.name] || [];
-                        const value = sampleData[rowIndex];
+                        const columnName = field.name.split('.')[1] || field.name;
+                        const rowData = row as Record<string, unknown>;
+                        const value = rowData?.[columnName];
                         return (
                           <td
                             key={field.name}
@@ -280,7 +297,7 @@ export const FieldPickerModal: React.FC<FieldPickerModalProps> = ({
                               isHovered && !isSelected && 'bg-primary/10',
                             )}
                           >
-                            {value || ''}
+                            {String(value ?? '')}
                           </td>
                         );
                       })}

@@ -18,7 +18,7 @@
 
 // ─── Imports ────────────────────────────────────────────────────────────
 // ── Types ──
-import { SavedView, FilterCard } from '../components/modals/FilterModal/types';
+import { SavedView, FilterCard } from '../../filter/components/modal/FilterModal/types';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 const VIEWS_STORAGE_KEY = 'email_filter_views';

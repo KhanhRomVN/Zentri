@@ -14,22 +14,16 @@ _Lưu trữ thông tin định danh và bảo mật cốt lõi của tài khoả
   - Địa chỉ email chính.
 - **`password`** [TEXT]
   - Mật khẩu truy cập.
-- **`status`** [TEXT] `DEFAULT 'active'`
-  - Trạng thái vận hành (`active`, `banned`).
 - **`phone_number`** [TEXT]
   - Số điện thoại liên kết (Tùy chọn).
 - **`recovery_email`** [TEXT]
   - Email khôi phục dự phòng.
-- **`totp_secret_key`** [TEXT]
+- **`totp`** [TEXT]
   - Mã bí mật 2FA/TOTP phục vụ tự động hóa.
 - **`backup_codes`** [TEXT]
   - Danh sách mã dự phòng.
-- **`profile_folder_id`** [TEXT]
-  - ID định danh thư mục profile browser.
-- **`scheduled_deletion_at`** [DATETIME]
-  - Thời gian dự kiến xóa vĩnh viễn (Soft Delete).
-- **`last_used_at`** [DATETIME]
-  - Ghi nhận lần cuối khởi chạy.
+- **`inbox_cache`** [TEXT]
+  - Cache nội dung inbox (JSON).
 - **`created_at`** | **`updated_at`** [DATETIME]
   - Dấu thời gian hệ thống.
 

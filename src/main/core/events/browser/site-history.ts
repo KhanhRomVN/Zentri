@@ -212,6 +212,31 @@ async function fetchPublicIp(client: any): Promise<string | null> {
   }
 }
 
+// ── IP info via ip-api.com ─────────────────────────────────────────────────
+
+async function fetchIpInfo(ip: string): Promise<Record<string, any> | null> {
+  console.log(TAG_DBG, 'fetchIpInfo() — calling ip-api.com for IP:', ip);
+  try {
+    const res = await fetch(
+      `http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,isp,org,as,asname,timezone,query`,
+    );
+    if (!res.ok) {
+      console.log(TAG_DBG, 'fetchIpInfo() — HTTP error:', res.status);
+      return null;
+    }
+    const data: any = await res.json();
+    if (data?.status !== 'success') {
+      console.log(TAG_DBG, 'fetchIpInfo() — API status:', data?.status);
+      return null;
+    }
+    console.log(TAG_DBG, 'fetchIpInfo() — got info:', data.country, '|', data.city, '|', data.isp);
+    return data;
+  } catch (e: any) {
+    console.error(TAG, 'fetchIpInfo() — error:', e?.message);
+    return null;
+  }
+}
+
 // ── Domain extraction ─────────────────────────────────────────────────────
 
 function extractDomain(url: string): string | null {
@@ -243,9 +268,11 @@ async function trackSiteVisit(
   fpConfig: Record<string, any>,
   fpHash: string,
   ip: string,
+  ipInfo: Record<string, any> | null,
 ): Promise<void> {
   const now = new Date().toISOString();
   const fpConfigJson = JSON.stringify(fpConfig);
+  const ipInfoJson = ipInfo ? JSON.stringify(ipInfo) : null;
 
   console.log(TAG_DBG, 'trackSiteVisit() — domain:', domain, '| fpHash:', fpHash, '| ip:', ip);
 
@@ -261,9 +288,9 @@ async function trackSiteVisit(
     await dbRun(
       db,
       `INSERT INTO site_fingerprint_history
-       (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, started_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, domain, fpHash, fpConfigJson, ip, now],
+       (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, domain, fpHash, fpConfigJson, ip, ipInfoJson, now],
     );
     console.log(TAG, 'NEW:', domain, '| fp=', fpHash, '| ip=', ip, '| id=', id);
     return;
@@ -288,9 +315,9 @@ async function trackSiteVisit(
   await dbRun(
     db,
     `INSERT INTO site_fingerprint_history
-     (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, started_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [newId, domain, fpHash, fpConfigJson, ip, now],
+     (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [newId, domain, fpHash, fpConfigJson, ip, ipInfoJson, now],
   );
 
   console.log(
@@ -337,9 +364,11 @@ export async function onPageNavigated(
 
   const fpHash = hashFingerprintConfig(resolvedFp);
 
+  const ipInfo = await fetchIpInfo(ip);
+
   const db = openDb(profileDir);
   try {
-    await trackSiteVisit(db, domain, resolvedFp, fpHash, ip);
+    await trackSiteVisit(db, domain, resolvedFp, fpHash, ip, ipInfo);
   } catch (e: any) {
     console.error(TAG, 'trackSiteVisit() — error:', e?.message);
   } finally {

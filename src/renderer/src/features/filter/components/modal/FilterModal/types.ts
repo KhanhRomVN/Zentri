@@ -16,7 +16,7 @@
  */
 
 // ─── Types ──────────────────────────────────────────────────────────────
-// Field types for dynamic filter operators
+// Field types for dynamic filter operatorskokokokoko
 export type FieldType = 'string' | 'number' | 'array' | 'object';
 
 // String operators
@@ -82,6 +82,13 @@ export interface FilterCard {
   operator: FilterOperator;
   value: string;
   logic: 'AND' | 'OR';
+}
+
+// Column card structure
+export interface Column {
+  id: string;
+  name: string;
+  field: string;
 }
 
 // Saved view structure
@@ -185,6 +192,37 @@ export const OPERATOR_LABELS: Record<FilterOperator, string> = {
   keyNotEquals: 'Key Not Equals',
 };
 
+// Operator badges (compact symbols for collapsed UI)
+export const OPERATOR_BADGES: Record<FilterOperator, string> = {
+  equals: '=',
+  notEquals: '≠',
+  contains: '⊃',
+  notContains: '⊄',
+  startsWith: '^=',
+  endsWith: '$=',
+  in: '∈',
+  notIn: '∉',
+  isNull: '∅',
+  isNotNull: '¬∅',
+  regex: '~',
+  greaterThan: '>',
+  greaterThanOrEqual: '≥',
+  lessThan: '<',
+  lessThanOrEqual: '≤',
+  between: '↔',
+  containsAll: '⊇',
+  containsAny: '∩',
+  isEmpty: '∅',
+  isNotEmpty: '¬∅',
+  sizeEquals: '|=',
+  sizeGreaterThan: '|>',
+  sizeLessThan: '|<',
+  hasKey: '∋',
+  notHasKey: '∌',
+  keyEquals: 'k=',
+  keyNotEquals: 'k≠',
+};
+
 // Field type definitions for all tables
 export const FIELD_TYPES: Record<string, FieldType> = {
   // emails table
@@ -192,12 +230,8 @@ export const FIELD_TYPES: Record<string, FieldType> = {
   'emails.password': 'string',
   'emails.recovery_email': 'string',
   'emails.phone_number': 'string',
-  'emails.status': 'string',
-  'emails.totp_secret_key': 'string',
+  'emails.totp': 'string',
   'emails.backup_codes': 'array',
-  'emails.profile_folder_id': 'string',
-  'emails.scheduled_deletion_at': 'string',
-  'emails.last_used_at': 'string',
   'emails.created_at': 'string',
   'emails.updated_at': 'string',
 
@@ -258,35 +292,16 @@ export const AVAILABLE_FIELDS = [
     label: 'Phone Number',
     tableName: 'Emails',
   },
-  { name: 'emails.status', type: 'string' as FieldType, label: 'Status', tableName: 'Emails' },
   {
-    name: 'emails.totp_secret_key',
+    name: 'emails.totp',
     type: 'string' as FieldType,
-    label: 'TOTP Secret Key',
+    label: 'TOTP',
     tableName: 'Emails',
   },
   {
     name: 'emails.backup_codes',
     type: 'array' as FieldType,
     label: 'Backup Codes',
-    tableName: 'Emails',
-  },
-  {
-    name: 'emails.profile_folder_id',
-    type: 'string' as FieldType,
-    label: 'Profile Folder ID',
-    tableName: 'Emails',
-  },
-  {
-    name: 'emails.scheduled_deletion_at',
-    type: 'string' as FieldType,
-    label: 'Scheduled Deletion',
-    tableName: 'Emails',
-  },
-  {
-    name: 'emails.last_used_at',
-    type: 'string' as FieldType,
-    label: 'Last Used At',
     tableName: 'Emails',
   },
   {

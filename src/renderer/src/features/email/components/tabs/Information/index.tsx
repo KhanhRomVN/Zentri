@@ -217,16 +217,16 @@ const InfoTab: FC<InfoTabProps> = ({
               <input
                 type="text"
                 placeholder="Enter TOTP key..."
-                value={editedAccount?.totp_secret_key || ''}
+                value={editedAccount?.totp || ''}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setEditedAccount((prev: Account | null) =>
-                    prev ? { ...prev, totp_secret_key: e.target.value } : null,
+                    prev ? { ...prev, totp: e.target.value } : null,
                   )
                 }
                 className={cn(inputBaseClass, 'pl-10', 'border-border/50')}
               />
             </div>
-            {editedAccount?.totp_secret_key && (
+            {editedAccount?.totp && (
               <div className="flex gap-2 pt-2">
                 {[0, 0, 0, 0, 0, 0].map((digit, i) => (
                   <div

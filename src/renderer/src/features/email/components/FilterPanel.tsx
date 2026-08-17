@@ -3,12 +3,13 @@
  * FilterPanel
  * ------------------------------------------------------------------
  * Sidebar filter panel for the Email Manager. Provides faceted
- * filtering by account status and proxy country with collapsible
+ * filtering by linked services and visited websites with collapsible
  * sections and a clear-all action.
  *
  * Main features:
- * - Status filter (Active / Banned / Deleting) with dot indicators
- * - Country filter with flag emojis and facet counts
+ * - Services filter with single-select
+ * - Websites visited filter with single-select
+ * - Displays counts per service/website
  * - Collapsible sections with active filter count badges
  * - Clear all filters button
  * ------------------------------------------------------------------
@@ -16,30 +17,22 @@
 
 // ─── Imports ────────────────────────────────────────────────────────────
 // ── React ──
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 // ── UI ──
 import { ChevronRight, ChevronDown } from 'lucide-react';
 
 // ── Types ──
-import { Account } from '../types';
+import { Account, Service } from '../types';
+import type { SavedView } from '../../filter/components/modal/FilterModal/types';
 
 // ── UI Components ──
-import { Checkbox } from '../../../components/ui/Checkbox';
-
-// ── Local Components ──
-import ViewsPanel from './ViewsPanel';
-import type { SavedView } from './modals/FilterModal/types';
+// (No additional UI components needed)
 
 // ─── Interfaces ─────────────────────────────────────────────────────────
 interface EmailFilterState {
-  status: Set<string>;
-  country: Set<string>;
-}
-
-interface EmailFacetCounts {
-  status: Record<string, number>;
-  country: Record<string, number>;
+  serviceId: string | null;
+  websiteUrl: string | null;
 }
 
 interface FilterPanelProps {
@@ -50,65 +43,13 @@ interface FilterPanelProps {
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────
-const COUNTRY_FLAGS: Record<string, string> = {
-  VN: '🇻🇳',
-  US: '🇺🇸',
-  DE: '🇩🇪',
-  SG: '🇸🇬',
-  GB: '🇬🇧',
-  JP: '🇯🇵',
-  BR: '🇧🇷',
-  IN: '🇮🇳',
-  NL: '🇳🇱',
-  FR: '🇫🇷',
-  CA: '🇨🇦',
-  AU: '🇦🇺',
-};
-
-const COUNTRY_NAMES: Record<string, string> = {
-  VN: 'Vietnam',
-  US: 'United States',
-  DE: 'Germany',
-  SG: 'Singapore',
-  GB: 'United Kingdom',
-  JP: 'Japan',
-  BR: 'Brazil',
-  IN: 'India',
-  NL: 'Netherlands',
-  FR: 'France',
-  CA: 'Canada',
-  AU: 'Australia',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Active',
-  banned: 'Banned',
-  deleting: 'Deleting',
-};
-
-const STATUS_DOT_CLASS: Record<string, string> = {
-  active: 'bg-green',
-  banned: 'bg-yellow',
-  deleting: 'bg-red',
-};
 
 // ─── Helpers ────────────────────────────────────────────────────────────
-function toggleSet(set: Set<string>, val: string): Set<string> {
-  const next = new Set(set);
-  if (next.has(val)) next.delete(val);
-  else next.add(val);
-  return next;
-}
-
 function hasAnyFilter(filters: EmailFilterState): boolean {
-  return filters.status.size > 0 || filters.country.size > 0;
+  return filters.serviceId !== null || filters.websiteUrl !== null;
 }
 
-type SectionKey = 'status' | 'country';
-
-function getSectionCount(filters: EmailFilterState, section: SectionKey): number {
-  return filters[section].size;
-}
+type SectionKey = 'services' | 'websites';
 
 // ─── Component ──────────────────────────────────────────────────────────
 export default function FilterPanel({
@@ -119,30 +60,64 @@ export default function FilterPanel({
 }: FilterPanelProps) {
   // ── State ──
   const [filters, setFilters] = useState<EmailFilterState>({
-    status: new Set(),
-    country: new Set(),
+    serviceId: null,
+    websiteUrl: null,
   });
   const [collapsed, setCollapsed] = useState<Set<SectionKey>>(new Set());
+  const [services, setServices] = useState<Service[]>([]);
 
-  // ── Derived ──
-  const facetCounts = useMemo<EmailFacetCounts>(() => {
-    const status: Record<string, number> = {};
-    const country: Record<string, number> = {};
+  // ── Load services from database ──
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        // @ts-ignore
+        const dbServices = await window.electron.ipcRenderer.invoke('service:get-all');
+        setServices(dbServices || []);
+      } catch (err) {
+        console.error('Failed to load services', err);
+      }
+    };
+    loadServices();
+  }, []);
 
-    for (const a of accounts) {
-      status[a.status] = (status[a.status] || 0) + 1;
-      const c = a.lastProxy?.country;
-      if (c) country[c] = (country[c] || 0) + 1;
+  // ── Count accounts per service ──
+  const serviceCounts = useMemo<Record<string, number>>(() => {
+    const counts: Record<string, number> = {};
+    for (const account of accounts) {
+      const linkedServices = account.services || [];
+      for (const service of linkedServices) {
+        counts[service.serviceId] = (counts[service.serviceId] || 0) + 1;
+      }
     }
-
-    return { status, country };
+    return counts;
   }, [accounts]);
 
-  const countryEntries = useMemo(() => {
-    return Object.entries(facetCounts.country)
-      .filter(([code]) => code !== 'unknown')
-      .sort((a, b) => b[1] - a[1]);
-  }, [facetCounts.country]);
+  // ── Collect and count websites from lastActivity ──
+  const websiteCounts = useMemo<Record<string, { count: number; title: string }>>(() => {
+    const counts: Record<string, { count: number; title: string }> = {};
+    for (const account of accounts) {
+      if (account.lastActivity && account.lastActivity.url) {
+        const url = account.lastActivity.url;
+        let title = account.lastActivity.title || url;
+
+        // Extract clean title (before " - " or " | ")
+        const separators = [' - ', ' | ', ' – ', ' — '];
+        for (const sep of separators) {
+          if (title.includes(sep)) {
+            title = title.split(sep)[0].trim();
+            break;
+          }
+        }
+
+        if (counts[url]) {
+          counts[url].count++;
+        } else {
+          counts[url] = { count: 1, title };
+        }
+      }
+    }
+    return counts;
+  }, [accounts]);
 
   // ── Handlers ──
   const toggleSection = (key: SectionKey) => {
@@ -160,12 +135,26 @@ export default function FilterPanel({
   };
 
   const handleClearAll = () => {
-    handleFiltersChange({ status: new Set(), country: new Set() });
+    handleFiltersChange({ serviceId: null, websiteUrl: null });
+  };
+
+  const handleServiceSelect = (serviceId: string) => {
+    // Toggle: if already selected, clear it; otherwise set it
+    const newServiceId = filters.serviceId === serviceId ? null : serviceId;
+    handleFiltersChange({ ...filters, serviceId: newServiceId });
+  };
+
+  const handleWebsiteSelect = (websiteUrl: string) => {
+    // Toggle: if already selected, clear it; otherwise set it
+    const newWebsiteUrl = filters.websiteUrl === websiteUrl ? null : websiteUrl;
+    handleFiltersChange({ ...filters, websiteUrl: newWebsiteUrl });
   };
 
   // ── Render helpers ──
   const renderSectionHeader = (label: string, section: SectionKey) => {
-    const count = getSectionCount(filters, section);
+    const hasFilter =
+      (section === 'services' && filters.serviceId !== null) ||
+      (section === 'websites' && filters.websiteUrl !== null);
     const isCollapsed = collapsed.has(section);
     const Arrow = isCollapsed ? ChevronRight : ChevronDown;
 
@@ -178,9 +167,9 @@ export default function FilterPanel({
           <span className="text-[11.5px] uppercase tracking-wider text-text-secondary/60 font-bold">
             {label}
           </span>
-          {count > 0 && (
+          {hasFilter && (
             <span className="text-[10px] font-bold bg-primary/15 text-primary px-1.5 py-0.5 rounded-md leading-none min-w-[18px] text-center">
-              {count}
+              1
             </span>
           )}
         </div>
@@ -189,35 +178,87 @@ export default function FilterPanel({
     );
   };
 
-  const renderCheckbox = (
-    label: string,
-    count: number,
+  const renderServiceItem = (service: Service, count: number, checked: boolean) => {
+    let hostname = '';
+    try {
+      if (service.url) {
+        hostname = new URL(service.url).hostname;
+      }
+    } catch {
+      hostname = '';
+    }
+
+    return (
+      <button
+        key={service.id}
+        onClick={() => handleServiceSelect(service.id)}
+        className={`flex items-center gap-2 py-2 px-2 rounded-md cursor-pointer text-[12.5px] transition-colors w-full text-left ${
+          checked
+            ? 'bg-primary/10 text-primary hover:bg-primary/15'
+            : 'text-text-secondary hover:bg-card-hover'
+        }`}
+      >
+        {hostname && (
+          <img
+            src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+            className="w-4 h-4 opacity-70 shrink-0"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+            alt=""
+          />
+        )}
+        <span className="flex-1 truncate font-medium">{service.name}</span>
+        <span className="font-mono text-[10.5px] text-text-secondary/60">
+          {count.toLocaleString()}
+        </span>
+      </button>
+    );
+  };
+
+  const renderWebsiteItem = (
+    url: string,
+    data: { count: number; title: string },
     checked: boolean,
-    onChange: () => void,
-    prefix?: React.ReactNode,
-  ) => (
-    <label className="flex items-center gap-2 py-1 rounded-md cursor-pointer text-[12.5px] text-text-secondary">
-      <Checkbox checked={checked} onChange={onChange} size="sm" />
-      <span className="flex items-center gap-2 flex-1">
-        {prefix}
-        {label}
-      </span>
-      <span className="font-mono text-[10.5px] text-text-secondary/60">
-        {count.toLocaleString()}
-      </span>
-    </label>
-  );
+  ) => {
+    let hostname = '';
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      hostname = url;
+    }
+
+    return (
+      <button
+        key={url}
+        onClick={() => handleWebsiteSelect(url)}
+        className={`flex items-center gap-2 py-2 px-2 rounded-md cursor-pointer text-[12.5px] transition-colors w-full text-left ${
+          checked
+            ? 'bg-primary/10 text-primary hover:bg-primary/15'
+            : 'text-text-secondary hover:bg-card-hover'
+        }`}
+      >
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+          className="w-4 h-4 opacity-70 shrink-0"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+          alt=""
+        />
+        <span className="flex-1 truncate font-medium" title={data.title}>
+          {data.title}
+        </span>
+        <span className="font-mono text-[10.5px] text-text-secondary/60">
+          {data.count.toLocaleString()}
+        </span>
+      </button>
+    );
+  };
 
   // ── Render ──
   return (
     <div className="w-[260px] shrink-0 bg-card-background border border-border rounded-lg overflow-hidden flex flex-col">
-      {/* Views */}
-      <ViewsPanel
-        onViewSelect={onViewSelect}
-        selectedViewId={selectedViewId}
-        className="border-b-0 bg-transparent"
-      />
-
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border shrink-0">
         <span className="text-[11px] uppercase tracking-wider text-text-secondary/60 font-bold">
@@ -235,52 +276,43 @@ export default function FilterPanel({
 
       {/* Body */}
       <div className="overflow-y-auto space-y-3 flex-1">
-        {/* Status */}
+        {/* Services */}
         <div>
-          {renderSectionHeader('Status', 'status')}
-          {!collapsed.has('status') && (
-            <div className="mt-1 space-y-0.5 px-3">
-              {Object.entries(STATUS_LABELS).map(([key, label]) =>
-                renderCheckbox(
-                  label,
-                  facetCounts.status[key] || 0,
-                  filters.status.has(key),
-                  () =>
-                    handleFiltersChange({
-                      ...filters,
-                      status: toggleSet(filters.status, key),
-                    }),
-                  <span
-                    className={`size-1.5 rounded-full ${STATUS_DOT_CLASS[key] || 'bg-text-secondary/40'}`}
-                  />,
-                ),
+          {renderSectionHeader('Services', 'services')}
+          {!collapsed.has('services') && (
+            <div className="mt-1 space-y-0.5 px-3 max-h-[400px] overflow-y-auto">
+              {services.length > 0 ? (
+                services
+                  .filter((service) => serviceCounts[service.id] > 0)
+                  .sort((a, b) => (serviceCounts[b.id] || 0) - (serviceCounts[a.id] || 0))
+                  .map((service) =>
+                    renderServiceItem(
+                      service,
+                      serviceCounts[service.id] || 0,
+                      filters.serviceId === service.id,
+                    ),
+                  )
+              ) : (
+                <div className="text-[11px] text-text-secondary/40 italic px-1.5 py-1">
+                  No services linked
+                </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Country */}
+        {/* Websites */}
         <div>
-          {renderSectionHeader('Country', 'country')}
-          {!collapsed.has('country') && (
-            <div className="mt-1 space-y-0.5 px-3">
-              {countryEntries.length > 0 ? (
-                countryEntries.map(([code, count]) =>
-                  renderCheckbox(
-                    `${COUNTRY_NAMES[code] || code}`,
-                    count,
-                    filters.country.has(code),
-                    () =>
-                      handleFiltersChange({
-                        ...filters,
-                        country: toggleSet(filters.country, code),
-                      }),
-                    <span>{COUNTRY_FLAGS[code] || '🏳'}</span>,
-                  ),
-                )
+          {renderSectionHeader('Websites Visited', 'websites')}
+          {!collapsed.has('websites') && (
+            <div className="mt-1 space-y-0.5 px-3 max-h-[400px] overflow-y-auto">
+              {Object.keys(websiteCounts).length > 0 ? (
+                Object.entries(websiteCounts)
+                  .sort((a, b) => b[1].count - a[1].count)
+                  .map(([url, data]) => renderWebsiteItem(url, data, filters.websiteUrl === url))
               ) : (
                 <div className="text-[11px] text-text-secondary/40 italic px-1.5 py-1">
-                  No country data
+                  No activity history
                 </div>
               )}
             </div>

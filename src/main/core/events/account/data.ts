@@ -586,7 +586,7 @@ export function setupDataHandlers() {
 
         const rows: any[] = await new Promise((resolve) => {
           db.all(
-            'SELECT domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at, ended_at FROM site_fingerprint_history ORDER BY started_at DESC',
+            'SELECT id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at, ended_at FROM site_fingerprint_history ORDER BY started_at DESC',
             (_err, rows) => {
               db.close();
               resolve(rows || []);
@@ -596,6 +596,34 @@ export function setupDataHandlers() {
         fs.unlinkSync(tempPath);
 
         return { success: true, entries: rows };
+      } catch (e: any) {
+        return { success: false, error: e.message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'email:delete-fingerprint-history',
+    async (_event, { email, id }: { email: string; id: string }) => {
+      try {
+        const dbDir = path.dirname(dbManager.dbPath);
+        const profileDir = path.join(dbDir, 'profiles', email);
+        const fpHistoryPath = path.join(profileDir, 'fp-ip-history.db');
+
+        if (!fs.existsSync(fpHistoryPath)) {
+          return { success: false, error: 'NO_HISTORY_FILE' };
+        }
+
+        const db = new sqlite3.Database(fpHistoryPath);
+        await new Promise<void>((resolve, reject) => {
+          db.run('DELETE FROM site_fingerprint_history WHERE id = ?', [id], (err) => {
+            db.close();
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        return { success: true };
       } catch (e: any) {
         return { success: false, error: e.message };
       }

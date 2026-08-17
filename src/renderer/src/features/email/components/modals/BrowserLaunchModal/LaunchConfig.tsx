@@ -10,9 +10,9 @@ import { DropdownTrigger } from '../../../../../components/ui/Dropdown/DropdownT
 import { DropdownContent } from '../../../../../components/ui/Dropdown/DropdownContent';
 import { DropdownItem } from '../../../../../components/ui/Dropdown/DropdownItem';
 import Button from '../../../../../components/ui/Button/Button';
-import { IpApiResponse } from '../fingerprint-generator';
-import { Fingerprint } from '../fingerprint';
-import { OS_ICONS } from './types';
+import { IpApiResponse } from '../../../../../types/ip-api';
+import { Fingerprint } from '../../../../../types/fingerprint-profile';
+import { OS_ICONS } from './index';
 
 interface LaunchConfigProps {
   onClose: () => void;

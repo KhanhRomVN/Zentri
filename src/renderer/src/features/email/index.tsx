@@ -2,12 +2,11 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } fr
 import { useHashParams } from '../../hooks/useHashParams';
 import EmailTable from './components/EmailTable';
 import FilterBar from './components/FilterBar';
-import StatsStrip from './components/StatsStrip';
 import FilterPanel from './components/FilterPanel';
 import { useEmailTableState } from './hooks/useEmailTableState';
 import { useEmailFilter } from './hooks/useEmailFilter';
 import ViewsService from './services/api.service';
-import type { SavedView } from './components/modals/FilterModal/types';
+import type { SavedView } from '../filter/components/modal/FilterModal/types';
 import {
   Plus,
   Mail,
@@ -18,8 +17,6 @@ import {
   Hash,
   LayoutDashboard,
   ChevronRight,
-  Trash2,
-  Undo2,
   X,
   RefreshCw,
   Upload,
@@ -123,6 +120,13 @@ const EmailManager = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
   const [selectedView, setSelectedView] = useState<SavedView | null>(null);
+  const [serviceFilter, setServiceFilter] = useState<{
+    serviceId: string | null;
+    websiteUrl: string | null;
+  }>({
+    serviceId: null,
+    websiteUrl: null,
+  });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -168,6 +172,21 @@ const EmailManager = () => {
 
       return matchesSearch;
     });
+
+    // Apply service filter
+    if (serviceFilter.serviceId) {
+      result = result.filter((account) => {
+        const linkedServices = account.services || [];
+        return linkedServices.some((service) => service.serviceId === serviceFilter.serviceId);
+      });
+    }
+
+    // Apply website filter
+    if (serviceFilter.websiteUrl) {
+      result = result.filter((account) => {
+        return account.lastActivity && account.lastActivity.url === serviceFilter.websiteUrl;
+      });
+    }
 
     // Apply view filters first if a view is selected
     if (selectedView && selectedView.filters.length > 0) {
@@ -222,11 +241,10 @@ const EmailManager = () => {
     }
 
     return result;
-  }, [accounts, searchQuery, selectedView, filters, sorting]);
+  }, [accounts, searchQuery, serviceFilter, selectedView, filters, sorting]);
 
   // Pagination calculations
   const totalRecords = filteredAccounts.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const paginatedData = useMemo(
     () => filteredAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [filteredAccounts, currentPage, pageSize],
@@ -282,11 +300,9 @@ const EmailManager = () => {
   }, [toast.visible]);
 
   const [activeTab, setActiveTab] = useState<
-    'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint'
+    'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint' | 'security'
   >('info');
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [hardDeleteConfirmId, setHardDeleteConfirmId] = useState<string | null>(null);
-  const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
   const [diffPayload, setDiffPayload] = useState<{
     old: Account;
     new: Account;
@@ -359,10 +375,8 @@ const EmailManager = () => {
           status: row.status,
           phoneNumber: row.phone_number,
           recoveryEmail: row.recovery_email,
-          totpSecretKey: row.totp_secret_key,
+          totpSecretKey: row.totp,
           backupCodes: row.backup_codes,
-          scheduledDeletionAt: row.scheduled_deletion_at,
-          lastUsedAt: row.last_used_at,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           services: linkedServices,
@@ -432,58 +446,6 @@ const EmailManager = () => {
     loadData();
   }, [loadData]);
 
-  const handleSoftDelete = useCallback(
-    async (id: string) => {
-      try {
-        const scheduledTime = new Date();
-        scheduledTime.setDate(scheduledTime.getDate() + 7);
-        const scheduledStr = scheduledTime.toISOString();
-
-        // @ts-ignore
-        await window.electron.ipcRenderer.invoke(
-          'sqlite:run',
-          'UPDATE emails SET status = ?, scheduled_deletion_at = ? WHERE id = ?',
-          ['deleting', scheduledStr, id],
-        );
-
-        setToast({
-          visible: true,
-          message: 'Account moved to trash',
-          type: 'warning',
-        });
-
-        await loadData();
-      } catch (e) {
-        console.error('[Email] Soft delete error:', e);
-        setToast({
-          visible: true,
-          message: 'Failed to move to trash',
-          type: 'error',
-        });
-      }
-    },
-    [loadData],
-  );
-
-  const handleRestore = useCallback(
-    async (id: string) => {
-      try {
-        // @ts-ignore
-        await window.electron.ipcRenderer.invoke(
-          'sqlite:run',
-          'UPDATE emails SET status = ?, scheduled_deletion_at = NULL WHERE id = ?',
-          ['active', id],
-        );
-        setToast({ visible: true, message: 'Account restored successfully', type: 'success' });
-        await loadData();
-      } catch (e) {
-        console.error('[Email] Restore error:', e);
-        setToast({ visible: true, message: 'Failed to restore account', type: 'error' });
-      }
-    },
-    [loadData],
-  );
-
   const handleHardDelete = useCallback(
     async (id: string) => {
       try {
@@ -507,13 +469,13 @@ const EmailManager = () => {
         // @ts-ignore
         await window.electron.ipcRenderer.invoke(
           'sqlite:run',
-          'UPDATE emails SET email = ?, password = ?, recovery_email = ?, phone_number = ?, totp_secret_key = ?, backup_codes = ? WHERE id = ?',
+          'UPDATE emails SET email = ?, password = ?, recovery_email = ?, phone_number = ?, totp = ?, backup_codes = ? WHERE id = ?',
           [
             updated.email,
             updated.password,
             updated.recovery_email,
             updated.phone_number,
-            updated.totp_secret_key,
+            updated.totp,
             updated.backup_codes,
             updated.id,
           ],
@@ -579,8 +541,8 @@ const EmailManager = () => {
       // @ts-ignore
       await window.electron.ipcRenderer.invoke(
         'sqlite:run',
-        `INSERT INTO emails (id, email, password, recovery_email, phone_number, totp_secret_key, backup_codes, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO emails (id, email, password, recovery_email, phone_number, totp, backup_codes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           newEmailData.email,
@@ -589,7 +551,6 @@ const EmailManager = () => {
           newEmailData.phoneNumber || null,
           newEmailData.totpSecretKey || null,
           newEmailData.backupCodes.length > 0 ? JSON.stringify(newEmailData.backupCodes) : null,
-          'active',
         ],
       );
 
@@ -615,13 +576,6 @@ const EmailManager = () => {
       alert('Failed to add account');
     }
   }, [newEmailData, loadData]);
-
-  const trashConflict = useMemo(() => {
-    if (!newEmailData.email) return null;
-    return accounts.find(
-      (a) => a.email.toLowerCase() === newEmailData.email.toLowerCase() && a.status === 'deleting',
-    );
-  }, [newEmailData.email, accounts]);
 
   const toastTypeStyles: Record<string, string> = {
     info: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
@@ -684,10 +638,10 @@ const EmailManager = () => {
           </div>
         </div>
         <div className="flex-1 bg-card/30 border-b border-border/50 overflow-hidden flex flex-col gap-4">
-          <StatsStrip accounts={accounts} />
           <div className="flex-1 flex flex-row overflow-hidden gap-4 pt-1">
             <FilterPanel
               accounts={accounts}
+              onFiltersChange={setServiceFilter}
               onViewSelect={setSelectedView}
               selectedViewId={selectedView?.id || null}
             />
@@ -745,8 +699,6 @@ const EmailManager = () => {
                 onSelectAccount={(account) => {
                   setFocusedAccountId((prev) => (prev === account.id ? null : account.id));
                 }}
-                onSoftDelete={(id) => setDeleteConfirmId(id)}
-                onRestore={(id) => setRestoreConfirmId(id)}
                 onHardDelete={(id) => setHardDeleteConfirmId(id)}
                 onSaveChanges={(oldAcc, newAcc) => setDiffPayload({ old: oldAcc, new: newAcc })}
                 onRefreshData={loadData}
@@ -754,6 +706,7 @@ const EmailManager = () => {
                 setActiveTab={setActiveTab}
                 sorting={sorting}
                 columnVisibility={columnVisibility}
+                selectedServiceId={serviceFilter.serviceId}
               />
             )}
           </div>
@@ -805,41 +758,6 @@ const EmailManager = () => {
                   errors.email ? 'border-destructive' : 'border-border',
                 )}
               />
-
-              {/* Trash Conflict Warning */}
-              {trashConflict && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                        Trash Conflict
-                      </p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        This account exists in the trash. Please delete it permanently or restore it
-                        before re-adding.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleHardDelete(trashConflict.id)}
-                      className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
-                    >
-                      Delete Permanently
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsDrawerOpen(false);
-                        setFocusedAccountId(trashConflict.id);
-                      }}
-                      className="flex-1 py-2 rounded-xl bg-white/5 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider hover:bg-amber-500/5 transition-colors"
-                    >
-                      View in Table
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
             <div className="space-y-2.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
@@ -1004,7 +922,7 @@ const EmailManager = () => {
           <Button
             variant="solid"
             className="flex-1"
-            disabled={!newEmailData.email || !newEmailData.password || !!trashConflict}
+            disabled={!newEmailData.email || !newEmailData.password}
             onClick={handleAddEmail}
           >
             Save Account
@@ -1031,45 +949,6 @@ const EmailManager = () => {
           </div>
         </div>
       )}
-
-      {/* Delete Confirm Modal */}
-      <ModalWrapper
-        open={!!deleteConfirmId}
-        onClose={() => setDeleteConfirmId(null)}
-        title="Move to Trash"
-        footer={
-          <div className="flex gap-3 w-full">
-            <button
-              onClick={() => setDeleteConfirmId(null)}
-              className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                if (deleteConfirmId) {
-                  handleSoftDelete(deleteConfirmId);
-                  setDeleteConfirmId(null);
-                }
-              }}
-              className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all shadow-lg shadow-destructive/20"
-            >
-              Move to Trash
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-4 py-4">
-          <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive mx-auto mb-4">
-            <Trash2 className="w-6 h-6" />
-          </div>
-          <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            Are you sure you want to move this account to the trash? It will be{' '}
-            <span className="text-foreground font-bold"> permanently deleted </span> after a 7-day
-            grace period.
-          </p>
-        </div>
-      </ModalWrapper>
 
       {/* Hard Delete Modal */}
       <ModalWrapper
@@ -1106,44 +985,6 @@ const EmailManager = () => {
             This action <span className="text-red-500 font-bold"> cannot be undone </span>. All
             account data, profiles, and associated service links will be wiped from the local
             repository.
-          </p>
-        </div>
-      </ModalWrapper>
-
-      {/* Restore Modal */}
-      <ModalWrapper
-        open={!!restoreConfirmId}
-        onClose={() => setRestoreConfirmId(null)}
-        title="Restore Account"
-        footer={
-          <div className="flex gap-3 w-full">
-            <button
-              onClick={() => setRestoreConfirmId(null)}
-              className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-button-secondBg hover:bg-button-secondBgHover transition-colors text-foreground/80"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                if (restoreConfirmId) {
-                  handleRestore(restoreConfirmId);
-                  setRestoreConfirmId(null);
-                }
-              }}
-              className="flex-1 px-4 py-3 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
-            >
-              Restore
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-4 py-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 mx-auto mb-4">
-            <Undo2 className="w-6 h-6" />
-          </div>
-          <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            Are you sure you want to <span className="text-emerald-500 font-bold">restore</span>{' '}
-            this account? Normal operations will resume and scheduled deletion will be cancelled.
           </p>
         </div>
       </ModalWrapper>

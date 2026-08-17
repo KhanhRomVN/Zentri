@@ -28,7 +28,7 @@ import { DropdownTrigger } from '../../../../../components/ui/Dropdown/DropdownT
 import { DropdownContent } from '../../../../../components/ui/Dropdown/DropdownContent';
 import { DropdownItem } from '../../../../../components/ui/Dropdown/DropdownItem';
 import { DropdownLabel } from '../../../../../components/ui/Dropdown/DropdownLabel';
-import { Fingerprint, FingerprintConfig } from '../fingerprint';
+import { Fingerprint, FingerprintConfig } from '../../../../../types/fingerprint-profile';
 
 // ── Colors per section ────────────────────────────────────────────────
 const STEP_COLORS: Record<string, string> = {

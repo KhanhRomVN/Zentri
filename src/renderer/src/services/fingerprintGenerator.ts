@@ -1,7 +1,6 @@
-import type { IpApiResponse } from './types';
-import { getLocaleInfo } from './locales';
-import { OS_TEMPLATES } from './os-templates';
-import { BROWSER_TEMPLATES } from './browser-templates';
+import type { Fingerprint } from '../types/fingerprint-profile';
+import type { IpApiResponse } from '../types/ip-api';
+import { getLocaleInfo, OS_TEMPLATES, BROWSER_TEMPLATES } from '../constants/fingerprintData';
 import {
   generateSeed,
   getTimezoneOffset,
@@ -11,8 +10,7 @@ import {
   randomAudioSampleRate,
   getPluginsJson,
   getMimeTypes,
-} from './helpers';
-import { Fingerprint } from '../../fingerprint';
+} from '../utils/fingerprintHelpers';
 
 export function generateFingerprints(ipData: IpApiResponse): Fingerprint[] {
   const localeInfo = getLocaleInfo(ipData.countryCode);

@@ -9,6 +9,7 @@ import {
   Search,
   Zap,
   Network,
+  Eye,
 } from 'lucide-react';
 import { useAccentColors } from '../hooks/useAccentColors';
 

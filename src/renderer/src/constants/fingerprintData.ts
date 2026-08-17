@@ -1,44 +1,9 @@
-import { Fingerprint } from './fingerprint';
+import type { LocaleInfo, OsTemplate, BrowserTemplate } from '../types/fingerprint-generator';
 
-// ── IP API response ────────────────────────────────────────────────────
-export interface IpApiResponse {
-  status: string;
-  country: string;
-  countryCode: string;
-  region: string;
-  regionName: string;
-  city: string;
-  zip: string;
-  lat: number;
-  lon: number;
-  timezone: string;
-  isp: string;
-  org: string;
-  as: string;
-  query: string;
-}
+import type { LocaleInfo, OsTemplate, BrowserTemplate } from '../types/fingerprint-generator';
 
-// ── Region groups ──────────────────────────────────────────────────────
-type RegionTag =
-  | 'north_america'
-  | 'europe'
-  | 'asia'
-  | 'oceania'
-  | 'south_america'
-  | 'africa'
-  | 'middle_east'
-  | 'global';
-
-// ── Locale definition ─────────────────────────────────────────────────
-interface LocaleInfo {
-  language: string;
-  languages: string[];
-  timezones: string[];
-  region: RegionTag;
-}
-
-// Mở rộng đến hầu hết các quốc gia mà ip-api trả về
-const COUNTRY_LOCALE_MAP: Record<string, LocaleInfo> = {
+// ── Country → locale mapping ─────────────────────────────────────────
+export const COUNTRY_LOCALE_MAP: Record<string, LocaleInfo> = {
   VN: {
     language: 'vi-VN',
     languages: ['vi-VN', 'vi', 'en-US', 'en'],
@@ -315,52 +280,21 @@ const COUNTRY_LOCALE_MAP: Record<string, LocaleInfo> = {
     timezones: ['Asia/Jerusalem'],
     region: 'middle_east',
   },
-  // ... thêm các nước khác nếu cần, default sẽ dùng global
 };
 
-const DEFAULT_LOCALE: LocaleInfo = {
+export const DEFAULT_LOCALE: LocaleInfo = {
   language: 'en-US',
   languages: ['en-US', 'en'],
   timezones: ['UTC'],
   region: 'global',
 };
 
-function getLocaleInfo(countryCode: string): LocaleInfo {
+export function getLocaleInfo(countryCode: string): LocaleInfo {
   return COUNTRY_LOCALE_MAP[countryCode?.toUpperCase()] || DEFAULT_LOCALE;
 }
 
-// ── OS / Device templates ──────────────────────────────────────────────
-interface ScreenConfig {
-  width: number;
-  height: number;
-  availHeightOffset: number;
-  dpr: number;
-}
-
-interface OsTemplate {
-  label: string; // tên hiển thị
-  group: string; // Windows / macOS / Linux / Android / iOS
-  platform: string;
-  oscpu: string;
-  platformVersion: string;
-  hardwareConcurrency: number;
-  deviceMemory: number; // GB
-  maxTouchPoints: number;
-  isMobile: boolean;
-  webglVendor: string;
-  webglRenderer: string;
-  vendor: string; // navigator.vendor
-  vendorSub: string;
-  productSub: string;
-  fonts: string[];
-  screens: ScreenConfig[]; // các độ phân giải phổ biến cho thiết bị này
-  batteryCharging?: boolean;
-  batteryLevel?: number;
-  // Khu vực địa lý mà thiết bị này thực sự phổ biến
-  regions: RegionTag[];
-}
-
-const OS_TEMPLATES: OsTemplate[] = [
+// ── OS templates ─────────────────────────────────────────────────────
+export const OS_TEMPLATES: OsTemplate[] = [
   // ── Windows Desktop (phổ thông) ──────────────────────────────────
   {
     label: 'Windows 11 (Intel UHD)',
@@ -368,6 +302,7 @@ const OS_TEMPLATES: OsTemplate[] = [
     platform: 'Win32',
     oscpu: 'Windows NT 10.0; Win64; x64',
     platformVersion: '14.0.0',
+    windowsNtVersion: '10.0',
     hardwareConcurrency: 8,
     deviceMemory: 16,
     maxTouchPoints: 0,
@@ -417,6 +352,7 @@ const OS_TEMPLATES: OsTemplate[] = [
     platform: 'Win32',
     oscpu: 'Windows NT 10.0; Win64; x64',
     platformVersion: '10.0.0',
+    windowsNtVersion: '10.0',
     hardwareConcurrency: 4,
     deviceMemory: 8,
     maxTouchPoints: 0,
@@ -440,7 +376,6 @@ const OS_TEMPLATES: OsTemplate[] = [
       'Lucida Console',
       'Microsoft Sans Serif',
       'Palatino Linotype',
-      'Segoe UI',
       'Tahoma',
       'Times New Roman',
       'Trebuchet MS',
@@ -470,6 +405,7 @@ const OS_TEMPLATES: OsTemplate[] = [
     platform: 'Win32',
     oscpu: 'Windows NT 10.0; Win64; x64',
     platformVersion: '14.0.0',
+    windowsNtVersion: '10.0',
     hardwareConcurrency: 16,
     deviceMemory: 32,
     maxTouchPoints: 0,
@@ -504,7 +440,7 @@ const OS_TEMPLATES: OsTemplate[] = [
     ],
     batteryCharging: true,
     batteryLevel: 1.0,
-    regions: ['north_america', 'europe', 'oceania', 'asia'], // chủ yếu ở thị trường phát triển
+    regions: ['north_america', 'europe', 'oceania', 'asia'],
   },
   // ── macOS Desktop / MacBook ─────────────────────────────────────
   {
@@ -583,7 +519,7 @@ const OS_TEMPLATES: OsTemplate[] = [
       'Verdana',
     ],
     screens: [
-      { width: 1512, height: 982, availHeightOffset: 40, dpr: 2 }, // native scaled
+      { width: 1512, height: 982, availHeightOffset: 40, dpr: 2 },
       { width: 2560, height: 1440, availHeightOffset: 40, dpr: 2 },
     ],
     batteryCharging: true,
@@ -626,7 +562,7 @@ const OS_TEMPLATES: OsTemplate[] = [
     ],
     batteryCharging: false,
     batteryLevel: 1.0,
-    regions: ['europe', 'north_america', 'asia', 'global'], // Linux phổ biến hơn ở châu Âu, Ấn Độ
+    regions: ['europe', 'north_america', 'asia', 'global'],
   },
   // ── Smartphone Android ──────────────────────────────────────────
   {
@@ -693,7 +629,7 @@ const OS_TEMPLATES: OsTemplate[] = [
     screens: [{ width: 360, height: 780, availHeightOffset: 60, dpr: 2.75 }],
     batteryCharging: false,
     batteryLevel: 0.55,
-    regions: ['asia', 'africa', 'south_america', 'middle_east'], // phân khúc giá rẻ phổ biến ở các nước đang phát triển
+    regions: ['asia', 'africa', 'south_america', 'middle_east', 'north_america'],
   },
   {
     label: 'Samsung Galaxy A14 (Mali-G57)',
@@ -714,7 +650,7 @@ const OS_TEMPLATES: OsTemplate[] = [
     screens: [{ width: 360, height: 800, availHeightOffset: 60, dpr: 2 }],
     batteryCharging: true,
     batteryLevel: 0.8,
-    regions: ['asia', 'africa', 'south_america', 'europe'], // bán chạy toàn cầu giá rẻ
+    regions: ['asia', 'africa', 'south_america', 'europe', 'north_america'],
   },
   // ── iPhone ──────────────────────────────────────────────────────
   {
@@ -751,7 +687,7 @@ const OS_TEMPLATES: OsTemplate[] = [
     ],
     screens: [
       { width: 393, height: 852, availHeightOffset: 60, dpr: 3 },
-      { width: 430, height: 932, availHeightOffset: 60, dpr: 3 }, // 15 Pro Max
+      { width: 430, height: 932, availHeightOffset: 60, dpr: 3 },
     ],
     batteryCharging: true,
     batteryLevel: 0.91,
@@ -825,22 +761,12 @@ const OS_TEMPLATES: OsTemplate[] = [
     screens: [{ width: 375, height: 667, availHeightOffset: 60, dpr: 2 }],
     batteryCharging: false,
     batteryLevel: 0.55,
-    regions: ['north_america', 'europe', 'asia', 'africa'], // giá rẻ, phổ biến ở nhiều nước
+    regions: ['north_america', 'europe', 'asia', 'africa'],
   },
 ];
 
-// ── Browser templates ──────────────────────────────────────────────────
-interface BrowserTemplate {
-  name: string;
-  brand: string;
-  brandVersion: string;
-  engineVersion: string;
-  appliesTo: 'desktop' | 'mobile' | 'all';
-  onlyOnGroups?: string[]; // OS groups (Windows, macOS, Linux, Android, iOS)
-  userAgentTemplate: (os: string, cpu: string, version: string) => string;
-}
-
-const BROWSER_TEMPLATES: BrowserTemplate[] = [
+// ── Browser templates ────────────────────────────────────────────────
+export const BROWSER_TEMPLATES: BrowserTemplate[] = [
   // Chrome
   {
     name: 'Chrome 143',
@@ -849,7 +775,7 @@ const BROWSER_TEMPLATES: BrowserTemplate[] = [
     engineVersion: '143.0.0.0',
     appliesTo: 'all',
     userAgentTemplate: (os, cpu, v) =>
-      `Mozilla/5.0 (${os}; ${cpu}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36`,
+      `Mozilla/5.0 (${os}${cpu ? `; ${cpu}` : ''}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36`,
   },
   {
     name: 'Chrome 140',
@@ -858,7 +784,7 @@ const BROWSER_TEMPLATES: BrowserTemplate[] = [
     engineVersion: '140.0.0.0',
     appliesTo: 'all',
     userAgentTemplate: (os, cpu, v) =>
-      `Mozilla/5.0 (${os}; ${cpu}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36`,
+      `Mozilla/5.0 (${os}${cpu ? `; ${cpu}` : ''}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36`,
   },
   {
     name: 'Chrome 130',
@@ -867,7 +793,7 @@ const BROWSER_TEMPLATES: BrowserTemplate[] = [
     engineVersion: '130.0.0.0',
     appliesTo: 'all',
     userAgentTemplate: (os, cpu, v) =>
-      `Mozilla/5.0 (${os}; ${cpu}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36`,
+      `Mozilla/5.0 (${os}${cpu ? `; ${cpu}` : ''}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36`,
   },
   // Firefox
   {
@@ -897,7 +823,7 @@ const BROWSER_TEMPLATES: BrowserTemplate[] = [
     appliesTo: 'desktop',
     onlyOnGroups: ['Windows', 'macOS'],
     userAgentTemplate: (os, cpu, v) =>
-      `Mozilla/5.0 (${os}; ${cpu}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36 Edg/${v}`,
+      `Mozilla/5.0 (${os}${cpu ? `; ${cpu}` : ''}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36 Edg/${v}`,
   },
   {
     name: 'Edge 140',
@@ -907,7 +833,7 @@ const BROWSER_TEMPLATES: BrowserTemplate[] = [
     appliesTo: 'desktop',
     onlyOnGroups: ['Windows', 'macOS'],
     userAgentTemplate: (os, cpu, v) =>
-      `Mozilla/5.0 (${os}; ${cpu}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36 Edg/${v}`,
+      `Mozilla/5.0 (${os}${cpu ? `; ${cpu}` : ''}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36 Edg/${v}`,
   },
   // Safari (chỉ macOS/iOS)
   {
@@ -948,7 +874,7 @@ const BROWSER_TEMPLATES: BrowserTemplate[] = [
     engineVersion: '110.0.0.0',
     appliesTo: 'desktop',
     userAgentTemplate: (os, cpu, v) =>
-      `Mozilla/5.0 (${os}; ${cpu}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36 OPR/${v}`,
+      `Mozilla/5.0 (${os}${cpu ? `; ${cpu}` : ''}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${v} Safari/537.36 OPR/${v}`,
   },
   // Samsung Internet (Android)
   {
@@ -959,218 +885,6 @@ const BROWSER_TEMPLATES: BrowserTemplate[] = [
     appliesTo: 'mobile',
     onlyOnGroups: ['Android'],
     userAgentTemplate: (os, cpu, v) =>
-      `Mozilla/5.0 (${os}; ${cpu}) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/23.0 Chrome/${v} Safari/537.36`,
+      `Mozilla/5.0 (${os}${cpu ? `; ${cpu}` : ''}) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/23.0 Chrome/${v} Safari/537.36`,
   },
 ];
-
-// ── Helpers ────────────────────────────────────────────────────────────
-function generateSeed(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-}
-
-function getTimezoneOffset(tz: string): number {
-  try {
-    const date = new Date();
-    const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-    const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
-    return (tzDate.getTime() - utcDate.getTime()) / 60000;
-  } catch {
-    return 0;
-  }
-}
-
-function getPluginsJson(browserName: string): string {
-  if (browserName.startsWith('Firefox')) {
-    return JSON.stringify([
-      {
-        name: 'PDF Viewer',
-        description: 'Portable Document Format',
-        filename: 'internal-pdf-viewer',
-        mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf' }],
-      },
-    ]);
-  }
-  // Chrome / Edge / Opera / Samsung
-  const pdfPlugin = browserName.startsWith('Edge')
-    ? 'Microsoft Edge PDF Viewer'
-    : 'Chrome PDF Plugin';
-  const pdfFilename = browserName.startsWith('Edge')
-    ? 'mhjfbmdgcfjbbpaeojofohoefgiehjai'
-    : 'internal-pdf-viewer';
-  return JSON.stringify([
-    {
-      name: pdfPlugin,
-      description: 'Portable Document Format',
-      filename: pdfFilename,
-      mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf' }],
-    },
-    {
-      name: 'Chrome PDF Viewer',
-      description: '',
-      filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
-      mimeTypes: [{ type: 'application/pdf', suffixes: 'pdf' }],
-    },
-    {
-      name: 'Native Client',
-      description: '',
-      filename: 'internal-nacl-plugin',
-      mimeTypes: [
-        { type: 'application/x-nacl', suffixes: '' },
-        { type: 'application/x-pnacl', suffixes: '' },
-      ],
-    },
-  ]);
-}
-
-function getMimeTypes(): string {
-  return JSON.stringify([
-    { type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' },
-    { type: 'application/x-nacl', suffixes: '', description: 'Native Client Executable' },
-    { type: 'application/x-pnacl', suffixes: '', description: 'Portable Native Client Executable' },
-  ]);
-}
-
-// ── Short hash for unique fingerprint IDs ──────────────────────────────
-function shortHash(s: string): string {
-  let hash = 0;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s.charCodeAt(i);
-    hash = ((hash << 5) - hash) + ch;
-    hash |= 0; // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString(36).substring(0, 6);
-}
-
-// ── Main generator ─────────────────────────────────────────────────────
-export function generateFingerprints(ipData: IpApiResponse): Fingerprint[] {
-  const localeInfo = getLocaleInfo(ipData.countryCode);
-  const countryRegion = localeInfo.region;
-  const timezone = ipData.timezone || localeInfo.timezones[0];
-
-  const results: Fingerprint[] = [];
-  let idCounter = 0;
-
-  // Lọc OS templates theo region của quốc gia
-  const allowedOs = OS_TEMPLATES.filter(
-    (os) => os.regions.includes(countryRegion) || os.regions.includes('global'),
-  );
-
-  for (const os of allowedOs) {
-    // Lọc browser phù hợp OS
-    const browsers = BROWSER_TEMPLATES.filter((b) => {
-      // Kiểm tra chỉ định OS groups
-      if (b.onlyOnGroups && !b.onlyOnGroups.includes(os.group)) return false;
-      // Phù hợp mobile/desktop
-      if (b.appliesTo === 'desktop' && os.isMobile) return false;
-      if (b.appliesTo === 'mobile' && !os.isMobile) return false;
-      return true;
-    });
-
-    for (const browser of browsers) {
-      const version = browser.engineVersion.split('.')[0];
-
-      for (const scr of os.screens) {
-        // Xây dựng UA string
-        const uaOs = os.group === 'iOS'
-          ? `iPhone; CPU iPhone OS ${os.platformVersion.replace(/\./g, '_')} like Mac OS X`
-          : os.group === 'Android'
-            ? `Linux; Android ${os.platformVersion.split('.')[0]}; ${os.label.includes('Pixel') ? 'Pixel 7' : 'SM-S911B'}`
-            : os.oscpu.includes('Windows')
-              ? `Windows NT ${os.platformVersion.split('.')[0]}.0; Win64; x64`
-              : os.oscpu.includes('Mac')
-                ? `Macintosh; Intel Mac OS X 10_15_7`
-                : `X11; Linux x86_64`;
-
-        const cpuArch = os.oscpu.includes('arm') ? '' : 'x64';
-        const userAgent = browser.userAgentTemplate(uaOs, cpuArch, version);
-
-        const appVersion = browser.name.startsWith('Firefox')
-          ? `5.0 (${uaOs})`
-          : `5.0 (${uaOs}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version}.0.0.0 Safari/537.36`;
-
-        const label = `${os.label} • ${browser.name} • ${scr.width}×${scr.height}`;
-
-        const config: Record<string, any> = {
-          userAgent,
-          appVersion: appVersion !== userAgent ? appVersion : undefined,
-          platform: os.platform,
-          platformVersion: os.platformVersion,
-          oscpu: os.oscpu,
-          buildID: browser.name.startsWith('Firefox') ? '20250301000000' : undefined,
-          hardwareConcurrency: os.hardwareConcurrency,
-          maxTouchPoints: os.maxTouchPoints,
-          deviceMemory: os.deviceMemory,
-          screenWidth: scr.width,
-          screenHeight: scr.height,
-          screenAvailWidth: scr.width,
-          screenAvailHeight: scr.height - scr.availHeightOffset,
-          screenColorDepth: 24,
-          screenPixelDepth: 24,
-          devicePixelRatio: scr.dpr,
-          windowOuterWidth: scr.width,
-          windowOuterHeight: scr.height - scr.availHeightOffset,
-          windowInnerWidth: scr.width,
-          windowInnerHeight: scr.height - scr.availHeightOffset - 80,
-          screenX: 0,
-          screenY: 0,
-          language: localeInfo.language,
-          languages: localeInfo.languages,
-          doNotTrack: 'unspecified',
-          cookieEnabled: true,
-          webdriver: false,
-          pdfViewerEnabled: true,
-          webglVendor: os.webglVendor,
-          webglRenderer: os.webglRenderer,
-          webglVersion: 'WebGL 1.0 (OpenGL ES 2.0 Chromium)',
-          webglShadingLanguageVersion: 'WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)',
-          timezone: timezone,
-          timezoneOffset: getTimezoneOffset(timezone),
-          latitude: ipData.lat,
-          longitude: ipData.lon,
-          accuracy: 100,
-          prefersReducedMotion: false,
-          prefersDarkMode: true,
-          prefersContrast: 'no-preference',
-          prefersReducedData: false,
-          colorGamutSrgb: true,
-          colorGamutP3: os.group === 'macOS' || os.group === 'iOS',
-          colorGamutRec2020: false,
-          hdrSupport: os.group === 'macOS' || os.group === 'iOS',
-          audioSampleRate: os.group === 'macOS' || os.group === 'iOS' ? 44100 : 48000,
-          audioMaxChannelCount: 2,
-          localStorage: true,
-          sessionStorage: true,
-          indexedDb: true,
-          canvasNoiseSeed: generateSeed(),
-          fonts: JSON.stringify(os.fonts),
-          plugins: getPluginsJson(browser.name),
-          mimeTypes: getMimeTypes(),
-          batteryCharging: os.batteryCharging ?? false,
-          batteryChargingTime: os.batteryCharging ? 1800 : 0,
-          batteryDischargingTime: os.batteryCharging ? Infinity : 7200,
-          batteryLevel: os.batteryLevel ?? 1.0,
-          vendor: os.vendor,
-          vendorSub: os.vendorSub,
-          productSub: os.productSub,
-          connectionEffectiveType: os.isMobile ? '4g' : '4g',
-          connectionDownlink: os.isMobile ? 5 : 10,
-          connectionRtt: os.isMobile ? 70 : 50,
-          performanceMemory: os.deviceMemory,
-        };
-
-        idCounter++;
-        results.push({
-          id: `fp-${ipData.countryCode}-${shortHash(ipData.query)}-${String(idCounter).padStart(3, '0')}`,
-          name: label,
-          description: `${os.group} | ${browser.name} | ${timezone}`,
-          config,
-          group: os.group,
-          os: os.label,
-          browser: browser.name,
-        });
-      }
-    }
-  }
-
-  return results;
-}
