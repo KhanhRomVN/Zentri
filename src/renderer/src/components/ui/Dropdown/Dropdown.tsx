@@ -8,6 +8,7 @@ type Position = { top: number; left: number; width?: number };
 
 interface DropdownContextType {
   close: () => void;
+  searchText?: string;
 }
 
 const DropdownContext = createContext<DropdownContextType | null>(null);

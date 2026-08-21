@@ -6,6 +6,7 @@ import RegisManager from '../features/regis';
 import ProxyManager from '../features/proxy';
 import FilterPage from '../features/filter';
 import SettingPage from '../features/setting';
+import WorkflowPage from '../features/workflow';
 
 export const routes: RouteObject[] = [
   {
@@ -35,6 +36,10 @@ export const routes: RouteObject[] = [
       {
         path: 'setting',
         element: <SettingPage />,
+      },
+      {
+        path: 'workflow',
+        element: <WorkflowPage />,
       },
     ],
   },

@@ -475,6 +475,37 @@ export function setupEventHandlers() {
   });
   console.log('[email:open-profile-folder] Handler registered');
 
+  // Get email profile folder size recursively
+  ipcMain.handle('email:get-profile-size', async (_event, email: string) => {
+    if (!email) return 0;
+    const dbDir = path.dirname(dbManager.dbPath);
+    const folderPath = path.join(dbDir, 'profiles', email);
+    if (!fs.existsSync(folderPath)) return 0;
+
+    const getSize = async (dir: string): Promise<number> => {
+      let total = 0;
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          total += await getSize(fullPath);
+        } else if (entry.isFile()) {
+          const stat = await fs.promises.stat(fullPath);
+          total += stat.size;
+        }
+      }
+      return total;
+    };
+
+    try {
+      return await getSize(folderPath);
+    } catch (err) {
+      console.error('[email:get-profile-size] Failed:', err);
+      return 0;
+    }
+  });
+  console.log('[email:get-profile-size] Handler registered');
+
   // 2. Read file data from storage folder
   ipcMain.handle(
     'storage:read-data',

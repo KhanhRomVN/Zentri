@@ -39,7 +39,7 @@ const EditBookmarkModal: FC<EditBookmarkModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} hideCloseButton>
       <ModalHeader title="Edit Bookmark" onClose={onClose} />
       <ModalBody className="space-y-4 py-4">
         <div className="space-y-1.5">

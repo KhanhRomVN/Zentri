@@ -1,16 +1,26 @@
 import { FC, useState, useCallback, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+/**
+ * ------------------------------------------------------------------
+ * EmailTable
+ * ------------------------------------------------------------------
+ * Main accounts table for the Email feature. Renders the full
+ * account list with search, sorting, context menus, and expandable
+ * detail view. Handles browser launch, service linking, and
+ * hard-delete flows.
+ *
+ * Main features:
+ * - Sortable account table with running-browser indicators
+ * - Context menu: open browser, open folder, delete
+ * - Expandable detail view with tabbed navigation
+ * - Service linking drawer and quick-create modal
+ * - Health-check polling for running browser sessions
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── UI ──
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Globe, Eye, Undo2, X, FolderOpen, RefreshCw, Search } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from '../../../shared/lib/utils';
-import { Account, Service } from '../types';
-import { SERVICES } from '../../../constants/services';
-import BrowserLaunchModal from './modals/BrowserLaunchModal';
-import { SortingState } from '@tanstack/react-table';
-import EmailDetailView from './EmailDetailView';
-import { getSecurityScore } from './tabs/Security/utils';
-import ServiceDrawers from './drawers/ServiceDrawers';
 import {
   Dropdown,
   DropdownTrigger,
@@ -18,6 +28,27 @@ import {
   DropdownItem,
 } from '../../../components/ui/Dropdown';
 
+// ── Services ──
+import { SERVICES } from '../../../constants/services';
+
+// ── Components ──
+import BrowserLaunchModal from './modals/BrowserLaunchModal';
+import EmailDetailView from './EmailDetailView';
+import ServiceDrawers from './drawers/ServiceDrawers';
+
+// ── Utils ──
+import { cn } from '../../../shared/lib/utils';
+import { getSecurityScore } from './tabs/Security/utils';
+
+// ── Types ──
+import { Account, Service } from '../types';
+import { SortingState } from '@tanstack/react-table';
+
+// ── External ──
+import { createPortal } from 'react-dom';
+import { formatDistanceToNow } from 'date-fns';
+
+// ─── Interfaces ─────────────────────────────────────────────────────────
 interface EmailTableProps {
   accounts: Account[];
   allAccounts?: Account[];
@@ -54,6 +85,7 @@ interface LinkedService {
   metadata?: any;
 }
 
+// ─── Component ──────────────────────────────────────────────────────────
 const EmailTable: FC<EmailTableProps> = ({
   accounts,
   allAccounts = accounts,
@@ -71,8 +103,9 @@ const EmailTable: FC<EmailTableProps> = ({
   onPageChange,
   selectedServiceId,
 }) => {
-  // --- States ---
+  // ── State ──
   const [avatars, setAvatars] = useState<Record<string, string>>({});
+  const [profileSizes, setProfileSizes] = useState<Record<string, number>>({});
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -151,11 +184,41 @@ const EmailTable: FC<EmailTableProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const serviceMenuRef = useRef<HTMLDivElement>(null);
 
-  // --- Derived ---
+  // ── Derived ──
   const focusedAccount = accounts.find((a) => a.id === focusedAccountId) || null;
   const accountServices = focusedAccount?.services || [];
 
-  // --- Effects ---
+  // ── Effects ──
+  const formatBytes = (bytes: number) => {
+    if (!bytes || bytes <= 0) return '—';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    let size = bytes;
+    while (size >= 1024 && i < units.length - 1) {
+      size /= 1024;
+      i++;
+    }
+    return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  };
+
+  useEffect(() => {
+    const fetchProfileSizes = async () => {
+      const sizes: Record<string, number> = {};
+      for (const acc of accounts) {
+        if (!acc?.email) continue;
+        try {
+          // @ts-ignore
+          const size = await window.electron.ipcRenderer.invoke('email:get-profile-size', acc.email);
+          sizes[acc.email] = size ?? 0;
+        } catch {
+          sizes[acc.email] = 0;
+        }
+      }
+      setProfileSizes(sizes);
+    };
+    fetchProfileSizes();
+  }, [accounts]);
+
   useEffect(() => {
     const fetchAvatars = async () => {
       const newAvatars = { ...avatars };
@@ -379,7 +442,7 @@ const EmailTable: FC<EmailTableProps> = ({
     loadGlobalServices();
   }, [isServiceDrawerOpen, accountServices]);
 
-  // --- Handlers ---
+  // ── Handlers ──
   const handleContextMenu = (e: React.MouseEvent, accountId: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, accountId });
@@ -645,7 +708,7 @@ const EmailTable: FC<EmailTableProps> = ({
     }
   };
 
-  // --- Table helpers ---
+  // ── Helpers ──
   const renderLastActivity = (account: Account) => {
     if (!account.lastActivity) {
       return <span className="text-[10px] italic opacity-20 ml-6">—</span>;
@@ -738,7 +801,7 @@ const EmailTable: FC<EmailTableProps> = ({
   // Use allAccounts for indexing (original order before pagination)
   const fullAccountList = allAccounts;
 
-  // --- Render ---
+  // ── Render ──
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-card-background border border-border rounded-lg overflow-hidden">
       {/* Toolbar */}
@@ -787,6 +850,9 @@ const EmailTable: FC<EmailTableProps> = ({
                       Services
                     </th>
                   )}
+                  <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
+                    Size
+                  </th>
                   <th className="w-[110px] text-sm font-bold h-10 text-center text-text-secondary">
                     Security
                   </th>
@@ -845,6 +911,11 @@ const EmailTable: FC<EmailTableProps> = ({
                       </span>
                     </td>
                   )}
+                  <td className="text-center">
+                    <span className="text-[12px] font-mono text-text-secondary/60">
+                      {formatBytes(profileSizes[focusedAccount.email] || 0)}
+                    </span>
+                  </td>
                   <td className="text-center">
                     <span
                       className={cn(
@@ -918,6 +989,9 @@ const EmailTable: FC<EmailTableProps> = ({
                     Services
                   </th>
                 )}
+                <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
+                  Size
+                </th>
                 <th className="w-[110px] text-sm font-bold h-10 text-center text-text-secondary">
                   Security
                 </th>
@@ -1003,6 +1077,11 @@ const EmailTable: FC<EmailTableProps> = ({
                           </span>
                         </td>
                       )}
+                      <td className="text-center">
+                        <span className="text-[12px] font-mono text-text-secondary/60">
+                          {formatBytes(profileSizes[account.email] || 0)}
+                        </span>
+                      </td>
                       <td className="text-center">
                         <span
                           className={cn(

@@ -124,3 +124,40 @@ _Lưu trữ cấu hình dấu vân tay trình duyệt._
   - Mô tả.
 - **`config_json`** [TEXT]
   - Toàn bộ tham số kỹ thuật (UA, WebGL, Canvas, v.v.) dạng JSON.
+
+---
+
+### 🔄 Bảng `workflows`
+
+_Lưu trữ các workflow automation cho các tác vụ tự động._
+
+- **`id`** [TEXT] `PRIMARY KEY`
+  - Định danh duy nhất (UUID).
+- **`name`** [TEXT] `NOT NULL`
+  - Tên workflow.
+- **`description`** [TEXT]
+  - Mô tả chi tiết workflow.
+- **`platform`** [TEXT] `NOT NULL`
+  - Nền tảng thực thi (`website`, `mobile`).
+- **`status`** [TEXT] `DEFAULT 'draft'`
+  - Trạng thái workflow (`active`, `paused`, `draft`, `archived`).
+- **`tags`** [TEXT]
+  - Danh sách tags (JSON array).
+- **`owner_name`** [TEXT]
+  - Tên người tạo.
+- **`owner_initials`** [TEXT]
+  - Chữ cái viết tắt.
+- **`nodes`** [TEXT] `NOT NULL`
+  - Danh sách nodes trong workflow (JSON array).
+- **`connections`** [TEXT] `NOT NULL`
+  - Danh sách connections giữa các nodes (JSON array).
+- **`success_rate`** [REAL] `DEFAULT 0`
+  - Tỷ lệ thành công (0-100).
+- **`last_run_status`** [TEXT] `DEFAULT 'none'`
+  - Trạng thái lần chạy cuối (`passed`, `failed`, `none`).
+- **`last_run_time`** [DATETIME]
+  - Thời điểm chạy cuối cùng.
+- **`history`** [TEXT]
+  - Lịch sử chạy workflow (JSON array).
+- **`created_at`** | **`updated_at`** [DATETIME]
+  - Dấu thời gian hệ thống.

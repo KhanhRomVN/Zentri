@@ -6,6 +6,7 @@ import RegisManager from '../features/regis';
 import ProxyManager from '../features/proxy';
 import SearchManager from '../features/filter';
 import SettingPage from '../features/setting';
+import WorkflowPage from '../features/workflow';
 
 const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   '/': Dashboard,
@@ -14,6 +15,7 @@ const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   '/proxy': ProxyManager,
   '/search': SearchManager,
   '/setting': SettingPage,
+  '/workflow': WorkflowPage,
 };
 
 const MainLayout = () => {

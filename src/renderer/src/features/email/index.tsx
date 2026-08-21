@@ -1,12 +1,23 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
-import { useHashParams } from '../../hooks/useHashParams';
-import EmailTable from './components/EmailTable';
-import FilterBar from './components/FilterBar';
-import FilterPanel from './components/FilterPanel';
-import { useEmailTableState } from './hooks/useEmailTableState';
-import { useEmailFilter } from './hooks/useEmailFilter';
-import ViewsService from './services/api.service';
-import type { SavedView } from '../filter/components/modal/FilterModal/types';
+/**
+ * ------------------------------------------------------------------
+ * EmailManager
+ * ------------------------------------------------------------------
+ * Main entry point for the Email feature. Renders the full email
+ * management interface including the accounts table, filter panel,
+ * add/edit drawer, and detail view with tabbed navigation.
+ *
+ * Main features:
+ * - Account table with search, filter, sort, and pagination
+ * - Add / edit email accounts via drawer
+ * - Deep-link focus on specific accounts
+ * - Linked services and proxy/activity metadata loading
+ * - Hard-delete confirmation and diff-review modal
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── UI ──
 import {
   Plus,
   Mail,
@@ -21,13 +32,33 @@ import {
   RefreshCw,
   Upload,
 } from 'lucide-react';
-import { cn } from '../../shared/lib/utils';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
 import { Button } from '../../components/ui/Button';
+
+// ── Hooks ──
+import { useHashParams } from '../../hooks/useHashParams';
+import { useEmailTableState } from './hooks/useEmailTableState';
+import { useEmailFilter } from './hooks/useEmailFilter';
+
+// ── Services ──
+import ViewsService from './services/api.service';
+
+// ── Components ──
+import EmailTable from './components/EmailTable';
+import FilterBar from './components/FilterBar';
+import FilterPanel from './components/FilterPanel';
+
+// ── Utils ──
+import { cn } from '../../shared/lib/utils';
+
+// ── Types ──
 import { Account } from './types';
+import type { SavedView } from '../filter/components/modal/FilterModal/types';
+
+// ── External ──
 import { v4 as uuidv4 } from 'uuid';
 
-// Helper to get field value from account
+// ─── Functions ──────────────────────────────────────────────────────────
 const getFieldValue = (account: any, field: string): string => {
   switch (field) {
     case 'Email':
@@ -74,7 +105,7 @@ const diffChars = (oldStr: string, newStr: string) => {
   };
 };
 
-// Inline Modal component using native HTML
+// ─── Components ─────────────────────────────────────────────────────────
 const ModalWrapper: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -110,11 +141,12 @@ const ModalWrapper: React.FC<{
   );
 };
 
+// ─── Component ──────────────────────────────────────────────────────────
 const EmailManager = () => {
+  // ── State ──
   const [searchParams, setSearchParams] = useHashParams();
   const [accounts, setAccounts] = useState<Account[]>([]);
 
-  // Filters State
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -146,18 +178,17 @@ const EmailManager = () => {
 
   const [focusedAccountId, setFocusedAccountId] = useState<string | null>(null);
 
-  // Available columns for filter/sort
+  // ── Derived ──
   const availableColumns = useMemo(() => {
     return ['Email', 'Last Activity', 'Last Proxy', 'Password', 'Recovery Email', 'Phone Number'];
   }, []);
 
-  // Table state
+  // ── Store ──
   const { sorting, columnVisibility } = useEmailTableState({
     viewId: null,
     defaultColumns: availableColumns,
   });
 
-  // Filter state
   const { filters, addFilter, removeFilter, clearFilters, updateFilter } = useEmailFilter({
     viewId: null,
     availableColumns,
@@ -243,14 +274,13 @@ const EmailManager = () => {
     return result;
   }, [accounts, searchQuery, serviceFilter, selectedView, filters, sorting]);
 
-  // Pagination calculations
   const totalRecords = filteredAccounts.length;
   const paginatedData = useMemo(
     () => filteredAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [filteredAccounts, currentPage, pageSize],
   );
 
-  // Reset to page 1 when data changes
+  // ── Effects ──
   useEffect(() => {
     setCurrentPage(1);
   }, [filteredAccounts.length]);
@@ -314,6 +344,7 @@ const EmailManager = () => {
     accountsRef.current = accounts;
   }, [accounts]);
 
+  // ── Callbacks ──
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -584,6 +615,7 @@ const EmailManager = () => {
     warning: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
   };
 
+  // ── Render ──
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
       {/* Header with Breadcrumbs */}

@@ -1,0 +1,181 @@
+/* ReactFlow / XYFlow custom styles for Workflow Editor */
+/* Synchronized with Tailwind theme variables from main.css */
+
+/* CRITICAL: ReactFlow wraps nodes and applies its own background */
+/* We need to override it at multiple levels */
+.react-flow__node {
+  background: transparent !important;
+}
+
+/* The actual node wrapper inside ReactFlow */
+.react-flow__node-default,
+.react-flow__node-workflowNode {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Ensure our node component's background shows through */
+.react-flow__node > div {
+  background: inherit;
+}
+
+/* Hide default handle dots by default */
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+/* Show handles when node is selected (removed hover) */
+.react-flow__node.selected .react-flow__handle {
+  opacity: 1;
+}
+
+/* Hide handles when node is being dragged */
+.react-flow__node.dragging .react-flow__handle {
+  opacity: 0 !important;
+}
+
+/* Show handles during connection */
+.react-flow__handle.connecting,
+.react-flow__handle.connectingfrom,
+.react-flow__handle.connectingto {
+  opacity: 1 !important;
+}
+
+/* Show only specific handles that have connections */
+.react-flow__node.has-incoming .react-flow__handle-top,
+.react-flow__node.has-incoming .react-flow__handle[data-id='in'] {
+  opacity: 1 !important;
+}
+
+.react-flow__node.has-outgoing .react-flow__handle-bottom,
+.react-flow__node.has-outgoing .react-flow__handle[data-id='out'] {
+  opacity: 1 !important;
+}
+
+/* Hide handles when dragging, even if they have connections */
+.react-flow__node.dragging.has-incoming .react-flow__handle-top,
+.react-flow__node.dragging.has-incoming .react-flow__handle[data-id='in'],
+.react-flow__node.dragging.has-outgoing .react-flow__handle-bottom,
+.react-flow__node.dragging.has-outgoing .react-flow__handle[data-id='out'] {
+  opacity: 0 !important;
+}
+
+/* Source handle (out) - circle with border */
+.react-flow__handle-bottom,
+.react-flow__handle[data-id='out'] {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  /* background and border set inline from component */
+}
+
+/* Target handle (in) - horizontal bar */
+.react-flow__handle[data-id='in'],
+.react-flow__handle-top {
+  width: 24px !important;
+  height: 2px !important;
+  border-radius: 1px !important;
+  /* background set inline from component */
+  top: -1px !important;
+}
+
+/* Node selection outline should not interfere with our custom ring */
+.react-flow__node.selected {
+  outline: none !important;
+}
+
+/* Pane background - synced with --background */
+.react-flow__pane {
+  cursor: grab;
+  background: rgb(var(--background));
+  background-image: radial-gradient(circle, rgb(var(--text-secondary) / 0.3) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Background pattern should be visible */
+.react-flow__background {
+  z-index: 0;
+}
+
+.react-flow__viewport {
+  z-index: 1;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+
+/* Edge styles - using theme colors */
+.react-flow__edge-path {
+  stroke-width: 2px;
+  stroke: rgb(var(--border));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3px;
+  stroke: rgb(var(--primary));
+}
+
+/* Connection line while dragging - using --primary */
+.react-flow__connectionline {
+  stroke: rgb(var(--primary)) !important;
+  stroke-width: 2px !important;
+}
+
+.react-flow__connection-path {
+  stroke: rgb(var(--primary)) !important;
+  stroke-width: 2px !important;
+}
+
+/* Selection box - using --primary with opacity */
+.react-flow__selection {
+  background: rgb(var(--primary) / 0.1);
+  border: 1px solid rgb(var(--primary));
+}
+
+/* Hide selection rectangle after drag ends */
+.react-flow__nodesselection {
+  display: none;
+}
+
+/* Selection pane cursor */
+.react-flow__selectionpane {
+  cursor: crosshair;
+}
+
+/* Controls (zoom buttons etc) - synced with theme */
+.react-flow__controls {
+  background: rgb(var(--card-background));
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.5rem;
+}
+
+.react-flow__controls-button {
+  background: rgb(var(--card-background));
+  border-bottom: 1px solid rgb(var(--border));
+  color: rgb(var(--text-secondary));
+}
+
+.react-flow__controls-button:hover {
+  background: rgb(var(--sidebar-item-hover));
+  color: rgb(var(--text-primary));
+}
+
+/* Minimap - synced with theme */
+.react-flow__minimap {
+  background: rgb(var(--card-background));
+  border: 1px solid rgb(var(--border));
+}
+
+.react-flow__minimap-mask {
+  fill: rgb(var(--primary) / 0.1);
+  stroke: rgb(var(--primary));
+}
+
+.react-flow__minimap-node {
+  fill: rgb(var(--border));
+  stroke: none;
+}

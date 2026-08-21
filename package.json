@@ -54,6 +54,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/uuid": "^10.0.0",
+    "@xyflow/react": "^12.11.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "country-flag-icons": "^1.6.12",
