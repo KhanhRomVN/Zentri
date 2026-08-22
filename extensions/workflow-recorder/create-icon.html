@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Generate Icon</title>
+  </head>
+  <body>
+    <h3>Icon Generator for Zentri Recorder Extension</h3>
+    <canvas id="canvas" width="128" height="128"></canvas>
+    <br /><br />
+    <button onclick="downloadIcon()">Download Icon (128x128)</button>
+
+    <script>
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#3b82f6';
+      ctx.roundRect(0, 0, 128, 128, 24);
+      ctx.fill();
+
+      // Recording icon - circle
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.arc(64, 44, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Red dot (recording indicator)
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(64, 64, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Stand
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(64, 64);
+      ctx.lineTo(64, 96);
+      ctx.stroke();
+
+      // Base
+      ctx.beginPath();
+      ctx.moveTo(48, 96);
+      ctx.lineTo(80, 96);
+      ctx.stroke();
+
+      function downloadIcon() {
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'icon.png';
+          a.click();
+        });
+      }
+    </script>
+  </body>
+</html>

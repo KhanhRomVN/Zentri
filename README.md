@@ -99,7 +99,8 @@ Please read [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for details on our code of
 
 MIT
 
-trong src/renderer/src/features/email/components/modals/BrowserLaunchModal/FingerprintDetail.tsx
-1/ mục "App Version" cần có inputbar full width thay vì 1/2 width
-2/ đua mục "RAM (GB)" xuống dưới nằm cùng với "Perf. Memory (MB)"
-3/
+RULE:
+1/ không tự ý chạy các lệnh terminal mà chưa được cho phép
+2/ không tự ý tạo các file .md mà ko cho phép
+3/ giao tiếp bằng tiếng việt
+4/ code trực tiếp, không cần lập kế hoạch hay design task

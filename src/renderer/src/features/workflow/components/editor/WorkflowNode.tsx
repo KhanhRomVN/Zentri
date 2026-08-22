@@ -42,6 +42,8 @@ type WorkflowNodeComponentProps = NodeProps & {
       selectedNodesCount?: number;
       editModalOpen?: boolean;
       nodeContextMenuCloseSignal?: number;
+      hasIncoming?: boolean;
+      hasOutgoing?: boolean;
     };
 };
 
@@ -147,45 +149,34 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
 
       {/* Warning badge */}
       {needsWarning && (
-        <div className="absolute -right-1.5 -top-1.5 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-yellow text-background">
-          <AlertTriangle className="h-2.5 w-2.5" />
+        <div className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-sm bg-card-background border border-yellow">
+          <AlertTriangle className="h-2.5 w-2.5 text-yellow" />
         </div>
       )}
 
       {/* Hidden handles for normal connections */}
+      {/* Bar (target) - not connectable if already has incoming edge */}
       <Handle
         type="target"
         position={Position.Top}
         id="in"
-        isConnectable={!selected}
+        isConnectable={!node.hasIncoming}
         style={{
           background: 'rgb(var(--card-background))',
           border: `2px solid ${category.color}`,
         }}
       />
+      {/* Dot (source) - not connectable if already has outgoing edge */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="out"
-        isConnectable={!selected}
+        isConnectable={!node.hasOutgoing}
         style={{
           background: 'rgb(var(--card-background))',
           border: `2px solid ${category.color}`,
         }}
       />
-
-      {/* Visible connection dots when selected */}
-      {selected && !node.locked && (
-        <>
-          <Handle type="source" position={Position.Top} id="connect-top" isConnectable={true} />
-          <Handle
-            type="source"
-            position={Position.Bottom}
-            id="connect-bottom"
-            isConnectable={true}
-          />
-        </>
-      )}
 
       {/* Toolbar */}
       {selected &&

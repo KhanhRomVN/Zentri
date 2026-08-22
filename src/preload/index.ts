@@ -1,12 +1,13 @@
 import { contextBridge } from 'electron';
 import { electronAPI } from '@electron-toolkit/preload';
-import { appAPI, sqliteAPI, fileSystemAPI, storageAPI } from './api';
+import { appAPI, sqliteAPI, fileSystemAPI, storageAPI, workflowAPI } from './api';
 
 const api = {
   app: appAPI,
   sqlite: sqliteAPI,
   fileSystem: fileSystemAPI,
-  storage: storageAPI
+  storage: storageAPI,
+  workflow: workflowAPI,
 };
 
 if (process.contextIsolated) {

@@ -8,6 +8,7 @@ import {
   StickyNote,
   Grid3x3,
   Clipboard,
+  Globe,
 } from 'lucide-react';
 import {
   ReactFlow,
@@ -25,9 +26,10 @@ import {
 import '@xyflow/react/dist/style.css';
 import './workflow-editor.css';
 import type { NodeConnection, Workflow, WorkflowNode } from '../../types';
-import { findNodeItem, PLATFORM_META, STATUS_META } from '../../constants';
+import { findNodeItem, PLATFORM_META } from '../../constants';
 import { WorkflowNodeComponent } from './WorkflowNode';
 import { WorkflowNodeModal } from './WorkflowNodeModal';
+import { RecordQueue } from './RecordQueue';
 import {
   Dropdown,
   DropdownTrigger,
@@ -106,6 +108,11 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   const [copiedNode, setCopiedNode] = useState<WorkflowNode | null>(null);
   const [zoom, setZoom] = useState(1);
 
+  // Record queue state
+  const [recordQueue, setRecordQueue] = useState<WorkflowNode[]>([]);
+  const [autoAdd, setAutoAdd] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+
   const historyRef = useRef<Snapshot[]>([]);
   const redoRef = useRef<Snapshot[]>([]);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,11 +124,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
   const currentNodes = workflow.nodes;
   const currentConnections = workflow.connections;
-
-  // Debug log when selectedNodeId changes
-  useEffect(() => {
-    // console.log('[CanvasEditor] selectedNodeId changed:', selectedNodeId);
-  }, [selectedNodeId]);
 
   // Sync workflow.nodes → ReactFlow nodes
   useEffect(() => {
@@ -504,7 +506,7 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
   // Handle node drag start - save current selection state
   const onNodeDragStart = useCallback(
-    (_: React.MouseEvent, node: Node) => {
+    (_: MouseEvent | TouchEvent, node: Node) => {
       wasSelectedBeforeDragRef.current = new Set(nodes.filter((n) => n.selected).map((n) => n.id));
       // If node wasn't selected before drag, mark that we should prevent selection
       if (!node.selected) {
@@ -516,7 +518,7 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
   // Handle node drag stop - restore selection state if node wasn't selected before
   const onNodeDragStop = useCallback(
-    (_: React.MouseEvent, node: Node) => {
+    (_: MouseEvent | TouchEvent, node: Node) => {
       if (!wasSelectedBeforeDragRef.current.has(node.id)) {
         // Node wasn't selected before drag, so deselect it
         shouldPreventSelectionRef.current = true;
@@ -722,10 +724,144 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     screenToFlowPosition,
   ]);
 
+  // Setup workflow recording listeners
+  useEffect(() => {
+    const unsubscribeNodeRecorded = window.api.workflow.onNodeRecorded((nodeData: any) => {
+      console.log('[CanvasEditor] Node recorded:', nodeData);
+
+      const newNode: WorkflowNode = {
+        id: generateId('n'),
+        type: nodeData.type || 'click_web',
+        category: nodeData.category || 'interact',
+        title: nodeData.title || '',
+        subtitle: nodeData.subtitle || '',
+        note: nodeData.note || '',
+        x: 0,
+        y: 0,
+        w: 208,
+        h: 76,
+        pill: false,
+        dual: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...nodeData,
+      };
+
+      setRecordQueue((prev) => [...prev, newNode]);
+
+      // Auto-add to canvas if enabled
+      if (autoAdd) {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const pos = screenToFlowPosition({ x: centerX, y: centerY });
+
+        pushHistory();
+        const updatedNodes = [...currentNodes, { ...newNode, x: pos.x, y: pos.y }];
+        syncToWorkflow(updatedNodes, currentConnections);
+      }
+    });
+
+    const unsubscribeRecordingStopped = window.api.workflow.onRecordingStopped(
+      (workflowId: string) => {
+        console.log('[CanvasEditor] Recording stopped for:', workflowId);
+        if (workflowId === workflow.id) {
+          setIsRecording(false);
+        }
+      },
+    );
+
+    return () => {
+      unsubscribeNodeRecorded();
+      unsubscribeRecordingStopped();
+    };
+  }, [
+    workflow.id,
+    autoAdd,
+    currentNodes,
+    currentConnections,
+    pushHistory,
+    syncToWorkflow,
+    screenToFlowPosition,
+  ]);
+
   const selectedNode = selectedNodeId ? currentNodes.find((n) => n.id === selectedNodeId) : null;
 
   const platform = PLATFORM_META[workflow.platform];
-  const status = STATUS_META[workflow.status];
+
+  // Handler to launch browser with recorder
+  const handleLaunchBrowser = useCallback(async () => {
+    try {
+      console.log('[CanvasEditor] Launching browser with recorder');
+      setIsRecording(true);
+
+      const result = await window.api.workflow.startRecording(
+        workflow.id,
+        'https://www.google.com',
+      );
+
+      if (!result.success) {
+        console.error('[CanvasEditor] Failed to start recording:', result.error);
+        setIsRecording(false);
+        alert(`Failed to start recording: ${result.error}`);
+      } else {
+        console.log('[CanvasEditor] Recording started successfully');
+      }
+    } catch (error) {
+      console.error('[CanvasEditor] Error launching browser:', error);
+      setIsRecording(false);
+      alert('Failed to launch browser');
+    }
+  }, [workflow.id]);
+
+  // Handler to stop recording
+  const handleStopRecording = useCallback(async () => {
+    try {
+      console.log('[CanvasEditor] Stopping recording');
+      const result = await window.api.workflow.stopRecording(workflow.id);
+
+      if (!result.success) {
+        console.error('[CanvasEditor] Failed to stop recording:', result.error);
+      }
+
+      setIsRecording(false);
+    } catch (error) {
+      console.error('[CanvasEditor] Error stopping recording:', error);
+      setIsRecording(false);
+    }
+  }, [workflow.id]);
+
+  // Handler to add node from queue to canvas
+  const handleAddNodeFromQueue = useCallback(
+    (node: WorkflowNode) => {
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const pos = screenToFlowPosition({ x: centerX, y: centerY });
+
+      pushHistory();
+      const newNode = { ...node, x: pos.x, y: pos.y };
+      const updatedNodes = [...currentNodes, newNode];
+      syncToWorkflow(updatedNodes, currentConnections);
+
+      // Remove from queue
+      setRecordQueue((prev) => prev.filter((n) => n.id !== node.id));
+    },
+    [currentNodes, currentConnections, pushHistory, syncToWorkflow, screenToFlowPosition],
+  );
+
+  // Handler to remove node from queue
+  const handleRemoveFromQueue = useCallback((nodeId: string) => {
+    setRecordQueue((prev) => prev.filter((n) => n.id !== nodeId));
+  }, []);
+
+  // Handler to clear all queue
+  const handleClearQueue = useCallback(() => {
+    setRecordQueue([]);
+  }, []);
+
+  // Handler to toggle auto-add
+  const handleToggleAutoAdd = useCallback(() => {
+    setAutoAdd((prev) => !prev);
+  }, []);
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background text-text-primary">
@@ -739,178 +875,206 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
           <ArrowLeft className="h-4 w-4" />
         </button>
         <span className="text-xs text-text-secondary">Workflow /</span>
-        <input
-          value={workflow.name}
-          onChange={(e) => onUpdateWorkflow({ name: e.target.value })}
-          className="min-w-0 max-w-xs rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-bold text-text-primary outline-none transition-colors hover:bg-sidebar-item-hover focus:border-primary focus:bg-input-background"
-        />
+        <span className="text-sm font-bold text-text-primary">{workflow.name}</span>
         <span
           className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
           style={{ background: platform.bg, color: platform.color }}
         >
           {platform.label}
         </span>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
-          style={{ background: status.bg, color: status.color }}
-        >
-          {status.label}
-        </span>
+        <div className="ml-auto" />
+        {isRecording ? (
+          <button
+            onClick={handleStopRecording}
+            className="flex items-center gap-1.5 rounded-lg bg-error px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-error/90"
+            title="Stop recording"
+          >
+            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+            Stop Recording
+          </button>
+        ) : (
+          <button
+            onClick={handleLaunchBrowser}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary/90"
+            title="Launch browser with recorder"
+          >
+            <Globe className="h-3.5 w-3.5" />
+            Launch Browser
+          </button>
+        )}
       </div>
 
-      {/* React Flow canvas */}
-      <div ref={reactFlowWrapRef} className="flex-1 relative border-b border-r border-border">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onConnectStart={(event, params) => {
-            console.log('[CanvasEditor] onConnectStart', event, params);
-          }}
-          onConnectEnd={(event) => {
-            console.log('[CanvasEditor] onConnectEnd', event);
-          }}
-          onPaneClick={onPaneClick}
-          onPaneContextMenu={handlePaneContextMenu}
-          onSelectionChange={onSelectionChange}
-          onEdgeClick={onEdgeClick}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDragStop={onNodeDragStop}
-          nodeTypes={nodeTypes}
-          defaultEdgeOptions={{
-            type: 'smoothstep',
-            style: { stroke: 'rgb(var(--primary))', strokeWidth: 2 },
-            markerEnd: { type: 'arrowclosed', color: 'rgb(var(--primary))' },
-          }}
-          fitView
-          minZoom={0.35}
-          maxZoom={1.8}
-          deleteKeyCode={null}
-          snapToGrid={snapToGrid}
-          snapGrid={[20, 20]}
-          proOptions={{ hideAttribution: true }}
-          zoomOnScroll={false}
-          panOnScroll={true}
-          panOnDrag={[2]}
-          selectionOnDrag={true}
-          connectionMode={ConnectionMode.Loose}
-          connectOnClick={false}
-        >
-          <Background variant="dots" gap={20} size={2} color="#ff0000" />
+      {/* Main content with RecordQueue and Canvas */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Record Queue Sidebar */}
+        <RecordQueue
+          nodes={recordQueue}
+          autoAdd={autoAdd}
+          onAutoAddToggle={handleToggleAutoAdd}
+          onAddNode={handleAddNodeFromQueue}
+          onRemoveNode={handleRemoveFromQueue}
+          onClearAll={handleClearQueue}
+        />
 
-          {/* Zoom controls overlay bar */}
-          <Panel position="bottom-left">
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-card-background/95 px-3 py-2 shadow-lg backdrop-blur">
-              <button
-                onClick={() => zoomOut()}
-                className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                title="Zoom out"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </button>
-              <span className="min-w-[3rem] text-center text-xs font-semibold text-text-primary">
-                {zoom}%
-              </span>
-              <button
-                onClick={() => zoomIn()}
-                className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                title="Zoom in"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </button>
-              <div className="mx-1 h-4 w-px bg-border" />
-              <button
-                onClick={goToRoot}
-                className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                title="Go to root node"
-              >
-                <Home className="h-4 w-4" />
-              </button>
-            </div>
-          </Panel>
-        </ReactFlow>
-
-        {/* Context menu */}
-        {contextMenuOpen && (
-          <Dropdown
-            open={contextMenuOpen}
-            onOpenChange={setContextMenuOpen}
-            strategy="fixed"
-            position={contextMenuPosition}
+        {/* React Flow canvas */}
+        <div ref={reactFlowWrapRef} className="flex-1 relative border-b border-r border-border">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onConnectStart={(event, params) => {
+              console.log('[CanvasEditor] onConnectStart', event, params);
+            }}
+            onConnectEnd={(event) => {
+              console.log('[CanvasEditor] onConnectEnd', event);
+            }}
+            onPaneClick={onPaneClick}
+            onPaneContextMenu={handlePaneContextMenu}
+            onSelectionChange={onSelectionChange}
+            onEdgeClick={onEdgeClick}
+            onNodeDragStart={onNodeDragStart}
+            onNodeDragStop={onNodeDragStop}
+            nodeTypes={nodeTypes}
+            defaultEdgeOptions={{
+              type: 'smoothstep',
+              style: { stroke: 'rgb(var(--primary))', strokeWidth: 2 },
+              markerEnd: { type: 'arrowclosed', color: 'rgb(var(--primary))' },
+            }}
+            fitView
+            minZoom={0.35}
+            maxZoom={1.8}
+            deleteKeyCode={null}
+            snapToGrid={snapToGrid}
+            snapGrid={[20, 20]}
+            proOptions={{ hideAttribution: true }}
+            zoomOnScroll={false}
+            panOnScroll={true}
+            panOnDrag={[2]}
+            selectionOnDrag={true}
+            connectionMode={ConnectionMode.Loose}
+            connectOnClick={false}
           >
-            <DropdownTrigger>
-              <div />
-            </DropdownTrigger>
-            <DropdownContent className="min-w-[200px]">
-              {contextMenuType === 'canvas' && (
-                <>
-                  <DropdownItem
-                    icon={<Clipboard className="h-3.5 w-3.5" />}
-                    onClick={() => {
-                      const pos = screenToFlowPosition({
-                        x: contextMenuPosition.left,
-                        y: contextMenuPosition.top,
-                      });
-                      pasteNode(pos);
-                    }}
-                    disabled={!copiedNode}
-                  >
-                    Paste <Kbd className="ml-auto">Ctrl+V</Kbd>
-                  </DropdownItem>
-                  <DropdownSeparator />
-                  <DropdownItem
-                    icon={<StickyNote className="h-3.5 w-3.5" />}
-                    onClick={() => {
-                      const pos = screenToFlowPosition({
-                        x: contextMenuPosition.left,
-                        y: contextMenuPosition.top,
-                      });
-                      addNodeAt('note', pos, true);
-                    }}
-                  >
-                    Add sticky note
-                  </DropdownItem>
-                  <DropdownItem
-                    icon={<Plus className="h-3.5 w-3.5" />}
-                    onClick={() => {
-                      const pos = screenToFlowPosition({
-                        x: contextMenuPosition.left,
-                        y: contextMenuPosition.top,
-                      });
-                      addNodeAt('action', pos, true);
-                    }}
-                  >
-                    Add node
-                  </DropdownItem>
-                  <DropdownSeparator />
-                  <DropdownItem
-                    icon={<Grid3x3 className="h-3.5 w-3.5" />}
-                    onClick={() => setShowGrid((prev) => !prev)}
-                    className={showGrid ? 'bg-primary/10 text-primary' : ''}
-                  >
-                    Show grid <Kbd className="ml-auto">G</Kbd>
-                  </DropdownItem>
-                  <DropdownItem
-                    icon={<Grid3x3 className="h-3.5 w-3.5" />}
-                    onClick={() => setSnapToGrid((prev) => !prev)}
-                    className={snapToGrid ? 'bg-primary/10 text-primary' : ''}
-                  >
-                    Snap to grid
-                  </DropdownItem>
-                  <DropdownItem
-                    icon={<Grid3x3 className="h-3.5 w-3.5" />}
-                    onClick={() => setSnapObject((prev) => !prev)}
-                    className={snapObject ? 'bg-primary/10 text-primary' : ''}
-                  >
-                    Snap object
-                  </DropdownItem>
-                </>
-              )}
-            </DropdownContent>
-          </Dropdown>
-        )}
+            <Background
+              variant={showGrid ? ('dots' as any) : undefined}
+              gap={20}
+              size={2}
+              color="#ff0000"
+            />
+
+            {/* Zoom controls overlay bar */}
+            <Panel position="bottom-left">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-card-background/95 px-3 py-2 shadow-lg backdrop-blur">
+                <button
+                  onClick={() => zoomOut()}
+                  className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                  title="Zoom out"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+                <span className="min-w-[3rem] text-center text-xs font-semibold text-text-primary">
+                  {zoom}%
+                </span>
+                <button
+                  onClick={() => zoomIn()}
+                  className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                  title="Zoom in"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+                <div className="mx-1 h-4 w-px bg-border" />
+                <button
+                  onClick={goToRoot}
+                  className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                  title="Go to root node"
+                >
+                  <Home className="h-4 w-4" />
+                </button>
+              </div>
+            </Panel>
+          </ReactFlow>
+
+          {/* Context menu */}
+          {contextMenuOpen && (
+            <Dropdown
+              open={contextMenuOpen}
+              onOpenChange={setContextMenuOpen}
+              strategy="fixed"
+              position={contextMenuPosition}
+            >
+              <DropdownTrigger>
+                <div />
+              </DropdownTrigger>
+              <DropdownContent className="min-w-[200px]">
+                {contextMenuType === 'canvas' && (
+                  <>
+                    <DropdownItem
+                      icon={<Clipboard className="h-3.5 w-3.5" />}
+                      onClick={() => {
+                        const pos = screenToFlowPosition({
+                          x: contextMenuPosition.left,
+                          y: contextMenuPosition.top,
+                        });
+                        pasteNode(pos);
+                      }}
+                      disabled={!copiedNode}
+                    >
+                      Paste <Kbd className="ml-auto">Ctrl+V</Kbd>
+                    </DropdownItem>
+                    <DropdownSeparator />
+                    <DropdownItem
+                      icon={<StickyNote className="h-3.5 w-3.5" />}
+                      onClick={() => {
+                        const pos = screenToFlowPosition({
+                          x: contextMenuPosition.left,
+                          y: contextMenuPosition.top,
+                        });
+                        addNodeAt('note', pos, true);
+                      }}
+                    >
+                      Add sticky note
+                    </DropdownItem>
+                    <DropdownItem
+                      icon={<Plus className="h-3.5 w-3.5" />}
+                      onClick={() => {
+                        const pos = screenToFlowPosition({
+                          x: contextMenuPosition.left,
+                          y: contextMenuPosition.top,
+                        });
+                        addNodeAt('action', pos, true);
+                      }}
+                    >
+                      Add node
+                    </DropdownItem>
+                    <DropdownSeparator />
+                    <DropdownItem
+                      icon={<Grid3x3 className="h-3.5 w-3.5" />}
+                      onClick={() => setShowGrid((prev) => !prev)}
+                      className={showGrid ? 'bg-primary/10 text-primary' : ''}
+                    >
+                      Show grid <Kbd className="ml-auto">G</Kbd>
+                    </DropdownItem>
+                    <DropdownItem
+                      icon={<Grid3x3 className="h-3.5 w-3.5" />}
+                      onClick={() => setSnapToGrid((prev) => !prev)}
+                      className={snapToGrid ? 'bg-primary/10 text-primary' : ''}
+                    >
+                      Snap to grid
+                    </DropdownItem>
+                    <DropdownItem
+                      icon={<Grid3x3 className="h-3.5 w-3.5" />}
+                      onClick={() => setSnapObject((prev) => !prev)}
+                      className={snapObject ? 'bg-primary/10 text-primary' : ''}
+                    >
+                      Snap object
+                    </DropdownItem>
+                  </>
+                )}
+              </DropdownContent>
+            </Dropdown>
+          )}
+        </div>
       </div>
 
       {/* Node edit modal */}

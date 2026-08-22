@@ -7,6 +7,7 @@ import { setupBrowserHandlers } from './browser';
 import { setupAccountHandlers } from './account';
 import { setupProxyHandlers } from './proxy';
 import { registerBookmarkHandlers } from './bookmarks';
+import { setupWorkflowRecordHandlers } from './workflow-record';
 import { dbManager } from '../database';
 
 // Storage file path
@@ -236,6 +237,7 @@ export function setupEventHandlers() {
   setupServiceHandlers();
   setupProxyHandlers();
   registerBookmarkHandlers();
+  setupWorkflowRecordHandlers();
 
   // Streaming Fetch Handler
   ipcMain.handle('util:fetch-stream', async (event, input: any) => {
@@ -396,7 +398,7 @@ export function setupEventHandlers() {
         const child = spawn('nautilus', ['--no-desktop', folderPath], {
           detached: true,
           stdio: 'ignore',
-          env: { ...process.env }
+          env: { ...process.env },
         });
         child.on('error', (err) => {
           console.error('[storage:open-zentri-folder] nautilus failed:', err.message);
@@ -404,7 +406,7 @@ export function setupEventHandlers() {
           const fb = spawn('xdg-open', [folderPath], {
             detached: true,
             stdio: 'ignore',
-            env: { ...process.env }
+            env: { ...process.env },
           });
           fb.on('error', (fbErr) => {
             console.error('[storage:open-zentri-folder] xdg-open also failed:', fbErr.message);
@@ -450,14 +452,14 @@ export function setupEventHandlers() {
         const child = spawn('nautilus', ['--no-desktop', folderPath], {
           detached: true,
           stdio: 'ignore',
-          env: { ...process.env }
+          env: { ...process.env },
         });
         child.on('error', (err) => {
           console.error('[email:open-profile-folder] nautilus failed:', err.message);
           const fb = spawn('xdg-open', [folderPath], {
             detached: true,
             stdio: 'ignore',
-            env: { ...process.env }
+            env: { ...process.env },
           });
           fb.on('error', (fbErr) => {
             console.error('[email:open-profile-folder] xdg-open also failed:', fbErr.message);

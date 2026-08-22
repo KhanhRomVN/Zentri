@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import { electronApp, optimizer } from '@electron-toolkit/utils';
 import { windowManager } from './core/window';
 import { setupEventHandlers, closeDatabase } from './core/events';
+import { WebSocketRecorderService } from './services/WebSocketRecorderService';
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -19,6 +20,12 @@ app.whenReady().then(() => {
 
   // Setup IPC event handlers
   setupEventHandlers();
+
+  // Start WebSocket server for extension communication (must start after event handlers)
+  console.log('[Main] Starting WebSocket server...');
+  const wsService = WebSocketRecorderService.getInstance();
+  wsService.start();
+  console.log('[Main] WebSocket service initialized');
 
   // Create main window
   windowManager.createMainWindow();
@@ -38,6 +45,10 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   // Close database connection when app is closing
   closeDatabase();
+
+  // Stop WebSocket server
+  const wsService = WebSocketRecorderService.getInstance();
+  wsService.stop();
 
   if (process.platform !== 'darwin') {
     app.quit();

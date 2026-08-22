@@ -27,17 +27,13 @@
   transition: opacity 0.2s;
 }
 
-/* Show handles when node is selected (removed hover) */
-.react-flow__node.selected .react-flow__handle {
-  opacity: 1;
+/* Show only bottom handle (dot/source) on hover for connection */
+.react-flow__node:hover .react-flow__handle-bottom,
+.react-flow__node:hover .react-flow__handle[data-id='out'] {
+  opacity: 0.5;
 }
 
-/* Hide handles when node is being dragged */
-.react-flow__node.dragging .react-flow__handle {
-  opacity: 0 !important;
-}
-
-/* Show handles during connection */
+/* Show handles fully during connection or when they have connections */
 .react-flow__handle.connecting,
 .react-flow__handle.connectingfrom,
 .react-flow__handle.connectingto {
@@ -55,12 +51,20 @@
   opacity: 1 !important;
 }
 
-/* Hide handles when dragging, even if they have connections */
+/* Hide handles when node is being dragged (unless they have connections) */
+.react-flow__node.dragging .react-flow__handle {
+  opacity: 0 !important;
+}
+
+/* BUT keep handles visible when dragging IF they have connections */
 .react-flow__node.dragging.has-incoming .react-flow__handle-top,
-.react-flow__node.dragging.has-incoming .react-flow__handle[data-id='in'],
+.react-flow__node.dragging.has-incoming .react-flow__handle[data-id='in'] {
+  opacity: 1 !important;
+}
+
 .react-flow__node.dragging.has-outgoing .react-flow__handle-bottom,
 .react-flow__node.dragging.has-outgoing .react-flow__handle[data-id='out'] {
-  opacity: 0 !important;
+  opacity: 1 !important;
 }
 
 /* Source handle (out) - circle with border */
@@ -117,6 +121,15 @@
 .react-flow__edge.selected .react-flow__edge-path {
   stroke-width: 3px;
   stroke: rgb(var(--primary));
+  stroke-dasharray: 5 5;
+  animation: dash-flow 0.5s linear infinite;
+}
+
+/* Dashed line animation */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
 }
 
 /* Connection line while dragging - using --primary */

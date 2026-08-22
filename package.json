@@ -54,7 +54,9 @@
     "@types/papaparse": "^5.5.2",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
     "@xyflow/react": "^12.11.3",
+    "chrome-remote-interface": "^0.34.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "country-flag-icons": "^1.6.12",
@@ -84,6 +86,7 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "vscode-icons-js": "^11.6.1",
+    "ws": "^8.21.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
