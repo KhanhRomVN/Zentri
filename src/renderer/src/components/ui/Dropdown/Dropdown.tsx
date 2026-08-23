@@ -33,12 +33,16 @@ export const Dropdown = React.memo(function Dropdown({
   className,
   trigger = 'click',
   position: manualPosition,
+  searchable = false,
 }: DropdownProps) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = (value: boolean) => {
     if (controlledOpen === undefined) setInternalOpen(value);
     onOpenChange?.(value);
+    // Reset search when closing
+    if (!value) setSearchText('');
   };
 
   const close = () => setOpen(false);
@@ -347,7 +351,7 @@ export const Dropdown = React.memo(function Dropdown({
   };
 
   return (
-    <DropdownContext.Provider value={{ close }}>
+    <DropdownContext.Provider value={{ close, searchText }}>
       <div className={cn('relative inline-block', className)}>
         <div
           ref={triggerRef}
@@ -379,6 +383,19 @@ export const Dropdown = React.memo(function Dropdown({
                     pointerEvents: 'auto',
                   }}
                 >
+                  {searchable && (
+                    <div className="p-2 border-b border-border bg-background">
+                      <input
+                        type="text"
+                        placeholder="Search actions..."
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        className="w-full px-3 py-1.5 text-sm bg-input-background border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-text-primary placeholder:text-text-tertiary"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  )}
                   {content}
                 </div>,
                 document.body,
@@ -393,6 +410,19 @@ export const Dropdown = React.memo(function Dropdown({
                   pointerEvents: 'auto',
                 }}
               >
+                {searchable && (
+                  <div className="p-2 border-b border-border bg-background">
+                    <input
+                      type="text"
+                      placeholder="Search actions..."
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      className="w-full px-3 py-1.5 text-sm bg-input-background border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-text-primary placeholder:text-text-tertiary"
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                )}
                 {content}
               </div>
             )}

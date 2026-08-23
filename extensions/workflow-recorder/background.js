@@ -2,21 +2,30 @@
 // Handles communication between content script and Electron app
 
 console.log('[Zentri Recorder] Background script initializing...');
+console.log('[Zentri Recorder] Version: 2.0-fixed - No auto-start');
 
 // WebSocket connection to Electron app
 let ws = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 50;
-let autoStarted = false; // Track if we've auto-started recording
 
 // Toggle recording when extension icon is clicked
 chrome.action.onClicked.addListener(async (tab) => {
   console.log('[Zentri Recorder] Extension icon clicked, toggling recording state');
 
-  // Get current recording state
+  // Get current recording state - explicitly check for undefined
   const result = await chrome.storage.local.get(['isRecording']);
-  const isRecording = result.isRecording || false;
+  console.log('[Zentri Recorder] Storage result:', result);
+  console.log(
+    '[Zentri Recorder] isRecording value:',
+    result.isRecording,
+    'type:',
+    typeof result.isRecording,
+  );
+
+  const isRecording = result.isRecording === true; // Strict check to handle undefined case
+  console.log('[Zentri Recorder] Computed isRecording:', isRecording);
 
   if (isRecording) {
     // Stop recording
@@ -96,38 +105,9 @@ function connectToElectron() {
         reconnectTimer = null;
       }
 
-      // Auto-start recording when connected (only once per session)
-      if (!autoStarted) {
-        autoStarted = true;
-        chrome.storage.local.set({ isRecording: true });
-        console.log('[Zentri Recorder] 🎬 Auto-started recording mode');
-
-        // Update icon to ON state
-        chrome.action.setBadgeText({ text: 'REC' });
-        chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
-        chrome.action.setTitle({ title: 'Stop Recording (ON)' });
-
-        // Notify all existing tabs
-        chrome.tabs.query({}, (tabs) => {
-          console.log(`[Zentri Recorder] Broadcasting START_RECORDING to ${tabs.length} tabs`);
-          tabs.forEach((tab) => {
-            if (
-              tab.url &&
-              !tab.url.startsWith('chrome://') &&
-              !tab.url.startsWith('chrome-extension://')
-            ) {
-              chrome.tabs.sendMessage(tab.id, { type: 'START_RECORDING' }, () => {
-                // Ignore errors for tabs that can't receive messages
-                if (chrome.runtime.lastError) {
-                  console.log(
-                    `[Zentri Recorder] Cannot send to tab ${tab.id}: ${chrome.runtime.lastError.message}`,
-                  );
-                }
-              });
-            }
-          });
-        });
-      }
+      // Connection established - extension remains in offMode by default
+      // User can manually start recording by clicking the extension icon
+      console.log('[Zentri Recorder] Ready to record. Click extension icon to start.');
     };
 
     ws.onclose = () => {
@@ -181,7 +161,56 @@ function connectToElectron() {
             });
           });
           chrome.storage.local.set({ isRecording: false });
-          autoStarted = false; // Reset for next session
+        } else if (message.type === 'EXECUTE_WORKFLOW') {
+          console.log(
+            '[Zentri Recorder] ▶️ Executing workflow with',
+            message.nodes?.length,
+            'nodes',
+          );
+
+          // Forward to active tab
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.sendMessage(
+                tabs[0].id,
+                {
+                  type: 'EXECUTE_WORKFLOW',
+                  nodes: message.nodes,
+                },
+                (response) => {
+                  console.log('[Zentri Recorder] Workflow execution result:', response);
+                  // Send result back to Electron
+                  if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(
+                      JSON.stringify({
+                        type: 'WORKFLOW_RESULT',
+                        workflowId: message.workflowId,
+                        result: response,
+                      }),
+                    );
+                  }
+                },
+              );
+            }
+          });
+        } else if (message.type === 'EXECUTE_NODE') {
+          console.log('[Zentri Recorder] ▶️ Executing single node');
+
+          // Forward to active tab
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.sendMessage(
+                tabs[0].id,
+                {
+                  type: 'EXECUTE_NODE',
+                  node: message.node,
+                },
+                (response) => {
+                  console.log('[Zentri Recorder] Node execution result:', response);
+                },
+              );
+            }
+          });
         }
       } catch (error) {
         console.error('[Zentri Recorder] Error parsing message:', error);
@@ -196,19 +225,19 @@ function connectToElectron() {
 // Start connection attempt with initial delay
 console.log('[Zentri Recorder] Will connect to Electron app in 1 second...');
 
-// Initialize icon state based on stored recording state
-chrome.storage.local.get(['isRecording'], (result) => {
-  const isRecording = result.isRecording || false;
-  if (isRecording) {
-    chrome.action.setBadgeText({ text: 'REC' });
-    chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
-    chrome.action.setTitle({ title: 'Stop Recording (ON)' });
-  } else {
-    chrome.action.setBadgeText({ text: '' });
-    chrome.action.setBadgeBackgroundColor({ color: '#6b7280' });
-    chrome.action.setTitle({ title: 'Start Recording (OFF)' });
-  }
-});
+// Initialize extension state properly - use async/await to ensure completion
+(async function initializeExtension() {
+  // Set initial state
+  await chrome.storage.local.set({ isRecording: false });
+  console.log('[Zentri Recorder] Initialized to offMode');
+
+  // Initialize icon state to OFF
+  await chrome.action.setBadgeText({ text: '' });
+  await chrome.action.setBadgeBackgroundColor({ color: '#6b7280' });
+  await chrome.action.setTitle({ title: 'Start Recording (OFF)' });
+
+  console.log('[Zentri Recorder] Extension initialization complete');
+})();
 
 setTimeout(() => {
   connectToElectron();
@@ -243,6 +272,20 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'CAPTURE_SCREENSHOT') {
+    // Capture visible tab screenshot
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Zentri Recorder] Screenshot error:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        console.log('[Zentri Recorder] Screenshot captured successfully');
+        sendResponse({ success: true, screenshot: dataUrl });
+      }
+    });
+    return true; // Keep message channel open for async response
+  }
+
   if (message.type === 'RECORD_NODE') {
     console.log('[Zentri Recorder] 📝 Node recorded from tab:', sender.tab?.id, message.data);
 

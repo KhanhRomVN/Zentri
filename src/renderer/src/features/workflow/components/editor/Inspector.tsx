@@ -65,17 +65,6 @@ export const Inspector = memo(
 
         {/* Body */}
         <div className="flex-1 space-y-3.5 overflow-y-auto px-3.5 py-3.5">
-          <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-text-secondary">
-              Step Name
-            </label>
-            <input
-              value={node.title}
-              onChange={(e) => onUpdate(node.id, { title: e.target.value })}
-              className="w-full rounded-lg border border-border bg-input-background px-2.5 py-1.5 text-xs text-text-primary outline-none focus:border-primary"
-            />
-          </div>
-
           {!node.pill && (
             <>
               <div>

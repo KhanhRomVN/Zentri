@@ -8,7 +8,10 @@ import {
   StickyNote,
   Grid3x3,
   Clipboard,
-  Globe,
+  Play,
+  Video,
+  History,
+  ScrollText,
 } from 'lucide-react';
 import {
   ReactFlow,
@@ -30,6 +33,9 @@ import { findNodeItem, PLATFORM_META } from '../../constants';
 import { WorkflowNodeComponent } from './WorkflowNode';
 import { WorkflowNodeModal } from './WorkflowNodeModal';
 import { RecordQueue } from './RecordQueue';
+import { RunWorkflowModal, type RunConfig } from './RunWorkflowModal';
+import { WorkflowHistoryModal } from './WorkflowHistoryModal';
+import { LogPanel } from './LogPanel';
 import {
   Dropdown,
   DropdownTrigger,
@@ -91,7 +97,7 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     useReactFlow();
 
   // Use ReactFlow's state management for nodes and edges
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [nodes, setNodes, onNodesChangeInternal] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -108,10 +114,12 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   const [copiedNode, setCopiedNode] = useState<WorkflowNode | null>(null);
   const [zoom, setZoom] = useState(1);
 
-  // Record queue state
   const [recordQueue, setRecordQueue] = useState<WorkflowNode[]>([]);
-  const [autoAdd, setAutoAdd] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [runModalOpen, setRunModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [logPanelOpen, setLogPanelOpen] = useState(false);
+  const [executingNodeId, setExecutingNodeId] = useState<string | null>(null); // Track currently executing node
 
   const historyRef = useRef<Snapshot[]>([]);
   const redoRef = useRef<Snapshot[]>([]);
@@ -125,8 +133,59 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   const currentNodes = workflow.nodes;
   const currentConnections = workflow.connections;
 
+  // Track if we're currently syncing to avoid loops
+  const isSyncingRef = useRef(false);
+
+  // ─── Sync React Flow → workflow (debounced) ─────────────────────────────
+  const syncToWorkflow = useCallback(
+    (newNodes: WorkflowNode[], newEdges: NodeConnection[]) => {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = setTimeout(() => {
+        isSyncingRef.current = true;
+        onUpdateWorkflow({
+          nodes: newNodes,
+          connections: newEdges,
+        });
+        // Reset flag after a short delay to allow effect to run
+        setTimeout(() => {
+          isSyncingRef.current = false;
+        }, 50);
+      }, 200);
+    },
+    [onUpdateWorkflow],
+  );
+
+  // Wrap onNodesChange to sync position changes back to workflow
+  const onNodesChange = useCallback(
+    (changes: any[]) => {
+      onNodesChangeInternal(changes);
+
+      // Extract position changes and sync to workflow
+      const positionChanges = changes.filter((c) => c.type === 'position' && c.position);
+      if (positionChanges.length > 0) {
+        const updatedNodes = currentNodes.map((node) => {
+          const change = positionChanges.find((c) => c.id === node.id);
+          if (change && change.position) {
+            return {
+              ...node,
+              x: Math.round(change.position.x),
+              y: Math.round(change.position.y),
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return node;
+        });
+        syncToWorkflow(updatedNodes, currentConnections);
+      }
+    },
+    [onNodesChangeInternal, currentNodes, currentConnections, syncToWorkflow],
+  );
+
   // Sync workflow.nodes → ReactFlow nodes
   useEffect(() => {
+    // Skip if we're currently syncing from ReactFlow to workflow to avoid loop
+    if (isSyncingRef.current) return;
+
     const handlers = {
       onDuplicate: duplicateNode,
       onDelete: deleteNode,
@@ -134,6 +193,7 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
       onClearContent: clearNodeContent,
       onCopy: copyNode,
       onAddConnection: addConnection,
+      onAddToQueue: addNodeToQueue,
       selectedNodesCount, // Pass selected count to all nodes
       nodeContextMenuCloseSignal, // Signal to close node context menus
       onOpenModal: (id: string) => {
@@ -159,11 +219,15 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
       if (classes.length > 0) {
         flowNode.className = (flowNode.className || '') + ' ' + classes.join(' ');
       }
+      // Add isExecuting prop if this node is currently executing
+      if (executingNodeId === node.id) {
+        flowNode.data = { ...flowNode.data, isExecuting: true };
+      }
       return flowNode;
     });
     setNodes(flowNodes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentNodes, currentConnections, nodeContextMenuCloseSignal]);
+  }, [currentNodes, currentConnections, nodeContextMenuCloseSignal, executingNodeId]);
 
   // Separate effect to update node data when selection changes
   useEffect(() => {
@@ -182,23 +246,35 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
   // Sync workflow.connections → ReactFlow edges
   useEffect(() => {
-    const flowEdges = currentConnections.map(toFlowEdge);
+    // Validate edges: check if one dot connects to 2+ nodes
+    const sourceHandleCounts = new Map<string, number>();
+    currentConnections.forEach((conn) => {
+      const key = `${conn.from}-${conn.fromSide}`;
+      sourceHandleCounts.set(key, (sourceHandleCounts.get(key) || 0) + 1);
+    });
+
+    const flowEdges = currentConnections.map((conn) => {
+      const key = `${conn.from}-${conn.fromSide}`;
+      const isInvalid = (sourceHandleCounts.get(key) || 0) > 1;
+
+      // Convert to flow edge with error styling if invalid
+      const edge = toFlowEdge(conn);
+      if (isInvalid) {
+        edge.style = {
+          stroke: 'rgb(var(--error))',
+          strokeWidth: 2,
+        };
+        edge.markerEnd = {
+          type: 'arrowclosed',
+          color: 'rgb(var(--error))',
+        };
+        edge.animated = true; // Animate error edges
+      }
+      return edge;
+    });
+
     setEdges(flowEdges);
   }, [currentConnections]);
-
-  // ─── Sync React Flow → workflow (debounced) ─────────────────────────────
-  const syncToWorkflow = useCallback(
-    (newNodes: WorkflowNode[], newEdges: NodeConnection[]) => {
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-      syncTimeoutRef.current = setTimeout(() => {
-        onUpdateWorkflow({
-          nodes: newNodes,
-          connections: newEdges,
-        });
-      }, 200);
-    },
-    [onUpdateWorkflow],
-  );
 
   // ─── History (undo/redo) ────────────────────────────────────────────────
   const pushHistory = useCallback(() => {
@@ -306,6 +382,37 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
       setSelectedNodeId(copyData.id);
     },
     [currentNodes, currentConnections, pushHistory, syncToWorkflow],
+  );
+
+  const addNodeToQueue = useCallback(
+    (nodeId: string) => {
+      const node = currentNodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      // Clone node and add to record queue
+      const queueNode: WorkflowNode = {
+        ...JSON.parse(JSON.stringify(node)),
+        id: generateId('n'),
+        x: 0,
+        y: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setRecordQueue((prev) => [...prev, queueNode]);
+
+      // Remove node from canvas (MOVE instead of ADD)
+      pushHistory();
+      const updatedNodes = currentNodes.filter((n) => n.id !== nodeId);
+      const updatedConnections = currentConnections.filter(
+        (e) => e.from !== nodeId && e.to !== nodeId,
+      );
+      syncToWorkflow(updatedNodes, updatedConnections);
+
+      // Clear selection
+      if (selectedNodeId === nodeId) setSelectedNodeId(null);
+    },
+    [currentNodes, currentConnections, pushHistory, syncToWorkflow, selectedNodeId],
   );
 
   const updateNodeField = useCallback(
@@ -748,17 +855,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
       };
 
       setRecordQueue((prev) => [...prev, newNode]);
-
-      // Auto-add to canvas if enabled
-      if (autoAdd) {
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        const pos = screenToFlowPosition({ x: centerX, y: centerY });
-
-        pushHistory();
-        const updatedNodes = [...currentNodes, { ...newNode, x: pos.x, y: pos.y }];
-        syncToWorkflow(updatedNodes, currentConnections);
-      }
     });
 
     const unsubscribeRecordingStopped = window.api.workflow.onRecordingStopped(
@@ -770,13 +866,26 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
       },
     );
 
+    // Listen for workflow logs to track executing node
+    const unsubscribeLog = window.api.workflow.onLog((logEntry: any) => {
+      if (logEntry.workflowId === workflow.id && logEntry.nodeId) {
+        // Update executing node based on log level
+        if (logEntry.level === 'info' && logEntry.message.includes('Executing node')) {
+          setExecutingNodeId(logEntry.nodeId);
+        } else if (logEntry.level === 'success' || logEntry.level === 'error') {
+          // Clear executing state when node completes or fails
+          setExecutingNodeId(null);
+        }
+      }
+    });
+
     return () => {
       unsubscribeNodeRecorded();
       unsubscribeRecordingStopped();
+      unsubscribeLog();
     };
   }, [
     workflow.id,
-    autoAdd,
     currentNodes,
     currentConnections,
     pushHistory,
@@ -830,6 +939,60 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     }
   }, [workflow.id]);
 
+  // Handler to run workflow
+  const handleRunWorkflow = useCallback(
+    async (config: RunConfig) => {
+      console.log('[CanvasEditor] Running workflow with config:', config);
+
+      try {
+        // Get start URL from first node if it's a "go to URL" action
+        let startUrl = 'https://google.com';
+        const firstActionNode = currentNodes.find((n) => n.type !== 'start');
+        if (firstActionNode?.note) {
+          try {
+            const parsed = JSON.parse(firstActionNode.note);
+            if (parsed?.config?.action === 'go_to_url' && parsed?.config?.url) {
+              startUrl = parsed.config.url;
+            }
+          } catch {
+            // Keep default URL
+          }
+        }
+
+        const runConfig = {
+          method: config.method,
+          ...(config.method === 'profile'
+            ? { emailIds: config.emailIds }
+            : { count: config.count }),
+          nodes: currentNodes,
+          startUrl,
+        };
+
+        const result = await window.api.workflow.runWorkflow(workflow.id, runConfig);
+
+        if (!result.success) {
+          console.error('[CanvasEditor] Failed to run workflow:', result.error);
+          alert(`Failed to run workflow: ${result.error}`);
+          return;
+        }
+
+        console.log('[CanvasEditor] Workflow started successfully:', result.instances);
+        const instanceCount = result.instances?.length || 0;
+        const message =
+          config.method === 'profile'
+            ? `Running workflow with ${instanceCount} email profile(s)`
+            : `Running workflow with ${instanceCount} guest profile(s)`;
+
+        // Optional: Show success notification
+        console.log(`[CanvasEditor] ${message}`);
+      } catch (error) {
+        console.error('[CanvasEditor] Error running workflow:', error);
+        alert(`Error running workflow: ${error}`);
+      }
+    },
+    [workflow.id, currentNodes],
+  );
+
   // Handler to add node from queue to canvas
   const handleAddNodeFromQueue = useCallback(
     (node: WorkflowNode) => {
@@ -853,14 +1016,46 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     setRecordQueue((prev) => prev.filter((n) => n.id !== nodeId));
   }, []);
 
-  // Handler to clear all queue
-  const handleClearQueue = useCallback(() => {
-    setRecordQueue([]);
-  }, []);
+  // Handle drop from queue
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
 
-  // Handler to toggle auto-add
-  const handleToggleAutoAdd = useCallback(() => {
-    setAutoAdd((prev) => !prev);
+      const reactFlowBounds = reactFlowWrapRef.current?.getBoundingClientRect();
+      if (!reactFlowBounds) return;
+
+      try {
+        const dataStr = event.dataTransfer.getData('application/json');
+        if (!dataStr) return;
+
+        const data = JSON.parse(dataStr);
+        if (data.type !== 'queue-node' || !data.node) return;
+
+        const node = data.node as WorkflowNode;
+
+        // Get position relative to ReactFlow
+        const position = screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+
+        pushHistory();
+        const newNode = { ...node, x: position.x, y: position.y };
+        const updatedNodes = [...currentNodes, newNode];
+        syncToWorkflow(updatedNodes, currentConnections);
+
+        // Remove from queue
+        setRecordQueue((prev) => prev.filter((n) => n.id !== node.id));
+      } catch (error) {
+        console.error('[CanvasEditor] Error handling drop:', error);
+      }
+    },
+    [currentNodes, currentConnections, pushHistory, syncToWorkflow, screenToFlowPosition],
+  );
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
   }, []);
 
   return (
@@ -882,26 +1077,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
         >
           {platform.label}
         </span>
-        <div className="ml-auto" />
-        {isRecording ? (
-          <button
-            onClick={handleStopRecording}
-            className="flex items-center gap-1.5 rounded-lg bg-error px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-error/90"
-            title="Stop recording"
-          >
-            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-            Stop Recording
-          </button>
-        ) : (
-          <button
-            onClick={handleLaunchBrowser}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary/90"
-            title="Launch browser with recorder"
-          >
-            <Globe className="h-3.5 w-3.5" />
-            Launch Browser
-          </button>
-        )}
       </div>
 
       {/* Main content with RecordQueue and Canvas */}
@@ -909,170 +1084,234 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
         {/* Record Queue Sidebar */}
         <RecordQueue
           nodes={recordQueue}
-          autoAdd={autoAdd}
-          onAutoAddToggle={handleToggleAutoAdd}
           onAddNode={handleAddNodeFromQueue}
           onRemoveNode={handleRemoveFromQueue}
-          onClearAll={handleClearQueue}
         />
 
-        {/* React Flow canvas */}
-        <div ref={reactFlowWrapRef} className="flex-1 relative border-b border-r border-border">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onConnectStart={(event, params) => {
-              console.log('[CanvasEditor] onConnectStart', event, params);
-            }}
-            onConnectEnd={(event) => {
-              console.log('[CanvasEditor] onConnectEnd', event);
-            }}
-            onPaneClick={onPaneClick}
-            onPaneContextMenu={handlePaneContextMenu}
-            onSelectionChange={onSelectionChange}
-            onEdgeClick={onEdgeClick}
-            onNodeDragStart={onNodeDragStart}
-            onNodeDragStop={onNodeDragStop}
-            nodeTypes={nodeTypes}
-            defaultEdgeOptions={{
-              type: 'smoothstep',
-              style: { stroke: 'rgb(var(--primary))', strokeWidth: 2 },
-              markerEnd: { type: 'arrowclosed', color: 'rgb(var(--primary))' },
-            }}
-            fitView
-            minZoom={0.35}
-            maxZoom={1.8}
-            deleteKeyCode={null}
-            snapToGrid={snapToGrid}
-            snapGrid={[20, 20]}
-            proOptions={{ hideAttribution: true }}
-            zoomOnScroll={false}
-            panOnScroll={true}
-            panOnDrag={[2]}
-            selectionOnDrag={true}
-            connectionMode={ConnectionMode.Loose}
-            connectOnClick={false}
+        {/* Canvas and Log Panel Container */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* React Flow canvas */}
+          <div
+            ref={reactFlowWrapRef}
+            className={`border-b border-r border-border relative ${logPanelOpen ? 'flex-1' : 'h-full'}`}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
           >
-            <Background
-              variant={showGrid ? ('dots' as any) : undefined}
-              gap={20}
-              size={2}
-              color="#ff0000"
-            />
-
-            {/* Zoom controls overlay bar */}
-            <Panel position="bottom-left">
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-card-background/95 px-3 py-2 shadow-lg backdrop-blur">
-                <button
-                  onClick={() => zoomOut()}
-                  className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                  title="Zoom out"
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </button>
-                <span className="min-w-[3rem] text-center text-xs font-semibold text-text-primary">
-                  {zoom}%
-                </span>
-                <button
-                  onClick={() => zoomIn()}
-                  className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                  title="Zoom in"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </button>
-                <div className="mx-1 h-4 w-px bg-border" />
-                <button
-                  onClick={goToRoot}
-                  className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                  title="Go to root node"
-                >
-                  <Home className="h-4 w-4" />
-                </button>
-              </div>
-            </Panel>
-          </ReactFlow>
-
-          {/* Context menu */}
-          {contextMenuOpen && (
-            <Dropdown
-              open={contextMenuOpen}
-              onOpenChange={setContextMenuOpen}
-              strategy="fixed"
-              position={contextMenuPosition}
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onConnectStart={(event, params) => {
+                console.log('[CanvasEditor] onConnectStart', event, params);
+              }}
+              onConnectEnd={(event) => {
+                console.log('[CanvasEditor] onConnectEnd', event);
+              }}
+              onPaneClick={onPaneClick}
+              onPaneContextMenu={handlePaneContextMenu}
+              onSelectionChange={onSelectionChange}
+              onEdgeClick={onEdgeClick}
+              onNodeDragStart={onNodeDragStart}
+              onNodeDragStop={onNodeDragStop}
+              nodeTypes={nodeTypes}
+              defaultEdgeOptions={{
+                type: 'smoothstep',
+                style: { stroke: 'rgb(var(--primary))', strokeWidth: 2 },
+                markerEnd: { type: 'arrowclosed', color: 'rgb(var(--primary))' },
+              }}
+              fitView
+              minZoom={0.35}
+              maxZoom={1.8}
+              deleteKeyCode={null}
+              snapToGrid={snapToGrid}
+              snapGrid={[20, 20]}
+              proOptions={{ hideAttribution: true }}
+              zoomOnScroll={false}
+              panOnScroll={true}
+              panOnDrag={[2]}
+              selectionOnDrag={true}
+              connectionMode={ConnectionMode.Loose}
+              connectOnClick={false}
             >
-              <DropdownTrigger>
-                <div />
-              </DropdownTrigger>
-              <DropdownContent className="min-w-[200px]">
-                {contextMenuType === 'canvas' && (
-                  <>
-                    <DropdownItem
-                      icon={<Clipboard className="h-3.5 w-3.5" />}
-                      onClick={() => {
-                        const pos = screenToFlowPosition({
-                          x: contextMenuPosition.left,
-                          y: contextMenuPosition.top,
-                        });
-                        pasteNode(pos);
-                      }}
-                      disabled={!copiedNode}
-                    >
-                      Paste <Kbd className="ml-auto">Ctrl+V</Kbd>
-                    </DropdownItem>
-                    <DropdownSeparator />
-                    <DropdownItem
-                      icon={<StickyNote className="h-3.5 w-3.5" />}
-                      onClick={() => {
-                        const pos = screenToFlowPosition({
-                          x: contextMenuPosition.left,
-                          y: contextMenuPosition.top,
-                        });
-                        addNodeAt('note', pos, true);
-                      }}
-                    >
-                      Add sticky note
-                    </DropdownItem>
-                    <DropdownItem
-                      icon={<Plus className="h-3.5 w-3.5" />}
-                      onClick={() => {
-                        const pos = screenToFlowPosition({
-                          x: contextMenuPosition.left,
-                          y: contextMenuPosition.top,
-                        });
-                        addNodeAt('action', pos, true);
-                      }}
-                    >
-                      Add node
-                    </DropdownItem>
-                    <DropdownSeparator />
-                    <DropdownItem
-                      icon={<Grid3x3 className="h-3.5 w-3.5" />}
-                      onClick={() => setShowGrid((prev) => !prev)}
-                      className={showGrid ? 'bg-primary/10 text-primary' : ''}
-                    >
-                      Show grid <Kbd className="ml-auto">G</Kbd>
-                    </DropdownItem>
-                    <DropdownItem
-                      icon={<Grid3x3 className="h-3.5 w-3.5" />}
-                      onClick={() => setSnapToGrid((prev) => !prev)}
-                      className={snapToGrid ? 'bg-primary/10 text-primary' : ''}
-                    >
-                      Snap to grid
-                    </DropdownItem>
-                    <DropdownItem
-                      icon={<Grid3x3 className="h-3.5 w-3.5" />}
-                      onClick={() => setSnapObject((prev) => !prev)}
-                      className={snapObject ? 'bg-primary/10 text-primary' : ''}
-                    >
-                      Snap object
-                    </DropdownItem>
-                  </>
-                )}
-              </DropdownContent>
-            </Dropdown>
+              <Background
+                variant={showGrid ? ('dots' as any) : undefined}
+                gap={20}
+                size={2}
+                color="#ff0000"
+              />
+
+              {/* Zoom controls overlay bar */}
+              <Panel position="bottom-left">
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-card-background/95 px-3 py-2 shadow-lg backdrop-blur">
+                  <button
+                    onClick={() => zoomOut()}
+                    className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                    title="Zoom out"
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </button>
+                  <span className="min-w-[3rem] text-center text-xs font-semibold text-text-primary">
+                    {zoom}%
+                  </span>
+                  <button
+                    onClick={() => zoomIn()}
+                    className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                    title="Zoom in"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </button>
+                  <div className="mx-1 h-4 w-px bg-border" />
+                  <button
+                    onClick={goToRoot}
+                    className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                    title="Go to root node"
+                  >
+                    <Home className="h-4 w-4" />
+                  </button>
+                </div>
+              </Panel>
+
+              {/* Floating Action Buttons - Bottom Right */}
+              <Panel position="bottom-right">
+                <div className="flex flex-col gap-1 rounded-lg border border-border bg-card-background/95 p-1.5 shadow-lg backdrop-blur">
+                  {/* Record Browser Button */}
+                  <button
+                    onClick={isRecording ? handleStopRecording : handleLaunchBrowser}
+                    className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                      isRecording
+                        ? 'bg-error/10 text-error hover:bg-error/20'
+                        : 'text-text-secondary hover:bg-primary/10 hover:text-primary'
+                    }`}
+                    title={isRecording ? 'Stop recording' : 'Launch browser recorder'}
+                  >
+                    <Video className="h-4 w-4" />
+                  </button>
+
+                  {/* Run Workflow Button */}
+                  <button
+                    onClick={() => setRunModalOpen(true)}
+                    disabled={currentNodes.length <= 1 || isRecording}
+                    className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-success/10 hover:text-success disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Run workflow"
+                  >
+                    <Play className="h-4 w-4" />
+                  </button>
+
+                  {/* Workflow History Button */}
+                  <button
+                    onClick={() => setHistoryModalOpen(true)}
+                    className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-primary/10 hover:text-primary"
+                    title="View run history"
+                  >
+                    <History className="h-4 w-4" />
+                  </button>
+
+                  {/* Execution Logs Button */}
+                  <button
+                    onClick={() => setLogPanelOpen(!logPanelOpen)}
+                    className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                      logPanelOpen
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-text-secondary hover:bg-primary/10 hover:text-primary'
+                    }`}
+                    title={logPanelOpen ? 'Hide logs' : 'Show execution logs'}
+                  >
+                    <ScrollText className="h-4 w-4" />
+                  </button>
+                </div>
+              </Panel>
+            </ReactFlow>
+
+            {/* Context menu */}
+            {contextMenuOpen && (
+              <Dropdown
+                open={contextMenuOpen}
+                onOpenChange={setContextMenuOpen}
+                strategy="fixed"
+                position={contextMenuPosition}
+              >
+                <DropdownTrigger>
+                  <div />
+                </DropdownTrigger>
+                <DropdownContent className="min-w-[200px]">
+                  {contextMenuType === 'canvas' && (
+                    <>
+                      <DropdownItem
+                        icon={<Clipboard className="h-3.5 w-3.5" />}
+                        onClick={() => {
+                          const pos = screenToFlowPosition({
+                            x: contextMenuPosition.left,
+                            y: contextMenuPosition.top,
+                          });
+                          pasteNode(pos);
+                        }}
+                        disabled={!copiedNode}
+                      >
+                        Paste <Kbd className="ml-auto">Ctrl+V</Kbd>
+                      </DropdownItem>
+                      <DropdownSeparator />
+                      <DropdownItem
+                        icon={<StickyNote className="h-3.5 w-3.5" />}
+                        onClick={() => {
+                          const pos = screenToFlowPosition({
+                            x: contextMenuPosition.left,
+                            y: contextMenuPosition.top,
+                          });
+                          addNodeAt('note', pos, true);
+                        }}
+                      >
+                        Add sticky note
+                      </DropdownItem>
+                      <DropdownItem
+                        icon={<Plus className="h-3.5 w-3.5" />}
+                        onClick={() => {
+                          const pos = screenToFlowPosition({
+                            x: contextMenuPosition.left,
+                            y: contextMenuPosition.top,
+                          });
+                          addNodeAt('action', pos, true);
+                        }}
+                      >
+                        Add node
+                      </DropdownItem>
+                      <DropdownSeparator />
+                      <DropdownItem
+                        icon={<Grid3x3 className="h-3.5 w-3.5" />}
+                        onClick={() => setShowGrid((prev) => !prev)}
+                        className={showGrid ? 'bg-primary/10 text-primary' : ''}
+                      >
+                        Show grid <Kbd className="ml-auto">G</Kbd>
+                      </DropdownItem>
+                      <DropdownItem
+                        icon={<Grid3x3 className="h-3.5 w-3.5" />}
+                        onClick={() => setSnapToGrid((prev) => !prev)}
+                        className={snapToGrid ? 'bg-primary/10 text-primary' : ''}
+                      >
+                        Snap to grid
+                      </DropdownItem>
+                      <DropdownItem
+                        icon={<Grid3x3 className="h-3.5 w-3.5" />}
+                        onClick={() => setSnapObject((prev) => !prev)}
+                        className={snapObject ? 'bg-primary/10 text-primary' : ''}
+                      >
+                        Snap object
+                      </DropdownItem>
+                    </>
+                  )}
+                </DropdownContent>
+              </Dropdown>
+            )}
+          </div>
+
+          {/* Log Panel - Separate div below canvas */}
+          {logPanelOpen && (
+            <LogPanel
+              isOpen={logPanelOpen}
+              onClose={() => setLogPanelOpen(false)}
+              workflowId={workflow.id}
+            />
           )}
         </div>
       </div>
@@ -1086,6 +1325,20 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
           onUpdate={updateNodeField}
         />
       )}
+
+      {/* Run workflow modal */}
+      <RunWorkflowModal
+        isOpen={runModalOpen}
+        onClose={() => setRunModalOpen(false)}
+        onRun={handleRunWorkflow}
+      />
+
+      {/* Workflow History Modal */}
+      <WorkflowHistoryModal
+        isOpen={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        workflowId={workflow.id}
+      />
     </div>
   );
 };

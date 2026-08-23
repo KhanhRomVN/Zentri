@@ -176,6 +176,50 @@ export class DbManager {
           FOREIGN KEY (proxy_id) REFERENCES proxies(id) ON DELETE CASCADE,
           FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS workflows (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          platform TEXT NOT NULL,
+          description TEXT,
+          nodes TEXT NOT NULL,
+          connections TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS workflow_runs (
+          id TEXT PRIMARY KEY,
+          workflow_id TEXT NOT NULL,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          status TEXT NOT NULL,
+          duration INTEGER,
+          method TEXT NOT NULL,
+          instance_count INTEGER,
+          snapshot TEXT NOT NULL,
+          results TEXT,
+          error TEXT,
+          FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_workflow_runs_workflow ON workflow_runs(workflow_id, timestamp DESC);
+
+      CREATE TABLE IF NOT EXISTS workflow_logs (
+          id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          workflow_id TEXT NOT NULL,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          level TEXT NOT NULL,
+          message TEXT NOT NULL,
+          node_id TEXT,
+          instance_id TEXT,
+          metadata TEXT,
+          FOREIGN KEY (run_id) REFERENCES workflow_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_workflow_logs_run ON workflow_logs(run_id, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_workflow_logs_workflow ON workflow_logs(workflow_id, timestamp DESC);
     `;
 
     return new Promise((resolve, reject) => {
@@ -228,7 +272,7 @@ export class DbManager {
 
     // Migration for services table (ensure metadata, auth_method, and description exist)
     const serviceColumns = await this.rawAll<{ name: string }>('PRAGMA table_info(services)');
-    
+
     const hasDescription = serviceColumns.some((c) => c.name === 'description');
     if (!hasDescription) {
       try {
@@ -311,9 +355,7 @@ export class DbManager {
     }
 
     // Migration for proxies new fields (Version 2)
-    const proxyColumns = await this.rawAll<{ name: string }>(
-      "PRAGMA table_info('proxies')",
-    );
+    const proxyColumns = await this.rawAll<{ name: string }>("PRAGMA table_info('proxies')");
     const hasExpiredAt = proxyColumns.some((c) => c.name === 'expired_at');
 
     if (!hasExpiredAt) {
@@ -322,13 +364,15 @@ export class DbManager {
         await this.rawRun('ALTER TABLE proxies ADD COLUMN expired_at DATETIME');
         await this.rawRun('ALTER TABLE proxies ADD COLUMN last_checked_at DATETIME');
         await this.rawRun('ALTER TABLE proxies ADD COLUMN purchase_url TEXT');
-        
-        // If old expiration_date exists, we could try to migrate it, 
+
+        // If old expiration_date exists, we could try to migrate it,
         // but since we are in dev, we can just ensure the column is there.
         const hasOldExp = proxyColumns.some((c) => c.name === 'expiration_date');
         if (hasOldExp) {
           // Attempt migration of data from expiration_date (timestamp) to expired_at (DATETIME)
-          await this.rawRun("UPDATE proxies SET expired_at = datetime(expiration_date / 1000, 'unixepoch') WHERE expiration_date IS NOT NULL");
+          await this.rawRun(
+            "UPDATE proxies SET expired_at = datetime(expiration_date / 1000, 'unixepoch') WHERE expiration_date IS NOT NULL",
+          );
         }
 
         console.log('[DB] Migration: Updated proxies with new DATETIME fields');
@@ -337,7 +381,7 @@ export class DbManager {
       }
     }
 
-    // Remove is_healthy if it exists (SQLite doesn't support DROP COLUMN easily before 3.35.0, 
+    // Remove is_healthy if it exists (SQLite doesn't support DROP COLUMN easily before 3.35.0,
     // but we can just ignore it or do a more complex migration if really needed.
     // For now, let's just make sure we don't use it in code.)
 
@@ -365,9 +409,7 @@ export class DbManager {
     }
 
     // Migration for proxy health metrics (Version 3)
-    const proxyColsV3 = await this.rawAll<{ name: string }>(
-      "PRAGMA table_info('proxies')",
-    );
+    const proxyColsV3 = await this.rawAll<{ name: string }>("PRAGMA table_info('proxies')");
     const hasLatency = proxyColsV3.some((c) => c.name === 'latency');
 
     if (!hasLatency) {

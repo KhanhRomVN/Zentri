@@ -61,4 +61,82 @@ export const workflowAPI = {
       ipcRenderer.removeListener('workflow:recording-stopped', listener);
     };
   },
+
+  /**
+   * Run workflow with specified configuration
+   * Launches multiple browser instances based on config
+   */
+  runWorkflow: (
+    workflowId: string,
+    config: {
+      method: 'profile' | 'guest';
+      emailIds?: string[];
+      count?: number;
+      nodes: any[];
+      startUrl?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    runId?: string;
+    instances?: any[];
+    duration?: number;
+    error?: string;
+  }> => {
+    return ipcRenderer.invoke('workflow:run', workflowId, config);
+  },
+
+  /**
+   * Get workflow run history
+   */
+  getRuns: (
+    workflowId: string,
+    limit?: number,
+  ): Promise<{
+    success: boolean;
+    runs?: any[];
+    error?: string;
+  }> => {
+    return ipcRenderer.invoke('workflow:get-runs', workflowId, limit);
+  },
+
+  /**
+   * Get logs for a specific workflow run
+   */
+  getLogs: (
+    runId: string,
+    limit?: number,
+  ): Promise<{
+    success: boolean;
+    logs?: any[];
+    error?: string;
+  }> => {
+    return ipcRenderer.invoke('workflow:get-logs', runId, limit);
+  },
+
+  /**
+   * Get live logs for a workflow (for LogPanel)
+   */
+  getLiveLogs: (
+    workflowId: string,
+    limit?: number,
+  ): Promise<{
+    success: boolean;
+    logs?: any[];
+    error?: string;
+  }> => {
+    return ipcRenderer.invoke('workflow:get-live-logs', workflowId, limit);
+  },
+
+  /**
+   * Listen for live log events
+   */
+  onLog: (callback: (logEntry: any) => void) => {
+    const listener = (_event: any, logEntry: any) => callback(logEntry);
+    ipcRenderer.on('workflow:log', listener);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener('workflow:log', listener);
+    };
+  },
 };

@@ -19,17 +19,21 @@ export type WorkflowNode = {
   locked?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  // New condition system
+  executionMode?: 'sequential' | 'conditional'; // sequential: chạy tuần tự, conditional: có điều kiện
+  maxRetries?: number; // Số lần retry tối đa khi conditional fail
 };
 
 export interface NodeConnection {
   id: string;
   from: string;
-  fromSide: 'out' | 'outA' | 'outB' | 'outR';
+  fromSide: 'out' | 'success' | 'error'; // out: sequential, success: conditional success, error: conditional error
   to: string;
-  toSide: 'in' | 'inR';
+  toSide: 'in';
   label?: string;
   color?: string;
   route?: 'loop';
+  isError?: boolean; // true nếu 1 dot kết nối tới 2 node (invalid state)
 }
 
 export interface WorkflowHistory {

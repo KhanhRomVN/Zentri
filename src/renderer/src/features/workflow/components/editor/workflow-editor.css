@@ -127,8 +127,11 @@
 
 /* Dashed line animation */
 @keyframes dash-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
   to {
-    stroke-dashoffset: -10;
+    stroke-dashoffset: 10;
   }
 }
 

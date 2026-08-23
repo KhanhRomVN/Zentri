@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useEffect } from 'react';
+import React, { memo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
@@ -39,11 +39,13 @@ type WorkflowNodeComponentProps = NodeProps & {
       onCopy?: (id: string) => void;
       onAddConnection?: (nodeId: string, direction: 'top' | 'right' | 'bottom' | 'left') => void;
       onOpenModal?: (id: string) => void;
+      onAddToQueue?: (id: string) => void;
       selectedNodesCount?: number;
       editModalOpen?: boolean;
       nodeContextMenuCloseSignal?: number;
       hasIncoming?: boolean;
       hasOutgoing?: boolean;
+      isExecuting?: boolean; // New prop for execution animation
     };
 };
 
@@ -63,6 +65,60 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
   const needsWarning = !node.subtitle && node.type !== 'end';
   const selectedNodesCount = node.selectedNodesCount || 0;
 
+  // Parse config to get action type and determine icon/color
+  let displayTitle = node.title;
+  let displayIcon = Icon;
+  let displayColor = category.color;
+  let displayBg = category.bg;
+
+  try {
+    if (node.note) {
+      const parsed = JSON.parse(node.note);
+      const actionType = parsed?.config?.action;
+
+      // If title is empty, use action type as title
+      if ((!displayTitle || displayTitle.trim() === '') && actionType) {
+        const titleMap: Record<string, string> = {
+          click: 'Click',
+          type: 'Type Text',
+          hover: 'Hover',
+          scroll: 'Scroll To',
+          assert: 'Assert Visible',
+          go_to_url: 'Go to URL',
+          wait: 'Wait',
+          screenshot: 'Take Screenshot',
+          extract: 'Extract Text',
+          reload: 'Reload Page',
+          go_back: 'Go Back',
+          go_forward: 'Go Forward',
+          close_tab: 'Close Tab',
+          new_tab: 'New Tab',
+        };
+        displayTitle = titleMap[actionType] || actionType;
+      }
+
+      // Override icon and color based on action type
+      if (actionType === 'go_to_url') {
+        displayIcon = () => (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-3.5 w-3.5"
+          >
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+        );
+        displayColor = 'rgb(6, 182, 212)'; // cyan-500
+        displayBg = 'rgba(6, 182, 212, 0.1)'; // cyan-500/10
+      }
+    }
+  } catch {
+    // Keep original title if parsing fails
+  }
+
   const [toolbarScreenPosition, setToolbarScreenPosition] = useState({ x: 0, y: 0 });
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
@@ -79,7 +135,7 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
       const spaceBelow = viewportHeight - rect.bottom;
       const position = spaceAbove > spaceBelow ? 'top' : 'bottom';
       const toolbarHeight = 56;
-      const toolbarGap = 28;
+      const toolbarGap = 14;
       const centerX = rect.left + rect.width / 2;
       const y =
         position === 'top' ? rect.top - toolbarHeight - toolbarGap : rect.bottom + toolbarGap;
@@ -128,18 +184,33 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
       style={{ background: 'rgb(var(--card-background))' }}
     >
       {/* Category bar */}
-      <div className="absolute bottom-0 left-0 top-0 w-1" style={{ background: category.color }} />
+      <div className="absolute bottom-0 left-0 top-0 w-1" style={{ background: displayColor }} />
+
+      {/* Execution animation border (top, right, bottom - exclude left) */}
+      {node.isExecuting && (
+        <div
+          className="absolute inset-0 pointer-events-none rounded-r-md"
+          style={{
+            borderTop: `2px dashed ${displayColor}`,
+            borderRight: `2px dashed ${displayColor}`,
+            borderBottom: `2px dashed ${displayColor}`,
+            borderLeft: 'none',
+            strokeDasharray: '5 5',
+            animation: 'dash-flow 1s linear infinite',
+          }}
+        />
+      )}
 
       {/* Content */}
       <div className="flex items-center gap-2 pl-3 pr-2 pt-2 pb-2">
         <div
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: category.bg, color: category.color }}
+          style={{ background: displayBg, color: displayColor }}
         >
-          <Icon className="h-3.5 w-3.5" />
+          {React.createElement(displayIcon, { className: 'h-3.5 w-3.5' })}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold text-text-primary">{node.title}</div>
+          <div className="truncate text-xs font-semibold text-text-primary">{displayTitle}</div>
           <div className="mt-0.5 truncate text-[10px] text-text-secondary">
             {node.subtitle || '\u00a0'}
           </div>
@@ -163,20 +234,51 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
         isConnectable={!node.hasIncoming}
         style={{
           background: 'rgb(var(--card-background))',
-          border: `2px solid ${category.color}`,
+          border: `2px solid ${displayColor}`,
         }}
       />
-      {/* Dot (source) - not connectable if already has outgoing edge */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="out"
-        isConnectable={!node.hasOutgoing}
-        style={{
-          background: 'rgb(var(--card-background))',
-          border: `2px solid ${category.color}`,
-        }}
-      />
+
+      {/* Source handles - conditional or sequential */}
+      {node.executionMode === 'conditional' ? (
+        <>
+          {/* Success handle (green dot on left - 1/3 position) */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="success"
+            isConnectable={!node.hasOutgoing}
+            style={{
+              left: 'calc(33.33%)',
+              background: 'rgb(var(--card-background))',
+              border: '2px solid rgb(var(--success))',
+            }}
+          />
+          {/* Error handle (red dot on right - 2/3 position) */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="error"
+            isConnectable={!node.hasOutgoing}
+            style={{
+              left: 'calc(66.66%)',
+              background: 'rgb(var(--card-background))',
+              border: '2px solid rgb(var(--error))',
+            }}
+          />
+        </>
+      ) : (
+        /* Sequential handle (single dot) */
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="out"
+          isConnectable={!node.hasOutgoing}
+          style={{
+            background: 'rgb(var(--card-background))',
+            border: `2px solid ${displayColor}`,
+          }}
+        />
+      )}
 
       {/* Toolbar */}
       {selected &&
@@ -193,18 +295,44 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
               pointerEvents: 'none',
             }}
           >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                node.onOpenModal?.(node.id);
-              }}
-              className="p-2 rounded hover:bg-sidebar-item-hover text-text-secondary hover:text-text-primary transition-colors"
-              style={{ pointerEvents: 'auto' }}
-              title="Edit"
-            >
-              <Edit3 className="h-4 w-4" />
-            </button>
-            <div className="w-px h-5 bg-border mx-0.5" />
+            {/* Edit button - hide for start node */}
+            {node.type !== 'start' && node.id !== 'start' && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    node.onOpenModal?.(node.id);
+                  }}
+                  className="p-2 rounded hover:bg-sidebar-item-hover text-text-secondary hover:text-text-primary transition-colors"
+                  style={{ pointerEvents: 'auto' }}
+                  title="Edit"
+                >
+                  <Edit3 className="h-4 w-4" />
+                </button>
+                <div className="w-px h-5 bg-border mx-0.5" />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    node.onAddToQueue?.(node.id);
+                  }}
+                  className="p-2 rounded hover:bg-sidebar-item-hover text-text-secondary hover:text-text-primary transition-colors"
+                  style={{ pointerEvents: 'auto' }}
+                  title="Move to Queue"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M3 7h18M3 12h18M3 17h18" />
+                    <path d="M14 3l7 7-7 7" />
+                  </svg>
+                </button>
+                <div className="w-px h-5 bg-border mx-0.5" />
+              </>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();

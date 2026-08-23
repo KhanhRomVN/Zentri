@@ -50,6 +50,18 @@ export class ChromeRecorderLauncher {
       // Use a SINGLE shared profile for all recordings instead of per-workflow
       const profileDir = path.join(userDataPath, 'recorder_profile_shared');
 
+      // ALWAYS delete extension cache to ensure latest version loads
+      const extensionCachePath = path.join(profileDir, 'Default', 'Extensions');
+      if (fs.existsSync(extensionCachePath)) {
+        console.log(`[ChromeRecorderLauncher] 🗑️  Deleting extension cache: ${extensionCachePath}`);
+        try {
+          fs.rmSync(extensionCachePath, { recursive: true, force: true });
+          console.log('[ChromeRecorderLauncher] ✅ Extension cache deleted successfully');
+        } catch (error) {
+          console.warn('[ChromeRecorderLauncher] ⚠️  Failed to delete extension cache:', error);
+        }
+      }
+
       // Only delete profile if it doesn't exist yet (first time setup)
       // This allows extension to persist across browser launches
       const isFirstTimeSetup = !fs.existsSync(profileDir);
