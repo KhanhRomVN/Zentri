@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Terminal, X, Copy, Trash2 } from 'lucide-react';
+import { formatTime, getLevelColor, getLevelBg, getLevelLabel, isNodeMarker } from '../../utils';
 
 interface LogEntry {
   timestamp: string;
@@ -131,69 +132,6 @@ export const LogPanel = ({ isOpen, onClose, workflowId }: LogPanelProps) => {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing]);
-
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'node_start':
-        return 'text-blue-400';
-      case 'node_end':
-        return 'text-green-400';
-      case 'info':
-        return 'text-primary';
-      case 'success':
-        return 'text-success';
-      case 'error':
-        return 'text-error';
-      case 'warning':
-        return 'text-warning';
-      default:
-        return 'text-text-secondary';
-    }
-  };
-
-  const getLevelBg = (level: string) => {
-    switch (level) {
-      case 'node_start':
-        return 'bg-blue-500/20 border-l-4 border-blue-500';
-      case 'node_end':
-        return 'bg-green-500/20 border-l-4 border-green-500';
-      case 'info':
-        return 'bg-primary/10';
-      case 'success':
-        return 'bg-success/10';
-      case 'error':
-        return 'bg-error/10';
-      case 'warning':
-        return 'bg-warning/10';
-      default:
-        return 'bg-sidebar-item-hover';
-    }
-  };
-
-  const getLevelLabel = (level: string) => {
-    switch (level) {
-      case 'node_start':
-        return 'START';
-      case 'node_end':
-        return 'END';
-      default:
-        return level.toUpperCase();
-    }
-  };
-
-  const isNodeMarker = (level: string) => {
-    return level === 'node_start' || level === 'node_end';
-  };
-
-  const formatTime = (iso: string) => {
-    const date = new Date(iso);
-    return date.toLocaleTimeString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      fractionalSecondDigits: 3,
-    });
-  };
 
   if (!isOpen) return null;
 

@@ -14,6 +14,7 @@ import {
 import Modal from '../../../../components/ui/Modal/Modal';
 import ModalHeader from '../../../../components/ui/Modal/ModalHeader';
 import ModalBody from '../../../../components/ui/Modal/ModalBody';
+import { formatDuration, formatTimestamp, getStatusColor } from '../../utils';
 
 interface WorkflowRun {
   id: string;
@@ -106,39 +107,6 @@ export const WorkflowHistoryModal = ({
       console.error('[WorkflowHistory] Failed to load history:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const formatDuration = (ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return minutes > 0 ? `${minutes}m ${remainingSeconds}s` : `${seconds}s`;
-  };
-
-  const formatTimestamp = (iso: string) => {
-    const date = new Date(iso);
-    return new Intl.DateTimeFormat('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).format(date);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success':
-      case 'completed':
-        return 'text-success bg-success/10 border-success/30';
-      case 'failed':
-        return 'text-error bg-error/10 border-error/30';
-      case 'running':
-        return 'text-primary bg-primary/10 border-primary/30 animate-pulse';
-      default:
-        return 'text-text-secondary bg-sidebar-item-hover border-border';
     }
   };
 

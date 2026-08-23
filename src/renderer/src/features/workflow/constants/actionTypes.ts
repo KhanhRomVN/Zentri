@@ -1,0 +1,192 @@
+import {
+  MousePointerClick,
+  Type,
+  Hand,
+  ArrowDown,
+  CheckCircle,
+  Link,
+  Clock,
+  Camera,
+  FileText,
+  RefreshCw,
+  ArrowLeft,
+  ArrowRight,
+  X,
+  Plus,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+export interface ActionTypeConfig {
+  id: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  iconColor: string;
+  iconBg: string;
+  needsSelector: boolean;
+  needsConfiguration: boolean;
+  needsUrlInput: boolean;
+}
+
+export const ACTION_TYPES: Record<string, ActionTypeConfig> = {
+  click: {
+    id: 'click',
+    label: 'Click',
+    description: 'Click on element',
+    icon: MousePointerClick,
+    iconColor: 'text-blue-500',
+    iconBg: 'bg-blue-500/10',
+    needsSelector: true,
+    needsConfiguration: true,
+    needsUrlInput: false,
+  },
+  type: {
+    id: 'type',
+    label: 'Type Text',
+    description: 'Enter text input',
+    icon: Type,
+    iconColor: 'text-green-500',
+    iconBg: 'bg-green-500/10',
+    needsSelector: true,
+    needsConfiguration: true,
+    needsUrlInput: false,
+  },
+  hover: {
+    id: 'hover',
+    label: 'Hover',
+    description: 'Mouse over element',
+    icon: Hand,
+    iconColor: 'text-purple-500',
+    iconBg: 'bg-purple-500/10',
+    needsSelector: true,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  scroll: {
+    id: 'scroll',
+    label: 'Scroll To',
+    description: 'Scroll to position',
+    icon: ArrowDown,
+    iconColor: 'text-orange-500',
+    iconBg: 'bg-orange-500/10',
+    needsSelector: true,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  assert: {
+    id: 'assert',
+    label: 'Assert Visible',
+    description: 'Check visibility',
+    icon: CheckCircle,
+    iconColor: 'text-emerald-500',
+    iconBg: 'bg-emerald-500/10',
+    needsSelector: true,
+    needsConfiguration: true,
+    needsUrlInput: false,
+  },
+  go_to_url: {
+    id: 'go_to_url',
+    label: 'Go to URL',
+    description: 'Visit URL in current tab',
+    icon: Link,
+    iconColor: 'text-cyan-500',
+    iconBg: 'bg-cyan-500/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: true,
+  },
+  wait: {
+    id: 'wait',
+    label: 'Wait',
+    description: 'Pause execution',
+    icon: Clock,
+    iconColor: 'text-amber-500',
+    iconBg: 'bg-amber-500/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  screenshot: {
+    id: 'screenshot',
+    label: 'Take Screenshot',
+    description: 'Capture page screenshot',
+    icon: Camera,
+    iconColor: 'text-pink-500',
+    iconBg: 'bg-pink-500/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  extract: {
+    id: 'extract',
+    label: 'Extract Text',
+    description: 'Extract element content',
+    icon: FileText,
+    iconColor: 'text-indigo-500',
+    iconBg: 'bg-indigo-500/10',
+    needsSelector: true,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  reload: {
+    id: 'reload',
+    label: 'Reload Page',
+    description: 'Refresh current page',
+    icon: RefreshCw,
+    iconColor: 'text-teal-500',
+    iconBg: 'bg-teal-500/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  go_back: {
+    id: 'go_back',
+    label: 'Go Back',
+    description: 'Navigate backward',
+    icon: ArrowLeft,
+    iconColor: 'text-slate-500',
+    iconBg: 'bg-slate-500/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  go_forward: {
+    id: 'go_forward',
+    label: 'Go Forward',
+    description: 'Navigate forward',
+    icon: ArrowRight,
+    iconColor: 'text-slate-500',
+    iconBg: 'bg-slate-500/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  close_tab: {
+    id: 'close_tab',
+    label: 'Close Tab',
+    description: 'Close current tab',
+    icon: X,
+    iconColor: 'text-red-500',
+    iconBg: 'bg-red-500/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: false,
+  },
+  new_tab: {
+    id: 'new_tab',
+    label: 'New Tab',
+    description: 'Open new browser tab',
+    icon: Plus,
+    iconColor: 'text-violet-500',
+    iconBg: 'bg-violet-500/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: true,
+  },
+};
+
+export const getActionConfig = (actionType: string): ActionTypeConfig | undefined => {
+  return ACTION_TYPES[actionType];
+};
+
+export const ACTION_TYPE_IDS = Object.keys(ACTION_TYPES);

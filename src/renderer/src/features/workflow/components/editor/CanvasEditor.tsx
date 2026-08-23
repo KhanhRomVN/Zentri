@@ -30,6 +30,7 @@ import '@xyflow/react/dist/style.css';
 import './workflow-editor.css';
 import type { NodeConnection, Workflow, WorkflowNode } from '../../types';
 import { findNodeItem, PLATFORM_META } from '../../constants';
+import { generateId, toFlowNode, toFlowEdge, validateEdges, getConnectionSets } from '../../utils';
 import { WorkflowNodeComponent } from './WorkflowNode';
 import { WorkflowNodeModal } from './WorkflowNodeModal';
 import { RecordQueue } from './RecordQueue';
@@ -56,41 +57,9 @@ interface Snapshot {
   connections: NodeConnection[];
 }
 
-function generateId(prefix: string): string {
-  return `${prefix}${Date.now()}${Math.floor(Math.random() * 1000)}`;
-}
-
 const nodeTypes = {
   workflowNode: WorkflowNodeComponent,
 };
-
-function toFlowNode(node: WorkflowNode, handlers: any): Node {
-  return {
-    id: node.id,
-    type: 'workflowNode',
-    position: { x: node.x, y: node.y },
-    data: { ...node, ...handlers } as unknown as Record<string, unknown>,
-    draggable: !node.locked,
-  };
-}
-
-function toFlowEdge(conn: NodeConnection): Edge {
-  return {
-    id: conn.id,
-    source: conn.from,
-    target: conn.to,
-    sourceHandle: conn.fromSide,
-    targetHandle: conn.toSide,
-    label: conn.label,
-    type: 'smoothstep',
-    style: { stroke: conn.color || 'rgb(var(--primary))', strokeWidth: 2 },
-    markerEnd: {
-      type: 'arrowclosed',
-      color: conn.color || 'rgb(var(--primary))',
-    },
-    animated: false,
-  };
-}
 
 const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps) => {
   const { zoomIn, zoomOut, screenToFlowPosition, getZoom, setViewport, getViewport } =
@@ -203,12 +172,7 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     };
 
     // Check which nodes have incoming/outgoing connections
-    const nodesWithIncoming = new Set<string>();
-    const nodesWithOutgoing = new Set<string>();
-    currentConnections.forEach((conn) => {
-      nodesWithOutgoing.add(conn.from);
-      nodesWithIncoming.add(conn.to);
-    });
+    const { nodesWithIncoming, nodesWithOutgoing } = getConnectionSets(currentConnections);
 
     const flowNodes = currentNodes.map((node) => {
       const flowNode = toFlowNode(node, handlers);
@@ -246,16 +210,11 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
   // Sync workflow.connections → ReactFlow edges
   useEffect(() => {
-    // Validate edges: check if one dot connects to 2+ nodes
-    const sourceHandleCounts = new Map<string, number>();
-    currentConnections.forEach((conn) => {
-      const key = `${conn.from}-${conn.fromSide}`;
-      sourceHandleCounts.set(key, (sourceHandleCounts.get(key) || 0) + 1);
-    });
+    // Validate edges and get invalid ones
+    const invalidEdges = validateEdges(currentConnections);
 
     const flowEdges = currentConnections.map((conn) => {
-      const key = `${conn.from}-${conn.fromSide}`;
-      const isInvalid = (sourceHandleCounts.get(key) || 0) > 1;
+      const isInvalid = invalidEdges.has(conn.id);
 
       // Convert to flow edge with error styling if invalid
       const edge = toFlowEdge(conn);
@@ -274,7 +233,7 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     });
 
     setEdges(flowEdges);
-  }, [currentConnections]);
+  }, [currentConnections, setEdges]);
 
   // ─── History (undo/redo) ────────────────────────────────────────────────
   const pushHistory = useCallback(() => {
