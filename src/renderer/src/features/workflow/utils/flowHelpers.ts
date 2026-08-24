@@ -114,11 +114,13 @@ export function validateWorkflow(
   errors: {
     unconfiguredNodes: string[]; // IDs of nodes missing configuration
     duplicateEdges: string[]; // IDs of invalid duplicate edges
+    isolatedNodes: string[]; // IDs of nodes not connected to workflow
   };
 } {
   const errors = {
     unconfiguredNodes: [] as string[],
     duplicateEdges: [] as string[],
+    isolatedNodes: [] as string[],
   };
 
   // Check for unconfigured nodes
@@ -132,7 +134,27 @@ export function validateWorkflow(
   const invalidEdges = validateEdges(connections);
   errors.duplicateEdges = Array.from(invalidEdges.keys());
 
-  const isValid = errors.unconfiguredNodes.length === 0 && errors.duplicateEdges.length === 0;
+  // Check for isolated nodes (nodes not connected to any edge)
+  const connectedNodeIds = new Set<string>();
+  connections.forEach((conn) => {
+    connectedNodeIds.add(conn.from);
+    connectedNodeIds.add(conn.to);
+  });
+
+  nodes.forEach((node) => {
+    // Skip start node - it's allowed to not have incoming edges
+    if (node.type === 'start') return;
+
+    // Check if node is isolated (not in any connection)
+    if (!connectedNodeIds.has(node.id)) {
+      errors.isolatedNodes.push(node.id);
+    }
+  });
+
+  const isValid =
+    errors.unconfiguredNodes.length === 0 &&
+    errors.duplicateEdges.length === 0 &&
+    errors.isolatedNodes.length === 0;
 
   return { isValid, errors };
 }

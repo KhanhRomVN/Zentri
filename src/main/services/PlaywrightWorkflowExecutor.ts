@@ -196,7 +196,15 @@ export class PlaywrightWorkflowExecutor {
     const action = config.action || node.type;
 
     // For go_to_url action, subtitle or config.url contains the URL (not a selector)
-    const selector = action === 'go_to_url' ? '' : node.subtitle || '';
+    // For scroll with pixels mode, no selector is needed
+    let selector = '';
+    if (action === 'go_to_url') {
+      selector = '';
+    } else if (action === 'scroll' && config.scrollType === 'pixels') {
+      selector = ''; // No selector needed for pixel-based scroll
+    } else {
+      selector = node.subtitle || '';
+    }
 
     // DEBUG: Log action determination
     logCallback?.(
@@ -474,13 +482,54 @@ export class PlaywrightWorkflowExecutor {
     nodeId?: string,
   ): Promise<any> {
     const timeout = config.timeout || 5000;
+    const scrollType = config.scrollType || 'element';
 
-    logCallback?.('info', `Scrolling to: ${selector}`, nodeId);
-    await page.waitForSelector(selector, { timeout });
-    await page.locator(selector).scrollIntoViewIfNeeded();
+    if (scrollType === 'pixels') {
+      // Scroll by pixels
+      const scrollPixels = config.scrollPixels || 500;
+      const scrollWait = config.scrollWait || 1000;
+      const scrollRepeat = config.scrollRepeat || 1;
 
-    logCallback?.('success', `Scroll completed`, nodeId);
-    return { action: 'scroll' };
+      logCallback?.('info', `Scrolling down ${scrollPixels}px, ${scrollRepeat} time(s)`, nodeId);
+
+      // Repeat scroll
+      for (let i = 0; i < scrollRepeat; i++) {
+        logCallback?.(
+          'info',
+          `Scroll ${i + 1}/${scrollRepeat}: scrolling ${scrollPixels}px`,
+          nodeId,
+        );
+
+        await page.evaluate((pixels) => {
+          window.scrollBy(0, pixels);
+        }, scrollPixels);
+
+        // Wait after each scroll for content to load (except for the last one, it will use delay after execution)
+        if (i < scrollRepeat - 1) {
+          logCallback?.('info', `Waiting ${scrollWait}ms before next scroll`, nodeId);
+          await page.waitForTimeout(scrollWait);
+        }
+      }
+
+      // Final wait after all scrolls
+      logCallback?.('info', `Waiting ${scrollWait}ms for final content to load`, nodeId);
+      await page.waitForTimeout(scrollWait);
+
+      logCallback?.(
+        'success',
+        `Scroll by ${scrollPixels}px completed (${scrollRepeat} time(s))`,
+        nodeId,
+      );
+      return { action: 'scroll', scrollType: 'pixels', scrollPixels, scrollWait, scrollRepeat };
+    } else {
+      // Scroll to element (default behavior)
+      logCallback?.('info', `Scrolling to element: ${selector}`, nodeId);
+      await page.waitForSelector(selector, { timeout });
+      await page.locator(selector).scrollIntoViewIfNeeded();
+
+      logCallback?.('success', `Scroll to element completed`, nodeId);
+      return { action: 'scroll', scrollType: 'element' };
+    }
   }
 
   /**

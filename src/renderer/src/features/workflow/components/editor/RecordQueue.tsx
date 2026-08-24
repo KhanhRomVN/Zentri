@@ -68,8 +68,50 @@ export const RecordQueue = memo(({ nodes, onAddNode, onRemoveNode }: RecordQueue
               const Icon = CATEGORY_ICONS[node.category] || Terminal;
 
               // Extract action from node data
-              const action = node.type.replace(/_web$/, '').replace(/_/g, ' ');
-              const displayTitle = action.charAt(0).toUpperCase() + action.slice(1);
+              let displayTitle = node.title;
+              let displaySubtitle = node.subtitle || '\u00a0';
+
+              // Parse config to get action type
+              try {
+                if (node.note) {
+                  const parsed = JSON.parse(node.note);
+                  const actionType = parsed?.config?.action;
+                  const scrollType = parsed?.config?.scrollType;
+                  const scrollPixels = parsed?.config?.scrollPixels;
+                  const scrollWait = parsed?.config?.scrollWait;
+                  const scrollRepeat = parsed?.config?.scrollRepeat;
+
+                  // If title is empty, use action type as title
+                  if ((!displayTitle || displayTitle.trim() === '') && actionType) {
+                    const titleMap: Record<string, string> = {
+                      click: 'Click',
+                      type: 'Type Text',
+                      hover: 'Hover',
+                      scroll: 'Scroll To',
+                      assert: 'Assert Visible',
+                      go_to_url: 'Go to URL',
+                      wait: 'Wait',
+                      screenshot: 'Take Screenshot',
+                      extract: 'Extract Text',
+                      reload: 'Reload Page',
+                      go_back: 'Go Back',
+                      go_forward: 'Go Forward',
+                      close_tab: 'Close Tab',
+                      new_tab: 'New Tab',
+                    };
+                    displayTitle = titleMap[actionType] || actionType;
+                  }
+
+                  // Generate subtitle for scroll action
+                  if (actionType === 'scroll' && scrollType === 'pixels') {
+                    displaySubtitle = `${scrollRepeat || 1}x scroll ${scrollPixels || 500}px, chờ ${scrollWait || 1000}ms`;
+                  }
+                }
+              } catch {
+                // Keep original title if parsing fails
+                const action = node.type.replace(/_web$/, '').replace(/_/g, ' ');
+                displayTitle = action.charAt(0).toUpperCase() + action.slice(1);
+              }
 
               return (
                 <div
@@ -98,7 +140,7 @@ export const RecordQueue = memo(({ nodes, onAddNode, onRemoveNode }: RecordQueue
                         {displayTitle}
                       </div>
                       <div className="mt-0.5 truncate text-[10px] text-text-secondary">
-                        {node.subtitle || '\u00a0'}
+                        {displaySubtitle}
                       </div>
                     </div>
 

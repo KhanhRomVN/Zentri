@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '../../../shared/lib/utils';
 import { TooltipProps } from './type';
 
@@ -15,8 +15,9 @@ export const Tooltip: React.FC<TooltipProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const calculatePosition = () => {
+  const calculatePosition = useCallback(() => {
     if (!triggerRef.current || !tooltipRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
@@ -75,20 +76,41 @@ export const Tooltip: React.FC<TooltipProps> = ({
     }
 
     setPosition({ x, y });
-  };
+  }, [side, align, sideOffset, alignOffset]);
+
+  const handleMouseEnter = useCallback(() => {
+    // Cancel any pending hide
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    setIsVisible(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    // Delay hide to prevent flicker during re-renders
+    hideTimeoutRef.current = setTimeout(() => {
+      setIsVisible(false);
+    }, 100);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isVisible) {
       // Đợi tooltip render xong mới tính vị trí
       requestAnimationFrame(() => {
         calculatePosition();
-        // Debug CSS variables
-        if (tooltipRef.current) {
-          const styles = getComputedStyle(tooltipRef.current);
-        }
       });
     }
-  }, [isVisible]);
+  }, [isVisible, side, align, sideOffset, alignOffset]);
 
   // Recalculate on scroll/resize
   useEffect(() => {
@@ -105,13 +127,13 @@ export const Tooltip: React.FC<TooltipProps> = ({
       window.removeEventListener('scroll', handleUpdate, true);
       window.removeEventListener('resize', handleUpdate);
     };
-  }, [isVisible]);
+  }, [isVisible, calculatePosition]);
 
   return (
     <div
       className={cn('relative inline-block', className)}
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div ref={triggerRef}>{children}</div>
       {isVisible && content && (

@@ -2,11 +2,11 @@ import { RouteObject } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../features/dashboard';
 import EmailManager from '../features/email';
-import RegisManager from '../features/regis';
 import ProxyManager from '../features/proxy';
 import FilterPage from '../features/filter';
 import SettingPage from '../features/setting';
 import WorkflowPage from '../features/workflow';
+import Forge from '@renderer/features/forge/Forrge';
 
 export const routes: RouteObject[] = [
   {
@@ -18,8 +18,8 @@ export const routes: RouteObject[] = [
         element: <Dashboard />,
       },
       {
-        path: 'regis',
-        element: <RegisManager />,
+        path: 'forge',
+        element: <Forge />,
       },
       {
         path: 'email',

@@ -73,8 +73,8 @@ const NAV_ITEMS = [
     color: '#f59e0b',
   },
   {
-    title: 'Registration',
-    href: '/regis',
+    title: 'Forge',
+    href: '/forge',
     icon: PlusCircle,
     color: '#22c55e',
     disabled: false,
@@ -122,7 +122,7 @@ const Sidebar = memo(
 
     return (
       <motion.div
-        className="relative h-screen fixed left-0 top-0 z-50"
+        className="relative h-screen left-0 top-0 z-50"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         animate={{ width: expanded ? 280 : 48 }}

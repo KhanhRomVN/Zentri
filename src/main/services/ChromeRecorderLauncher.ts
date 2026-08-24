@@ -1,7 +1,7 @@
 import { chromium, type BrowserContext, type Page } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs';
-import { app, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import * as os from 'os';
 
 /**
@@ -63,7 +63,6 @@ export class ChromeRecorderLauncher {
     // Copy extension to profile
     try {
       this.copyDirectoryRecursive(extensionPath, targetExtensionDir);
-      console.log(`[ChromeRecorderLauncher] ✓ Copied extension to profile`);
     } catch (error) {
       console.error('[ChromeRecorderLauncher] ❌ Failed to copy extension:', error);
       throw error;
@@ -121,7 +120,6 @@ export class ChromeRecorderLauncher {
 
         // Write back
         fs.writeFileSync(preferencesPath, JSON.stringify(existingPrefs, null, 2));
-        console.log('[ChromeRecorderLauncher] ✓ Updated existing Preferences file');
         return;
       } catch (error) {
         console.warn('[ChromeRecorderLauncher] ⚠️  Failed to update existing Preferences:', error);
@@ -294,21 +292,29 @@ export class ChromeRecorderLauncher {
         return { success: false, error: 'No active browser found for this workflow' };
       }
 
-      // Get current active page (might have changed since launch)
-      const pages = browser.context.pages();
-      if (pages.length === 0) {
-        return { success: false, error: 'No pages found in browser context' };
+      // STEP 1: Reset browser - close all tabs except one new tab
+      console.log('[ChromeRecorderLauncher] Resetting browser - closing all tabs...');
+      const currentPages = browser.context.pages();
+
+      // Create a new blank tab first
+      const newPage = await browser.context.newPage();
+
+      // Close all old tabs
+      for (const oldPage of currentPages) {
+        try {
+          await oldPage.close();
+        } catch (error) {
+          console.warn('[ChromeRecorderLauncher] Failed to close tab:', error);
+        }
       }
 
-      // Use the first page or last active page
-      const page = pages[pages.length - 1];
+      // Update stored page reference to the new blank page
+      this.activeBrowsers.set(workflowId, { ...browser, page: newPage });
 
-      // Update stored page reference
-      this.activeBrowsers.set(workflowId, { ...browser, page });
-
+      console.log('[ChromeRecorderLauncher] Browser reset complete - fresh new tab created');
       logCallback?.('info', `Starting workflow execution on recorder browser for ${workflowId}`);
 
-      // Execute workflow nodes
+      // Execute workflow nodes on the fresh page
       const results = [];
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
@@ -325,7 +331,7 @@ export class ChromeRecorderLauncher {
         );
 
         try {
-          const result = await this.executeNode(page, node, logCallback);
+          const result = await this.executeNode(newPage, node, logCallback);
           results.push({ node, result, success: true });
 
           logCallback?.(
@@ -355,7 +361,7 @@ export class ChromeRecorderLauncher {
         const config = this.parseNodeConfig(node);
         if (config.delay) {
           logCallback?.('info', `Waiting ${config.delay}ms before next node`, node.id);
-          await page.waitForTimeout(config.delay);
+          await newPage.waitForTimeout(config.delay);
         }
       }
 
@@ -436,6 +442,38 @@ export class ChromeRecorderLauncher {
         }
         logCallback?.('success', `Assert passed: ${assertType}`, node.id);
         return { action: 'assert', assertType };
+
+      case 'scroll':
+      case 'scroll_web':
+        const scrollType = config.scrollType || 'pixels';
+        const scrollPixels = config.scrollPixels || 500;
+        const scrollWait = config.scrollWait || 1000;
+        const scrollRepeat = config.scrollRepeat || 1;
+
+        logCallback?.('info', `Scroll: ${scrollType}`, node.id, { scrollPixels, scrollRepeat });
+
+        for (let i = 0; i < scrollRepeat; i++) {
+          if (scrollType === 'element' && selector) {
+            // Scroll to element
+            await page.waitForSelector(selector, { timeout: config.timeout || 5000 });
+            await page.locator(selector).scrollIntoViewIfNeeded();
+            logCallback?.('info', `Scrolled to element (${i + 1}/${scrollRepeat})`, node.id);
+          } else {
+            // Scroll by pixels
+            await page.evaluate((pixels: number) => {
+              window.scrollBy(0, pixels);
+            }, scrollPixels);
+            logCallback?.('info', `Scrolled ${scrollPixels}px (${i + 1}/${scrollRepeat})`, node.id);
+          }
+
+          // Wait between scrolls (except for last iteration)
+          if (i < scrollRepeat - 1) {
+            await page.waitForTimeout(scrollWait);
+          }
+        }
+
+        logCallback?.('success', `Scroll completed: ${scrollRepeat} time(s)`, node.id);
+        return { action: 'scroll', scrollType, scrollPixels, scrollRepeat };
 
       default:
         throw new Error(`Unknown action type: ${action}`);

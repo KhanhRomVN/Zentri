@@ -21,6 +21,10 @@ export interface NodeConfig {
     typingDelay?: number;
     assertType?: string;
     url?: string;
+    scrollType?: 'element' | 'pixels';
+    scrollPixels?: number;
+    scrollWait?: number;
+    scrollRepeat?: number;
   };
 }
 
@@ -82,6 +86,11 @@ export function getDefaultConfigForAction(actionType: string): Partial<NodeConfi
     defaults.typingDelay = NODE_DEFAULTS.typingDelay;
   } else if (actionType === 'assert') {
     defaults.assertType = NODE_DEFAULTS.assertType;
+  } else if (actionType === 'scroll') {
+    defaults.scrollType = NODE_DEFAULTS.scrollType;
+    defaults.scrollPixels = NODE_DEFAULTS.scrollPixels;
+    defaults.scrollWait = NODE_DEFAULTS.scrollWait;
+    defaults.scrollRepeat = NODE_DEFAULTS.scrollRepeat;
   }
 
   return defaults;
@@ -111,6 +120,10 @@ export function hasConfiguredValues(
   if (config.clearBefore !== NODE_DEFAULTS.clearBefore) return true;
   if (config.typingDelay !== NODE_DEFAULTS.typingDelay) return true;
   if (config.assertType !== NODE_DEFAULTS.assertType) return true;
+  if (config.scrollType !== NODE_DEFAULTS.scrollType) return true;
+  if (config.scrollPixels !== NODE_DEFAULTS.scrollPixels) return true;
+  if (config.scrollWait !== NODE_DEFAULTS.scrollWait) return true;
+  if (config.scrollRepeat !== NODE_DEFAULTS.scrollRepeat) return true;
 
   return false;
 }

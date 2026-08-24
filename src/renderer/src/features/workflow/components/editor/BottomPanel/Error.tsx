@@ -4,6 +4,7 @@ import type { WorkflowNode } from '../../../types';
 interface ValidationErrors {
   unconfiguredNodes: string[];
   duplicateEdges: string[];
+  isolatedNodes: string[];
 }
 
 interface ErrorProps {
@@ -14,7 +15,8 @@ interface ErrorProps {
 }
 
 export const Error = ({ errors, nodes, onNodeClick, onEdgeClick }: ErrorProps) => {
-  const totalErrors = errors.unconfiguredNodes.length + errors.duplicateEdges.length;
+  const totalErrors =
+    errors.unconfiguredNodes.length + errors.duplicateEdges.length + errors.isolatedNodes.length;
 
   const getNodeTitle = (nodeId: string): string => {
     const node = nodes.find((n) => n.id === nodeId);
@@ -101,6 +103,39 @@ export const Error = ({ errors, nodes, onNodeClick, onEdgeClick }: ErrorProps) =
                           </div>
                           <div className="text-xs text-text-secondary mt-0.5">
                             Connection ID: {edgeId} - Multiple edges from same source handle
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Isolated Nodes */}
+            {errors.isolatedNodes.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Layers className="h-4 w-4 text-error" />
+                  <h3 className="text-sm font-semibold text-text-primary">
+                    Isolated Nodes ({errors.isolatedNodes.length})
+                  </h3>
+                </div>
+                <div className="space-y-1">
+                  {errors.isolatedNodes.map((nodeId) => (
+                    <button
+                      key={nodeId}
+                      onClick={() => onNodeClick?.(nodeId)}
+                      className="w-full text-left px-3 py-2 rounded bg-error/10 border border-error/20 hover:bg-error/20 transition-colors"
+                    >
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-error shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="text-sm text-text-primary font-medium">
+                            {getNodeTitle(nodeId)}
+                          </div>
+                          <div className="text-xs text-text-secondary mt-0.5">
+                            Node ID: {nodeId} - Not connected to any edge in the workflow
                           </div>
                         </div>
                       </div>

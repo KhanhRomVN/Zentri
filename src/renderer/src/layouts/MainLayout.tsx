@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import Dashboard from '../features/dashboard';
 import EmailManager from '../features/email';
-import RegisManager from '../features/regis';
+import Forrge from '../features/forge/Forrge';
 import ProxyManager from '../features/proxy';
 import SearchManager from '../features/filter';
 import SettingPage from '../features/setting';
@@ -11,7 +11,7 @@ import WorkflowPage from '../features/workflow';
 const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   '/': Dashboard,
   '/email': EmailManager,
-  '/regis': RegisManager,
+  '/forge': Forrge,
   '/proxy': ProxyManager,
   '/search': SearchManager,
   '/setting': SettingPage,

@@ -40,24 +40,31 @@ function broadcastLog(
     }
   }
 
-  // Save to database
-  dbManager
-    .run(
-      `INSERT INTO workflow_logs (id, run_id, workflow_id, timestamp, level, message, node_id, instance_id, metadata)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        logEntry.id,
-        runId,
-        workflowId,
-        logEntry.timestamp,
-        level,
-        message,
-        nodeId || null,
-        instanceId || null,
-        metadata ? JSON.stringify(metadata) : null,
-      ],
-    )
-    .catch((err) => console.error('[WorkflowRecord] Failed to save log:', err));
+  // Save to database (only if workflowId and runId exist)
+  if (workflowId && runId) {
+    dbManager
+      .run(
+        `INSERT INTO workflow_logs (id, run_id, workflow_id, timestamp, level, message, node_id, instance_id, metadata)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          logEntry.id,
+          runId,
+          workflowId,
+          logEntry.timestamp,
+          level,
+          message,
+          nodeId || null,
+          instanceId || null,
+          metadata ? JSON.stringify(metadata) : null,
+        ],
+      )
+      .catch((err) => {
+        // Only log error if it's not a foreign key constraint error (which happens when workflow/run doesn't exist yet)
+        if (!err.message?.includes('FOREIGN KEY constraint')) {
+          console.error('[WorkflowRecord] Failed to save log:', err);
+        }
+      });
+  }
 
   return logEntry;
 }
@@ -84,8 +91,6 @@ export function setupWorkflowRecordHandlers() {
   // Handle start recording request from renderer
   ipcMain.handle('workflow:start-recording', async (event, workflowId: string, url?: string) => {
     try {
-      console.log('[WorkflowRecord] Starting recording for workflow:', workflowId, 'URL:', url);
-
       // Launch Chrome with workflow recorder extension
       const launcher = ChromeRecorderLauncher.getInstance();
       const result = await launcher.launchRecorderBrowser(workflowId, url || 'https://google.com');
@@ -104,8 +109,6 @@ export function setupWorkflowRecordHandlers() {
   // Handle stop recording request from renderer
   ipcMain.handle('workflow:stop-recording', async (event, workflowId: string) => {
     try {
-      console.log('[WorkflowRecord] Stopping recording for workflow:', workflowId);
-
       // Signal to extension to stop recording via WebSocket
       const { WebSocketRecorderService } = require('../../services/WebSocketRecorderService');
       const wsService = WebSocketRecorderService.getInstance();

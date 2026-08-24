@@ -54,6 +54,7 @@ import {
   DropdownSeparator,
 } from '../../../../components/ui/Dropdown';
 import { Kbd } from '../../../../components/ui/Kbd/Kbd';
+import { Tooltip } from '../Tooltip';
 
 interface CanvasEditorProps {
   workflow: Workflow;
@@ -106,7 +107,8 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   const [validationErrors, setValidationErrors] = useState<{
     unconfiguredNodes: string[];
     duplicateEdges: string[];
-  }>({ unconfiguredNodes: [], duplicateEdges: [] });
+    isolatedNodes: string[];
+  }>({ unconfiguredNodes: [], duplicateEdges: [], isolatedNodes: [] });
 
   const historyRef = useRef<Snapshot[]>([]);
   const redoRef = useRef<Snapshot[]>([]);
@@ -196,6 +198,10 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
       if (executingNodeId === node.id) {
         flowNode.data = { ...flowNode.data, isExecuting: true };
       }
+      // Add isIsolated prop if this node is in the isolated nodes list
+      if (validationErrors.isolatedNodes?.includes(node.id)) {
+        flowNode.data = { ...flowNode.data, isIsolated: true };
+      }
       return flowNode;
     });
 
@@ -226,7 +232,8 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
           prevData.note !== newData.note ||
           prevData.locked !== newData.locked ||
           prevData.disabled !== newData.disabled ||
-          prevData.isExecuting !== newData.isExecuting
+          prevData.isExecuting !== newData.isExecuting ||
+          prevData.isIsolated !== newData.isIsolated
         ) {
           hasContentChange = true;
           break;
@@ -237,7 +244,13 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
       return hasContentChange ? flowNodes : prevNodes;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentNodes, currentConnections, nodeContextMenuCloseSignal, executingNodeId]);
+  }, [
+    currentNodes,
+    currentConnections,
+    nodeContextMenuCloseSignal,
+    executingNodeId,
+    validationErrors,
+  ]);
 
   // Separate effect to update node data when selection changes
   useEffect(() => {
@@ -697,9 +710,55 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   const goToRoot = useCallback(() => {
     const rootNode = currentNodes.find((n) => n.type === 'start' || n.id === 'start');
     if (rootNode) {
-      setViewport({ x: -rootNode.x + 400, y: -rootNode.y + 300, zoom: 1 }, { duration: 500 });
+      // Get current zoom to preserve it
+      const currentZoom = getZoom();
+
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Get ReactFlow wrapper element to calculate actual canvas size
+      const flowWrapper = reactFlowWrapRef.current;
+      const canvasWidth = flowWrapper?.offsetWidth || viewportWidth;
+      const canvasHeight = flowWrapper?.offsetHeight || viewportHeight;
+
+      console.log('[goToRoot] Debug Info:', {
+        windowSize: { width: viewportWidth, height: viewportHeight },
+        canvasSize: { width: canvasWidth, height: canvasHeight },
+        rootNode: { x: rootNode.x, y: rootNode.y, w: rootNode.w, h: rootNode.h },
+        currentZoom,
+      });
+
+      // Calculate center of the node in flow coordinates
+      const nodeCenterX = rootNode.x + rootNode.w / 2;
+      const nodeCenterY = rootNode.y + rootNode.h / 2;
+
+      // Calculate center of the canvas
+      const canvasCenterX = canvasWidth / 2;
+      const canvasCenterY = canvasHeight / 2;
+
+      // Calculate viewport offset to center the node
+      // Formula: viewport.x = canvasCenter - (nodeCenter * zoom)
+      const viewportX = canvasCenterX - nodeCenterX * currentZoom;
+      const viewportY = canvasCenterY - nodeCenterY * currentZoom;
+
+      console.log('[goToRoot] Center calculations:', {
+        nodeCenter: { x: nodeCenterX, y: nodeCenterY },
+        canvasCenter: { x: canvasCenterX, y: canvasCenterY },
+        viewport: { x: viewportX, y: viewportY },
+      });
+
+      // Calculate viewport position to center the node
+      setViewport(
+        {
+          x: viewportX,
+          y: viewportY,
+          zoom: currentZoom,
+        },
+        { duration: 500 },
+      );
     }
-  }, [currentNodes, setViewport]);
+  }, [currentNodes, setViewport, getZoom]);
 
   // Middle mouse button pan
   useEffect(() => {
@@ -846,6 +905,34 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
         e.preventDefault();
         setShowGrid((prev) => !prev);
       }
+
+      // Zoom in/out
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        zoomIn();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === '-' || e.key === '_')) {
+        e.preventDefault();
+        zoomOut();
+      }
+
+      // Reset zoom to 100%
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        setViewport({ x: getViewport().x, y: getViewport().y, zoom: 1 }, { duration: 300 });
+      }
+
+      // Go to root (Home key)
+      if (e.key === 'Home') {
+        e.preventDefault();
+        goToRoot();
+      }
+
+      // Open edit modal for selected node
+      if (e.key === 'Enter' && selectedNodeId && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();
+        setEditModalOpen(true);
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -865,6 +952,9 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     pasteNode,
     getViewport,
     screenToFlowPosition,
+    zoomIn,
+    zoomOut,
+    goToRoot,
   ]);
 
   // Setup workflow recording listeners
@@ -978,17 +1068,8 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   const handleRunOnRecorder = useCallback(async () => {
     console.log('[CanvasEditor] handleRunOnRecorder called');
     try {
-      // Check if nodes exist
-      if (currentNodes.length <= 1) {
-        alert('Add nodes to run workflow');
-        return;
-      }
-
-      // Check if workflow is valid
-      if (!workflowValid) {
-        alert('Cannot run: workflow has errors (unconfigured nodes or duplicate edges)');
-        return;
-      }
+      // No validation - run regardless of errors
+      // User can test incomplete workflows for debugging
 
       console.log('[CanvasEditor] Calling window.api.workflow.runOnRecorder...');
 
@@ -1001,12 +1082,12 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
         alert(`Failed to run workflow on recorder: ${result.error}`);
       } else {
         console.log('[CanvasEditor] Workflow executed successfully on recorder browser');
-        // No alert on success - user can check logs
+        // No alert on success - user can watch in browser
       }
     } catch (error) {
       console.error('[CanvasEditor] Error running workflow on recorder:', error);
     }
-  }, [workflow.id, currentNodes, workflowValid]);
+  }, [workflow.id, currentNodes]);
 
   // Handler to run workflow
   const handleRunWorkflow = useCallback(
@@ -1199,31 +1280,34 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
               {/* Zoom controls overlay bar */}
               <Panel position="bottom-left">
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-card-background/95 px-3 py-2 shadow-lg backdrop-blur">
-                  <button
-                    onClick={() => zoomOut()}
-                    className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                    title="Zoom out"
-                  >
-                    <ZoomOut className="h-4 w-4" />
-                  </button>
+                  <Tooltip content="Zoom out" side="top">
+                    <button
+                      onClick={() => zoomOut()}
+                      className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                    >
+                      <ZoomOut className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
                   <span className="min-w-[3rem] text-center text-xs font-semibold text-text-primary">
                     {zoom}%
                   </span>
-                  <button
-                    onClick={() => zoomIn()}
-                    className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                    title="Zoom in"
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </button>
+                  <Tooltip content="Zoom in" side="top">
+                    <button
+                      onClick={() => zoomIn()}
+                      className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
                   <div className="mx-1 h-4 w-px bg-border" />
-                  <button
-                    onClick={goToRoot}
-                    className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
-                    title="Go to root node"
-                  >
-                    <Home className="h-4 w-4" />
-                  </button>
+                  <Tooltip content="Go to root node" side="top">
+                    <button
+                      onClick={goToRoot}
+                      className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-sidebar-item-hover hover:text-text-primary"
+                    >
+                      <Home className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
                 </div>
               </Panel>
 
@@ -1231,75 +1315,79 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
               <Panel position="bottom-right">
                 <div className="flex flex-col gap-1 rounded-lg border border-border bg-card-background/95 p-1.5 shadow-lg backdrop-blur">
                   {/* Record Browser Button */}
-                  <button
-                    onClick={isRecording ? handleStopRecording : handleLaunchBrowser}
-                    className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                      isRecording
-                        ? 'bg-error/10 text-error hover:bg-error/20'
-                        : 'text-text-secondary hover:bg-primary/10 hover:text-primary'
-                    }`}
-                    title={isRecording ? 'Stop recording' : 'Launch browser recorder'}
+                  <Tooltip
+                    content={isRecording ? 'Stop recording' : 'Launch browser recorder'}
+                    side="left"
                   >
-                    <Video className="h-4 w-4" />
-                  </button>
+                    <button
+                      onClick={isRecording ? handleStopRecording : handleLaunchBrowser}
+                      className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                        isRecording
+                          ? 'bg-error/10 text-error hover:bg-error/20'
+                          : 'text-text-secondary hover:bg-primary/10 hover:text-primary'
+                      }`}
+                    >
+                      <Video className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
 
                   {/* Run on Recorder Button (Only show when recording/recorder active) */}
                   {isRecording && (
-                    <button
-                      onClick={handleRunOnRecorder}
-                      disabled={currentNodes.length <= 1 || !workflowValid}
-                      className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={
-                        !workflowValid
-                          ? 'Cannot run: workflow has errors'
-                          : currentNodes.length <= 1
-                            ? 'Add nodes to run on recorder'
-                            : 'Run workflow on recorder browser'
-                      }
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </button>
+                    <Tooltip content="Run workflow on recorder browser" side="left">
+                      <button
+                        onClick={handleRunOnRecorder}
+                        className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
                   )}
 
                   {/* Run Workflow Button */}
-                  <button
-                    onClick={() => setRunModalOpen(true)}
-                    disabled={currentNodes.length <= 1 || isRecording || !workflowValid}
-                    className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-success/10 hover:text-success disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={
+                  <Tooltip
+                    content={
                       !workflowValid
-                        ? 'Cannot run: workflow has errors (unconfigured nodes or duplicate edges)'
+                        ? 'Cannot run: workflow has errors'
                         : currentNodes.length <= 1
                           ? 'Add nodes to run workflow'
                           : isRecording
                             ? 'Cannot run while recording'
                             : 'Run workflow'
                     }
+                    side="left"
                   >
-                    <Play className="h-4 w-4" />
-                  </button>
+                    <button
+                      onClick={() => setRunModalOpen(true)}
+                      disabled={currentNodes.length <= 1 || isRecording || !workflowValid}
+                      className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-success/10 hover:text-success disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Play className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
 
                   {/* Workflow History Button */}
-                  <button
-                    onClick={() => setHistoryModalOpen(true)}
-                    className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-primary/10 hover:text-primary"
-                    title="View run history"
-                  >
-                    <History className="h-4 w-4" />
-                  </button>
+                  <Tooltip content="View run history" side="left">
+                    <button
+                      onClick={() => setHistoryModalOpen(true)}
+                      className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-primary/10 hover:text-primary"
+                    >
+                      <History className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
 
                   {/* Execution Logs Button */}
-                  <button
-                    onClick={() => setLogPanelOpen(!logPanelOpen)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
-                      logPanelOpen
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-text-secondary hover:bg-primary/10 hover:text-primary'
-                    }`}
-                    title={logPanelOpen ? 'Hide logs' : 'Show execution logs'}
-                  >
-                    <ScrollText className="h-4 w-4" />
-                  </button>
+                  <Tooltip content={logPanelOpen ? 'Hide logs' : 'Show execution logs'} side="left">
+                    <button
+                      onClick={() => setLogPanelOpen(!logPanelOpen)}
+                      className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors ${
+                        logPanelOpen
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-text-secondary hover:bg-primary/10 hover:text-primary'
+                      }`}
+                    >
+                      <ScrollText className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
                 </div>
               </Panel>
             </ReactFlow>
@@ -1394,11 +1482,96 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
               validationErrors={validationErrors}
               nodes={currentNodes}
               onNodeClick={(nodeId) => {
-                setSelectedNodeId(nodeId);
-                setEditModalOpen(true);
+                // Find node and center it in viewport
+                const node = currentNodes.find((n) => n.id === nodeId);
+                if (node) {
+                  // Get current zoom to preserve it
+                  const currentZoom = getZoom();
+
+                  // Get ReactFlow wrapper element to calculate actual canvas size
+                  const flowWrapper = reactFlowWrapRef.current;
+                  const canvasWidth = flowWrapper?.offsetWidth || window.innerWidth;
+                  const canvasHeight = flowWrapper?.offsetHeight || window.innerHeight;
+
+                  // Calculate center of the node in flow coordinates
+                  const nodeCenterX = node.x + node.w / 2;
+                  const nodeCenterY = node.y + node.h / 2;
+
+                  // Calculate center of the canvas
+                  const canvasCenterX = canvasWidth / 2;
+                  const canvasCenterY = canvasHeight / 2;
+
+                  // Calculate viewport offset to center the node
+                  const viewportX = canvasCenterX - nodeCenterX * currentZoom;
+                  const viewportY = canvasCenterY - nodeCenterY * currentZoom;
+
+                  setViewport(
+                    {
+                      x: viewportX,
+                      y: viewportY,
+                      zoom: currentZoom,
+                    },
+                    { duration: 500 },
+                  );
+                  // Select node (simulates left click)
+                  setTimeout(() => {
+                    setSelectedNodeId(nodeId);
+                    setNodes((nds) =>
+                      nds.map((n) => ({
+                        ...n,
+                        selected: n.id === nodeId,
+                      })),
+                    );
+                  }, 100);
+                }
               }}
               onEdgeClick={(edgeId) => {
-                setSelectedEdgeId(edgeId);
+                // Find edge and center it in viewport
+                const edge = currentConnections.find((e) => e.id === edgeId);
+                if (edge) {
+                  const fromNode = currentNodes.find((n) => n.id === edge.from);
+                  const toNode = currentNodes.find((n) => n.id === edge.to);
+                  if (fromNode && toNode) {
+                    // Get current zoom to preserve it
+                    const currentZoom = getZoom();
+
+                    // Get ReactFlow wrapper element to calculate actual canvas size
+                    const flowWrapper = reactFlowWrapRef.current;
+                    const canvasWidth = flowWrapper?.offsetWidth || window.innerWidth;
+                    const canvasHeight = flowWrapper?.offsetHeight || window.innerHeight;
+
+                    // Calculate midpoint between nodes (edge center)
+                    const midX = (fromNode.x + toNode.x) / 2 + fromNode.w / 2;
+                    const midY = (fromNode.y + toNode.y) / 2 + fromNode.h / 2;
+
+                    // Calculate center of the canvas
+                    const canvasCenterX = canvasWidth / 2;
+                    const canvasCenterY = canvasHeight / 2;
+
+                    // Calculate viewport offset to center the edge
+                    const viewportX = canvasCenterX - midX * currentZoom;
+                    const viewportY = canvasCenterY - midY * currentZoom;
+
+                    setViewport(
+                      {
+                        x: viewportX,
+                        y: viewportY,
+                        zoom: currentZoom,
+                      },
+                      { duration: 500 },
+                    );
+                    // Select edge (simulates left click)
+                    setTimeout(() => {
+                      setSelectedEdgeId(edgeId);
+                      setEdges((eds) =>
+                        eds.map((e) => ({
+                          ...e,
+                          selected: e.id === edgeId,
+                        })),
+                      );
+                    }, 100);
+                  }
+                }
               }}
             />
           )}

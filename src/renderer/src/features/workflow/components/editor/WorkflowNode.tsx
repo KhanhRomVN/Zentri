@@ -28,6 +28,7 @@ import {
   DropdownSeparator,
 } from '../../../../components/ui/Dropdown';
 import { Kbd } from '../../../../components/ui/Kbd/Kbd';
+import { Tooltip } from '../Tooltip';
 
 type WorkflowNodeComponentProps = NodeProps & {
   data: WorkflowNode &
@@ -46,6 +47,7 @@ type WorkflowNodeComponentProps = NodeProps & {
       hasIncoming?: boolean;
       hasOutgoing?: boolean;
       isExecuting?: boolean; // New prop for execution animation
+      isIsolated?: boolean; // New prop for isolated node validation
     };
 };
 
@@ -62,19 +64,32 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
   const node = data as WorkflowNode & WorkflowNodeComponentProps['data'];
   const category = CATEGORY_META[node.category];
   const Icon = CATEGORY_ICONS[node.category] || Terminal;
-  const needsWarning = !node.subtitle && node.type !== 'end';
-  const selectedNodesCount = node.selectedNodesCount || 0;
 
   // Parse config to get action type and determine icon/color
   let displayTitle = node.title;
   let displayIcon = Icon;
   let displayColor = category.color;
   let displayBg = category.bg;
+  let displaySubtitle = node.subtitle || '\u00a0';
+  let hasValidConfig = false; // Track if node has valid configuration
 
   try {
     if (node.note) {
       const parsed = JSON.parse(node.note);
       const actionType = parsed?.config?.action;
+      const scrollType = parsed?.config?.scrollType;
+      const scrollPixels = parsed?.config?.scrollPixels;
+      const scrollWait = parsed?.config?.scrollWait;
+      const scrollRepeat = parsed?.config?.scrollRepeat;
+
+      console.log(`[WorkflowNode ${node.id}] Parsing config:`, {
+        nodeId: node.id,
+        nodeType: node.type,
+        actionType,
+        scrollType,
+        subtitle: node.subtitle,
+        hasNote: !!node.note,
+      });
 
       // If title is empty, use action type as title
       if ((!displayTitle || displayTitle.trim() === '') && actionType) {
@@ -113,11 +128,93 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
         );
         displayColor = 'rgb(6, 182, 212)'; // cyan-500
         displayBg = 'rgba(6, 182, 212, 0.1)'; // cyan-500/10
+        // go_to_url has subtitle (URL), so it's valid
+        if (node.subtitle) {
+          hasValidConfig = true;
+          console.log(`[WorkflowNode ${node.id}] go_to_url with subtitle, hasValidConfig=true`);
+        }
+      } else if (actionType === 'scroll') {
+        displayIcon = () => (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-3.5 w-3.5"
+          >
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          </svg>
+        );
+        displayColor = 'rgb(249, 115, 22)'; // orange-500
+        displayBg = 'rgba(249, 115, 22, 0.1)'; // orange-500/10
+
+        // Generate subtitle for scroll action
+        if (scrollType === 'pixels') {
+          displaySubtitle = `${scrollRepeat || 1}x scroll ${scrollPixels || 500}px, chờ ${scrollWait || 1000}ms`;
+          hasValidConfig = true; // Scroll by pixels doesn't need selector
+          console.log(
+            `[WorkflowNode ${node.id}] scroll by pixels, hasValidConfig=true, subtitle="${displaySubtitle}"`,
+          );
+        } else if (node.subtitle) {
+          displaySubtitle = node.subtitle;
+          hasValidConfig = true; // Has selector
+          console.log(
+            `[WorkflowNode ${node.id}] scroll to element with subtitle, hasValidConfig=true`,
+          );
+        }
+      } else if (node.subtitle) {
+        // Other actions with subtitle are valid
+        hasValidConfig = true;
+        console.log(`[WorkflowNode ${node.id}] other action with subtitle, hasValidConfig=true`);
       }
+    } else if (node.subtitle) {
+      // No config but has subtitle means it's valid
+      hasValidConfig = true;
+      console.log(`[WorkflowNode ${node.id}] no config but has subtitle, hasValidConfig=true`);
     }
-  } catch {
-    // Keep original title if parsing fails
+  } catch (error) {
+    console.log(`[WorkflowNode ${node.id}] Error parsing config:`, error);
+    // If parsing fails but has subtitle, still valid
+    if (node.subtitle) {
+      hasValidConfig = true;
+      console.log(`[WorkflowNode ${node.id}] parse error but has subtitle, hasValidConfig=true`);
+    }
   }
+
+  console.log(`[WorkflowNode ${node.id}] Final check:`, {
+    nodeId: node.id,
+    nodeType: node.type,
+    hasValidConfig,
+    isIsolated: node.isIsolated,
+  });
+
+  // Check if node needs warning badge
+  // Show warning only if: no valid config AND not start/end node, OR is isolated
+  const needsWarning =
+    (!hasValidConfig && node.type !== 'end' && node.type !== 'start') || node.isIsolated;
+
+  // Generate warning message for tooltip
+  const getWarningMessage = () => {
+    if (node.isIsolated) {
+      return 'Not connected to any edge in the workflow';
+    }
+    if (!hasValidConfig) {
+      return 'Missing configuration (title or action data)';
+    }
+    return '';
+  };
+
+  console.log(`[WorkflowNode ${node.id}] Warning badge decision:`, {
+    nodeId: node.id,
+    needsWarning,
+    reason: needsWarning
+      ? node.isIsolated
+        ? 'isolated node'
+        : 'no valid config and not start/end'
+      : 'all good',
+  });
+
+  const selectedNodesCount = node.selectedNodesCount || 0;
 
   const [toolbarScreenPosition, setToolbarScreenPosition] = useState({ x: 0, y: 0 });
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -211,17 +308,19 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-xs font-semibold text-text-primary">{displayTitle}</div>
-          <div className="mt-0.5 truncate text-[10px] text-text-secondary">
-            {node.subtitle || '\u00a0'}
-          </div>
+          <div className="mt-0.5 truncate text-[10px] text-text-secondary">{displaySubtitle}</div>
         </div>
         {node.locked && <Lock className="h-3 w-3 text-text-secondary shrink-0 mt-0.5" />}
       </div>
 
       {/* Warning badge */}
       {needsWarning && (
-        <div className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-sm bg-card-background border border-yellow">
-          <AlertTriangle className="h-2.5 w-2.5 text-yellow" />
+        <div className="absolute -right-1 -top-1 z-10">
+          <Tooltip content={getWarningMessage()} side="right">
+            <div className="flex h-4 w-4 items-center justify-center rounded-sm bg-card-background border border-yellow">
+              <AlertTriangle className="h-2.5 w-2.5 text-yellow" />
+            </div>
+          </Tooltip>
         </div>
       )}
 

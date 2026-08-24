@@ -40,6 +40,10 @@ interface NodeConfig {
     clearBefore?: boolean;
     typingDelay?: number;
     assertType?: string;
+    scrollType?: 'element' | 'pixels';
+    scrollPixels?: number;
+    scrollWait?: number;
+    scrollRepeat?: number;
   };
 }
 
@@ -71,6 +75,10 @@ export const WorkflowNodeModal = memo(
     const [clearBefore, setClearBefore] = useState(true);
     const [typingDelay, setTypingDelay] = useState(50);
     const [assertType, setAssertType] = useState('Is Visible');
+    const [scrollType, setScrollType] = useState<'element' | 'pixels'>('element');
+    const [scrollPixels, setScrollPixels] = useState(500);
+    const [scrollWait, setScrollWait] = useState(1000);
+    const [scrollRepeat, setScrollRepeat] = useState(1);
 
     // Track initial values to detect changes
     const [initialValues, setInitialValues] = useState<any>(null);
@@ -110,6 +118,10 @@ export const WorkflowNodeModal = memo(
             if (typeof cfg.clearBefore === 'boolean') setClearBefore(cfg.clearBefore);
             if (typeof cfg.typingDelay === 'number') setTypingDelay(cfg.typingDelay);
             if (cfg.assertType) setAssertType(cfg.assertType);
+            if (cfg.scrollType) setScrollType(cfg.scrollType);
+            if (typeof cfg.scrollPixels === 'number') setScrollPixels(cfg.scrollPixels);
+            if (typeof cfg.scrollWait === 'number') setScrollWait(cfg.scrollWait);
+            if (typeof cfg.scrollRepeat === 'number') setScrollRepeat(cfg.scrollRepeat);
           }
         } catch {
           setParsedConfig(null);
@@ -144,6 +156,10 @@ export const WorkflowNodeModal = memo(
       if (clearBefore !== true) return true;
       if (typingDelay !== 50) return true;
       if (assertType !== 'Is Visible') return true;
+      if (scrollType !== 'element') return true;
+      if (scrollPixels !== 500) return true;
+      if (scrollWait !== 1000) return true;
+      if (scrollRepeat !== 1) return true;
 
       return false;
     }, [
@@ -160,6 +176,10 @@ export const WorkflowNodeModal = memo(
       clearBefore,
       typingDelay,
       assertType,
+      scrollType,
+      scrollPixels,
+      scrollWait,
+      scrollRepeat,
     ]);
 
     // Handle action type change with confirmation
@@ -215,6 +235,10 @@ export const WorkflowNodeModal = memo(
           clearBefore,
           typingDelay,
           assertType,
+          scrollType,
+          scrollPixels,
+          scrollWait,
+          scrollRepeat,
         },
       };
 
@@ -243,6 +267,10 @@ export const WorkflowNodeModal = memo(
       clearBefore,
       typingDelay,
       assertType,
+      scrollType,
+      scrollPixels,
+      scrollWait,
+      scrollRepeat,
     ]);
 
     // Handle close with unsaved changes check
@@ -284,6 +312,10 @@ export const WorkflowNodeModal = memo(
           clearBefore,
           typingDelay,
           assertType,
+          scrollType,
+          scrollPixels,
+          scrollWait,
+          scrollRepeat,
         },
       };
 
@@ -820,6 +852,192 @@ export const WorkflowNodeModal = memo(
               </div>
             </div>
 
+            {/* Scroll Type - Only show for scroll action */}
+            {actionType === 'scroll' && (
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                  Scroll Type
+                </label>
+                <Dropdown className="w-full">
+                  <DropdownTrigger>
+                    <button className="w-full flex items-center gap-3 rounded-lg border border-border bg-input-background px-3 py-2 text-sm hover:border-primary transition-colors">
+                      {/* Icon */}
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+                          scrollType === 'element' ? 'bg-blue-500/10' : 'bg-orange-500/10'
+                        }`}
+                      >
+                        <svg
+                          className={`h-4 w-4 ${scrollType === 'element' ? 'text-blue-500' : 'text-orange-500'}`}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          {scrollType === 'element' ? (
+                            <path d="M12 5v14M5 12l7 7 7-7" />
+                          ) : (
+                            <>
+                              <path d="M12 5v14M5 12l7 7 7-7" />
+                              <path d="M3 3h18M3 21h18" />
+                            </>
+                          )}
+                        </svg>
+                      </div>
+                      {/* Text Content */}
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-medium text-text-primary">
+                          {scrollType === 'element' ? 'Scroll To Element' : 'Scroll By Pixels'}
+                        </div>
+                        <div className="text-xs text-text-secondary">
+                          {scrollType === 'element'
+                            ? 'Scroll đến một element cụ thể'
+                            : `${scrollRepeat}x scroll ${scrollPixels}px, chờ ${scrollWait}ms`}
+                        </div>
+                      </div>
+                      {/* Arrow Icon */}
+                      <ChevronDown className="h-4 w-4 text-text-secondary" />
+                    </button>
+                  </DropdownTrigger>
+                  <DropdownContent className="min-w-[280px]">
+                    <DropdownItem
+                      onClick={() => setScrollType('element')}
+                      className="flex items-center gap-3 py-2"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
+                        <svg
+                          className="h-4 w-4 text-blue-500"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M12 5v14M5 12l7 7 7-7" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-text-primary">
+                          Scroll To Element
+                        </div>
+                        <div className="text-xs text-text-secondary">
+                          Scroll đến một element cụ thể trên trang
+                        </div>
+                      </div>
+                    </DropdownItem>
+                    <DropdownItem
+                      onClick={() => setScrollType('pixels')}
+                      className="flex items-center gap-3 py-2"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-orange-500/10">
+                        <svg
+                          className="h-4 w-4 text-orange-500"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M12 5v14M5 12l7 7 7-7" />
+                          <path d="M3 3h18M3 21h18" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-text-primary">
+                          Scroll By Pixels
+                        </div>
+                        <div className="text-xs text-text-secondary">
+                          Scroll xuống một khoảng pixels, phù hợp cho lazy loading
+                        </div>
+                      </div>
+                    </DropdownItem>
+                  </DropdownContent>
+                </Dropdown>
+              </div>
+            )}
+
+            {/* Scroll Configuration - Only show for scroll by pixels */}
+            {actionType === 'scroll' && scrollType === 'pixels' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-text-secondary">
+                    Scroll Distance (pixels)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setScrollPixels(Math.max(0, scrollPixels - 100))}
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-text-primary hover:bg-sidebar-item-hover"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 rounded-lg border border-border bg-input-background px-3 py-2 text-center text-sm font-mono text-text-primary">
+                      {scrollPixels}px
+                    </div>
+                    <button
+                      onClick={() => setScrollPixels(Math.min(10000, scrollPixels + 100))}
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-text-primary hover:bg-sidebar-item-hover"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="mt-1.5 text-xs text-text-tertiary">
+                    Khoảng cách scroll xuống mỗi lần (tính bằng pixels)
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-text-secondary">
+                    Number of Scrolls
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setScrollRepeat(Math.max(1, scrollRepeat - 1))}
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-text-primary hover:bg-sidebar-item-hover"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 rounded-lg border border-border bg-input-background px-3 py-2 text-center text-sm font-mono text-text-primary">
+                      {scrollRepeat}x
+                    </div>
+                    <button
+                      onClick={() => setScrollRepeat(Math.min(100, scrollRepeat + 1))}
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-text-primary hover:bg-sidebar-item-hover"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="mt-1.5 text-xs text-text-tertiary">
+                    Số lần scroll xuống liên tiếp (mỗi lần scroll {scrollPixels}px, chờ {scrollWait}
+                    ms)
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-text-secondary">
+                    Wait After Scroll
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setScrollWait(Math.max(0, scrollWait - 500))}
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-text-primary hover:bg-sidebar-item-hover"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 rounded-lg border border-border bg-input-background px-3 py-2 text-center text-sm font-mono text-text-primary">
+                      {scrollWait}ms
+                    </div>
+                    <button
+                      onClick={() => setScrollWait(Math.min(10000, scrollWait + 500))}
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-text-primary hover:bg-sidebar-item-hover"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="mt-1.5 text-xs text-text-tertiary">
+                    Thời gian chờ sau mỗi lần scroll để content load xong (tính bằng mili giây)
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* URL Input - Show for go_to_url and new_tab */}
             {needsUrlInput && (
               <div>
@@ -876,7 +1094,7 @@ export const WorkflowNodeModal = memo(
             )}
 
             {/* Selector - Only show for actions that need it */}
-            {needsSelector && (
+            {needsSelector && !(actionType === 'scroll' && scrollType === 'pixels') && (
               <div className="space-y-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-text-tertiary">
@@ -895,7 +1113,7 @@ export const WorkflowNodeModal = memo(
             {isInteractNode && parsedConfig && (
               <>
                 {/* Selector Strategy - Only show for actions that need selector */}
-                {needsSelector && (
+                {needsSelector && !(actionType === 'scroll' && scrollType === 'pixels') && (
                   <div className="space-y-3 border-t border-border pt-5">
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-semibold uppercase tracking-wider text-text-tertiary">

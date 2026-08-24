@@ -18,6 +18,10 @@ export const NODE_DEFAULTS = {
   clickType: 'Left click',
   clearBefore: true,
   assertType: 'Is Visible',
+  scrollType: 'element' as 'element' | 'pixels',
+  scrollPixels: 500, // 500px
+  scrollWait: 1000, // 1 second
+  scrollRepeat: 1, // 1 time
 
   // Node dimensions
   nodeWidth: 208,
@@ -34,6 +38,9 @@ export type ClickType = (typeof CLICK_TYPES)[number];
 
 export const ASSERT_TYPES = ['Is Visible', 'Is Hidden', 'Contains Text', 'Has Attribute'] as const;
 export type AssertType = (typeof ASSERT_TYPES)[number];
+
+export const SCROLL_TYPES = ['element', 'pixels'] as const;
+export type ScrollType = (typeof SCROLL_TYPES)[number];
 
 export const EXECUTION_MODES = ['sequential', 'conditional'] as const;
 export type ExecutionMode = (typeof EXECUTION_MODES)[number];
