@@ -30,12 +30,9 @@ const MainLayout = () => {
   useEffect(() => {
     const initDatabase = async () => {
       try {
-        // @ts-ignore
         const dbPath = await window.electron.ipcRenderer.invoke('storage:init-zentri');
-        // @ts-ignore
         await window.electron.ipcRenderer.invoke('sqlite:open', dbPath);
         setIsDbReady(true);
-        console.log('Database auto-initialized on startup:', dbPath);
       } catch (error) {
         console.error('Failed to auto-initialize database:', error);
         setIsDbReady(true);

@@ -31,7 +31,6 @@ function findChromiumInDir(basePath: string): string | null {
     for (const dir of chromiumDirs) {
       const execPath = path.join(basePath, dir, 'chrome');
       if (fs.existsSync(execPath)) {
-        console.log(`[FingerprintChromium] Found: ${execPath}`);
         return execPath;
       }
     }
@@ -45,7 +44,6 @@ export function getFingerprintChromiumPath(): string | null {
   // Priority 1: System-installed at /opt/ungoogled-chromium/
   const optPath = '/opt/ungoogled-chromium/chrome';
   if (fs.existsSync(optPath)) {
-    console.log(`[FingerprintChromium] Found: ${optPath}`);
     return optPath;
   }
 

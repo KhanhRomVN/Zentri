@@ -167,11 +167,8 @@ function buildGroup(items: ProcessedItem[]): TimeGroup {
 // Tự quản lý fetch + loading để không bị unmount khi đổi ngày
 
 const HistoryContentView: FC<{ email: string }> = memo(({ email }) => {
-  console.log('[DEBUG] HistoryContentView render');
-
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const init = new Date().toISOString().split('T')[0];
-    console.log('[DEBUG] HistoryContentView useState init selectedDate:', init);
     return init;
   });
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
@@ -188,41 +185,33 @@ const HistoryContentView: FC<{ email: string }> = memo(({ email }) => {
     totalVisits: 0,
   });
 
-  const fetchHistory = useCallback(async (date: string) => {
-    console.log('[DEBUG] HistoryContentView fetchHistory called — date:', date, 'email:', email);
-    setLoading(true);
-    setError(null);
-    try {
-      // @ts-ignore
-      const result = await window.electron.ipcRenderer.invoke('email:get-history', {
-        email,
-        date,
-      });
-      if (result.success) {
-        console.log('[DEBUG] HistoryContentView fetchHistory success — items:', result.history?.length);
-        setHistory(result.history);
-        setStats(result.stats);
-      } else {
-        setError(result.error || 'Failed to load history');
+  const fetchHistory = useCallback(
+    async (date: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        // @ts-ignore
+        const result = await window.electron.ipcRenderer.invoke('email:get-history', {
+          email,
+          date,
+        });
+        if (result.success) {
+          setHistory(result.history);
+          setStats(result.stats);
+        } else {
+          setError(result.error || 'Failed to load history');
+        }
+      } catch (err: any) {
+        setError(err.message || 'An error occurred');
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  }, [email]);
-
-  // [DEBUG] Log mount/unmount
-  useEffect(() => {
-    console.log('[DEBUG] HistoryContentView MOUNTED');
-    return () => {
-      console.log('[DEBUG] HistoryContentView UNMOUNTED');
-    };
-  }, []);
+    },
+    [email],
+  );
 
   // Fetch khi đổi ngày hoặc email
   useEffect(() => {
-    console.log('[DEBUG] HistoryContentView selectedDate/email changed → fetchHistory:', { email, selectedDate });
     if (email) {
       fetchHistory(selectedDate);
     }
@@ -230,7 +219,6 @@ const HistoryContentView: FC<{ email: string }> = memo(({ email }) => {
 
   // Reset domain filter khi đổi ngày
   useEffect(() => {
-    console.log('[DEBUG] HistoryContentView resetting filters for new date:', selectedDate);
     setSelectedDomain(null);
     setQuery('');
     setFilter('all');
@@ -272,7 +260,6 @@ const HistoryContentView: FC<{ email: string }> = memo(({ email }) => {
 
   // ─── Loading state (trong HistoryContentView, không unmount) ──────────────
   if (loading) {
-    console.log('[DEBUG] HistoryContentView showing LOADING spinner (inside component)');
     return (
       <div className="w-full flex-1 min-h-0 flex overflow-hidden bg-background/5">
         <ControlSidebar
@@ -298,7 +285,6 @@ const HistoryContentView: FC<{ email: string }> = memo(({ email }) => {
 
   // ─── Error state (trong HistoryContentView, không unmount) ─────────────────
   if (error) {
-    console.log('[DEBUG] HistoryContentView showing ERROR state:', error);
     return (
       <div className="w-full flex-1 min-h-0 flex overflow-hidden bg-background/5">
         <ControlSidebar
@@ -352,10 +338,7 @@ const HistoryContentView: FC<{ email: string }> = memo(({ email }) => {
 });
 
 // ─── HistoryTab ───────────────────────────────────────────────────────────────
-// Wrapper đơn giản — không còn quản lý loading/history/stats
-
 const HistoryTab: FC<HistoryTabProps> = ({ email }) => {
-  console.log('[DEBUG] HistoryTab render');
   return <HistoryContentView email={email} />;
 };
 

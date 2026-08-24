@@ -59,26 +59,12 @@ function runMigrations(db: sqlite3.Database): void {
 
 function openDb(profileDir: string): sqlite3.Database {
   const dbPath = path.join(profileDir, DB_FILENAME);
-  const isNew = !fs.existsSync(dbPath);
-
-  console.log(
-    TAG_DBG,
-    'openDb() — profileDir:', profileDir,
-    '| dbPath:', dbPath,
-    '| isNew:', isNew,
-  );
-
   const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
 
   db.exec(CREATE_TABLE_SQL, (err) => {
     if (err) {
       console.error(TAG, 'Failed to create table:', err.message);
     } else {
-      if (isNew) {
-        console.log(TAG, 'Created new file:', dbPath);
-      } else {
-        console.log(TAG_DBG, 'Opened existing file:', dbPath);
-      }
       // Run migrations after table is confirmed to exist
       runMigrations(db);
     }
@@ -108,7 +94,6 @@ function dbRun(db: sqlite3.Database, sql: string, params: any[] = []): Promise<v
 // ── Collect real browser fingerprint via CDP (read-only, no override) ─────
 
 async function collectRealFingerprint(client: any): Promise<Record<string, any> | null> {
-  console.log(TAG_DBG, 'collectRealFingerprint() — reading real browser fingerprint via CDP...');
   try {
     const { result } = await client.send('Runtime.evaluate', {
       expression: `
@@ -158,10 +143,8 @@ async function collectRealFingerprint(client: any): Promise<Record<string, any> 
 
     if (result?.value) {
       const fp = JSON.parse(result.value);
-      console.log(TAG_DBG, 'collectRealFingerprint() — got', Object.keys(fp).length, 'fields');
       return fp;
     }
-    console.log(TAG_DBG, 'collectRealFingerprint() — no result');
     return null;
   } catch (e: any) {
     console.error(TAG, 'collectRealFingerprint() — CDP error:', e?.message);
@@ -182,7 +165,6 @@ function hashFingerprintConfig(config: Record<string, any> | null): string {
 // ── Public IP via CDP ─────────────────────────────────────────────────────
 
 async function fetchPublicIp(client: any): Promise<string | null> {
-  console.log(TAG_DBG, 'fetchPublicIp() — calling ipify.org via CDP...');
   try {
     const { result } = await client.send('Runtime.evaluate', {
       expression: `
@@ -200,11 +182,6 @@ async function fetchPublicIp(client: any): Promise<string | null> {
       timeout: 8000,
     });
     const ip = result?.value ?? null;
-    if (ip) {
-      console.log(TAG_DBG, 'fetchPublicIp() — got IP:', ip);
-    } else {
-      console.log(TAG_DBG, 'fetchPublicIp() — no IP returned');
-    }
     return ip;
   } catch (e: any) {
     console.error(TAG, 'fetchPublicIp() — CDP error:', e?.message);
@@ -215,21 +192,17 @@ async function fetchPublicIp(client: any): Promise<string | null> {
 // ── IP info via ip-api.com ─────────────────────────────────────────────────
 
 async function fetchIpInfo(ip: string): Promise<Record<string, any> | null> {
-  console.log(TAG_DBG, 'fetchIpInfo() — calling ip-api.com for IP:', ip);
   try {
     const res = await fetch(
       `http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,isp,org,as,asname,timezone,query`,
     );
     if (!res.ok) {
-      console.log(TAG_DBG, 'fetchIpInfo() — HTTP error:', res.status);
       return null;
     }
     const data: any = await res.json();
     if (data?.status !== 'success') {
-      console.log(TAG_DBG, 'fetchIpInfo() — API status:', data?.status);
       return null;
     }
-    console.log(TAG_DBG, 'fetchIpInfo() — got info:', data.country, '|', data.city, '|', data.isp);
     return data;
   } catch (e: any) {
     console.error(TAG, 'fetchIpInfo() — error:', e?.message);
@@ -241,15 +214,17 @@ async function fetchIpInfo(ip: string): Promise<Record<string, any> | null> {
 
 function extractDomain(url: string): string | null {
   try {
-    if (!url || url === 'about:blank' || url === 'chrome://newtab' || url.startsWith('chrome-extension://')) {
-      console.log(TAG_DBG, 'extractDomain() — skipped (internal page):', url?.slice(0, 60));
+    if (
+      !url ||
+      url === 'about:blank' ||
+      url === 'chrome://newtab' ||
+      url.startsWith('chrome-extension://')
+    ) {
       return null;
     }
     const hostname = new URL(url).hostname;
-    console.log(TAG_DBG, 'extractDomain() — url:', url.slice(0, 80), '→ domain:', hostname);
     return hostname;
   } catch {
-    console.log(TAG_DBG, 'extractDomain() — parse error for url:', url?.slice(0, 60));
     return null;
   }
 }
@@ -274,8 +249,6 @@ async function trackSiteVisit(
   const fpConfigJson = JSON.stringify(fpConfig);
   const ipInfoJson = ipInfo ? JSON.stringify(ipInfo) : null;
 
-  console.log(TAG_DBG, 'trackSiteVisit() — domain:', domain, '| fpHash:', fpHash, '| ip:', ip);
-
   const active = await dbGet<ActiveEntry>(
     db,
     'SELECT id, fingerprint_config_json, public_ip FROM site_fingerprint_history WHERE domain = ? AND ended_at IS NULL',
@@ -283,7 +256,6 @@ async function trackSiteVisit(
   );
 
   if (!active) {
-    console.log(TAG_DBG, 'trackSiteVisit() — no active entry for', domain, '→ creating NEW entry');
     const id = crypto.randomUUID();
     await dbRun(
       db,
@@ -292,7 +264,6 @@ async function trackSiteVisit(
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [id, domain, fpHash, fpConfigJson, ip, ipInfoJson, now],
     );
-    console.log(TAG, 'NEW:', domain, '| fp=', fpHash, '| ip=', ip, '| id=', id);
     return;
   }
 
@@ -300,16 +271,15 @@ async function trackSiteVisit(
   const fpMatch = active.fingerprint_config_json === fpConfigJson;
   const ipMatch = active.public_ip === ip;
 
-  console.log(TAG_DBG, 'trackSiteVisit() — found active entry | fpMatch:', fpMatch, '| ipMatch:', ipMatch);
-
   if (fpMatch && ipMatch) {
-    console.log(TAG_DBG, 'trackSiteVisit() — SAME identity for', domain, '→ SKIP');
     return;
   }
 
   // Different → close old + insert new
-  console.log(TAG_DBG, 'trackSiteVisit() — DIFFERENT identity for', domain, '→ closing old + inserting new');
-  await dbRun(db, 'UPDATE site_fingerprint_history SET ended_at = ? WHERE id = ?', [now, active.id]);
+  await dbRun(db, 'UPDATE site_fingerprint_history SET ended_at = ? WHERE id = ?', [
+    now,
+    active.id,
+  ]);
 
   const newId = crypto.randomUUID();
   await dbRun(
@@ -318,15 +288,6 @@ async function trackSiteVisit(
      (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [newId, domain, fpHash, fpConfigJson, ip, ipInfoJson, now],
-  );
-
-  console.log(
-    TAG, 'CHANGED:', domain,
-    '| old_fp=', active.fingerprint_config_json ? '(config ' + active.fingerprint_config_json.length + 'b)' : 'null',
-    '| new_fp=', '(config ' + fpConfigJson.length + 'b)',
-    '| old_ip=', active.public_ip,
-    '| new_ip=', ip,
-    '| new_id=', newId,
   );
 }
 
@@ -338,11 +299,8 @@ export async function onPageNavigated(
   fpConfig: Record<string, any> | null,
   url: string,
 ): Promise<void> {
-  console.log(TAG_DBG, 'onPageNavigated() — called | url:', url?.slice(0, 80));
-
   const domain = extractDomain(url);
   if (!domain) {
-    console.log(TAG_DBG, 'onPageNavigated() — no domain extracted → EXIT');
     return;
   }
 
@@ -351,14 +309,12 @@ export async function onPageNavigated(
   if (!resolvedFp) {
     resolvedFp = await collectRealFingerprint(client);
     if (!resolvedFp) {
-      console.log(TAG, 'onPageNavigated() — could not collect fingerprint → EXIT (domain:', domain, ')');
       return;
     }
   }
 
   const ip = await fetchPublicIp(client);
   if (!ip) {
-    console.log(TAG, 'onPageNavigated() — could not fetch public IP → EXIT (domain:', domain, ')');
     return;
   }
 
@@ -373,6 +329,5 @@ export async function onPageNavigated(
     console.error(TAG, 'trackSiteVisit() — error:', e?.message);
   } finally {
     db.close();
-    console.log(TAG_DBG, 'onPageNavigated() — db closed, DONE for domain:', domain);
   }
 }

@@ -1239,7 +1239,12 @@ export const WorkflowNodeModal = memo(
 
         {/* Unsaved Changes Dialog */}
         {showUnsavedDialog && (
-          <Modal isOpen={showUnsavedDialog} onClose={handleCancelClose} className="max-w-md">
+          <Modal
+            isOpen={showUnsavedDialog}
+            onClose={handleCancelClose}
+            className="max-w-md"
+            hideCloseButton
+          >
             <ModalHeader title="Unsaved Changes" onClose={handleCancelClose} />
             <ModalBody>
               <p className="text-sm text-text-secondary">

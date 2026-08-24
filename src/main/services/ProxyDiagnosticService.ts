@@ -118,8 +118,6 @@ export class ProxyDiagnosticService {
     // Standard protocol prefix (Chromium CLI supports socks5://, but not socks5h://)
     const proxyServer = `${protocol}://${host}:${port}`;
 
-    console.log(`[Diagnostic] Testing proxy: ${proxyServer} (Auth: ${!!username})`);
-
     let browser;
     try {
       browser = await puppeteer.launch({
@@ -155,7 +153,6 @@ export class ProxyDiagnosticService {
       // Step 1: Check IP and basic info using curl (most reliable for SOCKS5)
       try {
         const stageStart = Date.now();
-        console.log(`[Diagnostic] Executing curl for Stage 1...`);
 
         const proxyInfo = await this.getFullIPInfo(proxyData);
         result.latency = Date.now() - stageStart;
@@ -175,7 +172,6 @@ export class ProxyDiagnosticService {
 
       // Step 2: Anonymity and WebRTC (Best effort via browser)
       try {
-        console.log(`[Diagnostic] Attempting Browser Stage for WebRTC/Anonymity...`);
         browser = await puppeteer.launch({
           executablePath: this.getChromePath(),
           headless: true,
@@ -201,9 +197,6 @@ export class ProxyDiagnosticService {
         result.webrtcLeak = content.includes('Leak Detected') || !content.includes('No Leak');
         result.isProxyDetected = !content.includes('No Proxy Detected');
       } catch (err) {
-        console.log(
-          '[Diagnostic] Browser Stage failed (expected for some SOCKS5 proxies), using curl-only result.',
-        );
         // Don't fail the whole diagnostic if only the browser stage fails
       }
 

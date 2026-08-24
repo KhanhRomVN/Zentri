@@ -13,6 +13,7 @@ import {
   ArrowRight,
   X,
   Plus,
+  XCircle,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -182,6 +183,17 @@ export const ACTION_TYPES: Record<string, ActionTypeConfig> = {
     needsSelector: false,
     needsConfiguration: false,
     needsUrlInput: true,
+  },
+  close_browser: {
+    id: 'close_browser',
+    label: 'Close Browser',
+    description: 'Close browser window',
+    icon: XCircle,
+    iconColor: 'text-red-600',
+    iconBg: 'bg-red-600/10',
+    needsSelector: false,
+    needsConfiguration: false,
+    needsUrlInput: false,
   },
 };
 

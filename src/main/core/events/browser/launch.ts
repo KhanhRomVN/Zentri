@@ -43,14 +43,13 @@ export function setupLaunchHandlers() {
       },
     ) => {
       try {
-        console.log('[BrowserLaunch] Launch request:', JSON.stringify({ provider, accountId, email, fingerprintId, proxyId, launchMode, url }));
         const userDataPath = app.getPath('userData');
         let executablePath = '';
 
         if (launchMode === 'normal') {
           executablePath = getChromeStablePath();
           if (!executablePath) {
-             executablePath = getExecutablePath(browserPath);
+            executablePath = getExecutablePath(browserPath);
           }
         } else {
           executablePath = getExecutablePath(browserPath);
@@ -68,10 +67,18 @@ export function setupLaunchHandlers() {
             if (dbManager.dbPath && email) {
               browserProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
             } else {
-              browserProfileDir = path.join(userDataPath, 'browser_profiles', email || accountId || provider);
+              browserProfileDir = path.join(
+                userDataPath,
+                'browser_profiles',
+                email || accountId || provider,
+              );
             }
           } catch (e) {
-            browserProfileDir = path.join(userDataPath, 'browser_profiles', email || accountId || provider);
+            browserProfileDir = path.join(
+              userDataPath,
+              'browser_profiles',
+              email || accountId || provider,
+            );
           }
         }
 
@@ -81,8 +88,6 @@ export function setupLaunchHandlers() {
 
         let proxyServer = '';
         let proxyAuth: { username?: string; password?: string } | null = null;
-        const isFingerprintChromium = executablePath.toLowerCase().includes('fingerprint-chromium') || executablePath.toLowerCase().includes('ungoogled-chromium');
-        console.log('[BrowserLaunch] executablePath:', executablePath, 'isFingerprintChromium:', isFingerprintChromium);
         let proxyBridgePort: number | null = null;
 
         if (proxyId) {
@@ -105,7 +110,6 @@ export function setupLaunchHandlers() {
                 proxyAuth = { username: px.username, password: px.password };
               }
             }
-            console.log('[BrowserLaunch] Using Proxy:', proxyServer);
           }
         }
 
@@ -152,22 +156,20 @@ export function setupLaunchHandlers() {
 
         if (accountId) {
           activeBrowsers.set(accountId, { port: cdpPort, process: chromeProcess });
-          console.log('[BrowserLaunch] Tracked browser for', accountId, 'on port', cdpPort);
         }
 
         if (cdpPort) {
-          console.log('[BrowserLaunch] Attempting to connect to CDP on port', cdpPort, '...');
           (async () => {
             try {
               for (let i = 0; i < 60; i++) {
                 try {
-                  const browser = await puppeteer.connect({ browserURL: 'http://127.0.0.1:' + cdpPort });
-                  console.log('[BrowserLaunch] CDP Connected successfully!');
-
+                  const browser = await puppeteer.connect({
+                    browserURL: 'http://127.0.0.1:' + cdpPort,
+                  });
                   let fpConfig: any = null;
 
                   if (fingerprintConfig) {
-                    fpConfig = { ...fingerprintConfig as any };
+                    fpConfig = { ...(fingerprintConfig as any) };
                   } else if (fingerprintId) {
                     const fp = await dbManager.get<{ config_json: string }>(
                       'SELECT config_json FROM fingerprints WHERE id = ?',
@@ -181,7 +183,11 @@ export function setupLaunchHandlers() {
                   if (fpConfig) {
                     let languages = fpConfig.languages;
                     if (typeof languages === 'string') {
-                      try { languages = JSON.parse(languages); } catch (e) { languages = [languages]; }
+                      try {
+                        languages = JSON.parse(languages);
+                      } catch (e) {
+                        languages = [languages];
+                      }
                     }
                     fpConfig = {
                       ...fpConfig,
@@ -202,10 +208,7 @@ export function setupLaunchHandlers() {
                     try {
                       await client.send('Runtime.enable');
                       await client.send('Runtime.evaluate', { expression: script });
-                      console.log('[CDP] Fingerprint injected:', label);
-                    } catch (e: any) {
-                      console.log('[CDP] Inject failed for', label, '-', e?.message?.split('\n')[0]);
-                    }
+                    } catch (e: any) {}
                   };
 
                   const setupPageTarget = async (target: any, isNew: boolean) => {
@@ -226,11 +229,11 @@ export function setupLaunchHandlers() {
                           try {
                             await client.send('Fetch.continueWithAuth', {
                               requestId: event.requestId,
-                              authChallengeResponse: { 
-                                response: 'ProvideCredentials', 
-                                username: proxyAuth!.username!, 
-                                password: proxyAuth!.password! 
-                              }
+                              authChallengeResponse: {
+                                response: 'ProvideCredentials',
+                                username: proxyAuth!.username!,
+                                password: proxyAuth!.password!,
+                              },
                             });
                           } catch (err) {
                             console.error('[CDP] Proxy Auth Error:', err);
@@ -241,7 +244,9 @@ export function setupLaunchHandlers() {
                       // Inject script for future navigations (only once per target)
                       if (isNew && fpConfig && launchMode !== 'normal') {
                         const script = buildFingerprintScript(fpConfig);
-                        await client.send('Page.addScriptToEvaluateOnNewDocument', { source: script });
+                        await client.send('Page.addScriptToEvaluateOnNewDocument', {
+                          source: script,
+                        });
                       }
 
                       // Run script immediately for current page
@@ -266,9 +271,11 @@ export function setupLaunchHandlers() {
                       var cdpClient = sessionMap.get(target);
                       var tUrl = target.url();
                       if (cdpClient) {
-                        onPageNavigated(browserProfileDir, cdpClient, fpConfig, tUrl).catch(function (e) {
-                          console.error('[SiteHistory] Error:', e.message);
-                        });
+                        onPageNavigated(browserProfileDir, cdpClient, fpConfig, tUrl).catch(
+                          function (e) {
+                            console.error('[SiteHistory] Error:', e.message);
+                          },
+                        );
                       }
                     }
                   });
@@ -291,12 +298,12 @@ export function setupLaunchHandlers() {
           })();
         }
 
-        if (!_event.sender.isDestroyed() && accountId) _event.sender.send('email:browser-opened', { accountId });
+        if (!_event.sender.isDestroyed() && accountId)
+          _event.sender.send('email:browser-opened', { accountId });
 
         chromeProcess.on('exit', async () => {
           if (accountId) {
             activeBrowsers.delete(accountId);
-            console.log('[BrowserLaunch] Untracked browser for', accountId);
           }
           await new Promise((resolve) => setTimeout(resolve, 1000));
           let cookieCount = 0;
@@ -322,7 +329,10 @@ export function setupLaunchHandlers() {
           } catch (e) {}
 
           if (!_event.sender.isDestroyed()) {
-            _event.sender.send('email:browser-closed', { accountId, stats: { cookies: cookieCount, localStorage: -1, sessionStorage: -1 } });
+            _event.sender.send('email:browser-closed', {
+              accountId,
+              stats: { cookies: cookieCount, localStorage: -1, sessionStorage: -1 },
+            });
           }
         });
 
@@ -346,7 +356,15 @@ export function setupLaunchHandlers() {
         } else {
           realProfileDir = path.join(userDataPath, 'browser_profiles', email);
         }
-        spawn(executablePath, ['--user-data-dir=' + realProfileDir, '--no-first-run', 'https://mail.google.com/mail/u/0/h/'], { detached: true });
+        spawn(
+          executablePath,
+          [
+            '--user-data-dir=' + realProfileDir,
+            '--no-first-run',
+            'https://mail.google.com/mail/u/0/h/',
+          ],
+          { detached: true },
+        );
         return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message };

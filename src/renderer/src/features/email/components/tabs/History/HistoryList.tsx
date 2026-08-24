@@ -21,15 +21,7 @@
 import { FC, useState, memo } from 'react';
 
 // ── UI ──
-import {
-  History,
-  Search,
-  Copy,
-  ExternalLink,
-  Trash2,
-  Globe,
-  X,
-} from 'lucide-react';
+import { History, Search, Copy, ExternalLink, Trash2, Globe, X } from 'lucide-react';
 
 // ── UI Components ──
 import { EmptyState } from '../../../../../components/ui/EmptyState';
@@ -102,7 +94,6 @@ const HistoryItemRow: FC<{ item: ProcessedItem; email: string }> = ({ item, emai
         time: historyItem.time,
       });
       if (result.success) {
-        console.log('[History] Deleted:', historyItem.url);
       } else {
         console.error('[History] Delete failed:', result.error);
       }
@@ -234,13 +225,7 @@ const FilterBar: FC<{
 
 // ─── HistoryList ─────────────────────────────────────────────────────────────
 
-const HistoryList: FC<HistoryListProps> = ({
-  groups,
-  email,
-  query,
-  onQueryChange,
-}) => {
-  console.log('[DEBUG] HistoryList render — groups:', groups.length);
+const HistoryList: FC<HistoryListProps> = ({ groups, email, query, onQueryChange }) => {
   return (
     <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-background/20 ml-px">
       <FilterBar query={query} onQueryChange={onQueryChange} count={groups.length} />

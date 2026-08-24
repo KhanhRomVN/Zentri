@@ -376,14 +376,10 @@ export function setupEventHandlers() {
 
   // Open Zentri folder in system file explorer
   ipcMain.handle('storage:open-zentri-folder', async (_event, dbPath: string) => {
-    console.log('[storage:open-zentri-folder] Received dbPath:', dbPath);
     if (!dbPath) {
-      console.log('[storage:open-zentri-folder] dbPath is empty, returning');
       return;
     }
     const folderPath = path.dirname(dbPath);
-    console.log('[storage:open-zentri-folder] Opening folder:', folderPath);
-
     const platform = process.platform;
 
     try {
@@ -415,28 +411,22 @@ export function setupEventHandlers() {
         });
         child.unref();
       }
-      console.log('[storage:open-zentri-folder] Spawned file explorer for:', folderPath);
       return folderPath;
     } catch (error: any) {
       console.error('[storage:open-zentri-folder] Failed to spawn:', error.message);
       throw new Error(`Failed to open folder: ${error.message}`);
     }
   });
-  console.log('[storage:open-zentri-folder] Handler registered');
 
   // Open email profile folder in system file explorer
   ipcMain.handle('email:open-profile-folder', async (_event, email: string) => {
-    console.log('[email:open-profile-folder] Received email:', email);
     if (!email) {
-      console.log('[email:open-profile-folder] email is empty, returning');
       return;
     }
     const dbDir = path.dirname(dbManager.dbPath);
     const folderPath = path.join(dbDir, 'profiles', email);
-    console.log('[email:open-profile-folder] Opening folder:', folderPath);
 
     if (!fs.existsSync(folderPath)) {
-      console.log('[email:open-profile-folder] Folder does not exist:', folderPath);
       throw new Error(`Profile folder not found for ${email}`);
     }
 
@@ -468,14 +458,12 @@ export function setupEventHandlers() {
         });
         child.unref();
       }
-      console.log('[email:open-profile-folder] Spawned file explorer for:', folderPath);
       return folderPath;
     } catch (error: any) {
       console.error('[email:open-profile-folder] Failed to spawn:', error.message);
       throw new Error(`Failed to open folder: ${error.message}`);
     }
   });
-  console.log('[email:open-profile-folder] Handler registered');
 
   // Get email profile folder size recursively
   ipcMain.handle('email:get-profile-size', async (_event, email: string) => {
@@ -506,7 +494,6 @@ export function setupEventHandlers() {
       return 0;
     }
   });
-  console.log('[email:get-profile-size] Handler registered');
 
   // 2. Read file data from storage folder
   ipcMain.handle(

@@ -138,12 +138,6 @@ const HistoryCalendar: FC<{
             <button
               key={day.toISOString()}
               onClick={() => {
-                console.log(
-                  '[DEBUG] HistoryCalendar date clicked:',
-                  dateStr,
-                  'current selectedDate:',
-                  selectedDate,
-                );
                 onDateSelect(dateStr);
               }}
               className={`

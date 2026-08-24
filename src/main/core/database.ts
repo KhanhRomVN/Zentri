@@ -264,7 +264,6 @@ export class DbManager {
     if (!hasInboxCache) {
       try {
         await this.rawRun('ALTER TABLE emails ADD COLUMN inbox_cache TEXT');
-        console.log('[DB] Migration: Added inbox_cache to emails table');
       } catch (e) {
         console.error('[DB] Migration failed (inbox_cache):', e);
       }
@@ -277,7 +276,6 @@ export class DbManager {
     if (!hasDescription) {
       try {
         await this.rawRun('ALTER TABLE services ADD COLUMN description TEXT');
-        console.log('[DB] Migration: Added description to services table');
       } catch (e) {
         console.error('[DB] Migration failed (description):', e);
       }
@@ -287,7 +285,6 @@ export class DbManager {
     if (!hasMetadata) {
       try {
         await this.rawRun('ALTER TABLE services ADD COLUMN metadata TEXT');
-        console.log('[DB] Migration: Added metadata to services table');
       } catch (e) {
         console.error('[DB] Migration failed (metadata):', e);
       }
@@ -297,7 +294,6 @@ export class DbManager {
     if (!hasAuthMethod) {
       try {
         await this.rawRun('ALTER TABLE services ADD COLUMN auth_method TEXT');
-        console.log('[DB] Migration: Added auth_method to services table');
       } catch (e) {
         console.error('[DB] Migration failed (auth_method):', e);
       }
@@ -307,7 +303,6 @@ export class DbManager {
     if (!hasTwoFa) {
       try {
         await this.rawRun('ALTER TABLE services ADD COLUMN two_fa TEXT');
-        console.log('[DB] Migration: Added two_fa to services table');
       } catch (e) {
         console.error('[DB] Migration failed (two_fa):', e);
       }
@@ -322,7 +317,6 @@ export class DbManager {
     if (!hasMetadataCol) {
       try {
         await this.rawRun('ALTER TABLE service_emails ADD COLUMN metadata TEXT');
-        console.log('[DB] Migration: Added metadata to service_emails');
       } catch (e) {
         console.error('[DB] Migration failed (service_emails metadata):', e);
       }
@@ -332,7 +326,6 @@ export class DbManager {
     if (!hasTwoFaCol) {
       try {
         await this.rawRun('ALTER TABLE service_emails ADD COLUMN two_fa TEXT');
-        console.log('[DB] Migration: Added two_fa to service_emails');
       } catch (e) {
         console.error('[DB] Migration failed (service_emails two_fa):', e);
       }
@@ -347,7 +340,6 @@ export class DbManager {
       if (exists.length > 0) {
         try {
           await this.rawRun(`DROP TABLE ${tableName}`);
-          console.log(`[DB] Migration: Dropped ${tableName} table (no longer needed)`);
         } catch (e) {
           console.error(`[DB] Migration failed (drop ${tableName}):`, e);
         }
@@ -374,8 +366,6 @@ export class DbManager {
             "UPDATE proxies SET expired_at = datetime(expiration_date / 1000, 'unixepoch') WHERE expiration_date IS NOT NULL",
           );
         }
-
-        console.log('[DB] Migration: Updated proxies with new DATETIME fields');
       } catch (e) {
         console.error('[DB] Migration failed (proxies refactor):', e);
       }
@@ -402,7 +392,6 @@ export class DbManager {
             FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
           )
         `);
-        console.log('[DB] Migration: Created proxy_history table');
       } catch (e) {
         console.error('[DB] Migration failed (proxy_history):', e);
       }
@@ -419,7 +408,6 @@ export class DbManager {
         await this.rawRun('ALTER TABLE proxies ADD COLUMN quota_total TEXT');
         await this.rawRun('ALTER TABLE proxies ADD COLUMN quota_used REAL');
         await this.rawRun('ALTER TABLE proxies ADD COLUMN last_seen_min INTEGER');
-        console.log('[DB] Migration: Added health metrics columns to proxies');
       } catch (e) {
         console.error('[DB] Migration failed (proxy health metrics):', e);
       }
@@ -444,7 +432,6 @@ export class DbManager {
         await this.rawRun(
           'CREATE INDEX IF NOT EXISTS idx_health_history_proxy ON proxy_health_history(proxy_id, timestamp DESC)',
         );
-        console.log('[DB] Migration: Created proxy_health_history table');
       } catch (e) {
         console.error('[DB] Migration failed (proxy_health_history):', e);
       }

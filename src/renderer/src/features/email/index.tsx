@@ -274,7 +274,6 @@ const EmailManager = () => {
     return result;
   }, [accounts, searchQuery, serviceFilter, selectedView, filters, sorting]);
 
-  const totalRecords = filteredAccounts.length;
   const paginatedData = useMemo(
     () => filteredAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [filteredAccounts, currentPage, pageSize],
@@ -291,17 +290,14 @@ const EmailManager = () => {
     const focusEmail = searchParams.get('focus_email');
 
     if (focusId) {
-      console.log('[EmailManager] Deep link focus (ID) detected:', focusId);
       setFocusedAccountId(focusId);
       setSearchQuery('');
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('focus');
       setSearchParams(newParams, true);
     } else if (focusEmail && accounts.length > 0) {
-      console.log('[EmailManager] Deep link focus (Email) detected:', focusEmail);
       const matched = accounts.find((a) => a.email.toLowerCase() === focusEmail.toLowerCase());
       if (matched) {
-        console.log('[EmailManager] Resolved email to ID:', matched.id);
         setFocusedAccountId(matched.id);
         setSearchQuery('');
         const newParams = new URLSearchParams(searchParams);
@@ -370,14 +366,6 @@ const EmailManager = () => {
         const linkedServices = serviceLinks
           .filter((link: any) => link.email_id === row.id)
           .map((link: any) => {
-            console.log(
-              '[DEBUG] loadData — link.id:',
-              link.id,
-              'raw two_fa:',
-              link.two_fa,
-              'type:',
-              typeof link.two_fa,
-            );
             const parsedTwoFa = link.two_fa
               ? typeof link.two_fa === 'string'
                 ? JSON.parse(link.two_fa)
@@ -464,7 +452,6 @@ const EmailManager = () => {
       }
 
       setAccounts(loadedAccounts);
-      console.log('[EmailManager] Data loaded successfully, count:', loadedAccounts.length);
     } catch (err: any) {
       console.error('[Email] Load error:', err);
       setError(`Failed to read data from database: ${err.message}`);

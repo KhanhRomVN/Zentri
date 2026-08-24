@@ -38,8 +38,6 @@ interface ProxyData {
 }
 
 export function setupProxyHandlers() {
-  console.log('✅ Setting up Proxy Handlers...');
-
   // Diagnostic check
   ipcMain.handle('proxy:check', async (_event, proxyData: any) => {
     try {
@@ -205,7 +203,10 @@ export function setupProxyHandlers() {
   // Log proxy usage
   ipcMain.handle(
     'proxy:log-usage',
-    async (_event, { proxyId, emailId, targetSite }: { proxyId: string; emailId: string; targetSite?: string }) => {
+    async (
+      _event,
+      { proxyId, emailId, targetSite }: { proxyId: string; emailId: string; targetSite?: string },
+    ) => {
       try {
         const id = crypto.randomUUID();
         const query = `

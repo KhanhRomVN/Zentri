@@ -144,8 +144,6 @@ export function setupProfileHandlers() {
       });
 
       const uniqueServices = Array.from(new Map(services.map((s) => [s.url, s])).values());
-      console.log(`[Email] Extracted ${uniqueServices.length} services for ${email}`);
-
       return uniqueServices;
     } catch (error) {
       console.error('Error extracting services:', error);
@@ -210,13 +208,11 @@ export function setupProfileHandlers() {
           UPDATE service_emails SET metadata = ?, two_fa = ? WHERE id = ?
         `;
         const twoFaStr = twoFa ? JSON.stringify(twoFa) : null;
-        console.log('[DEBUG] IPC service_emails:update — linkId:', linkId, 'two_fa:', twoFaStr);
         const result = await dbManager.run(query, [
           metadata ? JSON.stringify(metadata) : null,
           twoFaStr,
           linkId,
         ]);
-        console.log('[DEBUG] IPC service_emails:update — result:', JSON.stringify(result));
         return { success: true };
       } catch (error: any) {
         console.error('Error updating service link:', error);

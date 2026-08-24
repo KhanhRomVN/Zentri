@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import type { WorkflowNode } from '../../../renderer/src/features/workflow/types';
 import { PlaywrightWorkflowExecutor } from '../../services/PlaywrightWorkflowExecutor';
+import { ChromeRecorderLauncher } from '../../services/ChromeRecorderLauncher';
 import { dbManager } from '../database';
 import { randomUUID } from 'crypto';
 
@@ -65,8 +66,6 @@ export function setupWorkflowRecordHandlers() {
   // Handle recorded node from extension
   ipcMain.handle('workflow:record-node', async (event, nodeData: Partial<WorkflowNode>) => {
     try {
-      console.log('[WorkflowRecord] Received node from extension:', nodeData);
-
       // Broadcast to all renderer windows
       const windows = require('electron').BrowserWindow.getAllWindows();
       for (const win of windows) {
@@ -87,9 +86,15 @@ export function setupWorkflowRecordHandlers() {
     try {
       console.log('[WorkflowRecord] Starting recording for workflow:', workflowId, 'URL:', url);
 
-      // Note: Recording is now done directly in the Electron app UI
-      // This handler kept for backward compatibility
-      return { success: true, workflowId, url, message: 'Recording in Electron UI' };
+      // Launch Chrome with workflow recorder extension
+      const launcher = ChromeRecorderLauncher.getInstance();
+      const result = await launcher.launchRecorderBrowser(workflowId, url || 'https://google.com');
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to launch Chrome');
+      }
+
+      return { success: true, workflowId, url, port: result.port };
     } catch (error: any) {
       console.error('[WorkflowRecord] Error starting recording:', error);
       return { success: false, error: error.message };
@@ -101,8 +106,26 @@ export function setupWorkflowRecordHandlers() {
     try {
       console.log('[WorkflowRecord] Stopping recording for workflow:', workflowId);
 
-      // Note: Recording is now done directly in the Electron app UI
-      // This handler kept for backward compatibility
+      // Signal to extension to stop recording via WebSocket
+      const { WebSocketRecorderService } = require('../../services/WebSocketRecorderService');
+      const wsService = WebSocketRecorderService.getInstance();
+
+      if (wsService.isRunning()) {
+        wsService.broadcast({ type: 'STOP_RECORDING', workflowId });
+      }
+
+      // Close the Chrome browser instance
+      const launcher = ChromeRecorderLauncher.getInstance();
+      await launcher.closeBrowser(workflowId);
+
+      // Also broadcast to all renderer windows
+      const windows = BrowserWindow.getAllWindows();
+      for (const win of windows) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('workflow:recording-stopped', workflowId);
+        }
+      }
+
       return { success: true };
     } catch (error: any) {
       console.error('[WorkflowRecord] Error stopping recording:', error);
@@ -128,8 +151,6 @@ export function setupWorkflowRecordHandlers() {
       const startTime = Date.now();
 
       try {
-        console.log('[WorkflowRecord] Running workflow:', workflowId, 'Config:', config);
-
         // Save workflow run to database
         const snapshot = {
           nodes: config.nodes,
@@ -319,8 +340,6 @@ export function setupWorkflowRecordHandlers() {
           allSuccess ? 'success' : 'error',
           `Workflow execution ${allSuccess ? 'completed' : 'failed'} in ${(duration / 1000).toFixed(2)}s`,
         );
-
-        console.log('[WorkflowRecord] Workflow execution results:', results);
         return { success: true, runId, instances: results, duration };
       } catch (error: any) {
         console.error('[WorkflowRecord] Error running workflow:', error);

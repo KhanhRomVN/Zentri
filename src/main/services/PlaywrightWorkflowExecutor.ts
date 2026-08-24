@@ -43,8 +43,6 @@ export class PlaywrightWorkflowExecutor {
   ): Promise<{ success: boolean; results?: any[]; error?: string }> {
     try {
       logCallback?.('info', `Starting workflow execution for ${instanceId}`);
-      console.log(`[PlaywrightExecutor] Starting workflow execution for ${instanceId}`);
-
       // Determine user data directory
       const userDataDir =
         options.userDataDir || path.join(app.getPath('userData'), 'browser_profiles', instanceId);
@@ -114,14 +112,11 @@ export class PlaywrightWorkflowExecutor {
       });
 
       logCallback?.('success', `Browser launched successfully`);
-      console.log(`[PlaywrightExecutor] Browser launched for ${instanceId}`);
-
       // Navigate to start URL
       const startUrl = options.startUrl || 'https://google.com';
       logCallback?.('info', `Navigating to: ${startUrl}`);
       await page.goto(startUrl, { waitUntil: 'domcontentloaded' });
       logCallback?.('success', `Navigation successful`);
-      console.log(`[PlaywrightExecutor] Navigated to ${startUrl}`);
 
       // Execute workflow nodes
       const results = [];
@@ -131,7 +126,7 @@ export class PlaywrightWorkflowExecutor {
         // Log NODE START (with special marker)
         logCallback?.(
           'node_start',
-          `▶ Starting Node ${i + 1}/${nodes.length}: ${node.data?.label || node.type}`,
+          `▶ Starting Node ${i + 1}/${nodes.length}: ${node.title || node.type}`,
           node.id,
           {
             nodeIndex: i + 1,
@@ -139,7 +134,6 @@ export class PlaywrightWorkflowExecutor {
             nodeType: node.type,
           },
         );
-        console.log(`[PlaywrightExecutor] ▶ Starting node ${i + 1}/${nodes.length}:`, node.type);
 
         try {
           const result = await this.executeNode(page, node, logCallback);
@@ -148,11 +142,10 @@ export class PlaywrightWorkflowExecutor {
           // Log NODE END (with special marker)
           logCallback?.(
             'node_end',
-            `✓ Completed Node ${i + 1}/${nodes.length}: ${node.data?.label || node.type}`,
+            `✓ Completed Node ${i + 1}/${nodes.length}: ${node.title || node.type}`,
             node.id,
             result,
           );
-          console.log(`[PlaywrightExecutor] ✓ Node ${i + 1} completed successfully`);
         } catch (error: any) {
           // Log NODE END with error (with special marker)
           logCallback?.(
@@ -181,7 +174,6 @@ export class PlaywrightWorkflowExecutor {
       }
 
       logCallback?.('success', `Workflow completed successfully for ${instanceId}`);
-      console.log(`[PlaywrightExecutor] Workflow completed for ${instanceId}`);
       return { success: true, results };
     } catch (error: any) {
       logCallback?.('error', `Workflow execution failed: ${error.message}`);
@@ -205,6 +197,13 @@ export class PlaywrightWorkflowExecutor {
 
     // For go_to_url action, subtitle or config.url contains the URL (not a selector)
     const selector = action === 'go_to_url' ? '' : node.subtitle || '';
+
+    // DEBUG: Log action determination
+    logCallback?.(
+      'info',
+      `[DEBUG] executeNode: node.type="${node.type}", config.action="${config.action || 'undefined'}", final action="${action}", selector="${selector}"`,
+      node.id,
+    );
 
     logCallback?.('info', `Action: ${action}`, node.id, { selector, config });
 
@@ -272,7 +271,6 @@ export class PlaywrightWorkflowExecutor {
     }
 
     logCallback?.('info', `Navigating to: ${url}`, nodeId);
-    console.log(`[PlaywrightExecutor] Navigating to: ${url}`);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     logCallback?.('success', `Successfully navigated to: ${url}`, nodeId);
     return { action: 'go_to_url', url };
@@ -462,7 +460,6 @@ export class PlaywrightWorkflowExecutor {
     const text = await element?.textContent();
 
     logCallback?.('success', `Extracted text: ${text?.substring(0, 50)}...`, nodeId, { text });
-    console.log('[PlaywrightExecutor] Extracted text:', text);
     return { action: 'extract', text };
   }
 
@@ -494,7 +491,6 @@ export class PlaywrightWorkflowExecutor {
     if (session) {
       await session.browser.close();
       this.activeSessions.delete(instanceId);
-      console.log(`[PlaywrightExecutor] Closed session ${instanceId}`);
     }
   }
 
@@ -505,7 +501,6 @@ export class PlaywrightWorkflowExecutor {
     for (const [instanceId, session] of this.activeSessions.entries()) {
       try {
         await session.browser.close();
-        console.log(`[PlaywrightExecutor] Closed session ${instanceId}`);
       } catch (error) {
         console.error(`[PlaywrightExecutor] Error closing session ${instanceId}:`, error);
       }

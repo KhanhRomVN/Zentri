@@ -30,13 +30,21 @@ import '@xyflow/react/dist/style.css';
 import './workflow-editor.css';
 import type { NodeConnection, Workflow, WorkflowNode } from '../../types';
 import { findNodeItem, PLATFORM_META } from '../../constants';
-import { generateId, toFlowNode, toFlowEdge, validateEdges, getConnectionSets } from '../../utils';
+import {
+  generateId,
+  toFlowNode,
+  toFlowEdge,
+  validateEdges,
+  getConnectionSets,
+  validateWorkflow,
+} from '../../utils';
 import { WorkflowNodeComponent } from './WorkflowNode';
+import { WorkflowEdge } from './WorkflowEdge';
 import { WorkflowNodeModal } from './WorkflowNodeModal';
 import { RecordQueue } from './RecordQueue';
 import { RunWorkflowModal, type RunConfig } from './RunWorkflowModal';
 import { WorkflowHistoryModal } from './WorkflowHistoryModal';
-import { LogPanel } from './LogPanel';
+import { BottomPanel } from './BottomPanel/BottomPanel';
 import {
   Dropdown,
   DropdownTrigger,
@@ -59,6 +67,10 @@ interface Snapshot {
 
 const nodeTypes = {
   workflowNode: WorkflowNodeComponent,
+};
+
+const edgeTypes = {
+  workflowEdge: WorkflowEdge,
 };
 
 const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps) => {
@@ -89,6 +101,11 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [logPanelOpen, setLogPanelOpen] = useState(false);
   const [executingNodeId, setExecutingNodeId] = useState<string | null>(null); // Track currently executing node
+  const [workflowValid, setWorkflowValid] = useState(true); // Track if workflow has errors
+  const [validationErrors, setValidationErrors] = useState<{
+    unconfiguredNodes: string[];
+    duplicateEdges: string[];
+  }>({ unconfiguredNodes: [], duplicateEdges: [] });
 
   const historyRef = useRef<Snapshot[]>([]);
   const redoRef = useRef<Snapshot[]>([]);
@@ -102,23 +119,15 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   const currentNodes = workflow.nodes;
   const currentConnections = workflow.connections;
 
-  // Track if we're currently syncing to avoid loops
-  const isSyncingRef = useRef(false);
-
   // ─── Sync React Flow → workflow (debounced) ─────────────────────────────
   const syncToWorkflow = useCallback(
     (newNodes: WorkflowNode[], newEdges: NodeConnection[]) => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(() => {
-        isSyncingRef.current = true;
         onUpdateWorkflow({
           nodes: newNodes,
           connections: newEdges,
         });
-        // Reset flag after a short delay to allow effect to run
-        setTimeout(() => {
-          isSyncingRef.current = false;
-        }, 50);
       }, 200);
     },
     [onUpdateWorkflow],
@@ -129,8 +138,10 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     (changes: any[]) => {
       onNodesChangeInternal(changes);
 
-      // Extract position changes and sync to workflow
-      const positionChanges = changes.filter((c) => c.type === 'position' && c.position);
+      // Only sync position changes when dragging stops (dragging: false)
+      const positionChanges = changes.filter(
+        (c) => c.type === 'position' && c.position && c.dragging === false,
+      );
       if (positionChanges.length > 0) {
         const updatedNodes = currentNodes.map((node) => {
           const change = positionChanges.find((c) => c.id === node.id);
@@ -152,9 +163,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
   // Sync workflow.nodes → ReactFlow nodes
   useEffect(() => {
-    // Skip if we're currently syncing from ReactFlow to workflow to avoid loop
-    if (isSyncingRef.current) return;
-
     const handlers = {
       onDuplicate: duplicateNode,
       onDelete: deleteNode,
@@ -189,7 +197,44 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
       }
       return flowNode;
     });
-    setNodes(flowNodes);
+
+    // Only update if nodes actually changed (compare by structure, not reference)
+    setNodes((prevNodes) => {
+      // If count is different, definitely update
+      if (prevNodes.length !== flowNodes.length) {
+        return flowNodes;
+      }
+
+      // Check if any node has actually changed (content, not just position)
+      let hasContentChange = false;
+      for (let i = 0; i < flowNodes.length; i++) {
+        const prevNode = prevNodes.find((n) => n.id === flowNodes[i].id);
+        if (!prevNode) {
+          hasContentChange = true;
+          break;
+        }
+
+        // Check if data has changed (excluding position)
+        const prevData = prevNode.data as any;
+        const newData = flowNodes[i].data as any;
+
+        if (
+          prevData.type !== newData.type ||
+          prevData.title !== newData.title ||
+          prevData.subtitle !== newData.subtitle ||
+          prevData.note !== newData.note ||
+          prevData.locked !== newData.locked ||
+          prevData.disabled !== newData.disabled ||
+          prevData.isExecuting !== newData.isExecuting
+        ) {
+          hasContentChange = true;
+          break;
+        }
+      }
+
+      // Only update if there's actual content change
+      return hasContentChange ? flowNodes : prevNodes;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentNodes, currentConnections, nodeContextMenuCloseSignal, executingNodeId]);
 
@@ -218,6 +263,14 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
       // Convert to flow edge with error styling if invalid
       const edge = toFlowEdge(conn);
+      edge.type = 'workflowEdge'; // Use custom edge type
+      edge.data = {
+        isInvalid,
+        errorMessage: isInvalid
+          ? 'Invalid connection: multiple edges from same source handle'
+          : undefined,
+      };
+
       if (isInvalid) {
         edge.style = {
           stroke: 'rgb(var(--error))',
@@ -234,6 +287,13 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
     setEdges(flowEdges);
   }, [currentConnections, setEdges]);
+
+  // Validate workflow whenever nodes or connections change
+  useEffect(() => {
+    const validation = validateWorkflow(currentNodes, currentConnections);
+    setWorkflowValid(validation.isValid);
+    setValidationErrors(validation.errors);
+  }, [currentNodes, currentConnections]);
 
   // ─── History (undo/redo) ────────────────────────────────────────────────
   const pushHistory = useCallback(() => {
@@ -493,8 +553,24 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      console.log('[CanvasEditor] onConnect triggered', connection);
+      // Check if connection already exists from same source handle
+      const existingFromSameSource = currentConnections.filter(
+        (c) => c.from === connection.source && c.fromSide === (connection.sourceHandle || 'out'),
+      );
+
       pushHistory();
+
+      // Remove existing connection from same source handle (auto-replace behavior)
+      let updatedConnections = currentConnections;
+      if (existingFromSameSource.length > 0) {
+        console.warn('[CanvasEditor] Replacing existing connection(s) from same source handle');
+        console.warn('[CanvasEditor] Removing:', existingFromSameSource);
+        updatedConnections = currentConnections.filter(
+          (c) =>
+            !(c.from === connection.source && c.fromSide === (connection.sourceHandle || 'out')),
+        );
+      }
+
       const newConnection: NodeConnection = {
         id: generateId('c'),
         from: connection.source!,
@@ -502,8 +578,8 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
         fromSide: (connection.sourceHandle as any) || 'out',
         toSide: (connection.targetHandle as any) || 'in',
       };
-      console.log('[CanvasEditor] Creating new connection', newConnection);
-      const updatedConnections = [...currentConnections, newConnection];
+
+      updatedConnections = [...updatedConnections, newConnection];
       syncToWorkflow(currentNodes, updatedConnections);
     },
     [pushHistory, currentNodes, currentConnections, syncToWorkflow],
@@ -793,8 +869,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   // Setup workflow recording listeners
   useEffect(() => {
     const unsubscribeNodeRecorded = window.api.workflow.onNodeRecorded((nodeData: any) => {
-      console.log('[CanvasEditor] Node recorded:', nodeData);
-
       const newNode: WorkflowNode = {
         id: generateId('n'),
         type: nodeData.type || 'click_web',
@@ -818,7 +892,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
     const unsubscribeRecordingStopped = window.api.workflow.onRecordingStopped(
       (workflowId: string) => {
-        console.log('[CanvasEditor] Recording stopped for:', workflowId);
         if (workflowId === workflow.id) {
           setIsRecording(false);
         }
@@ -858,14 +931,17 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
 
   // Handler to launch browser with recorder
   const handleLaunchBrowser = useCallback(async () => {
+    console.log('[CanvasEditor] handleLaunchBrowser called');
     try {
-      console.log('[CanvasEditor] Launching browser with recorder');
       setIsRecording(true);
+      console.log('[CanvasEditor] Calling window.api.workflow.startRecording...');
 
       const result = await window.api.workflow.startRecording(
         workflow.id,
         'https://www.google.com',
       );
+
+      console.log('[CanvasEditor] startRecording result:', result);
 
       if (!result.success) {
         console.error('[CanvasEditor] Failed to start recording:', result.error);
@@ -884,7 +960,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   // Handler to stop recording
   const handleStopRecording = useCallback(async () => {
     try {
-      console.log('[CanvasEditor] Stopping recording');
       const result = await window.api.workflow.stopRecording(workflow.id);
 
       if (!result.success) {
@@ -901,8 +976,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
   // Handler to run workflow
   const handleRunWorkflow = useCallback(
     async (config: RunConfig) => {
-      console.log('[CanvasEditor] Running workflow with config:', config);
-
       try {
         // Get start URL from first node if it's a "go to URL" action
         let startUrl = 'https://google.com';
@@ -934,16 +1007,6 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
           alert(`Failed to run workflow: ${result.error}`);
           return;
         }
-
-        console.log('[CanvasEditor] Workflow started successfully:', result.instances);
-        const instanceCount = result.instances?.length || 0;
-        const message =
-          config.method === 'profile'
-            ? `Running workflow with ${instanceCount} email profile(s)`
-            : `Running workflow with ${instanceCount} guest profile(s)`;
-
-        // Optional: Show success notification
-        console.log(`[CanvasEditor] ${message}`);
       } catch (error) {
         console.error('[CanvasEditor] Error running workflow:', error);
         alert(`Error running workflow: ${error}`);
@@ -1062,12 +1125,8 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
-              onConnectStart={(event, params) => {
-                console.log('[CanvasEditor] onConnectStart', event, params);
-              }}
-              onConnectEnd={(event) => {
-                console.log('[CanvasEditor] onConnectEnd', event);
-              }}
+              onConnectStart={(event, params) => {}}
+              onConnectEnd={(event) => {}}
               onPaneClick={onPaneClick}
               onPaneContextMenu={handlePaneContextMenu}
               onSelectionChange={onSelectionChange}
@@ -1075,6 +1134,7 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
               onNodeDragStart={onNodeDragStart}
               onNodeDragStop={onNodeDragStop}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               defaultEdgeOptions={{
                 type: 'smoothstep',
                 style: { stroke: 'rgb(var(--primary))', strokeWidth: 2 },
@@ -1151,9 +1211,17 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
                   {/* Run Workflow Button */}
                   <button
                     onClick={() => setRunModalOpen(true)}
-                    disabled={currentNodes.length <= 1 || isRecording}
+                    disabled={currentNodes.length <= 1 || isRecording || !workflowValid}
                     className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-success/10 hover:text-success disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Run workflow"
+                    title={
+                      !workflowValid
+                        ? 'Cannot run: workflow has errors (unconfigured nodes or duplicate edges)'
+                        : currentNodes.length <= 1
+                          ? 'Add nodes to run workflow'
+                          : isRecording
+                            ? 'Cannot run while recording'
+                            : 'Run workflow'
+                    }
                   >
                     <Play className="h-4 w-4" />
                   </button>
@@ -1264,12 +1332,21 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
             )}
           </div>
 
-          {/* Log Panel - Separate div below canvas */}
+          {/* Bottom Panel - Separate div below canvas */}
           {logPanelOpen && (
-            <LogPanel
+            <BottomPanel
               isOpen={logPanelOpen}
               onClose={() => setLogPanelOpen(false)}
               workflowId={workflow.id}
+              validationErrors={validationErrors}
+              nodes={currentNodes}
+              onNodeClick={(nodeId) => {
+                setSelectedNodeId(nodeId);
+                setEditModalOpen(true);
+              }}
+              onEdgeClick={(edgeId) => {
+                setSelectedEdgeId(edgeId);
+              }}
             />
           )}
         </div>

@@ -15,7 +15,6 @@ export function setupDataHandlers() {
     'email:get-inbox',
     async (_event, { email, browserPath }: { email: string; browserPath?: string }) => {
       if (activeInboxFetches.has(email)) {
-        console.log(`[email:get-inbox] Fetch already in progress for ${email}, skipping...`);
         return { success: false, error: 'FETCH_IN_PROGRESS' };
       }
       activeInboxFetches.add(email);
@@ -24,7 +23,7 @@ export function setupDataHandlers() {
       try {
         const userDataPath = app.getPath('userData');
         const executablePath = getExecutablePath(browserPath);
-        
+
         let realProfileDir = '';
         if (dbManager.dbPath && email) {
           const dbDir = path.dirname(dbManager.dbPath);
@@ -33,7 +32,6 @@ export function setupDataHandlers() {
           realProfileDir = path.join(userDataPath, 'browser_profiles', email);
         }
 
-        console.log(`[email:get-inbox] Executable: ${executablePath}, Profile: ${realProfileDir}`);
         try {
           execSync(`pkill -9 -f "${realProfileDir}"`, { stdio: 'ignore' });
           await new Promise((r) => setTimeout(r, 2000));
@@ -104,57 +102,75 @@ export function setupDataHandlers() {
 
         const messages: any[] = await page.evaluate(() => {
           const doc = (globalThis as any).document;
-          const modernRows = Array.from(doc.querySelectorAll('tr.zA, div[role="main"] tr[role="row"]'));
+          const modernRows = Array.from(
+            doc.querySelectorAll('tr.zA, div[role="main"] tr[role="row"]'),
+          );
           if (modernRows.length > 5) {
-            return modernRows.slice(0, 15).map((row: any) => {
-              try {
-                const senderSpan = row.querySelector('.zF, .bA4, .vY');
-                const subjectSpan = row.querySelector('.bog');
-                const snippetSpan = row.querySelector('.y2');
-                const timeSpan = row.querySelector('.xW, .bq3');
-                if (!subjectSpan) return null;
-                return {
-                  id: Math.random().toString(36).substring(7),
-                  sender: senderSpan ? senderSpan.innerText.trim() : 'Unknown',
-                  subject: subjectSpan.innerText.trim(),
-                  preview: snippetSpan ? snippetSpan.innerText.trim().replace(/^[\s\u00a0-]+/, '') : '',
-                  time: timeSpan ? timeSpan.innerText.trim() : '',
-                  isUnread: row.classList.contains('zE'),
-                };
-              } catch (e) { return null; }
-            }).filter((m: any) => m !== null);
+            return modernRows
+              .slice(0, 15)
+              .map((row: any) => {
+                try {
+                  const senderSpan = row.querySelector('.zF, .bA4, .vY');
+                  const subjectSpan = row.querySelector('.bog');
+                  const snippetSpan = row.querySelector('.y2');
+                  const timeSpan = row.querySelector('.xW, .bq3');
+                  if (!subjectSpan) return null;
+                  return {
+                    id: Math.random().toString(36).substring(7),
+                    sender: senderSpan ? senderSpan.innerText.trim() : 'Unknown',
+                    subject: subjectSpan.innerText.trim(),
+                    preview: snippetSpan
+                      ? snippetSpan.innerText.trim().replace(/^[\s\u00a0-]+/, '')
+                      : '',
+                    time: timeSpan ? timeSpan.innerText.trim() : '',
+                    isUnread: row.classList.contains('zE'),
+                  };
+                } catch (e) {
+                  return null;
+                }
+              })
+              .filter((m: any) => m !== null);
           }
 
           const mobileItems = Array.from(doc.querySelectorAll('div[role="listitem"], .v'));
           if (mobileItems.length > 5) {
-            return mobileItems.slice(0, 15).map((item: any) => {
-              const text = item.innerText || '';
-              const lines = text.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-              if (lines.length < 2) return null;
-              return {
-                id: Math.random().toString(36).substring(7),
-                sender: lines[0] || 'Unknown',
-                subject: lines[1] || 'No Subject',
-                preview: lines.slice(2).join(' ').substring(0, 100),
-                time: '',
-                isUnread: item.querySelector('b') !== null,
-              };
-            }).filter((m: any) => m !== null);
+            return mobileItems
+              .slice(0, 15)
+              .map((item: any) => {
+                const text = item.innerText || '';
+                const lines = text
+                  .split('\n')
+                  .map((l: string) => l.trim())
+                  .filter((l: string) => l.length > 0);
+                if (lines.length < 2) return null;
+                return {
+                  id: Math.random().toString(36).substring(7),
+                  sender: lines[0] || 'Unknown',
+                  subject: lines[1] || 'No Subject',
+                  preview: lines.slice(2).join(' ').substring(0, 100),
+                  time: '',
+                  isUnread: item.querySelector('b') !== null,
+                };
+              })
+              .filter((m: any) => m !== null);
           }
 
           const rows = Array.from(doc.querySelectorAll('table.m tr, table[bgcolor="#ffffff"] tr'));
-          return rows.map((row: any) => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length < 3) return null;
-            return {
-              id: Math.random().toString(36).substring(7),
-              sender: cells[1]?.innerText.trim() || 'Unknown',
-              subject: cells[2]?.innerText.trim() || 'No Subject',
-              preview: '',
-              time: cells[3]?.innerText.trim() || '',
-              isUnread: row.querySelector('b') !== null,
-            };
-          }).filter((m) => m !== null).slice(0, 10);
+          return rows
+            .map((row: any) => {
+              const cells = row.querySelectorAll('td');
+              if (cells.length < 3) return null;
+              return {
+                id: Math.random().toString(36).substring(7),
+                sender: cells[1]?.innerText.trim() || 'Unknown',
+                subject: cells[2]?.innerText.trim() || 'No Subject',
+                preview: '',
+                time: cells[3]?.innerText.trim() || '',
+                isUnread: row.querySelector('b') !== null,
+              };
+            })
+            .filter((m) => m !== null)
+            .slice(0, 10);
         });
 
         const finalMessages = messages.map((m: any) => {
@@ -219,7 +235,10 @@ export function setupDataHandlers() {
         });
 
         const page = await browser.newPage();
-        await page.goto('https://browserleaks.com/ip', { waitUntil: 'networkidle2', timeout: 30000 });
+        await page.goto('https://browserleaks.com/ip', {
+          waitUntil: 'networkidle2',
+          timeout: 30000,
+        });
         const ipData = await page.evaluate(() => {
           const data: any = {};
           const documentAny = (globalThis as any).document;
@@ -237,7 +256,10 @@ export function setupDataHandlers() {
           };
         });
 
-        await page.goto('https://browserleaks.com/webrtc', { waitUntil: 'networkidle2', timeout: 30000 });
+        await page.goto('https://browserleaks.com/webrtc', {
+          waitUntil: 'networkidle2',
+          timeout: 30000,
+        });
         const webrtcData = await page.evaluate(() => {
           const data: any = {};
           const documentAny = (globalThis as any).document;
@@ -255,17 +277,22 @@ export function setupDataHandlers() {
         let score = 100;
         const reasons: string[] = [];
         if (webrtcData.public !== 'No Leak' && webrtcData.public !== ipData.ip) {
-          score -= 20; reasons.push('WebRTC IP Leak detected');
+          score -= 20;
+          reasons.push('WebRTC IP Leak detected');
         }
         if (ipData.usageType.toLowerCase().includes('data center')) {
-          score -= 15; reasons.push('Data Center IP detected');
+          score -= 15;
+          reasons.push('Data Center IP detected');
         }
 
         return {
           success: true,
           geoData: {
-            query: ipData.ip, city: ipData.city, country: ipData.country,
-            usageType: ipData.usageType, isp: ipData.isp,
+            query: ipData.ip,
+            city: ipData.city,
+            country: ipData.country,
+            usageType: ipData.usageType,
+            isp: ipData.isp,
           },
           fingerprint: { os: ipData.os },
           webrtc: webrtcData,
@@ -299,7 +326,7 @@ export function setupDataHandlers() {
           path.join(realProfileDir, 'Cookies'),
         ];
 
-        let cookiesPath = candidates.find(p => fs.existsSync(p)) || '';
+        let cookiesPath = candidates.find((p) => fs.existsSync(p)) || '';
         if (!cookiesPath) return { success: true, sessions: [] };
 
         const tempPath = path.join(userDataPath, `temp_sess_${Date.now()}.db`);
@@ -307,13 +334,19 @@ export function setupDataHandlers() {
 
         const db = new sqlite3.Database(tempPath);
         const rows: any[] = await new Promise((resolve, reject) => {
-          db.all('SELECT host_key, count(*) as count, max(expires_utc) as exp FROM cookies GROUP BY host_key', (err, rows) => {
-            db.close();
-            if (err) reject(err); else resolve(rows || []);
-          });
+          db.all(
+            'SELECT host_key, count(*) as count, max(expires_utc) as exp FROM cookies GROUP BY host_key',
+            (err, rows) => {
+              db.close();
+              if (err) reject(err);
+              else resolve(rows || []);
+            },
+          );
         });
 
-        try { fs.unlinkSync(tempPath); } catch (e) {}
+        try {
+          fs.unlinkSync(tempPath);
+        } catch (e) {}
 
         return {
           success: true,
@@ -329,50 +362,50 @@ export function setupDataHandlers() {
     },
   );
 
-  ipcMain.handle(
-    'email:get-latest-activity',
-    async (_event, { email }: { email: string }) => {
-      try {
-        const dbDir = path.dirname(dbManager.dbPath);
-        const userDataPath = app.getPath('userData');
-        const profileDir = path.join(dbDir, 'profiles', email);
-        const historyPath = path.join(profileDir, 'Default', 'History');
+  ipcMain.handle('email:get-latest-activity', async (_event, { email }: { email: string }) => {
+    try {
+      const dbDir = path.dirname(dbManager.dbPath);
+      const userDataPath = app.getPath('userData');
+      const profileDir = path.join(dbDir, 'profiles', email);
+      const historyPath = path.join(profileDir, 'Default', 'History');
 
-        if (!fs.existsSync(historyPath)) return { success: true, latest: null };
+      if (!fs.existsSync(historyPath)) return { success: true, latest: null };
 
-        const tempPath = path.join(userDataPath, `temp_latest_${Date.now()}.db`);
-        fs.copyFileSync(historyPath, tempPath);
-        const db = new sqlite3.Database(tempPath);
+      const tempPath = path.join(userDataPath, `temp_latest_${Date.now()}.db`);
+      fs.copyFileSync(historyPath, tempPath);
+      const db = new sqlite3.Database(tempPath);
 
-        const query = `
+      const query = `
           SELECT urls.url, urls.title, visits.visit_time
           FROM visits JOIN urls ON visits.url = urls.id 
           ORDER BY visits.visit_time DESC LIMIT 1
         `;
 
-        const row: any = await new Promise((resolve) => {
-          db.get(query, [], (_err, row) => {
-            db.close(); resolve(row);
-          });
+      const row: any = await new Promise((resolve) => {
+        db.get(query, [], (_err, row) => {
+          db.close();
+          resolve(row);
         });
-        
-        try { fs.unlinkSync(tempPath); } catch (e) {}
+      });
 
-        if (!row) return { success: true, latest: null };
+      try {
+        fs.unlinkSync(tempPath);
+      } catch (e) {}
 
-        return {
-          success: true,
-          latest: {
-            url: row.url,
-            title: row.title,
-            time: Math.floor(row.visit_time / 1000 - 11644473600000),
-          }
-        };
-      } catch (e: any) {
-        return { success: false, error: e.message };
-      }
+      if (!row) return { success: true, latest: null };
+
+      return {
+        success: true,
+        latest: {
+          url: row.url,
+          title: row.title,
+          time: Math.floor(row.visit_time / 1000 - 11644473600000),
+        },
+      };
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
-  );
+  });
 
   ipcMain.handle(
     'email:get-history',
@@ -383,7 +416,8 @@ export function setupDataHandlers() {
         const profileDir = path.join(dbDir, 'profiles', email);
         const historyPath = path.join(profileDir, 'Default', 'History');
 
-        if (!fs.existsSync(historyPath)) return { success: true, history: [], stats: { topWebsites: [], intervals: [] } };
+        if (!fs.existsSync(historyPath))
+          return { success: true, history: [], stats: { topWebsites: [], intervals: [] } };
 
         const tempPath = path.join(userDataPath, `temp_hist_${Date.now()}.db`);
         fs.copyFileSync(historyPath, tempPath);
@@ -403,17 +437,20 @@ export function setupDataHandlers() {
 
         const rows: any[] = await new Promise((resolve) => {
           db.all(query, [startTime, endTime], (_err, rows) => {
-            db.close(); resolve(rows || []);
+            db.close();
+            resolve(rows || []);
           });
         });
         fs.unlinkSync(tempPath);
 
         const history = rows.map((r) => ({
-          url: r.url, title: r.title,
+          url: r.url,
+          title: r.title,
           time: Math.floor(r.visit_time / 1000 - 11644473600000),
         }));
 
-        const domainCounts: Record<string, { count: number; duration: number; iconUrl: string }> = {};
+        const domainCounts: Record<string, { count: number; duration: number; iconUrl: string }> =
+          {};
         history.forEach((h, index) => {
           try {
             const d = new URL(h.url).hostname.replace('www.', '');
@@ -424,8 +461,14 @@ export function setupDataHandlers() {
         });
 
         const topWebsites = Object.entries(domainCounts)
-          .map(([domain, data]) => ({ domain, count: data.count, duration: data.duration, url: data.iconUrl }))
-          .sort((a, b) => b.count - a.count).slice(0, 10);
+          .map(([domain, data]) => ({
+            domain,
+            count: data.count,
+            duration: data.duration,
+            url: data.iconUrl,
+          }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
 
         const intervals = Array.from({ length: 24 }, (_, hour) => ({ hour, count: 0 }));
         history.forEach((h) => {
@@ -433,7 +476,11 @@ export function setupDataHandlers() {
           if (hour >= 0 && hour < 24) intervals[hour].count++;
         });
 
-        return { success: true, history: history.reverse(), stats: { topWebsites, intervals, totalVisits: history.length } };
+        return {
+          success: true,
+          history: history.reverse(),
+          stats: { topWebsites, intervals, totalVisits: history.length },
+        };
       } catch (e: any) {
         return { success: false, error: e.message };
       }
@@ -465,7 +512,8 @@ export function setupDataHandlers() {
 
         const rows: any[] = await new Promise((resolve) => {
           db.all(query, [startTime, endTime], (_err, rows) => {
-            db.close(); resolve(rows || []);
+            db.close();
+            resolve(rows || []);
           });
         });
         if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
@@ -531,10 +579,14 @@ export function setupDataHandlers() {
 
         // Xóa record trong visits
         await new Promise((resolve, reject) => {
-          db.run('DELETE FROM visits WHERE url = ? AND visit_time = ?', [urlId, visitTimeMicro], function(err) {
-            if (err) reject(err);
-            else resolve(this);
-          });
+          db.run(
+            'DELETE FROM visits WHERE url = ? AND visit_time = ?',
+            [urlId, visitTimeMicro],
+            function (err) {
+              if (err) reject(err);
+              else resolve(this);
+            },
+          );
         });
 
         // Kiểm tra xem còn record nào trong visits tham chiếu đến urlId không
@@ -547,7 +599,7 @@ export function setupDataHandlers() {
         // Nếu không còn record nào, xóa luôn record trong urls
         if (remainingVisits && remainingVisits.count === 0) {
           await new Promise((resolve, reject) => {
-            db.run('DELETE FROM urls WHERE id = ?', [urlId], function(err) {
+            db.run('DELETE FROM urls WHERE id = ?', [urlId], function (err) {
               if (err) reject(err);
               else resolve(this);
             });
@@ -567,40 +619,37 @@ export function setupDataHandlers() {
     },
   );
 
-  ipcMain.handle(
-    'email:get-fingerprint-history',
-    async (_event, { email }: { email: string }) => {
-      try {
-        const dbDir = path.dirname(dbManager.dbPath);
-        const profileDir = path.join(dbDir, 'profiles', email);
-        const fpHistoryPath = path.join(profileDir, 'fp-ip-history.db');
+  ipcMain.handle('email:get-fingerprint-history', async (_event, { email }: { email: string }) => {
+    try {
+      const dbDir = path.dirname(dbManager.dbPath);
+      const profileDir = path.join(dbDir, 'profiles', email);
+      const fpHistoryPath = path.join(profileDir, 'fp-ip-history.db');
 
-        if (!fs.existsSync(fpHistoryPath)) {
-          return { success: true, entries: [] };
-        }
-
-        const userDataPath = app.getPath('userData');
-        const tempPath = path.join(userDataPath, `temp_fphist_${Date.now()}.db`);
-        fs.copyFileSync(fpHistoryPath, tempPath);
-        const db = new sqlite3.Database(tempPath);
-
-        const rows: any[] = await new Promise((resolve) => {
-          db.all(
-            'SELECT id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at, ended_at FROM site_fingerprint_history ORDER BY started_at DESC',
-            (_err, rows) => {
-              db.close();
-              resolve(rows || []);
-            },
-          );
-        });
-        fs.unlinkSync(tempPath);
-
-        return { success: true, entries: rows };
-      } catch (e: any) {
-        return { success: false, error: e.message };
+      if (!fs.existsSync(fpHistoryPath)) {
+        return { success: true, entries: [] };
       }
-    },
-  );
+
+      const userDataPath = app.getPath('userData');
+      const tempPath = path.join(userDataPath, `temp_fphist_${Date.now()}.db`);
+      fs.copyFileSync(fpHistoryPath, tempPath);
+      const db = new sqlite3.Database(tempPath);
+
+      const rows: any[] = await new Promise((resolve) => {
+        db.all(
+          'SELECT id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at, ended_at FROM site_fingerprint_history ORDER BY started_at DESC',
+          (_err, rows) => {
+            db.close();
+            resolve(rows || []);
+          },
+        );
+      });
+      fs.unlinkSync(tempPath);
+
+      return { success: true, entries: rows };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  });
 
   ipcMain.handle(
     'email:delete-fingerprint-history',

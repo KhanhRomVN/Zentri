@@ -195,19 +195,9 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
   const linkedBackupCodes: string[] = linkedTwoFa.backupCodes || [];
   const hasTotpValue = !!linkedTotpSecret && isValidBase32(linkedTotpSecret);
   const hasBackupValue = linkedBackupCodes.length > 0;
-  // Hiển thị section nếu có dữ liệu thực tế HOẶC template khai báo hỗ trợ
   const hasTotpEnabled = hasTotpValue || templateTwoFa.has_totp;
   const hasBackupEnabled = hasBackupValue || templateTwoFa.has_backup_codes;
   const hasAnySecurity = hasTotpEnabled || hasBackupEnabled;
-
-  // [DEBUG] Xóa sau khi fix
-  console.log('[DEBUG] ServiceView — service.twoFa:', JSON.stringify(service.twoFa));
-  console.log(
-    '[DEBUG] ServiceView — hasTotpValue:',
-    hasTotpValue,
-    'hasTotpEnabled:',
-    hasTotpEnabled,
-  );
 
   const [totpCode, setTotpCode] = useState<string | null>(null);
   const [totpTimer, setTotpTimer] = useState(30);

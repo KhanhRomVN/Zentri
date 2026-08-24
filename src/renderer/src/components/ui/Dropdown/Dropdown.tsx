@@ -63,18 +63,6 @@ export const Dropdown = React.memo(function Dropdown({
       height: window.innerHeight,
     };
 
-    console.log('[Dropdown] Calculate position:', {
-      triggerRect: {
-        width: triggerRect.width,
-        height: triggerRect.height,
-        left: triggerRect.left,
-        top: triggerRect.top,
-      },
-      contentRect: { width: contentRect.width, height: contentRect.height },
-      align,
-      side,
-    });
-
     let top = 0;
     let left = 0;
     const offset = sideOffset;
@@ -171,7 +159,6 @@ export const Dropdown = React.memo(function Dropdown({
       }
       const pos = calculateFixedPosition();
       if (pos) {
-        console.log('[Dropdown] Setting position:', pos, 'isPositioned:', isPositioned);
         setPosition(pos);
         setIsPositioned(true);
       }
@@ -202,19 +189,10 @@ export const Dropdown = React.memo(function Dropdown({
 
   // Update position when open or props change
   useEffect(() => {
-    console.log(
-      '[Dropdown] Open changed:',
-      open,
-      'contentRef:',
-      !!contentRef.current,
-      'strategy:',
-      strategy,
-    );
     if (open && contentRef.current) {
       // Double requestAnimationFrame to ensure content has rendered with correct dimensions
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          console.log('[Dropdown] About to call updatePosition');
           updatePosition();
         });
       });

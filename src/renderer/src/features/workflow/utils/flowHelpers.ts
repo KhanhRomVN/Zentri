@@ -49,7 +49,8 @@ export function validateEdges(connections: NodeConnection[]): Map<string, boolea
   const invalidEdges = new Map<string, boolean>();
   connections.forEach((conn) => {
     const key = `${conn.from}-${conn.fromSide}`;
-    const isInvalid = (sourceHandleCounts.get(key) || 0) > 1;
+    const count = sourceHandleCounts.get(key) || 0;
+    const isInvalid = count > 1;
     if (isInvalid) {
       invalidEdges.set(conn.id, true);
     }
@@ -74,4 +75,64 @@ export function getConnectionSets(connections: NodeConnection[]): {
   });
 
   return { nodesWithIncoming, nodesWithOutgoing };
+}
+
+/**
+ * Check if a node is properly configured
+ * A node is considered configured if it has non-empty title or note (config data)
+ */
+export function isNodeConfigured(node: WorkflowNode): boolean {
+  // Start node is always valid
+  if (node.type === 'start' || node.id === 'start') {
+    return true;
+  }
+
+  // Note type nodes don't need configuration
+  if (node.type === 'note') {
+    return true;
+  }
+
+  // Check if node has configuration data
+  // A node is configured if it has:
+  // 1. A title (user-provided label or action name)
+  // 2. Or a note field with JSON config data
+  const hasTitle = !!(node.title && node.title.trim().length > 0);
+  const hasConfig = !!(node.note && node.note.trim().length > 0);
+
+  return hasTitle || hasConfig;
+}
+
+/**
+ * Validate entire workflow diagram
+ * Returns an object with validation status and error details
+ */
+export function validateWorkflow(
+  nodes: WorkflowNode[],
+  connections: NodeConnection[],
+): {
+  isValid: boolean;
+  errors: {
+    unconfiguredNodes: string[]; // IDs of nodes missing configuration
+    duplicateEdges: string[]; // IDs of invalid duplicate edges
+  };
+} {
+  const errors = {
+    unconfiguredNodes: [] as string[],
+    duplicateEdges: [] as string[],
+  };
+
+  // Check for unconfigured nodes
+  nodes.forEach((node) => {
+    if (!isNodeConfigured(node)) {
+      errors.unconfiguredNodes.push(node.id);
+    }
+  });
+
+  // Check for duplicate/invalid edges
+  const invalidEdges = validateEdges(connections);
+  errors.duplicateEdges = Array.from(invalidEdges.keys());
+
+  const isValid = errors.unconfiguredNodes.length === 0 && errors.duplicateEdges.length === 0;
+
+  return { isValid, errors };
 }

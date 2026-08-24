@@ -22,10 +22,8 @@ app.whenReady().then(() => {
   setupEventHandlers();
 
   // Start WebSocket server for extension communication (must start after event handlers)
-  console.log('[Main] Starting WebSocket server...');
   const wsService = WebSocketRecorderService.getInstance();
   wsService.start();
-  console.log('[Main] WebSocket service initialized');
 
   // Create main window
   windowManager.createMainWindow();

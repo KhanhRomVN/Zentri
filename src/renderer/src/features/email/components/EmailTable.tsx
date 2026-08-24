@@ -57,7 +57,14 @@ interface EmailTableProps {
   onHardDelete: (id: string) => void;
   onSaveChanges: (oldAccount: Account, newAccount: Account) => void;
   onRefreshData?: () => void;
-  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint' | 'security';
+  activeTab:
+    | 'info'
+    | 'services'
+    | 'sessions'
+    | 'history'
+    | 'bookmarks'
+    | 'fingerprint'
+    | 'security';
   setActiveTab: (
     tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint' | 'security',
   ) => void;
@@ -208,7 +215,10 @@ const EmailTable: FC<EmailTableProps> = ({
         if (!acc?.email) continue;
         try {
           // @ts-ignore
-          const size = await window.electron.ipcRenderer.invoke('email:get-profile-size', acc.email);
+          const size = await window.electron.ipcRenderer.invoke(
+            'email:get-profile-size',
+            acc.email,
+          );
           sizes[acc.email] = size ?? 0;
         } catch {
           sizes[acc.email] = 0;
@@ -611,19 +621,6 @@ const EmailTable: FC<EmailTableProps> = ({
 
   const handleAddServiceLink = async () => {
     if (!focusedAccount || !newServiceData.serviceId) return;
-
-    // [DEBUG] Xóa sau khi fix — log dữ liệu twoFa trước khi gửi IPC
-    console.log(
-      '[DEBUG] handleAddServiceLink — newServiceData.twoFa:',
-      JSON.stringify(newServiceData.twoFa),
-    );
-    console.log(
-      '[DEBUG] handleAddServiceLink — isEditServiceMode:',
-      isEditServiceMode,
-      'linkId:',
-      newServiceData.linkId,
-    );
-
     try {
       if (isEditServiceMode && newServiceData.linkId) {
         const payload = {
@@ -633,13 +630,8 @@ const EmailTable: FC<EmailTableProps> = ({
             ? { totp: newServiceData.twoFa.totp, backupCodes: newServiceData.twoFa.backupCodes }
             : {},
         };
-        console.log(
-          '[DEBUG] handleAddServiceLink — IPC service_emails:update payload:',
-          JSON.stringify(payload),
-        );
         // @ts-ignore
         await window.electron.ipcRenderer.invoke('service_emails:update', payload);
-        console.log('[DEBUG] handleAddServiceLink — IPC service_emails:update thành công');
       } else {
         // @ts-ignore
         await window.electron.ipcRenderer.invoke('service_emails:insert', {
@@ -825,7 +817,7 @@ const EmailTable: FC<EmailTableProps> = ({
           </button>
         </div>
       </div>
-{/* Inline Table (merged from ListView) */}
+      {/* Inline Table (merged from ListView) */}
       {showDetail && focusedAccount ? (
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {/* Focused row table */}
@@ -867,7 +859,10 @@ const EmailTable: FC<EmailTableProps> = ({
                   onContextMenu={(e) => handleContextMenu(e, focusedAccount.id)}
                 >
                   <td className="text-muted-foreground font-mono text-xs pl-6 py-2">
-                    #{String(fullAccountList.findIndex((a) => a.id === focusedAccount.id) + 1).padStart(2, '0')}
+                    #
+                    {String(
+                      fullAccountList.findIndex((a) => a.id === focusedAccount.id) + 1,
+                    ).padStart(2, '0')}
                   </td>
                   <td className="font-medium">
                     <div className="flex flex-col gap-0.5 min-w-0">
@@ -896,7 +891,7 @@ const EmailTable: FC<EmailTableProps> = ({
                             {focusedAccount.lastProxy.host || 'Unknown'}
                           </span>
                           <span className="text-[11px] font-mono text-muted-foreground/40">
-                            {focusedAccount.lastProxy.ip || '—'}
+                            {focusedAccount.lastProxy.protocol || '—'}
                           </span>
                         </>
                       ) : (
@@ -1062,7 +1057,7 @@ const EmailTable: FC<EmailTableProps> = ({
                                 {account.lastProxy.host || 'Unknown'}
                               </span>
                               <span className="text-[11px] font-mono text-muted-foreground/40">
-                                {account.lastProxy.ip || '—'}
+                                {account.lastProxy.protocol || '—'}
                               </span>
                             </>
                           ) : (
