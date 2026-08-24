@@ -86,6 +86,23 @@ export const workflowAPI = {
   },
 
   /**
+   * Run workflow on the active recorder browser (NEW)
+   * Executes workflow on the currently open recorder browser
+   */
+  runOnRecorder: (
+    workflowId: string,
+    nodes: any[],
+  ): Promise<{
+    success: boolean;
+    runId?: string;
+    results?: any[];
+    duration?: number;
+    error?: string;
+  }> => {
+    return ipcRenderer.invoke('workflow:run-on-recorder', workflowId, nodes);
+  },
+
+  /**
    * Get workflow run history
    */
   getRuns: (

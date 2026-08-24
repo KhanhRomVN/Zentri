@@ -12,6 +12,7 @@ import {
   Video,
   History,
   ScrollText,
+  RefreshCw,
 } from 'lucide-react';
 import {
   ReactFlow,
@@ -973,6 +974,40 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
     }
   }, [workflow.id]);
 
+  // Handler to run workflow on recorder browser (NEW)
+  const handleRunOnRecorder = useCallback(async () => {
+    console.log('[CanvasEditor] handleRunOnRecorder called');
+    try {
+      // Check if nodes exist
+      if (currentNodes.length <= 1) {
+        alert('Add nodes to run workflow');
+        return;
+      }
+
+      // Check if workflow is valid
+      if (!workflowValid) {
+        alert('Cannot run: workflow has errors (unconfigured nodes or duplicate edges)');
+        return;
+      }
+
+      console.log('[CanvasEditor] Calling window.api.workflow.runOnRecorder...');
+
+      const result = await window.api.workflow.runOnRecorder(workflow.id, currentNodes);
+
+      console.log('[CanvasEditor] runOnRecorder result:', result);
+
+      if (!result.success) {
+        console.error('[CanvasEditor] Failed to run workflow on recorder:', result.error);
+        alert(`Failed to run workflow on recorder: ${result.error}`);
+      } else {
+        console.log('[CanvasEditor] Workflow executed successfully on recorder browser');
+        // No alert on success - user can check logs
+      }
+    } catch (error) {
+      console.error('[CanvasEditor] Error running workflow on recorder:', error);
+    }
+  }, [workflow.id, currentNodes, workflowValid]);
+
   // Handler to run workflow
   const handleRunWorkflow = useCallback(
     async (config: RunConfig) => {
@@ -1207,6 +1242,24 @@ const CanvasEditor = ({ workflow, onUpdateWorkflow, onBack }: CanvasEditorProps)
                   >
                     <Video className="h-4 w-4" />
                   </button>
+
+                  {/* Run on Recorder Button (Only show when recording/recorder active) */}
+                  {isRecording && (
+                    <button
+                      onClick={handleRunOnRecorder}
+                      disabled={currentNodes.length <= 1 || !workflowValid}
+                      className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={
+                        !workflowValid
+                          ? 'Cannot run: workflow has errors'
+                          : currentNodes.length <= 1
+                            ? 'Add nodes to run on recorder'
+                            : 'Run workflow on recorder browser'
+                      }
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  )}
 
                   {/* Run Workflow Button */}
                   <button

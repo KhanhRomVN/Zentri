@@ -94,7 +94,7 @@ export function setupWorkflowRecordHandlers() {
         throw new Error(result.error || 'Failed to launch Chrome');
       }
 
-      return { success: true, workflowId, url, port: result.port };
+      return { success: true, workflowId, url };
     } catch (error: any) {
       console.error('[WorkflowRecord] Error starting recording:', error);
       return { success: false, error: error.message };
@@ -400,6 +400,63 @@ export function setupWorkflowRecordHandlers() {
     } catch (error: any) {
       console.error('[WorkflowRecord] Error getting live logs:', error);
       return { success: false, error: error.message };
+    }
+  });
+
+  // Handle run workflow on recorder browser (NEW: Execute workflow on the active recorder browser)
+  ipcMain.handle('workflow:run-on-recorder', async (event, workflowId: string, nodes: any[]) => {
+    const runId = randomUUID();
+    const startTime = Date.now();
+
+    try {
+      const launcher = ChromeRecorderLauncher.getInstance();
+
+      // Check if recorder browser is active
+      if (!launcher.isBrowserActive(workflowId)) {
+        throw new Error('No active recorder browser found. Please launch browser recorder first.');
+      }
+
+      broadcastLog(workflowId, runId, 'info', 'Starting workflow execution on recorder browser');
+
+      // Filter out start nodes
+      const actionNodes = nodes.filter((node: any) => node.type !== 'start');
+      broadcastLog(
+        workflowId,
+        runId,
+        'info',
+        `Filtered to ${actionNodes.length} action node(s) to execute`,
+      );
+
+      // Execute workflow on the recorder browser
+      const result = await launcher.executeWorkflow(
+        workflowId,
+        actionNodes,
+        (level, message, nodeId, metadata) => {
+          broadcastLog(workflowId, runId, level, message, nodeId, workflowId, metadata);
+        },
+      );
+
+      const duration = Date.now() - startTime;
+
+      if (result.success) {
+        broadcastLog(
+          workflowId,
+          runId,
+          'success',
+          `Workflow execution completed successfully in ${(duration / 1000).toFixed(2)}s`,
+        );
+        return { success: true, runId, results: result.results, duration };
+      } else {
+        broadcastLog(workflowId, runId, 'error', `Workflow execution failed: ${result.error}`);
+        return { success: false, error: result.error, runId, duration };
+      }
+    } catch (error: any) {
+      console.error('[WorkflowRecord] Error running workflow on recorder:', error);
+      const duration = Date.now() - startTime;
+
+      broadcastLog(workflowId, runId, 'error', `Workflow execution failed: ${error.message}`);
+
+      return { success: false, error: error.message, runId, duration };
     }
   });
 }
