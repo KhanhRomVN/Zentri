@@ -1,8 +1,8 @@
 import { FC, useState } from 'react';
 import { X } from 'lucide-react';
-import { Device } from '../../../types';
+import { Device } from '../../../../types';
 import OverviewTab from './OverviewTab';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 import NetworkTab from './NetworkTab';
 
 interface DeviceDetailModalProps {

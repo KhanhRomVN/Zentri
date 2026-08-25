@@ -1,25 +1,17 @@
 import { useState } from 'react';
 import HeaderBar from '../../components/HeaderBar';
 import Sidebar from './components/Sidebar';
-import WorkspacePanelBar from './components/WorkspacePanel/WorkspacePanelBar';
+import PanelBar from './components/WorkspacePanel/PanelBar';
 import DeviceTable from './components/WorkspacePanel/DeviceTable';
 import DeviceGrid from './components/WorkspacePanel/DeviceGrid';
-import AddDeviceModal from './components/WorkspacePanel/AddDeviceModal';
-import DeviceDetailModal from './components/WorkspacePanel/DeviceDetailModal/DeviceDetailModal';
+import AddDeviceModal from './components/WorkspacePanel/modal/AddDeviceModal';
+import DeviceDetailModal from './components/WorkspacePanel/modal/DeviceDetailModal/DeviceDetailModal';
 import { useDeviceData } from './hooks/useDeviceData';
 import { Device } from './types';
 
 const DevicePage = () => {
-  const {
-    devices,
-    filteredDevices,
-    loading,
-    error,
-    facetCounts,
-    filters,
-    setFilters,
-    refresh,
-  } = useDeviceData();
+  const { devices, filteredDevices, loading, error, facetCounts, filters, setFilters, refresh } =
+    useDeviceData();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -38,11 +30,9 @@ const DevicePage = () => {
         />
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <WorkspacePanelBar
+          <PanelBar
             searchQuery={filters.searchQuery}
-            onSearchChange={(value) =>
-              setFilters((prev) => ({ ...prev, searchQuery: value }))
-            }
+            onSearchChange={(value) => setFilters((prev) => ({ ...prev, searchQuery: value }))}
             onRefresh={refresh}
             onAddDevice={() => setIsAddModalOpen(true)}
             viewMode={viewMode}

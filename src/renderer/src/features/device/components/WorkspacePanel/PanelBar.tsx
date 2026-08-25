@@ -3,7 +3,7 @@ import { Search, RefreshCw, Plus, LayoutGrid, List } from 'lucide-react';
 import { Button } from '../../../../components/ui/Button';
 import { cn } from '../../../../shared/lib/utils';
 
-interface WorkspacePanelBarProps {
+interface PanelBarProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   onRefresh: () => void;
@@ -12,7 +12,7 @@ interface WorkspacePanelBarProps {
   onViewModeChange: (mode: 'grid' | 'table') => void;
 }
 
-const WorkspacePanelBar: FC<WorkspacePanelBarProps> = ({
+const PanelBar: FC<PanelBarProps> = ({
   searchQuery,
   onSearchChange,
   onRefresh,
@@ -21,8 +21,10 @@ const WorkspacePanelBar: FC<WorkspacePanelBarProps> = ({
   onViewModeChange,
 }) => {
   return (
-    <div className="flex items-stretch gap-3 px-4 py-2 h-[56px] border-b border-border bg-background/80 backdrop-blur-xl shrink-0">
-      <h1 className="font-display text-[15px] font-semibold text-text-primary self-center">Devices</h1>
+    <div className="flex items-stretch gap-3 px-4 py-2 h-[52px] border-b border-border bg-background/80 backdrop-blur-xl shrink-0">
+      <h1 className="font-display text-[15px] font-semibold text-text-primary self-center">
+        Devices
+      </h1>
 
       <div className="ml-auto w-80 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-text-tertiary" />
@@ -36,10 +38,22 @@ const WorkspacePanelBar: FC<WorkspacePanelBarProps> = ({
       </div>
 
       <div className="flex items-stretch gap-2">
-        <Button variant="outline" size="sm" className="h-full py-0" onClick={onRefresh} title="Refresh">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-full aspect-square px-0 py-0"
+          onClick={onRefresh}
+          title="Refresh"
+        >
           <RefreshCw className="size-3.5" />
         </Button>
-        <Button variant="solid" size="sm" className="h-full py-0" onClick={onAddDevice} title="Add Device">
+        <Button
+          variant="solid"
+          size="sm"
+          className="h-full aspect-square px-0 py-0"
+          onClick={onAddDevice}
+          title="Add Device"
+        >
           <Plus className="size-3.5" />
         </Button>
 
@@ -74,4 +88,4 @@ const WorkspacePanelBar: FC<WorkspacePanelBarProps> = ({
   );
 };
 
-export default WorkspacePanelBar;
+export default PanelBar;

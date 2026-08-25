@@ -1,6 +1,6 @@
 import { FC, useState } from 'react';
 import { Smartphone, Monitor } from 'lucide-react';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 import { ScannedDevice, DetailTab, CONN_LABEL, PRESET_TAGS } from './types';
 
 interface DeviceDetailPanelProps {
@@ -30,7 +30,9 @@ const DeviceDetailPanel: FC<DeviceDetailPanelProps> = ({ device, isAdded, onAdd 
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-text-tertiary py-12">
         <Smartphone className="size-9 opacity-35" />
-        <h4 className="text-text-secondary font-display text-sm font-semibold">No device selected</h4>
+        <h4 className="text-text-secondary font-display text-sm font-semibold">
+          No device selected
+        </h4>
         <p className="text-xs max-w-[240px] text-center">
           Select a device from the list on the left to view full information and add it to Fleet.
         </p>
@@ -104,8 +106,8 @@ const DeviceDetailPanel: FC<DeviceDetailPanelProps> = ({ device, isAdded, onAdd 
               Additional information
             </div>
             <p className="text-xs text-text-tertiary">
-              Detailed information (OS, resolution, battery...) will be collected after the device is
-              added to Fleet.
+              Detailed information (OS, resolution, battery...) will be collected after the device
+              is added to Fleet.
             </p>
           </>
         ) : (
@@ -177,7 +179,14 @@ const DeviceDetailPanel: FC<DeviceDetailPanelProps> = ({ device, isAdded, onAdd 
             />
           </div>
           <button
-            onClick={() => onAdd({ name: name.trim() || device.model, group, tags: Array.from(selectedTags), notes })}
+            onClick={() =>
+              onAdd({
+                name: name.trim() || device.model,
+                group,
+                tags: Array.from(selectedTags),
+                notes,
+              })
+            }
             className="w-full h-8 rounded-md bg-button-solid-background text-button-solid-text text-xs font-semibold hover:bg-button-solid-background/90"
           >
             Add to Fleet

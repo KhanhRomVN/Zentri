@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { Plus, Smartphone, Monitor } from 'lucide-react';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 import { ScannedDevice, CONN_LABEL } from './types';
 
 interface DeviceScanListProps {
@@ -62,7 +62,14 @@ const DeviceScanList: FC<DeviceScanListProps> = ({
                 )}
               >
                 {isChecked && (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
@@ -74,7 +81,9 @@ const DeviceScanList: FC<DeviceScanListProps> = ({
 
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-semibold truncate">{d.model}</div>
-                <div className="text-[10.5px] font-mono text-text-tertiary mt-0.5 truncate">{d.serial}</div>
+                <div className="text-[10.5px] font-mono text-text-tertiary mt-0.5 truncate">
+                  {d.serial}
+                </div>
                 <div className="flex gap-1.5 mt-1.5 flex-wrap">
                   <span
                     className={cn(

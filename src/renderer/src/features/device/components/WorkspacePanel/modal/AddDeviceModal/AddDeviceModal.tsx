@@ -1,12 +1,12 @@
 import { FC, useState, useMemo } from 'react';
 import { PenLine, RefreshCw, Search } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../../../../components/ui/Modal';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../../../../../components/ui/Modal';
 import DeviceScanList from './DeviceScanList';
 import DeviceDetailPanel from './DeviceDetailPanel';
 import ManualAddForm from './ManualAddForm';
 import { ScannedDevice, AddDeviceMode, SourceFilter, StatusFilter } from './types';
 import { showToast } from './toast';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 
 interface AddDeviceModalProps {
   isOpen: boolean;
@@ -302,7 +302,10 @@ const AddDeviceModal: FC<AddDeviceModalProps> = ({ isOpen, onClose, onSuccess })
               {scanning ? (
                 <div className="space-y-1.5">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-[66px] rounded-lg bg-input-background animate-pulse" />
+                    <div
+                      key={i}
+                      className="h-[66px] rounded-lg bg-input-background animate-pulse"
+                    />
                   ))}
                 </div>
               ) : (

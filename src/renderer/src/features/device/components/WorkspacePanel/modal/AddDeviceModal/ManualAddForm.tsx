@@ -1,6 +1,6 @@
 import { FC, useState } from 'react';
 import { Smartphone, Monitor, Zap } from 'lucide-react';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 import { PRESET_TAGS } from './types';
 
 interface ManualAddFormProps {
@@ -44,7 +44,9 @@ const ManualAddForm: FC<ManualAddFormProps> = ({ onAdd }) => {
     setTesting(false);
     const ok = Math.random() < 0.75;
     setTestResult(
-      ok ? `Connection successful · ${15 + Math.floor(Math.random() * 75)}ms` : 'Cannot connect to this address',
+      ok
+        ? `Connection successful · ${15 + Math.floor(Math.random() * 75)}ms`
+        : 'Cannot connect to this address',
     );
   };
 
@@ -87,7 +89,10 @@ const ManualAddForm: FC<ManualAddFormProps> = ({ onAdd }) => {
                   : 'border-border bg-input-background text-text-secondary hover:text-text-primary',
               )}
             >
-              <Icon className={cn('size-4', isVirtual && 'opacity-70')} strokeWidth={isVirtual ? 1.5 : 2} />
+              <Icon
+                className={cn('size-4', isVirtual && 'opacity-70')}
+                strokeWidth={isVirtual ? 1.5 : 2}
+              />
               {opt.label}
             </button>
           );
