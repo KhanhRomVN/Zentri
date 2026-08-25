@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 /**
  * ------------------------------------------------------------------
- * EmailManager
+ * Email
  * ------------------------------------------------------------------
  * Main entry point for the Email feature. Renders the full email
  * management interface including the accounts table, filter panel,
@@ -26,14 +26,13 @@ import {
   Shield,
   Key,
   Hash,
-  LayoutDashboard,
-  ChevronRight,
   X,
   RefreshCw,
   Upload,
 } from 'lucide-react';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
 import { Button } from '../../components/ui/Button';
+import HeaderBar from '../../components/HeaderBar';
 
 // ── Hooks ──
 import { useHashParams } from '../../hooks/useHashParams';
@@ -142,7 +141,7 @@ const ModalWrapper: React.FC<{
 };
 
 // ─── Component ──────────────────────────────────────────────────────────
-const EmailManager = () => {
+const Email = () => {
   // ── State ──
   const [searchParams, setSearchParams] = useHashParams();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -304,7 +303,7 @@ const EmailManager = () => {
         newParams.delete('focus_email');
         setSearchParams(newParams, true);
       } else {
-        console.warn('[EmailManager] Could not find account with email:', focusEmail);
+        console.warn('[Email] Could not find account with email:', focusEmail);
       }
     }
   }, [searchParams, setSearchParams, accounts]);
@@ -606,15 +605,7 @@ const EmailManager = () => {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
       {/* Header with Breadcrumbs */}
-      <header className="h-10 shrink-0 border-b border-t border-r border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-30">
-        <div className="flex items-center gap-2">
-          <button className="text-text-primary hover:text-teal transition-colors">
-            <LayoutDashboard className="size-5" />
-          </button>
-          <ChevronRight className="size-4 text-text-secondary" />
-          <span className="text-text-primary text-sm font-semibold">Email</span>
-        </div>
-      </header>
+      <HeaderBar title="Email" />
 
       {/* Filter Bar */}
       {showFilterBar && (
@@ -1128,4 +1119,4 @@ const EmailManager = () => {
   );
 };
 
-export default EmailManager;
+export default Email;

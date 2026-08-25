@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import FilterList from './components/FilterList';
 import FilterTable from './components/FilterTable';
-import HeaderBar from './components/HeaderBar';
+import HeaderBar from '../../components/HeaderBar';
 import { SmartView } from './types/search';
 import { useSearchTableState } from './hooks/useSearchTableState';
 import { useSearchFilter } from './hooks/useSearchFilter';
@@ -24,14 +24,14 @@ const saveRecentCache = async () => {
   }
 };
 
-const FilterPage = () => {
+const Filter = () => {
   const [views, setViews] = useState<SmartView[]>([]);
   const [selectedViewId, setSelectedViewId] = useState<string | null>(null);
   const [, setIsBuilderOpen] = useState(false);
   const [, setEditingView] = useState<SmartView | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [tableSearch, setTableSearch] = useState('');
+  const [tableSearch] = useState('');
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
@@ -72,18 +72,7 @@ const FilterPage = () => {
     autoLoad: true,
   });
 
-  // Pagination calculations
-  const totalRecords = data.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
-  const startRecord = totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0;
-  const endRecord = Math.min(currentPage * pageSize, totalRecords);
   const paginatedData = data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
 
   // Reset to page 1 when data or selectedView changes
   useEffect(() => {
@@ -145,25 +134,9 @@ const FilterPage = () => {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10">
       <HeaderBar
-        selectedView={selectedView}
+        title="Search"
+        subtitle={selectedView?.name}
         onReset={resetSelection}
-        searchQuery={tableSearch}
-        onSearchChange={setTableSearch}
-        filtersCount={filterCount}
-        showFilterBar={showFilterBar}
-        onToggleFilterBar={() => setShowFilterBar(!showFilterBar)}
-        sorting={sorting}
-        onSortingChange={setSorting}
-        availableColumns={availableColumns}
-        columnVisibility={columnVisibility}
-        onColumnVisibilityChange={setColumnVisibility}
-        totalRecords={totalRecords}
-        onRefresh={refresh}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        startRecord={startRecord}
-        endRecord={endRecord}
-        onPageChange={handlePageChange}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -217,4 +190,4 @@ const FilterPage = () => {
   );
 };
 
-export default FilterPage;
+export default Filter;

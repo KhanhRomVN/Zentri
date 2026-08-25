@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import { setupBrowserHandlers } from './browser';
 import { setupAccountHandlers } from './account';
 import { setupProxyHandlers } from './proxy';
+import { setupDeviceHandlers } from './device';
 import { registerBookmarkHandlers } from './bookmarks';
 import { setupWorkflowRecordHandlers } from './workflow-record';
 import { dbManager } from '../database';
@@ -236,6 +237,7 @@ export function setupEventHandlers() {
   setupAccountHandlers();
   setupServiceHandlers();
   setupProxyHandlers();
+  setupDeviceHandlers();
   registerBookmarkHandlers();
   setupWorkflowRecordHandlers();
 

@@ -9,6 +9,7 @@ import {
   Search,
   Zap,
   Network,
+  Monitor,
   Eye,
 } from 'lucide-react';
 import { useAccentColors } from '../hooks/useAccentColors';
@@ -80,8 +81,8 @@ const NAV_ITEMS = [
     disabled: false,
   },
   {
-    title: 'Search',
-    href: '/search',
+    title: 'Filter',
+    href: '/filter',
     icon: Search,
     color: '#eab308',
     disabled: false,
@@ -98,6 +99,13 @@ const NAV_ITEMS = [
     href: '/proxy',
     icon: Network,
     color: '#06b6d4',
+    disabled: false,
+  },
+  {
+    title: 'Device',
+    href: '/device',
+    icon: Monitor,
+    color: '#8b5cf6',
     disabled: false,
   },
 ];

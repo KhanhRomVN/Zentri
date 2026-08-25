@@ -1,12 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import {
-  Search,
-  Plus,
-  RefreshCw,
-  Upload,
-  LayoutDashboard,
-  ChevronRight,
-} from 'lucide-react';
+import { Search, Plus, RefreshCw, Upload } from 'lucide-react';
 import { useWorkflows } from './hooks/useWorkflows';
 import type { Workflow } from './types';
 import StatsStrip from './components/StatsStrip';
@@ -16,8 +9,9 @@ import CanvasEditor from './components/editor';
 import { ReactFlowProvider } from '@xyflow/react';
 import { CreateWorkflowModal, type CreateWorkflowInput } from './components/CreateWorkflowModal';
 import { Button } from '../../components/ui/Button';
+import HeaderBar from '../../components/HeaderBar';
 
-const WorkflowPage = () => {
+const Workflow = () => {
   const { workflows, createWorkflow, updateWorkflow } = useWorkflows();
   const [view, setView] = useState<'list' | 'canvas'>('list');
   const [currentWfId, setCurrentWfId] = useState<string | null>(null);
@@ -28,7 +22,9 @@ const WorkflowPage = () => {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const currentWorkflow = currentWfId ? workflows.find((wf) => wf.id === currentWfId) || null : null;
+  const currentWorkflow = currentWfId
+    ? workflows.find((wf) => wf.id === currentWfId) || null
+    : null;
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -36,7 +32,9 @@ const WorkflowPage = () => {
       const matchPlatform = platformFilter === 'all' || wf.platform === platformFilter;
       const matchStatus = statusFilter === 'all' || wf.status === statusFilter;
       const matchQuery =
-        !query || wf.name.toLowerCase().includes(query) || wf.tags.some((t) => t.toLowerCase().includes(query));
+        !query ||
+        wf.name.toLowerCase().includes(query) ||
+        wf.tags.some((t) => t.toLowerCase().includes(query));
       return matchPlatform && matchStatus && matchQuery;
     });
   }, [workflows, search, platformFilter, statusFilter]);
@@ -115,15 +113,7 @@ const WorkflowPage = () => {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden">
       {/* Top bar */}
-      <header className="h-10 shrink-0 border-b border-t border-r border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-30">
-        <div className="flex items-center gap-2">
-          <button className="text-text-primary hover:text-teal transition-colors">
-            <LayoutDashboard className="size-5" />
-          </button>
-          <ChevronRight className="size-4 text-text-secondary" />
-          <span className="text-text-primary text-sm font-semibold">Workflow</span>
-        </div>
-      </header>
+      <HeaderBar title="Workflow" />
 
       {/* Page content */}
       <div className="flex-1 flex flex-col overflow-hidden px-5 pt-5 border-r border-b border-border">
@@ -205,4 +195,4 @@ const WorkflowPage = () => {
   );
 };
 
-export default WorkflowPage;
+export default Workflow;

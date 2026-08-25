@@ -128,3 +128,27 @@ export interface Agent {
   created_at: string;
   updated_at: string;
 }
+
+// ==================== devices ====================
+export interface Device {
+  id: string;
+  name: string;
+  type: 'mobile' | 'desktop';
+  isVirtual: number;
+  platform?: string | null;
+  osVersion?: string | null;
+  groupName?: string | null;
+  tags?: string[] | null;
+  status: 'online' | 'busy' | 'offline' | 'error';
+  ipAddress?: string | null;
+  macAddress?: string | null;
+  battery?: number | null;
+  storageTotal?: number | null;
+  storageUsed?: number | null;
+  ramTotal?: number | null;
+  ramUsed?: number | null;
+  cpuUsage?: number | null;
+  lastSeenAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

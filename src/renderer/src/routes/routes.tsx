@@ -1,12 +1,13 @@
 import { RouteObject } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../features/dashboard';
-import EmailManager from '../features/email';
-import ProxyManager from '../features/proxy';
-import FilterPage from '../features/filter';
-import SettingPage from '../features/setting';
-import WorkflowPage from '../features/workflow';
+import Email from '../features/email/Email';
+import Proxy from '../features/proxy/Proxy';
+import Filter from '../features/filter/Filter';
+import Setting from '../features/setting/Setting';
+import Workflow from '../features/workflow/Workflow';
 import Forge from '@renderer/features/forge/Forrge';
+import Device from '@renderer/features/device/Device';
 
 export const routes: RouteObject[] = [
   {
@@ -23,23 +24,27 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'email',
-        element: <EmailManager />,
+        element: <Email />,
       },
       {
         path: 'proxy',
-        element: <ProxyManager />,
+        element: <Proxy />,
       },
       {
-        path: 'search',
-        element: <FilterPage />,
+        path: 'filter',
+        element: <Filter />,
       },
       {
         path: 'setting',
-        element: <SettingPage />,
+        element: <Setting />,
       },
       {
         path: 'workflow',
-        element: <WorkflowPage />,
+        element: <Workflow />,
+      },
+      {
+        path: 'device',
+        element: <Device />,
       },
     ],
   },

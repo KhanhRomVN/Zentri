@@ -220,6 +220,29 @@ export class DbManager {
 
       CREATE INDEX IF NOT EXISTS idx_workflow_logs_run ON workflow_logs(run_id, timestamp);
       CREATE INDEX IF NOT EXISTS idx_workflow_logs_workflow ON workflow_logs(workflow_id, timestamp DESC);
+
+      CREATE TABLE IF NOT EXISTS devices (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL,
+          is_virtual INTEGER NOT NULL DEFAULT 0,
+          platform TEXT,
+          os_version TEXT,
+          group_name TEXT,
+          tags TEXT,
+          status TEXT DEFAULT 'online',
+          ip_address TEXT,
+          mac_address TEXT,
+          battery INTEGER,
+          storage_total INTEGER,
+          storage_used INTEGER,
+          ram_total INTEGER,
+          ram_used INTEGER,
+          cpu_usage REAL,
+          last_seen_at DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     return new Promise((resolve, reject) => {

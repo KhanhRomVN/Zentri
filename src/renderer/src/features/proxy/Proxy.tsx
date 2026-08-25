@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import { LayoutDashboard, ChevronRight, Plus, RefreshCw, Upload } from 'lucide-react';
-import { Proxy } from '../../types/db';
+import { Plus, RefreshCw, Upload } from 'lucide-react';
+import type { Proxy as ProxyType } from '../../types/db';
 import { useProxyData } from './hooks/useProxyData';
 import { Button } from '../../components/ui/Button';
+import HeaderBar from '../../components/HeaderBar';
 import StatsStrip from './components/StatsStrip';
 import FilterPanel from './components/FilterPanel';
 import ProxyTable from './components/ProxyTable';
@@ -10,7 +11,7 @@ import ProxyDrawer from './components/ProxyDrawer';
 import ProxyModal from './components/ProxyModal';
 import { toast } from 'sonner';
 
-const ProxyManager = () => {
+const Proxy = () => {
   const {
     proxies,
     paginatedProxies,
@@ -29,7 +30,7 @@ const ProxyManager = () => {
   } = useProxyData();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [drawerProxy, setDrawerProxy] = useState<Proxy | null>(null);
+  const [drawerProxy, setDrawerProxy] = useState<ProxyType | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,7 +47,7 @@ const ProxyManager = () => {
     [setFilters],
   );
 
-  const handleRowClick = useCallback((proxy: Proxy) => {
+  const handleRowClick = useCallback((proxy: ProxyType) => {
     setDrawerProxy(proxy);
     setIsDrawerOpen(true);
   }, []);
@@ -81,15 +82,7 @@ const ProxyManager = () => {
       tabIndex={-1}
     >
       {/* Top bar */}
-      <header className="h-10 shrink-0 border-b border-t border-r border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-xl sticky top-0 z-30">
-        <div className="flex items-center gap-2">
-          <button className="text-text-primary hover:text-teal transition-colors">
-            <LayoutDashboard className="size-5" />
-          </button>
-          <ChevronRight className="size-4 text-text-secondary" />
-          <span className="text-text-primary text-sm font-semibold">Proxy</span>
-        </div>
-      </header>
+      <HeaderBar title="Proxy" />
 
       {/* Page content */}
       <div className="flex-1 flex flex-col overflow-hidden px-5 pt-5 border-r border-b border-border">
@@ -209,4 +202,4 @@ const ProxyManager = () => {
   );
 };
 
-export default ProxyManager;
+export default Proxy;

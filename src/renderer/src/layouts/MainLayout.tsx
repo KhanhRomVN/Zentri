@@ -1,21 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import Dashboard from '../features/dashboard';
-import EmailManager from '../features/email';
+import Email from '../features/email/Email';
 import Forrge from '../features/forge/Forrge';
-import ProxyManager from '../features/proxy';
-import SearchManager from '../features/filter';
-import SettingPage from '../features/setting';
-import WorkflowPage from '../features/workflow';
+import Proxy from '../features/proxy/Proxy';
+import Filter from '../features/filter/Filter';
+import Setting from '../features/setting/Setting';
+import Workflow from '../features/workflow/Workflow';
+import Device from '@renderer/features/device/Device';
 
 const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   '/': Dashboard,
-  '/email': EmailManager,
+  '/email': Email,
   '/forge': Forrge,
-  '/proxy': ProxyManager,
-  '/search': SearchManager,
-  '/setting': SettingPage,
-  '/workflow': WorkflowPage,
+  '/proxy': Proxy,
+  '/filter': Filter,
+  '/setting': Setting,
+  '/workflow': Workflow,
+  '/device': Device,
 };
 
 const MainLayout = () => {
