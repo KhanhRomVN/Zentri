@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import HeaderBar from '../../components/HeaderBar';
 import Sidebar from './components/Sidebar';
 import PanelBar from './components/WorkspacePanel/PanelBar';
 import DeviceTable from './components/WorkspacePanel/DeviceTable';
@@ -19,8 +18,6 @@ const DevicePage = () => {
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground overflow-hidden">
-      <HeaderBar title="Device" />
-
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           devices={devices}

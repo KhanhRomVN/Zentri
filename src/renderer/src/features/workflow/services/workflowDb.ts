@@ -8,7 +8,8 @@ export interface WorkflowDbRecord {
   id: string;
   name: string;
   description: string;
-  platform: 'website' | 'mobile';
+  device_type: 'website' | 'mobile';
+  service_id: string | null;
   status: 'active' | 'paused' | 'draft' | 'archived';
   tags: string; // JSON array
   owner_name: string;
@@ -31,7 +32,8 @@ function workflowToDb(workflow: Workflow): Omit<WorkflowDbRecord, 'created_at' |
     id: workflow.id,
     name: workflow.name,
     description: workflow.description,
-    platform: workflow.platform,
+    device_type: workflow.deviceType,
+    service_id: workflow.serviceId ?? null,
     status: workflow.status,
     tags: JSON.stringify(workflow.tags),
     owner_name: workflow.owner.name,
@@ -53,7 +55,8 @@ function dbToWorkflow(record: WorkflowDbRecord): Workflow {
     id: record.id,
     name: record.name,
     description: record.description,
-    platform: record.platform,
+    deviceType: record.device_type,
+    serviceId: record.service_id,
     status: record.status,
     tags: JSON.parse(record.tags),
     owner: {
@@ -82,7 +85,8 @@ export async function initWorkflowsTable(): Promise<void> {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
-      platform TEXT NOT NULL,
+      device_type TEXT NOT NULL DEFAULT 'website',
+      service_id TEXT,
       status TEXT DEFAULT 'draft',
       tags TEXT,
       owner_name TEXT,
@@ -99,6 +103,18 @@ export async function initWorkflowsTable(): Promise<void> {
   `;
 
   await window.api.sqlite.runQuery(sql);
+
+  // Migration: add service_id and device_type if upgrading older table
+  try {
+    await window.api.sqlite.runQuery(`ALTER TABLE workflows ADD COLUMN device_type TEXT NOT NULL DEFAULT 'website'`);
+  } catch {
+    // column already exists
+  }
+  try {
+    await window.api.sqlite.runQuery(`ALTER TABLE workflows ADD COLUMN service_id TEXT`);
+  } catch {
+    // column already exists
+  }
 }
 
 /**
@@ -126,17 +142,18 @@ export async function createWorkflow(workflow: Workflow): Promise<void> {
   const data = workflowToDb(workflow);
   const sql = `
     INSERT INTO workflows (
-      id, name, description, platform, status, tags,
+      id, name, description, device_type, service_id, status, tags,
       owner_name, owner_initials, nodes, connections,
       success_rate, last_run_status, last_run_time, history
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   await window.api.sqlite.runQuery(sql, [
     data.id,
     data.name,
     data.description,
-    data.platform,
+    data.device_type,
+    data.service_id,
     data.status,
     data.tags,
     data.owner_name,
@@ -154,11 +171,9 @@ export async function createWorkflow(workflow: Workflow): Promise<void> {
  * Update workflow
  */
 export async function updateWorkflow(id: string, updates: Partial<Workflow>): Promise<void> {
-  // Get current workflow
   const current = await getWorkflowById(id);
   if (!current) throw new Error(`Workflow ${id} not found`);
 
-  // Merge updates
   const updated: Workflow = { ...current, ...updates };
   const data = workflowToDb(updated);
 
@@ -166,7 +181,8 @@ export async function updateWorkflow(id: string, updates: Partial<Workflow>): Pr
     UPDATE workflows SET
       name = ?,
       description = ?,
-      platform = ?,
+      device_type = ?,
+      service_id = ?,
       status = ?,
       tags = ?,
       owner_name = ?,
@@ -184,7 +200,8 @@ export async function updateWorkflow(id: string, updates: Partial<Workflow>): Pr
   await window.api.sqlite.runQuery(sql, [
     data.name,
     data.description,
-    data.platform,
+    data.device_type,
+    data.service_id,
     data.status,
     data.tags,
     data.owner_name,
@@ -236,10 +253,10 @@ export async function getWorkflowsByStatus(
 }
 
 /**
- * Get workflows by platform
+ * Get workflows by device type
  */
-export async function getWorkflowsByPlatform(platform: 'website' | 'mobile'): Promise<Workflow[]> {
-  const sql = 'SELECT * FROM workflows WHERE platform = ? ORDER BY updated_at DESC';
-  const records = await window.api.sqlite.getAllRows<WorkflowDbRecord>(sql, [platform]);
+export async function getWorkflowsByDeviceType(deviceType: 'website' | 'mobile'): Promise<Workflow[]> {
+  const sql = 'SELECT * FROM workflows WHERE device_type = ? ORDER BY updated_at DESC';
+  const records = await window.api.sqlite.getAllRows<WorkflowDbRecord>(sql, [deviceType]);
   return records.map(dbToWorkflow);
 }

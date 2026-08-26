@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
 import { Button } from '../../components/ui/Button';
-import HeaderBar from '../../components/HeaderBar';
 
 // ── Hooks ──
 import { useHashParams } from '../../hooks/useHashParams';
@@ -604,9 +603,6 @@ const Email = () => {
   // ── Render ──
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
-      {/* Header with Breadcrumbs */}
-      <HeaderBar title="Email" />
-
       {/* Filter Bar */}
       {showFilterBar && (
         <FilterBar

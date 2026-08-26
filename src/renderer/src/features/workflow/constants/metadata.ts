@@ -1,4 +1,4 @@
-import type { NodeCategory, Platform, WorkflowStatus } from '../types';
+import type { NodeCategory, DeviceType, WorkflowStatus } from '../types';
 
 /**
  * Metadata for node categories (colors, labels, backgrounds)
@@ -13,11 +13,11 @@ export const CATEGORY_META: Record<NodeCategory, { label: string; color: string;
 };
 
 /**
- * Metadata for platforms (colors, labels, backgrounds)
+ * Metadata for device types (colors, labels, backgrounds)
  */
-export const PLATFORM_META: Record<Platform, { label: string; color: string; bg: string }> = {
-  website: { label: 'Website', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
-  mobile: { label: 'Mobile', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)' },
+export const DEVICE_TYPE_META: Record<DeviceType, { label: string; color: string; bg: string }> = {
+  website: { label: 'Website', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+  mobile: { label: 'Mobile', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)' },
 };
 
 /**

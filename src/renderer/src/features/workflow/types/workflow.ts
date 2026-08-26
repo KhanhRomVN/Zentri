@@ -1,4 +1,4 @@
-import type { Platform, WorkflowStatus } from './common';
+import type { DeviceType, WorkflowStatus } from './common';
 import type { WorkflowNode } from './node';
 import type { NodeConnection } from './connection';
 
@@ -18,7 +18,8 @@ export interface WorkflowHistory {
 export interface Workflow {
   id: string;
   name: string;
-  platform: Platform;
+  deviceType: DeviceType;
+  serviceId?: string | null;
   status: WorkflowStatus;
   tags: string[];
   owner: {

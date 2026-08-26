@@ -28,7 +28,7 @@ import {
   DropdownSeparator,
 } from '../../../../components/ui/Dropdown';
 import { Kbd } from '../../../../components/ui/Kbd/Kbd';
-import { Tooltip } from '../Tooltip';
+import { Tooltip } from '../shared/Tooltip';
 
 type WorkflowNodeComponentProps = NodeProps & {
   data: WorkflowNode &

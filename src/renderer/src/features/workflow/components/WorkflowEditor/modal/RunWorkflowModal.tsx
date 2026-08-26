@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { User, Users, ChevronRight } from 'lucide-react';
-import Modal from '../../../../components/ui/Modal/Modal';
-import ModalHeader from '../../../../components/ui/Modal/ModalHeader';
-import ModalBody from '../../../../components/ui/Modal/ModalBody';
-import ModalFooter from '../../../../components/ui/Modal/ModalFooter';
-import type { Account } from '../../../email/types';
+import Modal from '../../../../../components/ui/Modal/Modal';
+import ModalHeader from '../../../../../components/ui/Modal/ModalHeader';
+import ModalBody from '../../../../../components/ui/Modal/ModalBody';
+import ModalFooter from '../../../../../components/ui/Modal/ModalFooter';
+import type { Account } from '../../../../email/types';
 
 interface RunWorkflowModalProps {
   isOpen: boolean;

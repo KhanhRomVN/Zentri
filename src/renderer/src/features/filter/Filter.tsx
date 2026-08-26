@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import FilterList from './components/FilterList';
 import FilterTable from './components/FilterTable';
-import HeaderBar from '../../components/HeaderBar';
 import { SmartView } from './types/search';
 import { useSearchTableState } from './hooks/useSearchTableState';
 import { useSearchFilter } from './hooks/useSearchFilter';
@@ -127,18 +126,8 @@ const Filter = () => {
     setViews((prev) => prev.map((v) => (v.id === id ? { ...v, favorite: !v.favorite } : v)));
   };
 
-  const resetSelection = () => {
-    setSelectedViewId(null);
-  };
-
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10">
-      <HeaderBar
-        title="Search"
-        subtitle={selectedView?.name}
-        onReset={resetSelection}
-      />
-
       <div className="flex-1 flex overflow-hidden">
         <FilterList
           views={views}

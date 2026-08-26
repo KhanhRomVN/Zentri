@@ -11,10 +11,10 @@ import {
   Activity,
   Package,
 } from 'lucide-react';
-import Modal from '../../../../components/ui/Modal/Modal';
-import ModalHeader from '../../../../components/ui/Modal/ModalHeader';
-import ModalBody from '../../../../components/ui/Modal/ModalBody';
-import { formatDuration, formatTimestamp, getStatusColor } from '../../utils';
+import Modal from '../../../../../components/ui/Modal/Modal';
+import ModalHeader from '../../../../../components/ui/Modal/ModalHeader';
+import ModalBody from '../../../../../components/ui/Modal/ModalBody';
+import { formatDuration, formatTimestamp, getStatusColor } from '../../../utils';
 
 interface WorkflowRun {
   id: string;

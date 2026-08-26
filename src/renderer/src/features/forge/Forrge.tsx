@@ -5,7 +5,6 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import HeaderBar from '../../components/HeaderBar';
 import { usePlatforms } from './hooks/usePlatforms';
 import { fetchSessions, fetchAccounts } from './services/forgeService';
 import Sidebar from './components/Sidebar';
@@ -72,8 +71,6 @@ const Forge = () => {
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10">
-      <HeaderBar title="Forge" />
-
       <div className="flex flex-1 min-h-0">
         <Sidebar
           platforms={platforms}

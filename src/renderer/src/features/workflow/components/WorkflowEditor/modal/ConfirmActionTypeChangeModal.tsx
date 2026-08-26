@@ -1,8 +1,8 @@
 import { memo } from 'react';
-import Modal from '../../../../components/ui/Modal/Modal';
-import ModalHeader from '../../../../components/ui/Modal/ModalHeader';
-import ModalBody from '../../../../components/ui/Modal/ModalBody';
-import ModalFooter from '../../../../components/ui/Modal/ModalFooter';
+import Modal from '../../../../../components/ui/Modal/Modal';
+import ModalHeader from '../../../../../components/ui/Modal/ModalHeader';
+import ModalBody from '../../../../../components/ui/Modal/ModalBody';
+import ModalFooter from '../../../../../components/ui/Modal/ModalFooter';
 
 interface ConfirmActionTypeChangeModalProps {
   isOpen: boolean;

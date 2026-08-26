@@ -1,4 +1,4 @@
-import type { NodeLibGroup, NodeLibItem, Platform } from '../types';
+import type { NodeLibGroup, NodeLibItem, DeviceType } from '../types';
 
 /**
  * Mobile interaction node library
@@ -140,8 +140,8 @@ const DEBUG_GROUP: NodeLibGroup = {
 /**
  * Get node library for a specific platform
  */
-export function getNodeLibrary(platform: Platform): NodeLibGroup[] {
-  return platform === 'website'
+export function getNodeLibrary(deviceType: DeviceType): NodeLibGroup[] {
+  return deviceType === 'website'
     ? [WEB_INTERACT_GROUP, WEB_SYSTEM_GROUP, LOGIC_GROUP, TIMING_GROUP, DEBUG_GROUP]
     : [MOBILE_INTERACT_GROUP, MOBILE_SYSTEM_GROUP, LOGIC_GROUP, TIMING_GROUP, DEBUG_GROUP];
 }
@@ -149,8 +149,8 @@ export function getNodeLibrary(platform: Platform): NodeLibGroup[] {
 /**
  * Find a node item by type in the library
  */
-export function findNodeItem(platform: Platform, type: string): NodeLibItem | null {
-  for (const group of getNodeLibrary(platform)) {
+export function findNodeItem(deviceType: DeviceType, type: string): NodeLibItem | null {
+  for (const group of getNodeLibrary(deviceType)) {
     const found = group.items.find((item) => item.type === type);
     if (found) return found;
   }

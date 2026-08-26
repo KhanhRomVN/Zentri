@@ -1,7 +1,7 @@
 /**
- * Platform types
+ * Device type
  */
-export type Platform = 'website' | 'mobile';
+export type DeviceType = 'website' | 'mobile';
 
 /**
  * Workflow status types

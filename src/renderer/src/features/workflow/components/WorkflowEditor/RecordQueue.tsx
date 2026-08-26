@@ -18,7 +18,7 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   end: Flag,
 };
 
-export const RecordQueue = memo(({ nodes, onAddNode, onRemoveNode }: RecordQueueProps) => {
+export const RecordQueue = memo(({ nodes, onRemoveNode }: RecordQueueProps) => {
   const handleDragStart = useCallback((e: React.DragEvent, node: WorkflowNode) => {
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData(

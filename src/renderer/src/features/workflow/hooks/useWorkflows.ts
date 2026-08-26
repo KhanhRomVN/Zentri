@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import type { Platform, Workflow, WorkflowStatus } from '../types';
+import type { DeviceType, Workflow, WorkflowStatus } from '../types';
 import {
   initWorkflowsTable,
   getAllWorkflows,
@@ -16,7 +16,7 @@ function generateId(prefix: string): string {
 
 export interface CreateWorkflowInput {
   name: string;
-  platform: Platform;
+  deviceType: DeviceType;
   tags: string[];
   description: string;
 }
@@ -49,7 +49,7 @@ export function useWorkflows() {
     const newWf: Workflow = {
       id: generateId('wf'),
       name: input.name,
-      platform: input.platform,
+      deviceType: input.deviceType,
       status: 'draft',
       tags: input.tags,
       owner: { name: 'Le Chi', initials: 'LC' },

@@ -3,7 +3,6 @@ import { Plus, RefreshCw, Upload } from 'lucide-react';
 import type { Proxy as ProxyType } from '../../types/db';
 import { useProxyData } from './hooks/useProxyData';
 import { Button } from '../../components/ui/Button';
-import HeaderBar from '../../components/HeaderBar';
 import StatsStrip from './components/StatsStrip';
 import FilterPanel from './components/FilterPanel';
 import ProxyTable from './components/ProxyTable';
@@ -81,9 +80,6 @@ const Proxy = () => {
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
-      {/* Top bar */}
-      <HeaderBar title="Proxy" />
-
       {/* Page content */}
       <div className="flex-1 flex flex-col overflow-hidden px-5 pt-5 border-r border-b border-border">
         {/* Page title */}

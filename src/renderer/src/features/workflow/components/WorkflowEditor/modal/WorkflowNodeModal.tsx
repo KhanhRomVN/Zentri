@@ -1,18 +1,18 @@
 import { memo, useState, useEffect, useCallback } from 'react';
-import Modal from '../../../../components/ui/Modal/Modal';
-import ModalHeader from '../../../../components/ui/Modal/ModalHeader';
-import ModalBody from '../../../../components/ui/Modal/ModalBody';
-import ModalFooter from '../../../../components/ui/Modal/ModalFooter';
-import { Switch } from '../../../../components/ui/Switch/Switch';
+import Modal from '../../../../../components/ui/Modal/Modal';
+import ModalHeader from '../../../../../components/ui/Modal/ModalHeader';
+import ModalBody from '../../../../../components/ui/Modal/ModalBody';
+import ModalFooter from '../../../../../components/ui/Modal/ModalFooter';
+import { Switch } from '../../../../../components/ui/Switch/Switch';
 import {
   Dropdown,
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
-} from '../../../../components/ui/Dropdown';
+} from '../../../../../components/ui/Dropdown';
 import { ChevronDown } from 'lucide-react';
-import type { WorkflowNode } from '../../types';
-import { CATEGORY_META } from '../../constants';
+import type { WorkflowNode } from '../../../types';
+import { CATEGORY_META } from '../../../constants';
 import { ConfirmActionTypeChangeModal } from './ConfirmActionTypeChangeModal';
 
 interface WorkflowNodeModalProps {

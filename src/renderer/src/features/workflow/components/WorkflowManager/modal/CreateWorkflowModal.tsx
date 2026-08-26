@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { X, Globe, Smartphone } from 'lucide-react';
-import type { Platform } from '../types';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../../components/ui/Modal';
-import { Button } from '../../../components/ui/Button';
-import { cn } from '../../../shared/lib/utils';
+import type { DeviceType } from '../../../types';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../../../../components/ui/Modal';
+import { Button } from '../../../../../components/ui/Button';
+import { cn } from '@renderer/shared/lib/utils';
 
 export interface CreateWorkflowInput {
   name: string;
-  platform: Platform;
+  deviceType: DeviceType;
   tags: string[];
   description: string;
 }
@@ -20,7 +20,7 @@ interface CreateWorkflowModalProps {
 
 export const CreateWorkflowModal = ({ open, onClose, onCreate }: CreateWorkflowModalProps) => {
   const [name, setName] = useState('');
-  const [platform, setPlatform] = useState<Platform>('website');
+  const [deviceType, setDeviceType] = useState<DeviceType>('website');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [description, setDescription] = useState('');
@@ -28,7 +28,7 @@ export const CreateWorkflowModal = ({ open, onClose, onCreate }: CreateWorkflowM
   useEffect(() => {
     if (open) {
       setName('');
-      setPlatform('website');
+      setDeviceType('website');
       setTags([]);
       setTagInput('');
       setDescription('');
@@ -49,7 +49,7 @@ export const CreateWorkflowModal = ({ open, onClose, onCreate }: CreateWorkflowM
 
   const handleCreate = () => {
     if (!name.trim()) return;
-    onCreate({ name: name.trim(), platform, tags, description: description.trim() });
+    onCreate({ name: name.trim(), deviceType, tags, description: description.trim() });
     onClose();
   };
 
@@ -81,32 +81,14 @@ export const CreateWorkflowModal = ({ open, onClose, onCreate }: CreateWorkflowM
           <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-text-secondary">
             Platform
           </label>
-          <div className="flex gap-2.5">
-            <button
-              onClick={() => setPlatform('website')}
-              className={cn(
-                'flex flex-1 flex-col items-center gap-1.5 rounded-lg border-2 px-3 py-3 text-xs font-bold transition-colors',
-                platform === 'website'
-                  ? 'border-yellow bg-yellow/10 text-yellow'
-                  : 'border-border text-text-secondary hover:border-border-hover',
-              )}
-            >
-              <Globe className="h-5 w-5" />
-              Website
-            </button>
-            <button
-              onClick={() => setPlatform('mobile')}
-              className={cn(
-                'flex flex-1 flex-col items-center gap-1.5 rounded-lg border-2 px-3 py-3 text-xs font-bold transition-colors',
-                platform === 'mobile'
-                  ? 'border-green bg-green/10 text-green'
-                  : 'border-border text-text-secondary hover:border-border-hover',
-              )}
-            >
-              <Smartphone className="h-5 w-5" />
-              Mobile
-            </button>
-          </div>
+          <select
+            value={deviceType}
+            onChange={(e) => setDeviceType(e.target.value as DeviceType)}
+            className="w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary"
+          >
+            <option value="website">Website</option>
+            <option value="mobile">Mobile</option>
+          </select>
         </div>
 
         <div>

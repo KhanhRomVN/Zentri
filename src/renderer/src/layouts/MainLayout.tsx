@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
+import HeaderBar from '../components/HeaderBar';
 import Dashboard from '../features/dashboard';
 import Email from '../features/email/Email';
 import Forrge from '../features/forge/Forrge';
@@ -18,6 +19,17 @@ const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   '/setting': Setting,
   '/workflow': Workflow,
   '/device': Device,
+};
+
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Dashboard',
+  '/email': 'Email',
+  '/forge': 'Forge',
+  '/proxy': 'Proxy',
+  '/filter': 'Search',
+  '/setting': 'Setting',
+  '/workflow': 'Workflow',
+  '/device': 'Device',
 };
 
 const MainLayout = () => {
@@ -55,6 +67,7 @@ const MainLayout = () => {
       />
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <HeaderBar title={PAGE_TITLES[activePage] || 'Zentri'} />
         <div className="flex-1 min-h-0 bg-background overflow-hidden flex flex-col">
           {isDbReady ? (
             <ActiveComponent />
