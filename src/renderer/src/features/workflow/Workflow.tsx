@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Plus, Upload, Search, List, LayoutGrid } from 'lucide-react';
 import { useWorkflows } from './hooks/useWorkflows';
+import HeaderBar from './components/HeaderBar';
+import FooterBar from './components/FooterBar';
 import type { Workflow } from './types';
 import CanvasEditor from './components/WorkflowEditor/CanvasEditor';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -96,6 +98,7 @@ const Workflow = () => {
 
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden">
+      <HeaderBar title="Workflow" />
       <div className="flex-1 flex flex-col overflow-hidden px-5 pt-5 border-r border-b border-border">
         <div className="flex items-end justify-between mb-4 shrink-0">
           <div>
@@ -207,6 +210,7 @@ const Workflow = () => {
           onOpenEditor={() => handleOpenInEditor(detailWorkflow.id)}
         />
       )}
+      <FooterBar />
     </div>
   );
 };

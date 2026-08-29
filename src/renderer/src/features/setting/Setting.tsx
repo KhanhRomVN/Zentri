@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Settings, Database, Search, Plus } from 'lucide-react';
 import { GeneralSettings } from './components/General';
+import HeaderBar from './components/HeaderBar';
+import FooterBar from './components/FooterBar';
 import { ServiceManager } from './components/Service';
 import { cn } from '../../shared/lib/utils';
 import { useAccentColors } from '../../hooks/useAccentColors';
@@ -36,6 +38,7 @@ const Setting = () => {
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground overflow-hidden">
+      <HeaderBar title="Setting" />
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-[280px] border-r border-border bg-card/10 flex flex-col shrink-0">
           <nav className="flex-1 py-4 space-y-1 overflow-y-auto custom-scrollbar px-2">
@@ -112,6 +115,7 @@ const Setting = () => {
           </div>
         </main>
       </div>
+      <FooterBar />
     </div>
   );
 };

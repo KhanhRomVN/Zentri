@@ -45,6 +45,8 @@ import ViewsService from './services/api.service';
 import EmailTable from './components/EmailTable';
 import FilterBar from './components/FilterBar';
 import FilterPanel from './components/FilterPanel';
+import HeaderBar from './components/HeaderBar';
+import FooterBar from './components/FooterBar';
 
 // ── Utils ──
 import { cn } from '../../shared/lib/utils';
@@ -603,6 +605,7 @@ const Email = () => {
   // ── Render ──
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
+      <HeaderBar title="Email" />
       {/* Filter Bar */}
       {showFilterBar && (
         <FilterBar
@@ -1111,6 +1114,7 @@ const Email = () => {
           </div>
         </div>
       </ModalWrapper>
+      <FooterBar />
     </div>
   );
 };

@@ -2,13 +2,13 @@ import { FC } from 'react';
 import { Plus, Database, ChevronDown, Search, X } from 'lucide-react';
 import React from 'react';
 import { Account } from '../../types';
-import { Drawer, DrawerBody, DrawerFooter, DrawerHeader } from '@renderer/components/ui/Drawer';
-import { useServiceDrawer } from '@renderer/contexts/ServiceDrawerContext';
-import { cn } from '@renderer/shared/lib/utils';
-import { Button } from '@renderer/components/ui/Button';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from '../../../../components/ui/Modal';
+import { useServiceDrawer } from '../../../../contexts/ServiceDrawerContext';
+import { cn } from '../../../../shared/lib/utils';
+import { Button } from '../../../../components/ui/Button';
 import CryptoJS from 'crypto-js';
 
-interface ServiceDrawersProps {
+interface ServiceDrawerProps {
   isServiceDrawerOpen: boolean;
   setIsServiceDrawerOpen: (val: boolean) => void;
   linkServiceSearchQuery: string;
@@ -215,7 +215,7 @@ const SearchableServiceSelect: FC<{
   );
 };
 
-const ServiceDrawers: FC<ServiceDrawersProps> = ({
+const ServiceDrawer: FC<ServiceDrawerProps> = ({
   isServiceDrawerOpen,
   setIsServiceDrawerOpen,
   linkServiceSearchQuery: _linkServiceSearchQuery,
@@ -253,17 +253,16 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
 
   return (
     <>
-      {/* Add/Edit Service Link Drawer */}
-      <Drawer
+      {/* Add/Edit Service Link Modal */}
+      <Modal
         isOpen={isServiceDrawerOpen}
         onClose={() => {
           setIsServiceDrawerOpen(false);
           setLinkServiceSearchQuery('');
         }}
-        position="right"
-        width="500px"
+        className="max-w-[500px]"
       >
-        <DrawerHeader
+        <ModalHeader
           title={isEditMode ? 'Edit Service' : 'Link Account'}
           description={
             isEditMode
@@ -276,7 +275,7 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
           }}
         />
 
-        <DrawerBody className="space-y-6">
+        <ModalBody className="space-y-6">
           {/* Service Selector */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
@@ -552,9 +551,9 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
                 </div>
               );
             })()}
-        </DrawerBody>
+        </ModalBody>
 
-        <DrawerFooter className="justify-end">
+        <ModalFooter className="justify-end">
           <Button variant="outline" onClick={() => setIsServiceDrawerOpen(false)}>
             Cancel
           </Button>
@@ -565,10 +564,10 @@ const ServiceDrawers: FC<ServiceDrawersProps> = ({
           >
             {isEditMode ? 'Update Service' : 'Secure Connection'}
           </Button>
-        </DrawerFooter>
-      </Drawer>
+        </ModalFooter>
+      </Modal>
     </>
   );
 };
 
-export default ServiceDrawers;
+export default ServiceDrawer;

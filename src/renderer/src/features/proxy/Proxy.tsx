@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { Plus, RefreshCw, Upload } from 'lucide-react';
 import type { Proxy as ProxyType } from '../../types/db';
 import { useProxyData } from './hooks/useProxyData';
+import HeaderBar from './components/HeaderBar';
+import FooterBar from './components/FooterBar';
 import { Button } from '../../components/ui/Button';
 import StatsStrip from './components/StatsStrip';
 import FilterPanel from './components/FilterPanel';
@@ -80,6 +82,7 @@ const Proxy = () => {
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
+      <HeaderBar title="Proxy" />
       {/* Page content */}
       <div className="flex-1 flex flex-col overflow-hidden px-5 pt-5 border-r border-b border-border">
         {/* Page title */}
@@ -194,6 +197,7 @@ const Proxy = () => {
 
       {/* Modal */}
       <ProxyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={refresh} />
+      <FooterBar />
     </div>
   );
 };

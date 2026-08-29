@@ -25,6 +25,8 @@
         --ember-glow: rgba(255, 106, 31, 0.35);
         --cool: #4fa8e0;
         --cool-dim: #2f6d94;
+        --violet: #a078ff;
+        --violet-dim: #6d4fc4;
         --ok: #3ddc84;
         --busy: #ffb020;
         --off: #4a4d57;
@@ -83,119 +85,282 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #35373f;
       }
-
       button {
         font-family: inherit;
         cursor: pointer;
       }
       input,
-      select {
+      select,
+      textarea {
         font-family: inherit;
       }
 
       /* ---------- APP SHELL ---------- */
       .app {
         display: grid;
-        grid-template-columns: 250px 1fr;
-        grid-template-rows: 56px 1fr 30px;
+        grid-template-columns: 280px 300px 1fr;
+        grid-template-rows: 46px 1fr 30px;
         grid-template-areas:
-          'topbar topbar'
-          'sidebar main'
-          'status status';
+          'sidebar topbar topbar'
+          'sidebar filter main'
+          'sidebar status status';
         height: 100vh;
         position: relative;
         z-index: 1;
       }
 
-      /* ---------- TOPBAR ---------- */
-      .topbar {
+      /* ---------- HEADERBAR ---------- */
+      .headerbar {
         grid-area: topbar;
+        height: 46px;
         display: flex;
         align-items: center;
-        gap: 20px;
-        padding: 0 18px;
-        border-bottom: 1px solid var(--border-soft);
-        background: rgba(19, 20, 23, 0.6);
+        gap: 14px;
+        padding: 0 14px 0 16px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(19, 20, 23, 0.85);
         backdrop-filter: blur(8px);
       }
-      .brand {
+      .hb-left {
         display: flex;
         align-items: center;
-        gap: 9px;
-        font-family: var(--disp);
-        font-weight: 700;
-        font-size: 17px;
-        letter-spacing: 0.3px;
-      }
-      .brand .mark {
-        width: 22px;
-        height: 22px;
-        background: linear-gradient(135deg, var(--ember), #ffab5c);
-        clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-        box-shadow: 0 0 14px var(--ember-glow);
+        gap: 12px;
         flex-shrink: 0;
       }
-      .brand span.sub {
-        color: var(--text-tertiary);
-        font-weight: 500;
-        font-size: 11px;
-        font-family: var(--mono);
-        margin-left: 2px;
-        letter-spacing: 0.5px;
-      }
-
-      .search-wrap {
-        flex: 1;
-        max-width: 420px;
-        position: relative;
-      }
-      .search-wrap input {
-        width: 100%;
+      .view-switch {
+        display: flex;
         background: var(--bg-panel-raised);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 8px 12px 8px 34px;
+        padding: 2px;
+        gap: 2px;
+      }
+      .vsw-btn {
+        background: none;
+        border: none;
+        color: var(--text-tertiary);
+        font-size: 12px;
+        font-weight: 600;
+        padding: 5px 11px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.12s;
+      }
+      .vsw-btn:hover {
+        color: var(--text-secondary);
+      }
+      .vsw-btn.active {
+        background: var(--bg-hover);
         color: var(--text-primary);
-        font-size: 13px;
+      }
+      .vsw-btn.active svg {
+        color: var(--ember);
+      }
+      .hb-sep {
+        width: 1px;
+        height: 18px;
+        background: var(--border);
+        flex-shrink: 0;
+      }
+      .crumb-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .crumb-wrap svg {
+        color: var(--text-secondary);
+      }
+      .crumb-wrap .sep {
+        color: var(--text-tertiary);
+      }
+      .crumb-wrap .title {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .hb-center {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        justify-content: center;
+      }
+      .omnibox {
+        position: relative;
+        width: 340px;
+        max-width: 40vw;
+      }
+      .omnibox svg {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-tertiary);
+      }
+      .omnibox input {
+        width: 100%;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 6px 34px 6px 30px;
+        color: var(--text-primary);
+        font-size: 12.5px;
         outline: none;
         transition: border-color 0.15s;
       }
-      .search-wrap input:focus {
+      .omnibox input:focus {
         border-color: var(--ember-dim);
       }
-      .search-wrap input::placeholder {
+      .omnibox input::placeholder {
         color: var(--text-tertiary);
       }
-      .search-wrap svg {
+      .omnibox .kbd {
         position: absolute;
-        left: 11px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-tertiary);
-      }
-      .search-hint {
-        position: absolute;
-        right: 9px;
+        right: 8px;
         top: 50%;
         transform: translateY(-50%);
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: 9.5px;
         color: var(--text-tertiary);
         border: 1px solid var(--border);
         border-radius: 4px;
         padding: 1px 5px;
       }
-
-      .topbar-actions {
+      .net-ticker {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-secondary);
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        border-radius: 7px;
+        padding: 5px 10px;
+        white-space: nowrap;
+      }
+      .net-ticker .nt-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .net-ticker .nt-item.down {
+        color: var(--cool);
+      }
+      .net-ticker .nt-item.up {
+        color: var(--violet);
+      }
+      .net-spark {
+        display: flex;
+        align-items: flex-end;
+        gap: 1.5px;
+        height: 14px;
+        margin-left: 2px;
+      }
+      .net-spark i {
+        width: 2px;
+        background: var(--border);
+        border-radius: 1px;
+        display: block;
+      }
+
+      .h-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .h-stats {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-right: 2px;
+      }
+      .h-stat {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .h-stat .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .h-stat.ok .dot {
+        background: var(--ok);
+        box-shadow: 0 0 5px var(--ok);
+      }
+      .h-stat.busy .dot {
+        background: var(--busy);
+        box-shadow: 0 0 5px var(--busy);
+      }
+      .h-stat.off .dot {
+        background: var(--off);
+      }
+      .h-stat.err .dot {
+        background: var(--err);
+        box-shadow: 0 0 5px var(--err);
+      }
+      .h-stat.ok {
+        color: var(--ok);
+      }
+      .h-stat.busy {
+        color: var(--busy);
+      }
+      .h-stat.off {
+        color: var(--text-tertiary);
+      }
+      .h-stat.err {
+        color: var(--err);
+      }
+
+      .sync-pill {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--ok);
+        border: 1px solid var(--border-soft);
+        border-radius: 20px;
+        padding: 4px 9px;
+        white-space: nowrap;
+      }
+      .sync-pill::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 5px var(--ok);
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      .hdd {
+        position: relative;
       }
       .icon-btn {
-        width: 34px;
-        height: 34px;
-        border-radius: 8px;
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
         background: var(--bg-panel-raised);
         border: 1px solid var(--border);
         display: flex;
@@ -218,6 +383,114 @@
         border-radius: 50%;
         background: var(--ember);
         border: 2px solid var(--bg-void);
+        font-size: 7px;
+        color: #1a0a02;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .hdd-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 300px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+        z-index: 70;
+        display: none;
+        overflow: hidden;
+      }
+      .hdd.open .hdd-menu {
+        display: block;
+      }
+      .hdd-menu .hdd-head {
+        padding: 10px 12px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-soft);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .hdd-menu .hdd-head span.n {
+        font-family: var(--mono);
+        color: var(--ember);
+      }
+      .hdd-list {
+        max-height: 260px;
+        overflow-y: auto;
+      }
+      .hdd-row {
+        display: flex;
+        gap: 9px;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 12px;
+      }
+      .hdd-row:last-child {
+        border-bottom: none;
+      }
+      .hdd-row .idot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-top: 4px;
+        flex-shrink: 0;
+      }
+      .hdd-row .idot.err {
+        background: var(--err);
+        box-shadow: 0 0 5px var(--err);
+      }
+      .hdd-row .idot.ok {
+        background: var(--ok);
+        box-shadow: 0 0 5px var(--ok);
+      }
+      .hdd-row .txt {
+        flex: 1;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+      .hdd-row .txt b {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+      .hdd-row .tm {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+      }
+      .hdd-user-menu .hdd-row {
+        cursor: default;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.1s;
+      }
+      .hdd-user-menu .hdd-row:hover {
+        background: var(--bg-hover);
+      }
+      .hdd-user-menu .hdd-row svg {
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+      }
+
+      .avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+        background: rgba(255, 106, 31, 0.3);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: #fff;
+        font-weight: 600;
       }
       .btn-primary {
         display: flex;
@@ -242,74 +515,187 @@
       .btn-primary:active {
         transform: translateY(0);
       }
-      .avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: var(--bg-panel-raised);
-        border: 1px solid var(--border);
+
+      /* ---------- ZENTRI SIDEBAR ---------- */
+      .zentri-sidebar {
+        grid-area: sidebar;
+        width: 280px;
+        border-right: 1px solid var(--border);
+        background: rgba(19, 20, 23, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .zentri-sidebar .zs-header {
+        height: 46px;
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--cool);
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .zentri-sidebar .zs-header .brand {
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+      .zentri-sidebar .zs-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px;
+      }
+      .zentri-sidebar .zs-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-size: 13px;
         font-weight: 600;
+        transition: background 0.15s;
+        cursor: default;
+      }
+      .zentri-sidebar .zs-item:hover {
+        background: var(--bg-panel-raised);
+        color: var(--text-primary);
+      }
+      .zentri-sidebar .zs-item.active {
+        color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.1);
+      }
+      .zentri-sidebar .zs-item svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+      }
+      .zentri-sidebar .zs-item .zs-label {
+        flex: 1;
+      }
+      .zentri-sidebar .zs-bottom {
+        margin-top: auto;
+        padding: 8px;
       }
 
-      /* ---------- SIDEBAR ---------- */
-      .sidebar {
-        grid-area: sidebar;
+      /* ---------- FILTER PANEL ---------- */
+      .filter-panel {
+        grid-area: filter;
         border-right: 1px solid var(--border-soft);
         background: rgba(19, 20, 23, 0.4);
-        padding: 16px 10px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 0;
       }
-      .stat-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        padding: 0 4px;
+      .filter-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 40px;
+        padding: 0 12px 0 14px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(19, 20, 23, 0.6);
+        flex-shrink: 0;
       }
-      .stat-card {
-        background: var(--bg-panel);
-        border: 1px solid var(--border-soft);
-        border-radius: 8px;
-        padding: 10px 11px;
+      .filter-header .title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 7px;
       }
-      .stat-card .n {
-        font-family: var(--disp);
-        font-size: 19px;
-        font-weight: 700;
-        line-height: 1;
-      }
-      .stat-card .l {
-        font-size: 10.5px;
+      .filter-header .title-wrap svg {
         color: var(--text-tertiary);
-        margin-top: 5px;
+      }
+      .filter-header .title {
+        font-size: 11px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .stat-card.ok .n {
-        color: var(--ok);
-      }
-      .stat-card.busy .n {
-        color: var(--busy);
-      }
-      .stat-card.off .n {
+        letter-spacing: 0.6px;
         color: var(--text-secondary);
       }
-      .stat-card.err .n {
-        color: var(--err);
+      .filter-clear {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-tertiary);
+        font-size: 11px;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: all 0.12s;
+      }
+      .filter-clear:hover {
+        color: var(--ember);
+        border-color: var(--ember-dim);
+      }
+
+      .preset-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 12px 10px 4px;
+      }
+      .preset-chip {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-soft);
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 500;
+        padding: 5px 9px;
+        border-radius: 20px;
+        transition: all 0.12s;
+      }
+      .preset-chip svg {
+        width: 11px;
+        height: 11px;
+      }
+      .preset-chip:hover {
+        border-color: #3a3d46;
+        color: var(--text-primary);
+      }
+      .preset-chip.active {
+        border-color: var(--ember-dim);
+        color: var(--ember);
+        background: rgba(255, 106, 31, 0.08);
+      }
+
+      .load-slider-wrap {
+        padding: 10px 14px 4px;
+      }
+      .load-slider-wrap .ls-top {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-bottom: 6px;
+      }
+      .load-slider-wrap .ls-top b {
+        color: var(--text-primary);
+        font-family: var(--mono);
+      }
+      .load-slider-wrap input[type='range'] {
+        width: 100%;
+        accent-color: var(--ember);
+        height: 4px;
+        cursor: pointer;
       }
 
       .nav-group {
         display: flex;
         flex-direction: column;
         gap: 2px;
+        padding: 0 10px;
+      }
+      .nav-group.collapsed .nav-title {
+        opacity: 0.6;
+      }
+      .nav-group.collapsed .nav-group-body {
+        display: none;
       }
       .nav-title {
         font-size: 10.5px;
@@ -317,8 +703,26 @@
         text-transform: uppercase;
         letter-spacing: 0.7px;
         font-weight: 600;
-        padding: 4px 10px 6px;
+        padding: 10px 0 6px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
       }
+      .nav-title .chev {
+        transition: transform 0.15s;
+        color: var(--text-tertiary);
+      }
+      .nav-group.collapsed .nav-title .chev {
+        transform: rotate(-90deg);
+      }
+      .nav-group-body {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
       .nav-item {
         display: flex;
         align-items: center;
@@ -348,7 +752,7 @@
       .nav-item.active::before {
         content: '';
         position: absolute;
-        left: -10px;
+        left: 0;
         top: 50%;
         transform: translateY(-50%);
         width: 3px;
@@ -384,6 +788,10 @@
         background: var(--bg-panel-raised);
         color: var(--text-primary);
       }
+      .group-item.active {
+        background: var(--bg-panel-raised);
+        color: var(--text-primary);
+      }
       .group-item .swatch {
         width: 8px;
         height: 8px;
@@ -395,6 +803,27 @@
         font-family: var(--mono);
         font-size: 11px;
         color: var(--text-tertiary);
+      }
+      .fp-foot {
+        padding: 14px;
+        margin-top: 6px;
+      }
+      .fp-foot-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-soft);
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 11.5px;
+        color: var(--text-tertiary);
+      }
+      .fp-foot-card .row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+      }
+      .fp-foot-card .row b {
+        color: var(--text-secondary);
+        font-family: var(--mono);
       }
 
       /* ---------- MAIN ---------- */
@@ -411,6 +840,33 @@
         padding: 12px 18px;
         border-bottom: 1px solid var(--border-soft);
         flex-wrap: wrap;
+      }
+      .search-wrap {
+        position: relative;
+      }
+      .search-wrap input {
+        width: 100%;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px 8px 34px;
+        color: var(--text-primary);
+        font-size: 13px;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .search-wrap input:focus {
+        border-color: var(--ember-dim);
+      }
+      .search-wrap input::placeholder {
+        color: var(--text-tertiary);
+      }
+      .search-wrap svg {
+        position: absolute;
+        left: 11px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-tertiary);
       }
       .crumb {
         font-family: var(--disp);
@@ -475,6 +931,41 @@
         color: var(--text-primary);
       }
 
+      .col-picker-wrap {
+        position: relative;
+      }
+      .col-picker-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        width: 190px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: 8px;
+        z-index: 30;
+        display: none;
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+      }
+      .col-picker-wrap.open .col-picker-menu {
+        display: block;
+      }
+      .col-opt {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        border-radius: 6px;
+      }
+      .col-opt:hover {
+        background: var(--bg-hover);
+      }
+      .col-opt input {
+        accent-color: var(--ember);
+      }
+
       .batch-bar {
         display: none;
         align-items: center;
@@ -528,6 +1019,10 @@
         grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
         gap: 12px;
       }
+      .grid-view.compact {
+        grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
+        gap: 9px;
+      }
       .dcard {
         background: var(--bg-panel);
         border: 1px solid var(--border-soft);
@@ -545,6 +1040,9 @@
           border-color 0.15s,
           transform 0.12s;
         cursor: pointer;
+      }
+      .compact .dcard {
+        padding: 10px 10px 9px;
       }
       .dcard:hover {
         border-color: #3a3d46;
@@ -583,12 +1081,14 @@
       .dcard.selected .dcard-check svg {
         opacity: 1;
       }
-
       .dcard-head {
         display: flex;
         align-items: center;
         gap: 10px;
         margin-bottom: 11px;
+      }
+      .compact .dcard-head {
+        margin-bottom: 8px;
       }
       .dtype-icon {
         width: 34px;
@@ -601,6 +1101,10 @@
         background: var(--bg-panel-raised);
         border: 1px solid var(--border-soft);
         color: var(--text-secondary);
+      }
+      .compact .dtype-icon {
+        width: 28px;
+        height: 28px;
       }
       .dcard-title {
         flex: 1;
@@ -619,12 +1123,14 @@
         color: var(--text-tertiary);
         margin-top: 2px;
       }
-
       .status-row {
         display: flex;
         align-items: center;
         gap: 6px;
         margin-bottom: 10px;
+      }
+      .compact .status-row {
+        margin-bottom: 7px;
       }
       .status-dot {
         width: 7px;
@@ -682,12 +1188,14 @@
         background: rgba(160, 120, 255, 0.12);
         color: #a078ff;
       }
-
       .dcard-specs {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 6px 10px;
         margin-bottom: 11px;
+      }
+      .compact .dcard-specs {
+        margin-bottom: 8px;
       }
       .spec {
         font-size: 11.5px;
@@ -699,7 +1207,6 @@
         color: var(--text-secondary);
         font-family: var(--mono);
       }
-
       .heatbar {
         height: 4px;
         border-radius: 3px;
@@ -712,7 +1219,6 @@
         border-radius: 3px;
         background: linear-gradient(90deg, var(--cool), var(--busy) 65%, var(--err));
       }
-
       .dcard-foot {
         display: flex;
         align-items: center;
@@ -759,6 +1265,21 @@
         color: var(--err);
         border-color: var(--err);
       }
+      .alert-flag {
+        position: absolute;
+        top: 12px;
+        left: 14px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        background: rgba(255, 71, 87, 0.14);
+        color: var(--err);
+        font-family: var(--mono);
+        font-size: 9.5px;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 4px;
+      }
 
       /* ---------- TABLE VIEW ---------- */
       .table-view {
@@ -771,6 +1292,9 @@
       }
       .grid-view.hide {
         display: none;
+      }
+      .table-view.compact td {
+        padding: 5px 10px;
       }
       .table-view thead th {
         text-align: left;
@@ -801,6 +1325,10 @@
         font-size: 12.5px;
         vertical-align: middle;
       }
+      .table-view th.hidden-col,
+      .table-view td.hidden-col {
+        display: none;
+      }
       .tname {
         font-weight: 600;
       }
@@ -813,6 +1341,11 @@
         display: flex;
         align-items: center;
         gap: 6px;
+      }
+      input.rowcheck {
+        accent-color: var(--ember);
+        width: 14px;
+        height: 14px;
       }
 
       /* ---------- EMPTY ---------- */
@@ -877,74 +1410,99 @@
         box-shadow: 0 0 5px var(--ok);
         animation: pulse 2s infinite;
       }
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.4;
-        }
-      }
 
-      /* ---------- DRAWER ---------- */
-      .overlay {
+      /* ---------- DEVICE DETAIL MODAL ---------- */
+      .dmodal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.55);
-        backdrop-filter: blur(2px);
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(3px);
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.2s;
-        z-index: 40;
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
-      .overlay.show {
+      .dmodal-overlay.show {
         opacity: 1;
         pointer-events: auto;
       }
-      .drawer {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 420px;
-        max-width: 92vw;
+      .dmodal {
+        width: 860px;
+        max-width: 94vw;
+        height: 80vh;
+        max-height: 720px;
         background: var(--bg-panel);
-        border-left: 1px solid var(--border);
-        transform: translateX(100%);
-        transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
-        z-index: 50;
+        border: 1px solid var(--border);
+        border-radius: 14px;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
+        transform: scale(0.97) translateY(6px);
+        opacity: 0;
+        transition:
+          transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1),
+          opacity 0.2s;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
       }
-      .drawer.show {
-        transform: translateX(0);
+      .dmodal-overlay.show .dmodal {
+        transform: scale(1) translateY(0);
+        opacity: 1;
       }
-      .drawer-head {
-        padding: 18px 18px 14px;
+      .dmodal-head {
+        padding: 16px 18px;
         border-bottom: 1px solid var(--border-soft);
         display: flex;
         align-items: flex-start;
         gap: 12px;
+        flex-shrink: 0;
       }
-      .drawer-head .dtype-icon {
+      .dmodal-head .dtype-icon {
         width: 42px;
         height: 42px;
       }
-      .drawer-head-title {
+      .dmodal-head-title {
         flex: 1;
         min-width: 0;
       }
-      .drawer-head-title .name {
+      .dmodal-head-title .name-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .dmodal-head-title .name {
         font-family: var(--disp);
         font-weight: 700;
         font-size: 16.5px;
       }
-      .drawer-head-title .sub {
+      .dmodal-head-title .sub {
         font-family: var(--mono);
         font-size: 11px;
         color: var(--text-tertiary);
         margin-top: 3px;
+      }
+      .dmodal-head-quick {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .qmini {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        color: var(--text-secondary);
+        font-size: 11px;
+        padding: 5px 9px;
+        border-radius: 7px;
+        transition: all 0.12s;
+      }
+      .qmini:hover {
+        color: var(--text-primary);
+        border-color: #3a3d46;
       }
       .drawer-close {
         width: 28px;
@@ -962,11 +1520,13 @@
         color: var(--text-primary);
       }
 
-      .drawer-tabs {
+      .dmodal-tabs {
         display: flex;
         gap: 2px;
         padding: 0 14px;
         border-bottom: 1px solid var(--border-soft);
+        flex-shrink: 0;
+        overflow-x: auto;
       }
       .dtab {
         padding: 10px 12px;
@@ -975,6 +1535,7 @@
         font-weight: 500;
         border-bottom: 2px solid transparent;
         transition: all 0.12s;
+        white-space: nowrap;
       }
       .dtab.active {
         color: var(--text-primary);
@@ -984,7 +1545,7 @@
         color: var(--text-secondary);
       }
 
-      .drawer-body {
+      .dmodal-body {
         flex: 1;
         overflow-y: auto;
         padding: 16px 18px;
@@ -997,7 +1558,7 @@
       }
 
       .preview-box {
-        height: 180px;
+        height: 170px;
         border-radius: 8px;
         background: repeating-linear-gradient(
           45deg,
@@ -1038,6 +1599,62 @@
         border-radius: 50%;
         background: var(--ok);
       }
+      .preview-box .ping-tag {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--cool);
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+      .tag-chip {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        color: var(--text-secondary);
+        font-size: 11px;
+        padding: 4px 8px 4px 9px;
+        border-radius: 20px;
+      }
+      .tag-chip b {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .tag-chip .rm {
+        color: var(--text-tertiary);
+        display: flex;
+        align-items: center;
+      }
+      .tag-chip .rm:hover {
+        color: var(--err);
+      }
+      .tag-add {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: none;
+        border: 1px dashed var(--border);
+        color: var(--text-tertiary);
+        font-size: 11px;
+        padding: 4px 9px;
+        border-radius: 20px;
+      }
+      .tag-add:hover {
+        color: var(--ember);
+        border-color: var(--ember-dim);
+      }
 
       .info-grid {
         display: grid;
@@ -1071,14 +1688,18 @@
         letter-spacing: 0.5px;
         font-weight: 600;
         margin: 16px 0 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .section-label:first-child {
+        margin-top: 0;
       }
       .gauge-row {
         display: flex;
         flex-direction: column;
         gap: 10px;
         margin-bottom: 6px;
-      }
-      .gauge {
       }
       .gauge .top {
         display: flex;
@@ -1104,12 +1725,68 @@
         border-radius: 3px;
       }
 
+      .mini-alert {
+        display: flex;
+        gap: 8px;
+        padding: 7px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 11.5px;
+      }
+      .mini-alert:last-child {
+        border-bottom: none;
+      }
+      .mini-alert .idot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-top: 4px;
+        flex-shrink: 0;
+      }
+      .mini-alert .idot.ok {
+        background: var(--ok);
+      }
+      .mini-alert .idot.err {
+        background: var(--err);
+      }
+      .mini-alert .txt {
+        color: var(--text-secondary);
+        flex: 1;
+      }
+      .mini-alert .tm {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-tertiary);
+      }
+
+      .sparkchart-wrap {
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+      .sparkchart-wrap .sc-top {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11.5px;
+        margin-bottom: 8px;
+      }
+      .sparkchart-wrap .sc-top .lbl {
+        color: var(--text-secondary);
+      }
+      .sparkchart-wrap .sc-top .val {
+        font-family: var(--mono);
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
       .drawer-actions {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
         padding: 14px 18px;
         border-top: 1px solid var(--border-soft);
+        flex-shrink: 0;
       }
       .daction {
         display: flex;
@@ -1143,6 +1820,11 @@
         border-color: var(--err);
       }
 
+      .log-filter-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
       .log-line {
         font-family: var(--mono);
         font-size: 11px;
@@ -1202,8 +1884,193 @@
         background: rgba(255, 71, 87, 0.12);
         color: var(--err);
       }
+      .run-script-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .run-script-row select {
+        flex: 1;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 8px 10px;
+        color: var(--text-primary);
+        font-size: 12.5px;
+        outline: none;
+      }
+      .success-bar-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+      }
+      .success-bar-wrap .sbw-txt {
+        font-size: 11.5px;
+        color: var(--text-secondary);
+        white-space: nowrap;
+      }
+      .success-bar-wrap .sbw-track {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--bg-void);
+        overflow: hidden;
+      }
+      .success-bar-wrap .sbw-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--ok), #2fbd6c);
+        border-radius: 3px;
+      }
+      .success-bar-wrap .sbw-pct {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ok);
+        font-weight: 700;
+      }
 
-      /* ---------- MODAL ---------- */
+      .sched-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 11px;
+        border-radius: 8px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        margin-bottom: 7px;
+      }
+      .sched-item .sc-time {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--cool);
+        width: 52px;
+        flex-shrink: 0;
+      }
+      .sched-item .sc-name {
+        flex: 1;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .sched-item .sc-rec {
+        font-size: 10px;
+        color: var(--text-tertiary);
+        font-family: var(--mono);
+      }
+      .toggle-sw {
+        width: 32px;
+        height: 18px;
+        border-radius: 10px;
+        background: var(--bg-void);
+        border: 1px solid var(--border);
+        position: relative;
+        flex-shrink: 0;
+        transition: all 0.15s;
+      }
+      .toggle-sw::after {
+        content: '';
+        position: absolute;
+        top: 1px;
+        left: 1px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--text-tertiary);
+        transition: all 0.15s;
+      }
+      .toggle-sw.on {
+        background: rgba(255, 106, 31, 0.25);
+        border-color: var(--ember-dim);
+      }
+      .toggle-sw.on::after {
+        left: 15px;
+        background: var(--ember);
+      }
+      .add-sched-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        padding: 9px;
+        border-radius: 8px;
+        border: 1px dashed var(--border);
+        background: none;
+        color: var(--text-tertiary);
+        font-size: 12px;
+        font-weight: 500;
+        margin-top: 4px;
+      }
+      .add-sched-btn:hover {
+        color: var(--ember);
+        border-color: var(--ember-dim);
+      }
+
+      .notes-box textarea {
+        width: 100%;
+        min-height: 100px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        color: var(--text-primary);
+        font-size: 12.5px;
+        outline: none;
+        resize: vertical;
+        font-family: var(--body);
+      }
+      .notes-box textarea:focus {
+        border-color: var(--ember-dim);
+      }
+      .notes-save {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 8px;
+      }
+      .timeline-item {
+        display: flex;
+        gap: 10px;
+        padding: 8px 0;
+      }
+      .timeline-item .tl-dot-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .timeline-item .tl-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--violet);
+        flex-shrink: 0;
+        margin-top: 4px;
+      }
+      .timeline-item .tl-line {
+        width: 1px;
+        flex: 1;
+        background: var(--border-soft);
+        margin-top: 4px;
+      }
+      .timeline-item:last-child .tl-line {
+        display: none;
+      }
+      .timeline-item .tl-txt {
+        flex: 1;
+        font-size: 12px;
+        color: var(--text-secondary);
+        padding-bottom: 4px;
+      }
+      .timeline-item .tl-tm {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
+      }
+
+      /* ---------- ADD DEVICE MODAL ---------- */
       .modal-overlay {
         position: fixed;
         inset: 0;
@@ -1212,7 +2079,7 @@
         display: none;
         align-items: center;
         justify-content: center;
-        z-index: 60;
+        z-index: 65;
       }
       .modal-overlay.show {
         display: flex;
@@ -1352,69 +2219,818 @@
         }
       }
 
-      /* scrollable content shrink for small screens */
+      /* ---------- ANALYTICS VIEW ---------- */
+      .analytics-view {
+        grid-column: 2 / 4;
+        grid-row: 2;
+        overflow-y: auto;
+        display: none;
+        padding: 18px 22px 32px;
+      }
+      .analytics-view.show {
+        display: block;
+      }
+      .av-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .av-head h2 {
+        font-family: var(--disp);
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .av-head span {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        font-family: var(--mono);
+      }
+      .av-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .av-stat {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-soft);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .av-stat .k {
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+      .av-stat .v {
+        font-family: var(--disp);
+        font-size: 24px;
+        font-weight: 700;
+      }
+      .av-stat .d {
+        font-size: 11px;
+        margin-top: 5px;
+        font-family: var(--mono);
+      }
+      .av-stat .d.up {
+        color: var(--ok);
+      }
+      .av-stat .d.down {
+        color: var(--err);
+      }
+      .av-grid {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .av-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-soft);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      .av-card h4 {
+        font-size: 12.5px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      .av-row2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .bar-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .bar-list-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .bar-list-row .bl-lbl {
+        width: 84px;
+        font-size: 11.5px;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .bar-list-row .bl-track {
+        flex: 1;
+        height: 8px;
+        border-radius: 4px;
+        background: var(--bg-void);
+        overflow: hidden;
+      }
+      .bar-list-row .bl-fill {
+        height: 100%;
+        border-radius: 4px;
+      }
+      .bar-list-row .bl-val {
+        width: 34px;
+        text-align: right;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+      }
+      .legend-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+        justify-content: center;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .legend-item .sw {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+      }
+      .av-alert-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .av-alert-table th {
+        text-align: left;
+        font-size: 10px;
+        color: var(--text-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--border-soft);
+      }
+      .av-alert-table td {
+        padding: 8px 8px;
+        font-size: 12px;
+        border-bottom: 1px solid var(--border-soft);
+      }
+      .av-alert-table .sev {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-weight: 600;
+        font-size: 10.5px;
+        text-transform: uppercase;
+      }
+      .av-alert-table .sev.err {
+        color: var(--err);
+      }
+      .av-alert-table .sev.ok {
+        color: var(--ok);
+      }
+      .av-alert-table .sev::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      @media (max-width: 1100px) {
+        .hb-center {
+          display: none;
+        }
+      }
       @media (max-width: 900px) {
         .app {
-          grid-template-columns: 0 1fr;
+          grid-template-columns: 0 0 1fr;
         }
-        .sidebar {
+        .zentri-sidebar,
+        .filter-panel {
           display: none;
+        }
+        .analytics-view {
+          grid-column: 1 / 4;
         }
       }
     </style>
   </head>
   <body>
     <div class="app">
-      <!-- TOPBAR -->
-      <div class="topbar">
-        <div class="brand">
-          <span class="mark"></span>FORGE<span class="sub">device console</span>
-        </div>
-        <div class="search-wrap">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input id="searchInput" type="text" placeholder="Tìm theo tên, IP, model, group..." />
-          <span class="search-hint">/</span>
-        </div>
-        <div class="topbar-actions">
-          <button class="icon-btn" title="Đồng bộ lại">
+      <!-- HEADERBAR -->
+      <div class="headerbar">
+        <div class="hb-left">
+          <div class="view-switch">
+            <button class="vsw-btn active" data-view="manager">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+              </svg>
+              Quản lý
+            </button>
+            <button class="vsw-btn" data-view="analytics">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+              Phân tích
+            </button>
+          </div>
+          <span class="hb-sep"></span>
+          <div class="crumb-wrap">
             <svg
-              width="16"
-              height="16"
+              width="18"
+              height="18"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
             >
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
+            <span class="title">Device Fleet</span>
+          </div>
+        </div>
+
+        <div class="hb-center">
+          <div class="omnibox">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input id="omniInput" type="text" placeholder="Tìm nhanh thiết bị, IP, group..." />
+            <span class="kbd">Ctrl K</span>
+          </div>
+          <div class="net-ticker" id="netTicker">
+            <span class="nt-item down"
+              ><svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+                <path d="M12 5v14M5 12l7 7 7-7" /></svg
+              ><span id="ntDown">0</span> Mb/s</span
+            >
+            <span class="nt-item up"
+              ><svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+                <path d="M12 19V5M5 12l7-7 7 7" /></svg
+              ><span id="ntUp">0</span> Mb/s</span
+            >
+            <span class="net-spark" id="netSpark"></span>
+          </div>
+        </div>
+
+        <div class="h-actions">
+          <div class="h-stats">
+            <span class="h-stat ok"><span class="dot"></span><span id="sbOnline">0</span></span>
+            <span class="h-stat busy"><span class="dot"></span><span id="sbBusy">0</span></span>
+            <span class="h-stat off"><span class="dot"></span><span id="sbOff">0</span></span>
+            <span class="h-stat err"><span class="dot"></span><span id="sbErr">0</span></span>
+          </div>
+          <span class="sync-pill" id="syncPill">Đồng bộ vừa xong</span>
+          <div class="hdd" id="alertDd">
+            <span class="icon-btn" id="alertBell">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span class="dot" id="alertDotCount"></span>
+            </span>
+            <div class="hdd-menu">
+              <div class="hdd-head">
+                Cảnh báo gần đây <span class="n" id="alertHeadCount">0 mới</span>
+              </div>
+              <div class="hdd-list" id="alertList"></div>
+            </div>
+          </div>
+          <div class="hdd" id="userDd">
+            <span class="avatar" style="cursor: pointer">TB</span>
+            <div class="hdd-menu hdd-user-menu" style="width: 200px">
+              <div class="hdd-row">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21v-1a8 8 0 0 1 16 0v1" /></svg
+                >ThienBaoVN — Hồ sơ
+              </div>
+              <div class="hdd-row">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                  /></svg
+                >Cài đặt Fleet
+              </div>
+              <div class="hdd-row">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" /></svg
+                >Đăng xuất
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDEBAR -->
+      <div class="zentri-sidebar">
+        <div class="zs-header"><span class="brand">Zentri</span></div>
+        <div class="zs-nav">
+          <div class="zs-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" /></svg
+            ><span class="zs-label">Dashboard</span>
+          </div>
+          <div class="zs-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg
+            ><span class="zs-label">Emails</span>
+          </div>
+          <div class="zs-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M8 12h8M12 8v8" /></svg
+            ><span class="zs-label">Forge</span>
+          </div>
+          <div class="zs-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.35-4.35" /></svg
+            ><span class="zs-label">Filter</span>
+          </div>
+          <div class="zs-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
+            ><span class="zs-label">Workflow</span>
+          </div>
+          <div class="zs-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" /></svg
+            ><span class="zs-label">Proxy</span>
+          </div>
+          <div class="zs-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" /></svg
+            ><span class="zs-label">Device</span>
+          </div>
+        </div>
+        <div class="zs-bottom">
+          <div class="zs-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+              /></svg
+            ><span class="zs-label">Settings</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER PANEL -->
+      <div class="filter-panel">
+        <div class="filter-header">
+          <div class="title-wrap">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            <span class="title">Bộ lọc</span>
+          </div>
+          <button class="filter-clear" id="clearFiltersBtn">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            Xóa tất cả
           </button>
-          <button class="icon-btn" title="Thông báo">
-            <span class="dot"></span
+        </div>
+
+        <div class="preset-row" id="presetRow">
+          <button class="preset-chip" data-preset="highload">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" /></svg
+            >Tải cao
+          </button>
+          <button class="preset-chip" data-preset="offlong">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" /></svg
+            >Offline lâu
+          </button>
+          <button class="preset-chip" data-preset="haserr">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 9v4M12 17h.01" />
+              <path
+                d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+              /></svg
+            >Có lỗi
+          </button>
+          <button class="preset-chip" data-preset="proxyon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" /></svg
+            >Dùng proxy
+          </button>
+        </div>
+
+        <div class="load-slider-wrap">
+          <div class="ls-top"><span>Tải tối thiểu</span><b id="loadSliderVal">0%</b></div>
+          <input type="range" id="loadSlider" min="0" max="100" value="0" step="5" />
+        </div>
+
+        <div class="nav-group" data-group-key="status">
+          <div class="nav-title">
+            <span>Status</span
             ><svg
-              width="16"
-              height="16"
+              class="chev"
+              width="12"
+              height="12"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
             >
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              <path d="m6 9 6 6 6-6" />
             </svg>
-          </button>
-          <button class="btn-primary" id="addDeviceBtn">
+          </div>
+          <div class="nav-group-body">
+            <div class="group-item" data-status="ok">
+              <span class="swatch" style="background: var(--ok)"></span>Online<span
+                class="count"
+                id="cntStOk"
+                >0</span
+              >
+            </div>
+            <div class="group-item" data-status="busy">
+              <span class="swatch" style="background: var(--busy)"></span>Đang chạy<span
+                class="count"
+                id="cntStBusy"
+                >0</span
+              >
+            </div>
+            <div class="group-item" data-status="off">
+              <span class="swatch" style="background: var(--off)"></span>Offline<span
+                class="count"
+                id="cntStOff"
+                >0</span
+              >
+            </div>
+            <div class="group-item" data-status="err">
+              <span class="swatch" style="background: var(--err)"></span>Lỗi<span
+                class="count"
+                id="cntStErr"
+                >0</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-group" data-group-key="os">
+          <div class="nav-title">
+            <span>Hệ điều hành</span
+            ><svg
+              class="chev"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+          <div class="nav-group-body">
+            <div class="group-item" data-os="Android">
+              <span class="swatch" style="background: #3ddc84"></span>Android<span
+                class="count"
+                id="cntOsAndroid"
+                >0</span
+              >
+            </div>
+            <div class="group-item" data-os="iOS">
+              <span class="swatch" style="background: #8b8d96"></span>iOS<span
+                class="count"
+                id="cntOsIos"
+                >0</span
+              >
+            </div>
+            <div class="group-item" data-os="Windows">
+              <span class="swatch" style="background: #4fa8e0"></span>Windows<span
+                class="count"
+                id="cntOsWindows"
+                >0</span
+              >
+            </div>
+            <div class="group-item" data-os="Ubuntu">
+              <span class="swatch" style="background: #e95420"></span>Ubuntu<span
+                class="count"
+                id="cntOsUbuntu"
+                >0</span
+              >
+            </div>
+            <div class="group-item" data-os="macOS">
+              <span class="swatch" style="background: #a2aaad"></span>macOS<span
+                class="count"
+                id="cntOsMacos"
+                >0</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-group" data-group-key="fleet">
+          <div class="nav-title">
+            <span>Fleet</span
+            ><svg
+              class="chev"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+          <div class="nav-group-body">
+            <div class="nav-item active" data-filter="all">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" /></svg
+              >Tất cả thiết bị <span class="count" id="cntAll">0</span>
+            </div>
+            <div class="nav-item" data-filter="mobile-real">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="7" y="2" width="10" height="20" rx="2" />
+                <line x1="11" y1="18" x2="13" y2="18" /></svg
+              >Mobile — Máy thật <span class="count" id="cntMR">0</span>
+            </div>
+            <div class="nav-item" data-filter="mobile-virtual">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="7" y="2" width="10" height="20" rx="2" stroke-dasharray="2 2" />
+                <line x1="11" y1="18" x2="13" y2="18" /></svg
+              >Mobile — Giả lập <span class="count" id="cntMV">0</span>
+            </div>
+            <div class="nav-item" data-filter="desktop-real">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="2" y="4" width="20" height="13" rx="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" /></svg
+              >Desktop — Máy thật <span class="count" id="cntDR">0</span>
+            </div>
+            <div class="nav-item" data-filter="desktop-virtual">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="2" y="4" width="20" height="13" rx="2" stroke-dasharray="2 2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" /></svg
+              >Desktop — VM <span class="count" id="cntDV">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-group" data-group-key="groups">
+          <div class="nav-title">
+            <span>Groups</span
+            ><svg
+              class="chev"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+          <div class="nav-group-body">
+            <div class="group-item" data-group="Farm A">
+              <span class="swatch" style="background: var(--ember)"></span>Farm A<span class="count"
+                >—</span
+              >
+            </div>
+            <div class="group-item" data-group="Farm B">
+              <span class="swatch" style="background: var(--cool)"></span>Farm B<span class="count"
+                >—</span
+              >
+            </div>
+            <div class="group-item" data-group="QA Lab">
+              <span class="swatch" style="background: #a078ff"></span>QA Lab<span class="count"
+                >—</span
+              >
+            </div>
+            <div class="group-item" data-group="Livestream">
+              <span class="swatch" style="background: var(--ok)"></span>Livestream<span
+                class="count"
+                >—</span
+              >
+            </div>
+            <div class="group-item" data-group="Warm-up">
+              <span class="swatch" style="background: var(--busy)"></span>Warm-up<span class="count"
+                >—</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-group" data-group-key="tags">
+          <div class="nav-title">
+            <span>Tags</span
+            ><svg
+              class="chev"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+          <div class="nav-group-body">
+            <div class="group-item" data-tag="android">
+              <span class="swatch" style="background: #3ddc84"></span>#android<span class="count"
+                >—</span
+              >
+            </div>
+            <div class="group-item" data-tag="ios">
+              <span class="swatch" style="background: #8b8d96"></span>#ios<span class="count"
+                >—</span
+              >
+            </div>
+            <div class="group-item" data-tag="proxy">
+              <span class="swatch" style="background: #4fa8e0"></span>#proxy<span class="count"
+                >—</span
+              >
+            </div>
+            <div class="group-item" data-tag="high-load">
+              <span class="swatch" style="background: #ff4757"></span>#high-load<span class="count"
+                >—</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="fp-foot">
+          <div class="fp-foot-card">
+            <div class="row"><span>Uptime trung bình</span><b id="fpUptime">—</b></div>
+            <div class="row"><span>Kịch bản / ngày</span><b id="fpScripts">—</b></div>
+            <div class="row"><span>Relay</span><b style="color: var(--ok)">Ổn định</b></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN (manager view) -->
+      <div class="main">
+        <div class="toolbar">
+          <div class="search-wrap" style="max-width: 260px; min-width: 190px">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input id="searchInput" type="text" placeholder="Tìm theo tên, IP, model, group..." />
+          </div>
+          <button class="btn-primary" id="addDeviceBtn" style="padding: 6px 12px; font-size: 12px">
             <svg
               width="14"
               height="14"
@@ -1427,183 +3043,56 @@
             </svg>
             Thêm thiết bị
           </button>
-          <div class="avatar">TB</div>
-        </div>
-      </div>
-
-      <!-- SIDEBAR -->
-      <div class="sidebar">
-        <div class="stat-row">
-          <div class="stat-card ok">
-            <div class="n" id="statOk">0</div>
-            <div class="l">Online</div>
-          </div>
-          <div class="stat-card busy">
-            <div class="n" id="statBusy">0</div>
-            <div class="l">Đang chạy</div>
-          </div>
-          <div class="stat-card off">
-            <div class="n" id="statOff">0</div>
-            <div class="l">Offline</div>
-          </div>
-          <div class="stat-card err">
-            <div class="n" id="statErr">0</div>
-            <div class="l">Lỗi</div>
-          </div>
-        </div>
-
-        <div class="nav-group">
-          <div class="nav-title">Fleet</div>
-          <div class="nav-item active" data-filter="all">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-            </svg>
-            Tất cả thiết bị <span class="count" id="cntAll">0</span>
-          </div>
-          <div class="nav-item" data-filter="mobile-real">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="7" y="2" width="10" height="20" rx="2" />
-              <line x1="11" y1="18" x2="13" y2="18" />
-            </svg>
-            Mobile — Máy thật <span class="count" id="cntMR">0</span>
-          </div>
-          <div class="nav-item" data-filter="mobile-virtual">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="7" y="2" width="10" height="20" rx="2" stroke-dasharray="2 2" />
-              <line x1="11" y1="18" x2="13" y2="18" />
-            </svg>
-            Mobile — Giả lập <span class="count" id="cntMV">0</span>
-          </div>
-          <div class="nav-item" data-filter="desktop-real">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="2" y="4" width="20" height="13" rx="2" />
-              <line x1="8" y1="21" x2="16" y2="21" />
-              <line x1="12" y1="17" x2="12" y2="21" />
-            </svg>
-            Desktop — Máy thật <span class="count" id="cntDR">0</span>
-          </div>
-          <div class="nav-item" data-filter="desktop-virtual">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="2" y="4" width="20" height="13" rx="2" stroke-dasharray="2 2" />
-              <line x1="8" y1="21" x2="16" y2="21" />
-              <line x1="12" y1="17" x2="12" y2="21" />
-            </svg>
-            Desktop — VM <span class="count" id="cntDV">0</span>
-          </div>
-        </div>
-
-        <div class="nav-group">
-          <div class="nav-title">Groups</div>
-          <div class="group-item" data-group="Farm A">
-            <span class="swatch" style="background: var(--ember)"></span>Farm A<span class="count"
-              >—</span
-            >
-          </div>
-          <div class="group-item" data-group="Farm B">
-            <span class="swatch" style="background: var(--cool)"></span>Farm B<span class="count"
-              >—</span
-            >
-          </div>
-          <div class="group-item" data-group="QA Lab">
-            <span class="swatch" style="background: #a078ff"></span>QA Lab<span class="count"
-              >—</span
-            >
-          </div>
-          <div class="group-item" data-group="Livestream">
-            <span class="swatch" style="background: var(--ok)"></span>Livestream<span class="count"
-              >—</span
-            >
-          </div>
-          <div class="group-item" data-group="Warm-up">
-            <span class="swatch" style="background: var(--busy)"></span>Warm-up<span class="count"
-              >—</span
-            >
-          </div>
-        </div>
-
-        <div class="nav-group">
-          <div class="nav-title">Tags</div>
-          <div class="group-item" data-tag="android">
-            <span class="swatch" style="background: #3ddc84"></span>#android<span class="count"
-              >—</span
-            >
-          </div>
-          <div class="group-item" data-tag="ios">
-            <span class="swatch" style="background: #8b8d96"></span>#ios<span class="count">—</span>
-          </div>
-          <div class="group-item" data-tag="proxy">
-            <span class="swatch" style="background: #4fa8e0"></span>#proxy<span class="count"
-              >—</span
-            >
-          </div>
-          <div class="group-item" data-tag="high-load">
-            <span class="swatch" style="background: #ff4757"></span>#high-load<span class="count"
-              >—</span
-            >
-          </div>
-        </div>
-      </div>
-
-      <!-- MAIN -->
-      <div class="main">
-        <div class="toolbar">
           <div class="crumb" id="crumbTitle">Tất cả thiết bị</div>
-          <div class="chip active" id="chipStatus">
-            <select id="statusFilter">
-              <option value="all">Trạng thái: Tất cả</option>
-              <option value="ok">Online</option>
-              <option value="busy">Đang chạy</option>
-              <option value="off">Offline</option>
-              <option value="err">Lỗi</option>
-            </select>
-          </div>
           <div class="chip">
             <select id="sortFilter">
               <option value="name">Sắp xếp: Tên</option>
               <option value="load">Tải cao → thấp</option>
               <option value="active">Hoạt động gần nhất</option>
               <option value="status">Trạng thái</option>
+              <option value="uptime">Uptime cao → thấp</option>
             </select>
           </div>
           <div class="spacer"></div>
+          <div class="col-picker-wrap" id="colPickerWrap">
+            <button class="chip" id="colPickerBtn">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <line x1="9" y1="4" x2="9" y2="20" />
+                <line x1="15" y1="4" x2="15" y2="20" />
+              </svg>
+              Cột
+            </button>
+            <div class="col-picker-menu">
+              <label class="col-opt"><input type="checkbox" data-col="ping" checked />Ping</label>
+              <label class="col-opt"><input type="checkbox" data-col="net" checked />Mạng</label>
+              <label class="col-opt"
+                ><input type="checkbox" data-col="scripts" checked />Kịch bản</label
+              >
+            </div>
+          </div>
+          <button class="chip" id="densityBtn" title="Chuyển mật độ hiển thị">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+            <span id="densityLbl">Thoải mái</span>
+          </button>
           <div class="view-toggle">
             <button id="viewGrid" class="active" title="Grid">
               <svg
@@ -1703,13 +3192,18 @@
           <table class="table-view" id="tableViewEl">
             <thead>
               <tr>
-                <th style="width: 26px"></th>
+                <th style="width: 30px">
+                  <input type="checkbox" class="rowcheck" id="selectAllCheck" />
+                </th>
                 <th>Thiết bị</th>
                 <th>Trạng thái</th>
                 <th>Loại</th>
                 <th>Group</th>
                 <th>IP : Port</th>
+                <th class="col-ping">Ping</th>
+                <th class="col-net">Mạng ↓/↑</th>
                 <th>Tải</th>
+                <th class="col-scripts">Kịch bản</th>
                 <th>Hoạt động gần nhất</th>
                 <th></th>
               </tr>
@@ -1734,147 +3228,310 @@
         </div>
       </div>
 
+      <!-- ANALYTICS VIEW -->
+      <div class="analytics-view" id="analyticsView">
+        <div class="av-head">
+          <h2>Phân tích Fleet</h2>
+          <span id="avUpdated">Cập nhật vừa xong</span>
+        </div>
+        <div class="av-stats" id="avStats"></div>
+        <div class="av-grid">
+          <div class="av-card">
+            <h4>Tải trung bình 24 giờ qua</h4>
+            <div id="avLineChart"></div>
+          </div>
+          <div class="av-card">
+            <h4>Phân bố trạng thái</h4>
+            <div id="avDonutChart"></div>
+            <div class="legend-row" id="avDonutLegend"></div>
+          </div>
+        </div>
+        <div class="av-row2">
+          <div class="av-card">
+            <h4>Thiết bị theo nhóm</h4>
+            <div class="bar-list" id="avGroupBars"></div>
+          </div>
+          <div class="av-card">
+            <h4>Top 5 thiết bị tải cao nhất</h4>
+            <div class="bar-list" id="avTopLoad"></div>
+          </div>
+        </div>
+        <div class="av-card" style="margin-top: 14px">
+          <h4>Cảnh báo gần đây</h4>
+          <table class="av-alert-table">
+            <thead>
+              <tr>
+                <th>Mức độ</th>
+                <th>Thiết bị</th>
+                <th>Nội dung</th>
+                <th>Thời gian</th>
+              </tr>
+            </thead>
+            <tbody id="avAlertTable"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- STATUS BAR -->
       <div class="statusbar">
         <span class="live">Đã kết nối tới Forge Relay</span>
         <span class="sep"></span>
         <span id="sbCount">0 thiết bị</span>
         <span class="sep"></span>
-        <span>Đồng bộ lần cuối: vừa xong</span>
+        <span id="sbSyncTime">Đồng bộ lần cuối: vừa xong</span>
         <div class="spacer" style="flex: 1"></div>
-        <span>Forge v2.4.1</span>
+        <span>Forge v2.5.0</span>
       </div>
     </div>
 
-    <!-- DRAWER -->
-    <div class="overlay" id="overlay"></div>
-    <div class="drawer" id="drawer">
-      <div class="drawer-head">
-        <div class="dtype-icon" id="dwIcon"></div>
-        <div class="drawer-head-title">
-          <div class="name" id="dwName">—</div>
-          <div class="sub" id="dwSub">—</div>
-        </div>
-        <button class="drawer-close" id="drawerClose">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
-      <div class="drawer-tabs">
-        <div class="dtab active" data-tab="overview">Tổng quan</div>
-        <div class="dtab" data-tab="network">Mạng / Proxy</div>
-        <div class="dtab" data-tab="scripts">Kịch bản</div>
-        <div class="dtab" data-tab="logs">Log</div>
-      </div>
-      <div class="drawer-body">
-        <div class="dpane active" data-pane="overview">
-          <div class="preview-box">
-            <span class="live-tag">MIRROR</span
-            ><svg
-              width="30"
-              height="30"
+    <!-- DEVICE DETAIL MODAL -->
+    <div class="dmodal-overlay" id="dmodalOverlay">
+      <div class="dmodal">
+        <div class="dmodal-head">
+          <div class="dtype-icon" id="dwIcon"></div>
+          <div class="dmodal-head-title">
+            <div class="name-row"><span class="name" id="dwName">—</span></div>
+            <div class="sub" id="dwSub">—</div>
+            <div class="dmodal-head-quick">
+              <span class="qmini" id="dwCopyId"
+                ><svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg
+                >Sao chép ID</span
+              >
+              <span class="qmini" id="dwScreenshot"
+                ><svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                  />
+                  <circle cx="12" cy="13" r="4" /></svg
+                >Chụp màn hình</span
+              >
+            </div>
+          </div>
+          <button class="drawer-close" id="drawerClose">
+            <svg
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="1.5"
+              stroke-width="2"
             >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="m9 9 6 6M15 9l-6 6" /></svg
-            ><span style="font-size: 11px">Xem trước màn hình — chưa kết nối</span>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div class="dmodal-tabs">
+          <div class="dtab active" data-tab="overview">Tổng quan</div>
+          <div class="dtab" data-tab="perf">Hiệu năng</div>
+          <div class="dtab" data-tab="network">Mạng / Proxy</div>
+          <div class="dtab" data-tab="scripts">Kịch bản</div>
+          <div class="dtab" data-tab="schedule">Lịch chạy</div>
+          <div class="dtab" data-tab="logs">Log</div>
+          <div class="dtab" data-tab="notes">Ghi chú</div>
+        </div>
+        <div class="dmodal-body">
+          <div class="dpane active" data-pane="overview">
+            <div class="preview-box">
+              <span class="live-tag">MIRROR</span>
+              <span class="ping-tag" id="dwPingTag">— ms</span>
+              <svg
+                width="30"
+                height="30"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="m9 9 6 6M15 9l-6 6" />
+              </svg>
+              <span style="font-size: 11px">Xem trước màn hình — chưa kết nối</span>
+            </div>
+            <div class="section-label">Tags</div>
+            <div class="tag-row" id="dwTagRow"></div>
+            <div class="info-grid" id="dwInfoGrid"></div>
+            <div class="section-label">Hiệu năng</div>
+            <div class="gauge-row" id="dwGauges"></div>
+            <div class="section-label">Cảnh báo gần đây</div>
+            <div id="dwMiniAlerts"></div>
           </div>
-          <div class="info-grid" id="dwInfoGrid"></div>
-          <div class="section-label">Hiệu năng</div>
-          <div class="gauge-row" id="dwGauges"></div>
-        </div>
-        <div class="dpane" data-pane="network">
-          <div class="info-grid" id="dwNetGrid"></div>
-          <div class="section-label">Proxy</div>
-          <div class="info-cell" style="margin-bottom: 8px">
-            <div class="k">Trạng thái proxy</div>
-            <div class="v" id="dwProxyStatus">—</div>
+          <div class="dpane" data-pane="perf">
+            <div class="sparkchart-wrap">
+              <div class="sc-top">
+                <span class="lbl">CPU — 30 phút qua</span><span class="val" id="dwCpuNow">—</span>
+              </div>
+              <div id="dwCpuSpark"></div>
+            </div>
+            <div class="sparkchart-wrap">
+              <div class="sc-top">
+                <span class="lbl">RAM — 30 phút qua</span><span class="val" id="dwRamNow">—</span>
+              </div>
+              <div id="dwRamSpark"></div>
+            </div>
+            <div class="sparkchart-wrap">
+              <div class="sc-top">
+                <span class="lbl">Băng thông mạng</span><span class="val" id="dwNetNow">—</span>
+              </div>
+              <div id="dwNetSpark"></div>
+            </div>
           </div>
-          <div class="info-cell">
-            <div class="k">Endpoint</div>
-            <div class="v" id="dwProxyEndpoint">—</div>
+          <div class="dpane" data-pane="network">
+            <div class="info-grid" id="dwNetGrid"></div>
+            <div class="section-label">Proxy</div>
+            <div class="info-cell" style="margin-bottom: 8px">
+              <div class="k">Trạng thái proxy</div>
+              <div class="v" id="dwProxyStatus">—</div>
+            </div>
+            <div class="info-cell" style="margin-bottom: 12px">
+              <div class="k">Endpoint</div>
+              <div class="v" id="dwProxyEndpoint">—</div>
+            </div>
+            <div class="section-label">Lịch sử IP</div>
+            <div id="dwIpHistory"></div>
+          </div>
+          <div class="dpane" data-pane="scripts">
+            <div class="run-script-row">
+              <select id="dwScriptSelect">
+                <option>Warm-up Facebook</option>
+                <option>Auto follow Instagram</option>
+                <option>Livestream keep-alive</option>
+                <option>Batch like TikTok</option>
+                <option>Post scheduler</option>
+                <option>Check proxy health</option>
+              </select>
+              <button
+                class="btn-primary"
+                id="dwRunSelected"
+                style="padding: 8px 12px; font-size: 12px"
+              >
+                Chạy ngay
+              </button>
+            </div>
+            <div class="success-bar-wrap">
+              <span class="sbw-txt">Tỉ lệ thành công</span>
+              <div class="sbw-track">
+                <div class="sbw-fill" id="dwSuccessFill" style="width: 0%"></div>
+              </div>
+              <span class="sbw-pct" id="dwSuccessPct">—</span>
+            </div>
+            <div class="section-label">Lịch sử chạy gần đây</div>
+            <div id="dwScripts"></div>
+          </div>
+          <div class="dpane" data-pane="schedule">
+            <div class="section-label">Kịch bản đã lên lịch</div>
+            <div id="dwSchedule"></div>
+            <button class="add-sched-btn" id="dwAddSchedule">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 5v14M5 12h14" /></svg
+              >Thêm lịch chạy
+            </button>
+          </div>
+          <div class="dpane" data-pane="logs">
+            <div class="log-filter-row">
+              <button class="chip active" data-logfilter="all">Tất cả</button>
+              <button class="chip" data-logfilter="ok">Info</button>
+              <button class="chip" data-logfilter="err">Lỗi</button>
+            </div>
+            <div id="dwLogs"></div>
+          </div>
+          <div class="dpane" data-pane="notes">
+            <div class="section-label">Ghi chú thiết bị</div>
+            <div class="notes-box">
+              <textarea id="dwNotesArea" placeholder="Thêm ghi chú cho thiết bị này..."></textarea>
+              <div class="notes-save">
+                <button
+                  class="btn-primary"
+                  id="dwSaveNotes"
+                  style="padding: 7px 12px; font-size: 12px"
+                >
+                  Lưu ghi chú
+                </button>
+              </div>
+            </div>
+            <div class="section-label">Lịch sử hoạt động</div>
+            <div id="dwTimeline"></div>
           </div>
         </div>
-        <div class="dpane" data-pane="scripts">
-          <div class="section-label">Lịch sử chạy gần đây</div>
-          <div id="dwScripts"></div>
+        <div class="drawer-actions">
+          <button class="daction primary" id="dwConnect">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polygon points="5 3 19 12 5 21 5 3" /></svg
+            >Kết nối / Điều khiển
+          </button>
+          <button class="daction" id="dwRunScript">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" /></svg
+            >Chạy kịch bản
+          </button>
+          <button class="daction" id="dwRestart">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg
+            >Khởi động lại
+          </button>
+          <button class="daction danger" id="dwRemove">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path
+                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+              /></svg
+            >Xoá thiết bị
+          </button>
         </div>
-        <div class="dpane" data-pane="logs">
-          <div class="section-label">Terminal log</div>
-          <div id="dwLogs"></div>
-        </div>
-      </div>
-      <div class="drawer-actions">
-        <button class="daction primary" id="dwConnect">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
-          Kết nối / Điều khiển
-        </button>
-        <button class="daction" id="dwRunScript">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polyline points="16 18 22 12 16 6" />
-            <polyline points="8 6 2 12 8 18" />
-          </svg>
-          Chạy kịch bản
-        </button>
-        <button class="daction" id="dwRestart">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polyline points="23 4 23 10 17 10" />
-            <polyline points="1 20 1 14 7 14" />
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-          </svg>
-          Khởi động lại
-        </button>
-        <button class="daction danger" id="dwRemove">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polyline points="3 6 5 6 21 6" />
-            <path
-              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-            />
-          </svg>
-          Xoá thiết bị
-        </button>
       </div>
     </div>
 
@@ -1959,8 +3616,8 @@
             ><input type="text" id="mAddr" placeholder="192.168.1.42:5555" />
           </div>
           <div class="field">
-            <label>Group</label
-            ><select id="mGroup">
+            <label>Group</label>
+            <select id="mGroup">
               <option>Farm A</option>
               <option>Farm B</option>
               <option>QA Lab</option>
@@ -1979,7 +3636,7 @@
     <div class="toast-stack" id="toastStack"></div>
 
     <script>
-      /* ---------------- ICONS ---------------- */
+      /* ==================== ICONS / LABELS ==================== */
       const ICONS = {
         'mobile-real':
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>',
@@ -2004,7 +3661,7 @@
         'Warm-up': 'var(--busy)',
       };
 
-      /* ---------------- MOCK DATA ---------------- */
+      /* ==================== MOCK DATA GENERATION ==================== */
       const ANDROID_MODELS = [
         'Pixel 7',
         'Pixel 6a',
@@ -2029,6 +3686,23 @@
       ];
       const GROUPS = ['Farm A', 'Farm B', 'QA Lab', 'Livestream', 'Warm-up'];
       const NAMES_PREFIX = ['NODE', 'PHONE', 'FARM', 'RIG', 'BOT', 'UNIT'];
+      const SCRIPT_NAMES = [
+        'Warm-up Facebook',
+        'Auto follow Instagram',
+        'Livestream keep-alive',
+        'Batch like TikTok',
+        'Post scheduler',
+        'Check proxy health',
+      ];
+      const EVENT_TEMPLATES = [
+        'Thêm vào Fleet',
+        'Chuyển sang group {g}',
+        'Cập nhật firmware',
+        'Gắn thẻ #{t}',
+        'Đổi địa chỉ proxy',
+        'Khởi động lại theo lịch',
+        'Nâng cấp app điều khiển',
+      ];
 
       function rand(a, b) {
         return Math.floor(Math.random() * (b - a + 1)) + a;
@@ -2042,6 +3716,7 @@
 
       let devices = [];
       let idc = 1;
+
       function genDevice(type) {
         const isMobile = type.startsWith('mobile');
         const isVirtual = type.endsWith('virtual');
@@ -2060,6 +3735,9 @@
         const load = rand(4, 97);
         const name = `${pick(NAMES_PREFIX)}-${String(idc).padStart(2, '0')}`;
         const lastActiveMins = status === 'off' ? rand(120, 4000) : rand(0, 90);
+        const uptimePct = status === 'off' ? 0 : status === 'err' ? rand(62, 89) : rand(94, 99.9);
+        const proxy = Math.random() < 0.6;
+        const successRate = rand(72, 99);
         const dev = {
           id: 'dev-' + idc,
           name,
@@ -2075,14 +3753,54 @@
           cpu: rand(3, 95),
           ram: rand(20, 90),
           load,
+          uptimePct,
+          ping: status === 'off' ? null : rand(18, 240),
+          netIn: status === 'off' ? 0 : rand(2, 480),
+          netOut: status === 'off' ? 0 : rand(1, 220),
           lastActiveMins,
-          proxy: Math.random() < 0.6,
+          proxy,
+          successRate,
           tags: [
             isMobile ? (Math.random() < 0.75 ? 'android' : 'ios') : null,
-            Math.random() < 0.4 ? 'proxy' : null,
+            proxy ? 'proxy' : null,
             load > 75 ? 'high-load' : null,
           ].filter(Boolean),
           scripts: rand(0, 340),
+          notes: '',
+          cpuHistory: Array.from({ length: 20 }, () => rand(10, 90)),
+          ramHistory: Array.from({ length: 20 }, () => rand(15, 85)),
+          netHistory: Array.from({ length: 20 }, () => rand(5, 300)),
+          alerts: Array.from({ length: rand(1, 4) }).map(() => {
+            const ok = Math.random() < 0.6;
+            return {
+              ok,
+              msg: ok
+                ? pick([
+                    'Đồng bộ trạng thái thành công',
+                    'Hoàn tất kịch bản đúng lịch',
+                    'Ping ổn định dưới 80ms',
+                  ])
+                : pick([
+                    'Mất kết nối proxy tạm thời',
+                    'Kịch bản timeout ở bước 4',
+                    'CPU vượt ngưỡng 90%',
+                    'Pin yếu dưới 20%',
+                  ]),
+              mins: rand(2, 600),
+            };
+          }),
+          history: Array.from({ length: rand(3, 6) }).map(() => ({
+            txt: pick(EVENT_TEMPLATES)
+              .replace('{g}', pick(GROUPS))
+              .replace('{t}', pick(['proxy', 'high-load', 'android'])),
+            mins: rand(30, 20000),
+          })),
+          schedule: Array.from({ length: rand(0, 3) }).map(() => ({
+            time: `${String(rand(0, 23)).padStart(2, '0')}:${pick(['00', '15', '30', '45'])}`,
+            name: pick(SCRIPT_NAMES),
+            recurring: pick(['Hàng ngày', 'Thứ 2-6', 'Mỗi giờ', 'Một lần']),
+            on: Math.random() < 0.75,
+          })),
         };
         idc++;
         return dev;
@@ -2094,18 +3812,32 @@
         for (let i = 0; i < n; i++) devices.push(genDevice(t));
       });
 
+      // aggregate 24h load history for analytics
+      let loadHistory24h = Array.from({ length: 24 }, (_, i) => ({ h: i, v: rand(25, 40) }));
+      for (let i = 1; i < loadHistory24h.length; i++) {
+        loadHistory24h[i].v = Math.max(10, Math.min(95, loadHistory24h[i - 1].v + rand(-10, 10)));
+      }
+
+      /* ==================== STATE ==================== */
       let currentFilter = 'all';
       let currentGroup = null;
       let currentTag = null;
-      let currentStatus = 'all';
+      let currentStatuses = new Set();
+      let currentOS = new Set();
+      let currentPreset = null;
+      let minLoad = 0;
       let currentSort = 'name';
       let searchQuery = '';
       let selected = new Set();
       let currentView = 'grid';
+      let density = 'comfortable';
       let activeDevice = null;
+      let currentAppView = 'manager';
+      let visibleCols = { ping: true, net: true, scripts: true };
 
-      /* ---------------- RENDER HELPERS ---------------- */
+      /* ==================== HELPERS ==================== */
       function fmtMins(m) {
+        if (m == null) return '—';
         if (m < 60) return m + ' phút trước';
         if (m < 1440) return Math.floor(m / 60) + ' giờ trước';
         return Math.floor(m / 1440) + ' ngày trước';
@@ -2113,13 +3845,28 @@
       function statusLabel(s) {
         return { ok: 'Online', busy: 'Đang chạy', off: 'Offline', err: 'Lỗi' }[s];
       }
+      function deviceOS(d) {
+        if (d.isMobile) return /iphone/i.test(d.os) ? 'iOS' : 'Android';
+        if (/win/i.test(d.osv)) return 'Windows';
+        if (/ubuntu/i.test(d.osv)) return 'Ubuntu';
+        if (/mac/i.test(d.osv)) return 'macOS';
+        return 'Other';
+      }
 
+      /* ==================== FILTER / SORT ==================== */
       function applyFilters() {
         let list = devices.slice();
         if (currentFilter !== 'all') list = list.filter((d) => d.type === currentFilter);
         if (currentGroup) list = list.filter((d) => d.group === currentGroup);
         if (currentTag) list = list.filter((d) => d.tags.includes(currentTag));
-        if (currentStatus !== 'all') list = list.filter((d) => d.status === currentStatus);
+        if (currentStatuses.size > 0) list = list.filter((d) => currentStatuses.has(d.status));
+        if (currentOS.size > 0) list = list.filter((d) => currentOS.has(deviceOS(d)));
+        if (minLoad > 0) list = list.filter((d) => d.load >= minLoad);
+        if (currentPreset === 'highload') list = list.filter((d) => d.load > 75);
+        if (currentPreset === 'offlong')
+          list = list.filter((d) => d.status === 'off' && d.lastActiveMins > 240);
+        if (currentPreset === 'haserr') list = list.filter((d) => d.status === 'err');
+        if (currentPreset === 'proxyon') list = list.filter((d) => d.proxy);
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
           list = list.filter(
@@ -2133,6 +3880,7 @@
         if (currentSort === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
         else if (currentSort === 'load') list.sort((a, b) => b.load - a.load);
         else if (currentSort === 'active') list.sort((a, b) => a.lastActiveMins - b.lastActiveMins);
+        else if (currentSort === 'uptime') list.sort((a, b) => b.uptimePct - a.uptimePct);
         else if (currentSort === 'status') {
           const order = { ok: 0, busy: 1, err: 2, off: 3 };
           list.sort((a, b) => order[a.status] - order[b.status]);
@@ -2140,17 +3888,18 @@
         return list;
       }
 
+      /* ==================== STATS / COUNTS ==================== */
       function renderStats() {
-        document.getElementById('statOk').textContent = devices.filter(
+        document.getElementById('sbOnline').textContent = devices.filter(
           (d) => d.status === 'ok',
         ).length;
-        document.getElementById('statBusy').textContent = devices.filter(
+        document.getElementById('sbBusy').textContent = devices.filter(
           (d) => d.status === 'busy',
         ).length;
-        document.getElementById('statOff').textContent = devices.filter(
+        document.getElementById('sbOff').textContent = devices.filter(
           (d) => d.status === 'off',
         ).length;
-        document.getElementById('statErr').textContent = devices.filter(
+        document.getElementById('sbErr').textContent = devices.filter(
           (d) => d.status === 'err',
         ).length;
         document.getElementById('cntAll').textContent = devices.length;
@@ -2166,20 +3915,60 @@
         document.getElementById('cntDV').textContent = devices.filter(
           (d) => d.type === 'desktop-virtual',
         ).length;
+        document.getElementById('cntStOk').textContent = devices.filter(
+          (d) => d.status === 'ok',
+        ).length;
+        document.getElementById('cntStBusy').textContent = devices.filter(
+          (d) => d.status === 'busy',
+        ).length;
+        document.getElementById('cntStOff').textContent = devices.filter(
+          (d) => d.status === 'off',
+        ).length;
+        document.getElementById('cntStErr').textContent = devices.filter(
+          (d) => d.status === 'err',
+        ).length;
+        document.getElementById('cntOsAndroid').textContent = devices.filter(
+          (d) => deviceOS(d) === 'Android',
+        ).length;
+        document.getElementById('cntOsIos').textContent = devices.filter(
+          (d) => deviceOS(d) === 'iOS',
+        ).length;
+        document.getElementById('cntOsWindows').textContent = devices.filter(
+          (d) => deviceOS(d) === 'Windows',
+        ).length;
+        document.getElementById('cntOsUbuntu').textContent = devices.filter(
+          (d) => deviceOS(d) === 'Ubuntu',
+        ).length;
+        document.getElementById('cntOsMacos').textContent = devices.filter(
+          (d) => deviceOS(d) === 'macOS',
+        ).length;
         document.querySelectorAll('.group-item[data-group]').forEach((el) => {
-          const g = el.dataset.group;
-          el.querySelector('.count').textContent = devices.filter((d) => d.group === g).length;
+          el.querySelector('.count').textContent = devices.filter(
+            (d) => d.group === el.dataset.group,
+          ).length;
         });
         document.querySelectorAll('.group-item[data-tag]').forEach((el) => {
-          const t = el.dataset.tag;
-          el.querySelector('.count').textContent = devices.filter((d) => d.tags.includes(t)).length;
+          el.querySelector('.count').textContent = devices.filter((d) =>
+            d.tags.includes(el.dataset.tag),
+          ).length;
         });
+
+        const onlineDevs = devices.filter((d) => d.status !== 'off');
+        const avgUptime = onlineDevs.length
+          ? (onlineDevs.reduce((s, d) => s + d.uptimePct, 0) / onlineDevs.length).toFixed(1)
+          : '0';
+        document.getElementById('fpUptime').textContent = avgUptime + '%';
+        document.getElementById('fpScripts').textContent =
+          devices.reduce((s, d) => s + (d.status !== 'off' ? rand(0, 3) : 0), 0) + ' lượt';
       }
 
+      /* ==================== CARD / ROW RENDER ==================== */
       function cardHTML(d) {
         const heatColor = d.load > 75 ? 'var(--err)' : d.load > 45 ? 'var(--busy)' : 'var(--cool)';
+        const hasErrAlert = d.alerts.some((a) => !a.ok && a.mins < 60);
         return `
   <div class="dcard ${selected.has(d.id) ? 'selected' : ''} ${d.status === 'busy' ? 'running' : ''}" data-id="${d.id}">
+    ${hasErrAlert ? '<span class="alert-flag">⚠ CẢNH BÁO</span>' : ''}
     <div class="dcard-check" data-check="${d.id}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
     <div class="dcard-head">
       <div class="dtype-icon">${ICONS[d.type]}</div>
@@ -2196,6 +3985,8 @@
     <div class="dcard-specs">
       <div class="spec"><span class="k">IP </span><span class="v">${d.address}</span></div>
       <div class="spec"><span class="k">${d.isMobile ? 'Pin ' : 'CPU '}</span><span class="v">${d.isMobile ? d.battery + '%' : d.cpu + '%'}</span></div>
+      <div class="spec"><span class="k">Ping </span><span class="v">${d.ping ? d.ping + 'ms' : '—'}</span></div>
+      <div class="spec"><span class="k">Uptime </span><span class="v">${d.status === 'off' ? '—' : d.uptimePct + '%'}</span></div>
     </div>
     <div class="heatbar"><div class="heatbar-fill" style="width:${d.load}%;background:${heatColor}"></div></div>
     <div class="dcard-foot">
@@ -2210,13 +4001,16 @@
       function rowHTML(d) {
         return `
   <tr data-id="${d.id}" class="${selected.has(d.id) ? 'selected' : ''}">
-    <td><div class="dcard-check" data-check="${d.id}" style="position:static"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+    <td><input type="checkbox" class="rowcheck" data-check="${d.id}" ${selected.has(d.id) ? 'checked' : ''} /></td>
     <td><div class="tname">${d.name}</div><div class="tsub">${d.os}</div></td>
     <td><div class="tcell-status"><span class="status-dot ${d.status}"></span><span class="status-label ${d.status}">${statusLabel(d.status)}</span></div></td>
     <td><span class="badge ${d.isVirtual ? 'virtual' : 'real'}">${TYPE_LABEL[d.type]}</span></td>
     <td><span class="grp"><span class="swatch" style="display:inline-block;width:6px;height:6px;border-radius:2px;background:${GROUP_COLOR[d.group]};margin-right:5px"></span>${d.group}</span></td>
     <td class="tsub">${d.address}</td>
+    <td class="tsub col-ping">${d.ping ? d.ping + 'ms' : '—'}</td>
+    <td class="tsub col-net">↓${d.netIn} / ↑${d.netOut} KB/s</td>
     <td style="width:90px"><div class="heatbar" style="margin:0"><div class="heatbar-fill" style="width:${d.load}%"></div></div></td>
+    <td class="tsub col-scripts">${d.scripts}</td>
     <td class="tsub">${fmtMins(d.lastActiveMins)}</td>
     <td>
       <div style="display:flex;gap:4px;">
@@ -2225,6 +4019,15 @@
       </div>
     </td>
   </tr>`;
+      }
+
+      function applyColumnVisibility() {
+        const map = { ping: 'col-ping', net: 'col-net', scripts: 'col-scripts' };
+        Object.keys(map).forEach((k) => {
+          document
+            .querySelectorAll('.' + map[k])
+            .forEach((el) => el.classList.toggle('hidden-col', !visibleCols[k]));
+        });
       }
 
       function render() {
@@ -2241,8 +4044,11 @@
           .classList.toggle('show', currentView === 'table' && list.length > 0);
         document.getElementById('sbCount').textContent = list.length + ' thiết bị hiển thị';
         renderStats();
+        applyColumnVisibility();
         bindCardEvents();
         updateBatchBar();
+        const allChecked = list.length > 0 && list.every((d) => selected.has(d.id));
+        document.getElementById('selectAllCheck').checked = allChecked;
       }
 
       function bindCardEvents() {
@@ -2253,12 +4059,12 @@
           };
         });
         document.querySelectorAll('.dcard').forEach((el) => {
-          el.onclick = () => openDrawer(el.dataset.id);
+          el.onclick = () => openDeviceModal(el.dataset.id);
         });
         document.querySelectorAll('#tableBody tr').forEach((el) => {
           el.onclick = (e) => {
             if (e.target.closest('[data-check]') || e.target.closest('.qbtn')) return;
-            openDrawer(el.dataset.id);
+            openDeviceModal(el.dataset.id);
           };
         });
         document.querySelectorAll('[data-action]').forEach((el) => {
@@ -2289,64 +4095,153 @@
         else selected.add(id);
         render();
       }
-
       function updateBatchBar() {
         const bar = document.getElementById('batchBar');
         bar.classList.toggle('show', selected.size > 0);
         document.getElementById('batchCount').textContent = selected.size;
       }
 
-      /* ---------------- NAV / FILTERS ---------------- */
-      document.querySelectorAll('.nav-item[data-filter]').forEach((el) => {
-        el.onclick = () => {
-          document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
-          el.classList.add('active');
-          currentFilter = el.dataset.filter;
-          currentGroup = null;
-          currentTag = null;
-          document.getElementById('crumbTitle').textContent = el.textContent
-            .trim()
-            .replace(/\d+$/, '')
-            .trim();
-          render();
-        };
-      });
-      document.querySelectorAll('.group-item[data-group]').forEach((el) => {
-        el.onclick = () => {
-          document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
-          currentFilter = 'all';
-          currentTag = null;
-          currentGroup = el.dataset.group;
-          document.getElementById('crumbTitle').textContent = 'Group: ' + currentGroup;
-          render();
-        };
-      });
-      document.querySelectorAll('.group-item[data-tag]').forEach((el) => {
-        el.onclick = () => {
-          document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
-          currentFilter = 'all';
-          currentGroup = null;
-          currentTag = el.dataset.tag;
-          document.getElementById('crumbTitle').textContent = '#' + currentTag;
-          render();
-        };
-      });
-      document.getElementById('statusFilter').onchange = (e) => {
-        currentStatus = e.target.value;
+      document.getElementById('selectAllCheck').onchange = (e) => {
+        const list = applyFilters();
+        if (e.target.checked) list.forEach((d) => selected.add(d.id));
+        else list.forEach((d) => selected.delete(d.id));
         render();
       };
+
+      /* ==================== NAV / FILTER BINDINGS ==================== */
+      function bindFilterNav() {
+        document.querySelectorAll('.nav-item[data-filter]').forEach((el) => {
+          el.onclick = () => {
+            document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+            el.classList.add('active');
+            currentFilter = el.dataset.filter;
+            currentGroup = null;
+            currentTag = null;
+            document.getElementById('crumbTitle').textContent = el.textContent
+              .trim()
+              .replace(/\d+$/, '')
+              .trim();
+            render();
+          };
+        });
+        document.querySelectorAll('.group-item[data-group]').forEach((el) => {
+          el.onclick = () => {
+            document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+            currentFilter = 'all';
+            currentTag = null;
+            currentGroup = el.dataset.group;
+            document.getElementById('crumbTitle').textContent = 'Group: ' + currentGroup;
+            render();
+          };
+        });
+        document.querySelectorAll('.group-item[data-tag]').forEach((el) => {
+          el.onclick = () => {
+            document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+            currentFilter = 'all';
+            currentGroup = null;
+            currentTag = el.dataset.tag;
+            document.getElementById('crumbTitle').textContent = '#' + currentTag;
+            render();
+          };
+        });
+        document.querySelectorAll('.group-item[data-status]').forEach((el) => {
+          el.onclick = () => {
+            const s = el.dataset.status;
+            if (currentStatuses.has(s)) currentStatuses.delete(s);
+            else currentStatuses.add(s);
+            el.classList.toggle('active', currentStatuses.has(s));
+            render();
+          };
+        });
+        document.querySelectorAll('.group-item[data-os]').forEach((el) => {
+          el.onclick = () => {
+            const os = el.dataset.os;
+            if (currentOS.has(os)) currentOS.delete(os);
+            else currentOS.add(os);
+            el.classList.toggle('active', currentOS.has(os));
+            render();
+          };
+        });
+        document.querySelectorAll('.preset-chip').forEach((el) => {
+          el.onclick = () => {
+            const p = el.dataset.preset;
+            if (currentPreset === p) {
+              currentPreset = null;
+              el.classList.remove('active');
+            } else {
+              document
+                .querySelectorAll('.preset-chip')
+                .forEach((c) => c.classList.remove('active'));
+              currentPreset = p;
+              el.classList.add('active');
+            }
+            render();
+          };
+        });
+        document.querySelectorAll('.nav-group .nav-title').forEach((el) => {
+          el.onclick = () => {
+            el.closest('.nav-group').classList.toggle('collapsed');
+          };
+        });
+      }
+      bindFilterNav();
+
+      document.getElementById('loadSlider').oninput = (e) => {
+        minLoad = parseInt(e.target.value, 10);
+        document.getElementById('loadSliderVal').textContent = minLoad + '%';
+        render();
+      };
+
+      document.getElementById('clearFiltersBtn').onclick = () => {
+        currentFilter = 'all';
+        currentGroup = null;
+        currentTag = null;
+        currentStatuses = new Set();
+        currentOS = new Set();
+        currentPreset = null;
+        minLoad = 0;
+        searchQuery = '';
+        document.getElementById('searchInput').value = '';
+        document.getElementById('omniInput').value = '';
+        document.getElementById('loadSlider').value = 0;
+        document.getElementById('loadSliderVal').textContent = '0%';
+        document
+          .querySelectorAll('.group-item[data-status], .group-item[data-os], .preset-chip')
+          .forEach((el) => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+        const allItem = document.querySelector('.nav-item[data-filter="all"]');
+        if (allItem) allItem.classList.add('active');
+        document.getElementById('crumbTitle').textContent = 'Tất cả thiết bị';
+        render();
+      };
+
       document.getElementById('sortFilter').onchange = (e) => {
         currentSort = e.target.value;
         render();
       };
       document.getElementById('searchInput').oninput = (e) => {
         searchQuery = e.target.value;
+        document.getElementById('omniInput').value = e.target.value;
+        render();
+      };
+      document.getElementById('omniInput').oninput = (e) => {
+        searchQuery = e.target.value;
+        document.getElementById('searchInput').value = e.target.value;
         render();
       };
       document.addEventListener('keydown', (e) => {
-        if (e.key === '/' && document.activeElement.id !== 'searchInput') {
+        if (
+          (e.key === '/' || (e.ctrlKey && e.key.toLowerCase() === 'k')) &&
+          document.activeElement.id !== 'searchInput' &&
+          document.activeElement.id !== 'omniInput'
+        ) {
           e.preventDefault();
-          document.getElementById('searchInput').focus();
+          document.getElementById('omniInput').focus();
+        }
+        if (e.key === 'Escape') {
+          closeDeviceModal();
+          closeModal();
+          closeAllDropdowns();
         }
       });
 
@@ -2363,7 +4258,41 @@
         render();
       };
 
-      /* ---------------- BATCH ACTIONS ---------------- */
+      document.getElementById('densityBtn').onclick = () => {
+        density = density === 'comfortable' ? 'compact' : 'comfortable';
+        document.getElementById('densityLbl').textContent =
+          density === 'comfortable' ? 'Thoải mái' : 'Gọn';
+        document.getElementById('gridView').classList.toggle('compact', density === 'compact');
+        document.getElementById('tableViewEl').classList.toggle('compact', density === 'compact');
+      };
+
+      const colPickerWrap = document.getElementById('colPickerWrap');
+      document.getElementById('colPickerBtn').onclick = (e) => {
+        e.stopPropagation();
+        colPickerWrap.classList.toggle('open');
+      };
+      colPickerWrap.querySelectorAll('input[data-col]').forEach((cb) => {
+        cb.onchange = () => {
+          visibleCols[cb.dataset.col] = cb.checked;
+          applyColumnVisibility();
+        };
+      });
+
+      /* ==================== VIEW SWITCH (Manager / Analytics) ==================== */
+      document.querySelectorAll('.vsw-btn').forEach((btn) => {
+        btn.onclick = () => {
+          document.querySelectorAll('.vsw-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentAppView = btn.dataset.view;
+          const isAnalytics = currentAppView === 'analytics';
+          document.querySelector('.filter-panel').style.display = isAnalytics ? 'none' : 'flex';
+          document.querySelector('.main').style.display = isAnalytics ? 'none' : 'flex';
+          document.getElementById('analyticsView').classList.toggle('show', isAnalytics);
+          if (isAnalytics) renderAnalytics();
+        };
+      });
+
+      /* ==================== BATCH ACTIONS ==================== */
       document.getElementById('batchRun').onclick = () => {
         selected.forEach((id) => {
           const d = devices.find((x) => x.id === id);
@@ -2389,10 +4318,21 @@
         render();
       };
 
-      /* ---------------- DRAWER ---------------- */
-      const drawer = document.getElementById('drawer');
-      const overlay = document.getElementById('overlay');
-      function openDrawer(id) {
+      /* ==================== DEVICE DETAIL MODAL ==================== */
+      const dmodalOverlay = document.getElementById('dmodalOverlay');
+      function miniSpark(values, color) {
+        const w = 100,
+          h = 34;
+        const max = Math.max(...values, 1),
+          min = Math.min(...values, 0);
+        const range = Math.max(max - min, 1);
+        const pts = values
+          .map((v, i) => `${(i / (values.length - 1)) * w},${h - ((v - min) / range) * h}`)
+          .join(' ');
+        return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+      }
+
+      function openDeviceModal(id) {
         const d = devices.find((x) => x.id === id);
         if (!d) return;
         activeDevice = d;
@@ -2400,11 +4340,38 @@
         document.getElementById('dwName').textContent = d.name;
         document.getElementById('dwSub').textContent =
           `${d.os} · ${TYPE_LABEL[d.type]} · ${statusLabel(d.status)}`;
+        document.getElementById('dwPingTag').textContent = d.ping ? d.ping + ' ms' : '—';
+
+        document.getElementById('dwTagRow').innerHTML =
+          d.tags
+            .map(
+              (t) =>
+                `<span class="tag-chip"><b>#${t}</b><span class="rm" data-rmtag="${t}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></span>`,
+            )
+            .join('') +
+          `<button class="tag-add" id="dwAddTagBtn"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Thêm tag</button>`;
+        document.querySelectorAll('[data-rmtag]').forEach((el) => {
+          el.onclick = () => {
+            d.tags = d.tags.filter((t) => t !== el.dataset.rmtag);
+            openDeviceModal(d.id);
+            render();
+          };
+        });
+        document.getElementById('dwAddTagBtn').onclick = () => {
+          const t = prompt('Tên tag mới:');
+          if (t) {
+            d.tags.push(t.trim());
+            openDeviceModal(d.id);
+            render();
+          }
+        };
+
         document.getElementById('dwInfoGrid').innerHTML = `
     <div class="info-cell"><div class="k">Trạng thái</div><div class="v"><span class="status-dot ${d.status}" style="display:inline-block;margin-right:5px"></span>${statusLabel(d.status)}</div></div>
     <div class="info-cell"><div class="k">Group</div><div class="v">${d.group}</div></div>
     <div class="info-cell"><div class="k">Hệ điều hành</div><div class="v">${d.osv}</div></div>
     <div class="info-cell"><div class="k">Hoạt động cuối</div><div class="v">${fmtMins(d.lastActiveMins)}</div></div>
+    <div class="info-cell"><div class="k">Uptime</div><div class="v">${d.status === 'off' ? '—' : d.uptimePct + '%'}</div></div>
     ${d.isMobile ? `<div class="info-cell"><div class="k">Pin</div><div class="v">${d.battery}%</div></div>` : ''}
     <div class="info-cell"><div class="k">Kịch bản đã chạy</div><div class="v">${d.scripts}</div></div>
   `;
@@ -2413,9 +4380,27 @@
     <div class="gauge"><div class="top"><span class="lbl">RAM</span><span class="pct">${d.ram}%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:${d.ram}%;background:${d.ram > 75 ? 'var(--err)' : d.ram > 45 ? 'var(--busy)' : 'var(--cool)'}"></div></div></div>
     <div class="gauge"><div class="top"><span class="lbl">Tải tổng</span><span class="pct">${d.load}%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:${d.load}%;background:${d.load > 75 ? 'var(--err)' : d.load > 45 ? 'var(--busy)' : 'var(--cool)'}"></div></div></div>
   `;
+        document.getElementById('dwMiniAlerts').innerHTML =
+          d.alerts
+            .map(
+              (a) =>
+                `<div class="mini-alert"><span class="idot ${a.ok ? 'ok' : 'err'}"></span><span class="txt">${a.msg}</span><span class="tm">${fmtMins(a.mins)}</span></div>`,
+            )
+            .join('') ||
+          '<div class="mini-alert"><span class="txt" style="color:var(--text-tertiary)">Không có cảnh báo nào gần đây</span></div>';
+
+        // perf tab
+        document.getElementById('dwCpuNow').textContent = d.cpu + '%';
+        document.getElementById('dwRamNow').textContent = d.ram + '%';
+        document.getElementById('dwNetNow').textContent = `↓${d.netIn} / ↑${d.netOut} KB/s`;
+        document.getElementById('dwCpuSpark').innerHTML = miniSpark(d.cpuHistory, 'var(--cool)');
+        document.getElementById('dwRamSpark').innerHTML = miniSpark(d.ramHistory, 'var(--violet)');
+        document.getElementById('dwNetSpark').innerHTML = miniSpark(d.netHistory, 'var(--ember)');
+
+        // network tab
         document.getElementById('dwNetGrid').innerHTML = `
     <div class="info-cell"><div class="k">Địa chỉ</div><div class="v">${d.address}</div></div>
-    <div class="info-cell"><div class="k">Kết nối</div><div class="v">${d.status === 'off' ? 'Ngắt kết nối' : 'Ổn định'}</div></div>
+    <div class="info-cell"><div class="k">Kết nối</div><div class="v">${d.status === 'off' ? 'Ngắt kết nối' : 'Ổn định · ' + d.ping + 'ms'}</div></div>
   `;
         document.getElementById('dwProxyStatus').textContent = d.proxy
           ? 'Đang bật — xoay IP tự động'
@@ -2423,47 +4408,119 @@
         document.getElementById('dwProxyEndpoint').textContent = d.proxy
           ? `proxy-${d.group.toLowerCase().replace(' ', '-')}.forge.local:8000`
           : '—';
+        document.getElementById('dwIpHistory').innerHTML = d.proxy
+          ? Array.from({ length: 3 })
+              .map(
+                () =>
+                  `<div class="mini-alert"><span class="idot ok"></span><span class="txt">Đổi IP → ${ip()}</span><span class="tm">${fmtMins(rand(5, 900))}</span></div>`,
+              )
+              .join('')
+          : '<div class="mini-alert"><span class="txt" style="color:var(--text-tertiary)">Thiết bị không dùng proxy</span></div>';
 
-        const scriptNames = [
-          'Warm-up Facebook',
-          'Auto follow Instagram',
-          'Livestream keep-alive',
-          'Batch like TikTok',
-          'Post scheduler',
-          'Check proxy health',
-        ];
+        // scripts tab
+        document.getElementById('dwSuccessFill').style.width = d.successRate + '%';
+        document.getElementById('dwSuccessPct').textContent = d.successRate + '%';
         document.getElementById('dwScripts').innerHTML = Array.from({ length: 5 })
           .map(() => {
-            const ok = Math.random() < 0.8;
-            return `<div class="script-item"><span class="si-name">${pick(scriptNames)}</span><span class="si-time">${rand(1, 50)}p trước</span><span class="si-status ${ok ? 'ok' : 'err'}">${ok ? 'OK' : 'LỖI'}</span></div>`;
+            const ok = Math.random() < d.successRate / 100;
+            return `<div class="script-item"><span class="si-name">${pick(SCRIPT_NAMES)}</span><span class="si-time">${rand(1, 50)}p trước</span><span class="si-status ${ok ? 'ok' : 'err'}">${ok ? 'OK' : 'LỖI'}</span></div>`;
           })
           .join('');
 
-        const logs = [
+        // schedule tab
+        renderSchedule(d);
+
+        // logs tab
+        renderLogs(d, 'all');
+
+        // notes tab
+        document.getElementById('dwNotesArea').value = d.notes || '';
+        document.getElementById('dwTimeline').innerHTML = d.history
+          .map(
+            (h) =>
+              `<div class="timeline-item"><div class="tl-dot-wrap"><span class="tl-dot"></span><span class="tl-line"></span></div><div class="tl-txt">${h.txt}<div class="tl-tm">${fmtMins(h.mins)}</div></div></div>`,
+          )
+          .join('');
+
+        // reset to first tab
+        document.querySelectorAll('.dtab').forEach((t) => t.classList.remove('active'));
+        document.querySelector('.dtab[data-tab="overview"]').classList.add('active');
+        document.querySelectorAll('.dpane').forEach((p) => p.classList.remove('active'));
+        document.querySelector('.dpane[data-pane="overview"]').classList.add('active');
+
+        dmodalOverlay.classList.add('show');
+      }
+
+      function renderSchedule(d) {
+        document.getElementById('dwSchedule').innerHTML = d.schedule.length
+          ? d.schedule
+              .map(
+                (s, i) =>
+                  `<div class="sched-item"><span class="sc-time">${s.time}</span><span class="sc-name">${s.name}</span><span class="sc-rec">${s.recurring}</span><span class="toggle-sw ${s.on ? 'on' : ''}" data-schedidx="${i}"></span></div>`,
+              )
+              .join('')
+          : '<div class="mini-alert"><span class="txt" style="color:var(--text-tertiary)">Chưa có lịch chạy nào cho thiết bị này</span></div>';
+        document.querySelectorAll('[data-schedidx]').forEach((el) => {
+          el.onclick = () => {
+            const idx = parseInt(el.dataset.schedidx, 10);
+            d.schedule[idx].on = !d.schedule[idx].on;
+            renderSchedule(d);
+          };
+        });
+      }
+      document.getElementById('dwAddSchedule').onclick = () => {
+        if (!activeDevice) return;
+        activeDevice.schedule.push({
+          time: `${String(rand(0, 23)).padStart(2, '0')}:00`,
+          name: pick(SCRIPT_NAMES),
+          recurring: 'Hàng ngày',
+          on: true,
+        });
+        renderSchedule(activeDevice);
+        toast('Đã thêm lịch chạy mới');
+      };
+
+      function renderLogs(d, filter) {
+        const logsAll = [
           ['ok', 'CONN', 'Thiết lập kết nối thành công'],
           ['ok', 'AUTH', 'Xác thực thiết bị hoàn tất'],
           ['err', 'SCRIPT', 'Timeout khi chạy bước 4/9'],
           ['ok', 'SYNC', 'Đồng bộ trạng thái với Relay'],
-          ['ok', 'HEARTBEAT', 'Ping 42ms'],
+          ['ok', 'HEARTBEAT', 'Ping ' + (d.ping || 42) + 'ms'],
+          ['err', 'PROXY', 'Không thể xoay IP, thử lại sau 30s'],
         ];
-        document.getElementById('dwLogs').innerHTML = logs
-          .map(
-            (l) =>
-              `<div class="log-line ${l[0]}"><span class="t">${String(rand(10, 23)).padStart(2, '0')}:${String(rand(10, 59)).padStart(2, '0')}</span><span class="tag">[${l[1]}]</span><span>${l[2]}</span></div>`,
-          )
-          .join('');
-
-        drawer.classList.add('show');
-        overlay.classList.add('show');
+        const logs = filter === 'all' ? logsAll : logsAll.filter((l) => l[0] === filter);
+        document.getElementById('dwLogs').innerHTML =
+          logs
+            .map(
+              (l) =>
+                `<div class="log-line ${l[0]}"><span class="t">${String(rand(10, 23)).padStart(2, '0')}:${String(rand(10, 59)).padStart(2, '0')}</span><span class="tag">[${l[1]}]</span><span>${l[2]}</span></div>`,
+            )
+            .join('') ||
+          '<div class="mini-alert"><span class="txt" style="color:var(--text-tertiary)">Không có log phù hợp</span></div>';
       }
-      document.getElementById('drawerClose').onclick = closeDrawer;
-      overlay.onclick = () => {
-        closeDrawer();
-        closeModal();
+      document.querySelectorAll('[data-logfilter]').forEach((el) => {
+        el.onclick = () => {
+          document
+            .querySelectorAll('[data-logfilter]')
+            .forEach((c) => c.classList.remove('active'));
+          el.classList.add('active');
+          renderLogs(activeDevice, el.dataset.logfilter);
+        };
+      });
+
+      document.getElementById('dwSaveNotes').onclick = () => {
+        if (!activeDevice) return;
+        activeDevice.notes = document.getElementById('dwNotesArea').value;
+        toast('Đã lưu ghi chú');
       };
-      function closeDrawer() {
-        drawer.classList.remove('show');
-        overlay.classList.remove('show');
+
+      document.getElementById('drawerClose').onclick = closeDeviceModal;
+      dmodalOverlay.onclick = (e) => {
+        if (e.target === dmodalOverlay) closeDeviceModal();
+      };
+      function closeDeviceModal() {
+        dmodalOverlay.classList.remove('show');
       }
 
       document.querySelectorAll('.dtab').forEach((t) => {
@@ -2475,30 +4532,37 @@
         };
       });
 
-      document.getElementById('dwConnect').onclick = () => {
+      document.getElementById('dwConnect').onclick = () =>
         toast(`Đang kết nối tới ${activeDevice.name}...`);
-      };
       document.getElementById('dwRunScript').onclick = () => {
         activeDevice.status = 'busy';
         toast(`Đã chạy kịch bản trên ${activeDevice.name}`);
         render();
       };
-      document.getElementById('dwRestart').onclick = () => {
-        toast(`Đang khởi động lại ${activeDevice.name}...`);
+      document.getElementById('dwRunSelected').onclick = () => {
+        activeDevice.status = 'busy';
+        toast(
+          `Đã chạy "${document.getElementById('dwScriptSelect').value}" trên ${activeDevice.name}`,
+        );
+        render();
       };
+      document.getElementById('dwRestart').onclick = () =>
+        toast(`Đang khởi động lại ${activeDevice.name}...`);
       document.getElementById('dwRemove').onclick = () => {
         devices = devices.filter((d) => d.id !== activeDevice.id);
         toast(`Đã xoá ${activeDevice.name} khỏi Fleet`, 'err');
-        closeDrawer();
+        closeDeviceModal();
         render();
       };
+      document.getElementById('dwCopyId').onclick = () =>
+        toast('Đã sao chép ID: ' + activeDevice.id);
+      document.getElementById('dwScreenshot').onclick = () =>
+        toast('Đã yêu cầu chụp màn hình từ ' + activeDevice.name);
 
-      /* ---------------- ADD MODAL ---------------- */
+      /* ==================== ADD DEVICE MODAL ==================== */
       const modalOverlay = document.getElementById('modalOverlay');
       let pickedType = 'mobile-real';
-      document.getElementById('addDeviceBtn').onclick = () => {
-        modalOverlay.classList.add('show');
-      };
+      document.getElementById('addDeviceBtn').onclick = () => modalOverlay.classList.add('show');
       document.getElementById('modalClose').onclick = closeModal;
       document.getElementById('modalCancel').onclick = closeModal;
       function closeModal() {
@@ -2530,7 +4594,222 @@
         document.getElementById('mAddr').value = '';
       };
 
-      /* ---------------- TOAST ---------------- */
+      /* ==================== HEADER DROPDOWNS ==================== */
+      function closeAllDropdowns() {
+        document.querySelectorAll('.hdd').forEach((h) => h.classList.remove('open'));
+        colPickerWrap.classList.remove('open');
+      }
+      document.getElementById('alertBell').onclick = (e) => {
+        e.stopPropagation();
+        const dd = document.getElementById('alertDd');
+        const willOpen = !dd.classList.contains('open');
+        closeAllDropdowns();
+        if (willOpen) dd.classList.add('open');
+      };
+      document.querySelector('#userDd .avatar').onclick = (e) => {
+        e.stopPropagation();
+        const dd = document.getElementById('userDd');
+        const willOpen = !dd.classList.contains('open');
+        closeAllDropdowns();
+        if (willOpen) dd.classList.add('open');
+      };
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.hdd') && !e.target.closest('.col-picker-wrap')) closeAllDropdowns();
+      });
+
+      function renderAlertDropdown() {
+        const feed = [];
+        devices.forEach((d) =>
+          d.alerts.forEach((a) => feed.push({ dev: d.name, ok: a.ok, msg: a.msg, mins: a.mins })),
+        );
+        feed.sort((a, b) => a.mins - b.mins);
+        const top = feed.slice(0, 8);
+        const unread = feed.filter((a) => !a.ok && a.mins < 120).length;
+        document.getElementById('alertList').innerHTML = top
+          .map(
+            (a) =>
+              `<div class="hdd-row"><span class="idot ${a.ok ? 'ok' : 'err'}"></span><span class="txt"><b>${a.dev}</b> — ${a.msg}</span><span class="tm">${fmtMins(a.mins)}</span></div>`,
+          )
+          .join('');
+        document.getElementById('alertHeadCount').textContent = unread + ' mới';
+        document.getElementById('alertDotCount').style.display = unread > 0 ? 'flex' : 'none';
+      }
+
+      /* ==================== NETWORK TICKER ==================== */
+      let netSparkVals = Array.from({ length: 24 }, () => rand(20, 80));
+      function renderNetSpark() {
+        document.getElementById('netSpark').innerHTML = netSparkVals
+          .map(
+            (v) =>
+              `<i style="height:${Math.max(2, v / 6)}px;background:${v > 70 ? 'var(--ember)' : 'var(--cool)'}"></i>`,
+          )
+          .join('');
+      }
+      function tickNetwork() {
+        const down = (devices.reduce((s, d) => s + d.netIn, 0) / 1024).toFixed(1);
+        const up = (devices.reduce((s, d) => s + d.netOut, 0) / 1024).toFixed(1);
+        document.getElementById('ntDown').textContent = down;
+        document.getElementById('ntUp').textContent = up;
+        netSparkVals.shift();
+        netSparkVals.push(Math.min(100, Math.max(5, Number(down) * 2 + rand(-8, 8))));
+        renderNetSpark();
+      }
+
+      /* ==================== SYNC PILL ==================== */
+      let secondsSinceSync = 0;
+      function tickSync() {
+        secondsSinceSync += 4;
+        const pill = document.getElementById('syncPill');
+        const sbTime = document.getElementById('sbSyncTime');
+        const txt =
+          secondsSinceSync < 60
+            ? `Đồng bộ ${secondsSinceSync}s trước`
+            : `Đồng bộ ${Math.floor(secondsSinceSync / 60)}p trước`;
+        pill.textContent = txt;
+        sbTime.textContent =
+          'Đồng bộ lần cuối: ' + (secondsSinceSync < 5 ? 'vừa xong' : txt.toLowerCase());
+      }
+
+      /* ==================== ANALYTICS VIEW ==================== */
+      function lineChartSVG(data) {
+        const w = 640,
+          h = 200,
+          pad = 26;
+        const vals = data.map((p) => p.v);
+        const max = Math.max(...vals) + 10,
+          min = 0;
+        const stepX = (w - pad * 2) / (data.length - 1);
+        const pts = data
+          .map((p, i) => {
+            const x = pad + i * stepX;
+            const y = h - pad - ((p.v - min) / (max - min)) * (h - pad * 2);
+            return `${x},${y}`;
+          })
+          .join(' ');
+        const gridLines = [0, 0.25, 0.5, 0.75, 1]
+          .map((f) => {
+            const y = pad + f * (h - pad * 2);
+            return `<line x1="${pad}" y1="${y}" x2="${w - pad}" y2="${y}" stroke="var(--border-soft)" stroke-width="1"/>`;
+          })
+          .join('');
+        const areaPts = `${pad},${h - pad} ${pts} ${w - pad},${h - pad}`;
+        return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}">
+          ${gridLines}
+          <polygon points="${areaPts}" fill="rgba(255,106,31,0.08)"/>
+          <polyline points="${pts}" fill="none" stroke="var(--ember)" stroke-width="2.5"/>
+          <text x="${pad}" y="${h - 6}" fill="var(--text-tertiary)" font-size="9" font-family="monospace">0h</text>
+          <text x="${w - pad - 22}" y="${h - 6}" fill="var(--text-tertiary)" font-size="9" font-family="monospace">23h</text>
+        </svg>`;
+      }
+
+      function donutChartSVG(segments) {
+        const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+        const r = 54,
+          cx = 70,
+          cy = 70,
+          sw = 22;
+        const circ = 2 * Math.PI * r;
+        let offset = 0;
+        const circles = segments
+          .map((seg) => {
+            const frac = seg.value / total;
+            const dash = frac * circ;
+            const el = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${sw}" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+            offset += dash;
+            return el;
+          })
+          .join('');
+        return `<svg width="140" height="140" viewBox="0 0 140 140" style="display:block;margin:0 auto">${circles}<text x="70" y="65" text-anchor="middle" fill="var(--text-primary)" font-size="20" font-weight="700" font-family="'Space Grotesk',sans-serif">${total}</text><text x="70" y="82" text-anchor="middle" fill="var(--text-tertiary)" font-size="9" font-family="'Inter',sans-serif">thiết bị</text></svg>`;
+      }
+
+      function renderAnalytics() {
+        const total = devices.length;
+        const online = devices.filter((d) => d.status !== 'off');
+        const avgUptime = online.length
+          ? (online.reduce((s, d) => s + d.uptimePct, 0) / online.length).toFixed(1)
+          : '0';
+        const scriptsToday = devices.reduce((s, d) => s + rand(0, 4), 0);
+        const alertsFeed = [];
+        devices.forEach((d) =>
+          d.alerts.forEach((a) =>
+            alertsFeed.push({ dev: d.name, ok: a.ok, msg: a.msg, mins: a.mins }),
+          ),
+        );
+        alertsFeed.sort((a, b) => a.mins - b.mins);
+        const alerts24h = alertsFeed.filter((a) => a.mins < 1440 && !a.ok).length;
+
+        document.getElementById('avStats').innerHTML = `
+    <div class="av-stat"><div class="k">Tổng thiết bị</div><div class="v">${total}</div><div class="d up">${online.length} đang hoạt động</div></div>
+    <div class="av-stat"><div class="k">Uptime trung bình</div><div class="v">${avgUptime}%</div><div class="d ${avgUptime > 90 ? 'up' : 'down'}">${avgUptime > 90 ? '▲ ổn định' : '▼ cần chú ý'}</div></div>
+    <div class="av-stat"><div class="k">Kịch bản hôm nay</div><div class="v">${scriptsToday}</div><div class="d up">▲ +${rand(3, 18)}% so với hôm qua</div></div>
+    <div class="av-stat"><div class="k">Cảnh báo 24h</div><div class="v">${alerts24h}</div><div class="d ${alerts24h > 5 ? 'down' : 'up'}">${alerts24h > 5 ? '▲ tăng nhẹ' : '▼ trong tầm kiểm soát'}</div></div>
+  `;
+        document.getElementById('avLineChart').innerHTML = lineChartSVG(loadHistory24h);
+
+        const segs = [
+          {
+            label: 'Online',
+            value: devices.filter((d) => d.status === 'ok').length,
+            color: 'var(--ok)',
+          },
+          {
+            label: 'Đang chạy',
+            value: devices.filter((d) => d.status === 'busy').length,
+            color: 'var(--busy)',
+          },
+          {
+            label: 'Offline',
+            value: devices.filter((d) => d.status === 'off').length,
+            color: 'var(--off)',
+          },
+          {
+            label: 'Lỗi',
+            value: devices.filter((d) => d.status === 'err').length,
+            color: 'var(--err)',
+          },
+        ];
+        document.getElementById('avDonutChart').innerHTML = donutChartSVG(segs);
+        document.getElementById('avDonutLegend').innerHTML = segs
+          .map(
+            (s) =>
+              `<span class="legend-item"><span class="sw" style="background:${s.color}"></span>${s.label} (${s.value})</span>`,
+          )
+          .join('');
+
+        const groupCounts = GROUPS.map((g) => ({
+          g,
+          n: devices.filter((d) => d.group === g).length,
+        }));
+        const maxG = Math.max(...groupCounts.map((x) => x.n), 1);
+        document.getElementById('avGroupBars').innerHTML = groupCounts
+          .map(
+            (x) =>
+              `<div class="bar-list-row"><span class="bl-lbl">${x.g}</span><div class="bl-track"><div class="bl-fill" style="width:${(x.n / maxG) * 100}%;background:${GROUP_COLOR[x.g]}"></div></div><span class="bl-val">${x.n}</span></div>`,
+          )
+          .join('');
+
+        const topLoad = devices
+          .slice()
+          .sort((a, b) => b.load - a.load)
+          .slice(0, 5);
+        document.getElementById('avTopLoad').innerHTML = topLoad
+          .map(
+            (d) =>
+              `<div class="bar-list-row"><span class="bl-lbl">${d.name}</span><div class="bl-track"><div class="bl-fill" style="width:${d.load}%;background:${d.load > 75 ? 'var(--err)' : d.load > 45 ? 'var(--busy)' : 'var(--cool)'}"></div></div><span class="bl-val">${d.load}%</span></div>`,
+          )
+          .join('');
+
+        document.getElementById('avAlertTable').innerHTML = alertsFeed
+          .slice(0, 10)
+          .map(
+            (a) =>
+              `<tr><td><span class="sev ${a.ok ? 'ok' : 'err'}">${a.ok ? 'Info' : 'Lỗi'}</span></td><td>${a.dev}</td><td>${a.msg}</td><td class="tsub">${fmtMins(a.mins)}</td></tr>`,
+          )
+          .join('');
+        document.getElementById('avUpdated').textContent = 'Cập nhật vừa xong';
+      }
+
+      /* ==================== TOAST ==================== */
       function toast(msg, type = 'ok') {
         const stack = document.getElementById('toastStack');
         const el = document.createElement('div');
@@ -2544,23 +4823,35 @@
         }, 3200);
       }
 
-      /* ---------------- LIVE SIM ---------------- */
+      /* ==================== LIVE SIM ==================== */
       setInterval(() => {
         devices.forEach((d) => {
           if (d.status !== 'off') {
             d.load = Math.max(3, Math.min(99, d.load + rand(-6, 6)));
             d.cpu = Math.max(2, Math.min(99, d.cpu + rand(-5, 5)));
+            d.netIn = Math.max(1, d.netIn + rand(-20, 20));
+            d.netOut = Math.max(1, d.netOut + rand(-10, 10));
+            d.cpuHistory.shift();
+            d.cpuHistory.push(d.cpu);
+            d.ramHistory.shift();
+            d.ramHistory.push(d.ram);
+            d.netHistory.shift();
+            d.netHistory.push(d.netIn);
           }
           if (d.status === 'ok' || d.status === 'busy')
             d.lastActiveMins = Math.max(0, d.lastActiveMins - 1);
         });
-        if (currentView && document.getElementById('drawer').classList.contains('show') === false) {
-          render();
-        }
+        tickNetwork();
+        tickSync();
+        renderAlertDropdown();
+        if (currentAppView === 'manager' && !dmodalOverlay.classList.contains('show')) render();
+        if (currentAppView === 'analytics') renderAnalytics();
       }, 4000);
 
       render();
+      renderNetSpark();
+      tickNetwork();
+      renderAlertDropdown();
     </script>
   </body>
 </html>
-sd

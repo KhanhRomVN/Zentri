@@ -33,8 +33,8 @@ import { SERVICES } from '../../../constants/services';
 
 // ── Components ──
 import BrowserLaunchModal from './modals/BrowserLaunchModal';
-import EmailDetailView from './EmailDetailView';
-import ServiceDrawers from './drawers/ServiceDrawers';
+import EmailModal from './modals/EmailModal/EmailModal';
+import ServiceDrawer from './modals/ServiceDrawer';
 
 // ── Utils ──
 import { cn } from '../../../shared/lib/utils';
@@ -938,7 +938,9 @@ const EmailTable: FC<EmailTableProps> = ({
             transition={{ duration: 0.3 }}
             className="flex-1 min-h-0 overflow-hidden"
           >
-            <EmailDetailView
+            <EmailModal
+              isOpen={showDetail && !!focusedAccount}
+              onClose={() => setShowDetail(false)}
               focusedAccount={focusedAccount}
               accounts={accounts}
               activeTab={activeTab}
@@ -1229,7 +1231,7 @@ const EmailTable: FC<EmailTableProps> = ({
           document.body,
         )}
 
-      <ServiceDrawers
+      <ServiceDrawer
         isServiceDrawerOpen={isServiceDrawerOpen}
         setIsServiceDrawerOpen={setIsServiceDrawerOpen}
         linkServiceSearchQuery={linkServiceSearchQuery}

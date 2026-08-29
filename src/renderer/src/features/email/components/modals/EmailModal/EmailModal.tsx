@@ -1,0 +1,292 @@
+/**
+ * ------------------------------------------------------------------
+ * EmailModal
+ * ------------------------------------------------------------------
+ * Modal that displays email account detail with a tab sidebar
+ * (Info, Services, History, Fingerprint, Security)
+ * and accent-color-coded tab buttons.
+ * ------------------------------------------------------------------
+ */
+
+// ─── Imports ────────────────────────────────────────────────────────────
+// ── React ──
+import { FC } from 'react';
+
+// ── UI ──
+import { User, LayoutGrid, Clock, Shield, ShieldCheck } from 'lucide-react';
+import { Modal } from '../../../../../components/ui/Modal';
+
+// ── Utils ──
+import { cn } from '../../../../../shared/lib/utils';
+
+// ── Hooks ──
+import { useAccentColors } from '../../../../../hooks/useAccentColors';
+
+// ── Types ──
+import { Account } from '../../../types';
+
+// ── Tabs ──
+import InfoTab from '../../tabs/Information/index';
+import ServicesTab from '../../tabs/Services/index';
+import HistoryTab from '../../tabs/History/index';
+import FingerprintTab from '../../tabs/Footprint/index';
+import SecurityTab from '../../tabs/Security/index';
+
+// ─── Functions ──────────────────────────────────────────────────────────
+let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
+let unifiedAccentCache = 'rgb(54, 134, 255)';
+
+export const setAccentColorsForDetailView = (colors: string[], unified: string) => {
+  accentColorsCache = colors.length > 0 ? colors : [unified];
+  unifiedAccentCache = unified;
+};
+
+const getTabColor = (tabId: string) => {
+  let hash = 0;
+  for (let i = 0; i < tabId.length; i++) {
+    hash = tabId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % accentColorsCache.length;
+  const color = accentColorsCache[index] || accentColorsCache[0] || unifiedAccentCache;
+
+  const rgbMatch = color.match(/\d+/g);
+  if (rgbMatch && rgbMatch.length >= 3) {
+    const r = rgbMatch[0];
+    const g = rgbMatch[1];
+    const b = rgbMatch[2];
+    return {
+      base: color,
+      bg: `rgba(${r}, ${g}, ${b}, 0.1)`,
+      border: `rgba(${r}, ${g}, ${b}, 0.3)`,
+      hover: `rgba(${r}, ${g}, ${b}, 0.2)`,
+      glow: `0 0 12px rgba(${r}, ${g}, ${b}, 0.4)`,
+    };
+  }
+  return {
+    base: color || unifiedAccentCache,
+    bg: 'var(--sidebar-item-hover)',
+    border: 'var(--divider)',
+    hover: 'var(--sidebar-item-hover)',
+    glow: 'none',
+  };
+};
+
+// ─── Interfaces ─────────────────────────────────────────────────────────
+interface EmailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  focusedAccount: Account | null;
+  accounts: Account[];
+  activeTab: 'info' | 'services' | 'sessions' | 'history' | 'fingerprint' | 'security';
+  setActiveTab: (
+    tab: 'info' | 'services' | 'sessions' | 'history' | 'fingerprint' | 'security',
+  ) => void;
+  avatars: Record<string, string>;
+  onSelectAccount: (account: Account) => void;
+  onContextMenu: (e: React.MouseEvent, accountId: string) => void;
+  onServiceContextMenu?: (e: React.MouseEvent, linkId: string) => void;
+  editedAccount: Account | null;
+  setEditedAccount: React.Dispatch<React.SetStateAction<Account | null>>;
+  validateField: (name: string, value: string) => void;
+  errors: Record<string, string>;
+  backupCodeSearch: string;
+  setBackupCodeSearch: (val: string) => void;
+  serviceSearch: string;
+  setServiceSearch: (val: string) => void;
+  accountServices: any[];
+  onAddNewServiceLink: () => void;
+  onEditServiceLink: (linkId: string) => void;
+  onOpenService?: (linkId: string) => void;
+  onDeleteService?: (linkId: string) => void;
+}
+
+// ─── Component ──────────────────────────────────────────────────────────
+const EmailModal: FC<EmailModalProps> = ({
+  isOpen,
+  onClose,
+  activeTab,
+  setActiveTab,
+  onServiceContextMenu: _onServiceContextMenu,
+  editedAccount,
+  setEditedAccount,
+  validateField,
+  errors,
+  backupCodeSearch,
+  setBackupCodeSearch,
+  serviceSearch,
+  setServiceSearch,
+  accountServices,
+  onAddNewServiceLink,
+  onEditServiceLink,
+  onOpenService,
+  onDeleteService,
+}) => {
+  // ── Hooks ──
+  const { accentColors, UNIFIED_ACCENT } = useAccentColors();
+
+  if (typeof accentColors !== 'undefined' && accentColors.length > 0) {
+    setAccentColorsForDetailView(accentColors, UNIFIED_ACCENT);
+  }
+
+  // ── Render ──
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} className="max-w-5xl">
+      <div className="flex bg-table-hoverItemBodyBg/5 overflow-hidden h-full">
+        <div className="w-64 border-r border-border bg-card/20 backdrop-blur-xl flex flex-col pt-4 shrink-0 overflow-y-scroll overscroll-contain custom-scrollbar relative">
+          <div className="flex-1 space-y-1 px-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('info');
+              }}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
+                activeTab === 'info'
+                  ? 'text-[--tab-color]'
+                  : 'text-text-secondary hover:text-foreground',
+              )}
+              style={
+                {
+                  '--tab-color': getTabColor('info').base,
+                  background: activeTab === 'info' ? getTabColor('info').bg : undefined,
+                } as React.CSSProperties
+              }
+            >
+              <User className="w-5 h-5 transition-colors" />
+              <span>Information</span>
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('services');
+              }}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
+                activeTab === 'services'
+                  ? 'text-[--tab-color]'
+                  : 'text-text-secondary hover:text-foreground',
+              )}
+              style={
+                {
+                  '--tab-color': getTabColor('services').base,
+                  background: activeTab === 'services' ? getTabColor('services').bg : undefined,
+                } as React.CSSProperties
+              }
+            >
+              <LayoutGrid className="w-5 h-5 transition-colors" />
+              <span>Services</span>
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('history');
+              }}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
+                activeTab === 'history'
+                  ? 'text-[--tab-color]'
+                  : 'text-text-secondary hover:text-foreground',
+              )}
+              style={
+                {
+                  '--tab-color': getTabColor('history').base,
+                  background: activeTab === 'history' ? getTabColor('history').bg : undefined,
+                } as React.CSSProperties
+              }
+            >
+              <Clock className="w-5 h-5 transition-colors" />
+              <span>History</span>
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('fingerprint');
+              }}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
+                activeTab === 'fingerprint'
+                  ? 'text-[--tab-color]'
+                  : 'text-text-secondary hover:text-foreground',
+              )}
+              style={
+                {
+                  '--tab-color': getTabColor('fingerprint').base,
+                  background:
+                    activeTab === 'fingerprint' ? getTabColor('fingerprint').bg : undefined,
+                } as React.CSSProperties
+              }
+            >
+              <Shield className="w-5 h-5 transition-colors" />
+              <span>Fingerprint</span>
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('security');
+              }}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all relative group',
+                activeTab === 'security'
+                  ? 'text-[--tab-color]'
+                  : 'text-text-secondary hover:text-foreground',
+              )}
+              style={
+                {
+                  '--tab-color': getTabColor('security').base,
+                  background: activeTab === 'security' ? getTabColor('security').bg : undefined,
+                } as React.CSSProperties
+              }
+            >
+              <ShieldCheck className="w-5 h-5 transition-colors" />
+              <span>Security</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden bg-background/20 backdrop-blur-3xl">
+          {activeTab === 'history' ? (
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              <HistoryTab email={editedAccount?.email || ''} />
+            </div>
+          ) : activeTab === 'fingerprint' ? (
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              <FingerprintTab email={editedAccount?.email || ''} />
+            </div>
+          ) : activeTab === 'security' ? (
+            <SecurityTab account={editedAccount} />
+          ) : (
+            <div className="flex-1 overflow-y-scroll overscroll-contain custom-scrollbar">
+              {activeTab === 'info' ? (
+                <InfoTab
+                  editedAccount={editedAccount}
+                  setEditedAccount={setEditedAccount}
+                  validateField={validateField}
+                  errors={errors}
+                  backupCodeSearch={backupCodeSearch}
+                  setBackupCodeSearch={setBackupCodeSearch}
+                />
+              ) : activeTab === 'services' ? (
+                <ServicesTab
+                  serviceSearch={serviceSearch}
+                  setServiceSearch={setServiceSearch}
+                  accountServices={accountServices}
+                  onAddNewServiceLink={onAddNewServiceLink}
+                  onEditServiceLink={onEditServiceLink}
+                  onOpenService={onOpenService}
+                  onDeleteService={onDeleteService}
+                  email={editedAccount?.email || ''}
+                />
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+export default EmailModal;
