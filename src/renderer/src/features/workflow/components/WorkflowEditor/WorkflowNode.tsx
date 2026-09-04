@@ -82,15 +82,6 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
       const scrollWait = parsed?.config?.scrollWait;
       const scrollRepeat = parsed?.config?.scrollRepeat;
 
-      console.log(`[WorkflowNode ${node.id}] Parsing config:`, {
-        nodeId: node.id,
-        nodeType: node.type,
-        actionType,
-        scrollType,
-        subtitle: node.subtitle,
-        hasNote: !!node.note,
-      });
-
       // If title is empty, use action type as title
       if ((!displayTitle || displayTitle.trim() === '') && actionType) {
         const titleMap: Record<string, string> = {
@@ -131,7 +122,6 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
         // go_to_url has subtitle (URL), so it's valid
         if (node.subtitle) {
           hasValidConfig = true;
-          console.log(`[WorkflowNode ${node.id}] go_to_url with subtitle, hasValidConfig=true`);
         }
       } else if (actionType === 'scroll') {
         displayIcon = () => (
@@ -152,41 +142,24 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
         if (scrollType === 'pixels') {
           displaySubtitle = `${scrollRepeat || 1}x scroll ${scrollPixels || 500}px, chờ ${scrollWait || 1000}ms`;
           hasValidConfig = true; // Scroll by pixels doesn't need selector
-          console.log(
-            `[WorkflowNode ${node.id}] scroll by pixels, hasValidConfig=true, subtitle="${displaySubtitle}"`,
-          );
         } else if (node.subtitle) {
           displaySubtitle = node.subtitle;
           hasValidConfig = true; // Has selector
-          console.log(
-            `[WorkflowNode ${node.id}] scroll to element with subtitle, hasValidConfig=true`,
-          );
         }
       } else if (node.subtitle) {
         // Other actions with subtitle are valid
         hasValidConfig = true;
-        console.log(`[WorkflowNode ${node.id}] other action with subtitle, hasValidConfig=true`);
       }
     } else if (node.subtitle) {
       // No config but has subtitle means it's valid
       hasValidConfig = true;
-      console.log(`[WorkflowNode ${node.id}] no config but has subtitle, hasValidConfig=true`);
     }
   } catch (error) {
-    console.log(`[WorkflowNode ${node.id}] Error parsing config:`, error);
     // If parsing fails but has subtitle, still valid
     if (node.subtitle) {
       hasValidConfig = true;
-      console.log(`[WorkflowNode ${node.id}] parse error but has subtitle, hasValidConfig=true`);
     }
   }
-
-  console.log(`[WorkflowNode ${node.id}] Final check:`, {
-    nodeId: node.id,
-    nodeType: node.type,
-    hasValidConfig,
-    isIsolated: node.isIsolated,
-  });
 
   // Check if node needs warning badge
   // Show warning only if: no valid config AND not start/end node, OR is isolated
@@ -203,16 +176,6 @@ export const WorkflowNodeComponent = memo(({ data, selected }: WorkflowNodeCompo
     }
     return '';
   };
-
-  console.log(`[WorkflowNode ${node.id}] Warning badge decision:`, {
-    nodeId: node.id,
-    needsWarning,
-    reason: needsWarning
-      ? node.isIsolated
-        ? 'isolated node'
-        : 'no valid config and not start/end'
-      : 'all good',
-  });
 
   const selectedNodesCount = node.selectedNodesCount || 0;
 

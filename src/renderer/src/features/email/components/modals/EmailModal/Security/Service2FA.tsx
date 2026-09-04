@@ -3,10 +3,10 @@
  */
 
 import { Key } from 'lucide-react';
-import { cn } from '../../../../../shared/lib/utils';
-import { getServiceById } from '../../../../../constants/services';
+import { cn } from '../../../../../../shared/lib/utils';
+import { getServiceById } from '../../../../../../constants/services';
 import { isValidTotp } from './utils';
-import type { Account } from '../../../types';
+import type { Account } from '../../../../types';
 
 interface Service2FAProps {
   account: Account;

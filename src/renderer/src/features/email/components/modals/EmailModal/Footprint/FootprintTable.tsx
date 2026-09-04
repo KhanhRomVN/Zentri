@@ -22,10 +22,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 // ── Utils ──
 import { format } from 'date-fns';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 
 // ── UI Components ──
-import { EmptyState } from '../../../../../components/ui/EmptyState';
+import { EmptyState } from '../../../../../../components/ui/EmptyState';
 
 // ── Detail Component ──
 import FootprintDetail from './FootprintDetail';

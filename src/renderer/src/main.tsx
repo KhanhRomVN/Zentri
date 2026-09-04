@@ -7,6 +7,17 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import { FontProvider } from './fonts';
 
+// --- Performance Profiling Tools (Development Only) ---
+if (import.meta.env.DEV) {
+  // react-scan - automatically detect performance issues
+  import('react-scan').then((module) => {
+    module.scan({
+      enabled: true,
+      log: true,
+    });
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

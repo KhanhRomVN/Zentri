@@ -3,9 +3,9 @@
  */
 
 import { Key, Lock, Mail, Smartphone } from 'lucide-react';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 import { parseBackupCodes, isValidTotp } from './utils';
-import type { Account } from '../../../types';
+import type { Account } from '../../../../types';
 
 interface EmailSecurityProps {
   account: Account;
@@ -25,9 +25,7 @@ export default function EmailSecurity({ account }: EmailSecurityProps) {
           icon={<Key className="w-3.5 h-3.5" />}
           label="TOTP 2FA"
           sub={
-            isValidTotp(account.totp)
-              ? 'Authenticator app linked'
-              : 'Authenticator app not linked'
+            isValidTotp(account.totp) ? 'Authenticator app linked' : 'Authenticator app not linked'
           }
           on={isValidTotp(account.totp)}
         />

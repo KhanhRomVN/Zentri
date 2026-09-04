@@ -20,12 +20,15 @@ export function DropdownItem({
   className,
   disabled,
   icon,
-  closeOnSelect = true,
+  closeOnSelect,
   variant = 'default',
   noPadding = false,
   ...props
 }: DropdownItemProps) {
-  const { close, searchText } = useDropdownContext();
+  const { close, searchText, closeOnSelect: contextCloseOnSelect } = useDropdownContext();
+
+  // Use prop if provided, otherwise use context value
+  const shouldClose = closeOnSelect !== undefined ? closeOnSelect : contextCloseOnSelect;
 
   // Filter by search text
   if (searchText) {
@@ -38,7 +41,7 @@ export function DropdownItem({
   const handleClick = () => {
     if (disabled) return;
     onClick?.();
-    if (closeOnSelect) {
+    if (shouldClose) {
       close();
     }
   };

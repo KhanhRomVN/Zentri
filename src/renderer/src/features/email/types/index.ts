@@ -61,6 +61,7 @@ export interface LinkedService {
   status: string;
   secretCount?: number;
   metadata?: any;
+  lastUsedAt?: string;
 }
 
 export interface Account extends Omit<Email, 'services'> {
@@ -72,6 +73,7 @@ export interface Account extends Omit<Email, 'services'> {
     url: string;
     time: number;
     favicon?: string;
+    ip?: string;
   };
   lastProxy?: {
     host: string;
@@ -81,6 +83,13 @@ export interface Account extends Omit<Email, 'services'> {
     sourceType?: string;
     country?: string;
     city?: string;
+  };
+  lastFootprint?: {
+    country?: string;
+    city?: string;
+    systemOS?: string;
+    browser?: string;
+    isProxy?: boolean;
   };
 }
 

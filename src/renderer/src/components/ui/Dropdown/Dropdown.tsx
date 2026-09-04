@@ -9,6 +9,8 @@ type Position = { top: number; left: number; width?: number };
 interface DropdownContextType {
   close: () => void;
   searchText?: string;
+  hasSearchbar?: boolean;
+  closeOnSelect: boolean;
 }
 
 const DropdownContext = createContext<DropdownContextType | null>(null);
@@ -34,6 +36,7 @@ export const Dropdown = React.memo(function Dropdown({
   trigger = 'click',
   position: manualPosition,
   searchable = false,
+  closeOnSelect = true,
 }: DropdownProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -94,7 +97,8 @@ export const Dropdown = React.memo(function Dropdown({
         if (align === 'center') {
           left += (triggerRect.width - contentRect.width) / 2;
         } else if (align === 'end') {
-          left += triggerRect.width - contentRect.width;
+          // Right-align: dropdown's right edge aligns with trigger's right edge
+          left = triggerRect.right - contentRect.width;
         }
         break;
       case 'left':
@@ -102,7 +106,8 @@ export const Dropdown = React.memo(function Dropdown({
         if (align === 'center') {
           top += (triggerRect.height - contentRect.height) / 2;
         } else if (align === 'end') {
-          top += triggerRect.height - contentRect.height;
+          // Bottom-align: dropdown's bottom edge aligns with trigger's bottom edge
+          top = triggerRect.bottom - contentRect.height;
         }
         break;
     }
@@ -136,14 +141,22 @@ export const Dropdown = React.memo(function Dropdown({
       }
     }
 
-    // Clamp to viewport
+    // Clamp to viewport (but respect alignment when possible)
     if (finalTop < margin) finalTop = margin;
     if (finalTop + contentRect.height > viewport.height - margin) {
       finalTop = viewport.height - contentRect.height - margin;
     }
-    if (finalLeft < margin) finalLeft = margin;
-    if (finalLeft + contentRect.width > viewport.width - margin) {
-      finalLeft = viewport.width - contentRect.width - margin;
+
+    // For align="end", prioritize right-alignment over viewport clamping
+    if (align === 'end' && (side === 'bottom' || side === 'top')) {
+      // Only prevent going off the LEFT edge, allow right overflow
+      if (finalLeft < margin) finalLeft = margin;
+    } else {
+      // Default clamping for other alignments
+      if (finalLeft < margin) finalLeft = margin;
+      if (finalLeft + contentRect.width > viewport.width - margin) {
+        finalLeft = viewport.width - contentRect.width - margin;
+      }
     }
 
     return { top: finalTop, left: finalLeft, width: triggerRect.width };
@@ -329,7 +342,9 @@ export const Dropdown = React.memo(function Dropdown({
   };
 
   return (
-    <DropdownContext.Provider value={{ close, searchText }}>
+    <DropdownContext.Provider
+      value={{ close, searchText, hasSearchbar: searchable, closeOnSelect }}
+    >
       <div className={cn('relative inline-block', className)}>
         <div
           ref={triggerRef}
@@ -351,11 +366,12 @@ export const Dropdown = React.memo(function Dropdown({
               createPortal(
                 <div
                   ref={contentRef}
-                  className="fixed z-[9999]"
+                  className="fixed z-[9999] bg-background border border-border rounded-lg shadow-primary min-w-[200px] overflow-hidden"
                   style={{
                     top: position.top,
                     left: position.left,
-                    width: position.width,
+                    // Don't set width for end-aligned dropdowns to allow natural content width
+                    width: align === 'end' ? undefined : position.width,
                     opacity: isPositioned ? 1 : 0,
                     transition: 'opacity 0.15s ease',
                     pointerEvents: 'auto',
@@ -368,7 +384,7 @@ export const Dropdown = React.memo(function Dropdown({
                         placeholder="Search actions..."
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-input-background border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-text-primary placeholder:text-text-tertiary"
+                        className="w-full px-3 py-1.5 text-sm bg-input-background border border-border rounded-lg outline-none text-text-primary placeholder:text-text-tertiary"
                         autoFocus
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -381,7 +397,10 @@ export const Dropdown = React.memo(function Dropdown({
             ) : (
               <div
                 ref={contentRef}
-                className={getRelativePositionClasses()}
+                className={cn(
+                  getRelativePositionClasses(),
+                  'bg-background border border-border rounded-lg shadow-primary min-w-[200px] overflow-hidden',
+                )}
                 style={{
                   opacity: isPositioned ? 1 : 0,
                   transition: 'opacity 0.15s ease',
@@ -395,7 +414,7 @@ export const Dropdown = React.memo(function Dropdown({
                       placeholder="Search actions..."
                       value={searchText}
                       onChange={(e) => setSearchText(e.target.value)}
-                      className="w-full px-3 py-1.5 text-sm bg-input-background border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary text-text-primary placeholder:text-text-tertiary"
+                      className="w-full px-3 py-1.5 text-sm bg-input-background border border-border rounded-lg outline-none text-text-primary placeholder:text-text-tertiary"
                       autoFocus
                       onClick={(e) => e.stopPropagation()}
                     />

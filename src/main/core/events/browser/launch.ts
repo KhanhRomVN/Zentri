@@ -13,6 +13,43 @@ import { onPageNavigated } from './site-history';
 
 const activeBrowsers = new Map<string, { port: number; process: ReturnType<typeof spawn> }>();
 
+/**
+ * Set profile name in Chrome/Chromium Preferences file
+ * This ensures the profile displays the correct name instead of default "Work"
+ */
+function setProfileName(userDataDir: string, profileName: string): void {
+  try {
+    const defaultProfileDir = path.join(userDataDir, 'Default');
+    if (!fs.existsSync(defaultProfileDir)) {
+      fs.mkdirSync(defaultProfileDir, { recursive: true });
+    }
+
+    const preferencesPath = path.join(defaultProfileDir, 'Preferences');
+    let preferences: any = {};
+
+    // Read existing preferences if file exists
+    if (fs.existsSync(preferencesPath)) {
+      try {
+        const content = fs.readFileSync(preferencesPath, 'utf-8');
+        preferences = JSON.parse(content);
+      } catch (e) {
+        console.warn('[BrowserLaunch] Failed to parse existing Preferences, creating new one');
+      }
+    }
+
+    // Set profile name
+    if (!preferences.profile) {
+      preferences.profile = {};
+    }
+    preferences.profile.name = profileName;
+
+    // Write back to file
+    fs.writeFileSync(preferencesPath, JSON.stringify(preferences, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('[BrowserLaunch] Failed to set profile name:', error);
+  }
+}
+
 export function setupLaunchHandlers() {
   ipcMain.handle(
     'email:open-login',
@@ -85,6 +122,10 @@ export function setupLaunchHandlers() {
         if (!fs.existsSync(browserProfileDir)) {
           fs.mkdirSync(browserProfileDir, { recursive: true });
         }
+
+        // Set profile name in Chrome Preferences to display correct name instead of "Work"
+        const profileName = email || accountId || provider;
+        setProfileName(browserProfileDir, profileName);
 
         let proxyServer = '';
         let proxyAuth: { username?: string; password?: string } | null = null;
@@ -271,11 +312,15 @@ export function setupLaunchHandlers() {
                       var cdpClient = sessionMap.get(target);
                       var tUrl = target.url();
                       if (cdpClient) {
-                        onPageNavigated(browserProfileDir, cdpClient, fpConfig, tUrl).catch(
-                          function (e) {
-                            console.error('[SiteHistory] Error:', e.message);
-                          },
-                        );
+                        onPageNavigated(
+                          browserProfileDir,
+                          cdpClient,
+                          fpConfig,
+                          tUrl,
+                          !!proxyServer,
+                        ).catch(function (e) {
+                          console.error('[SiteHistory] Error:', e.message);
+                        });
                       }
                     }
                   });
@@ -356,6 +401,10 @@ export function setupLaunchHandlers() {
         } else {
           realProfileDir = path.join(userDataPath, 'browser_profiles', email);
         }
+
+        // Set profile name before launching
+        setProfileName(realProfileDir, email);
+
         spawn(
           executablePath,
           [

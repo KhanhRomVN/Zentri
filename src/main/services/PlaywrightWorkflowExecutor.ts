@@ -501,7 +501,7 @@ export class PlaywrightWorkflowExecutor {
         );
 
         await page.evaluate((pixels) => {
-          window.scrollBy(0, pixels);
+          (globalThis as any).scrollBy(0, pixels);
         }, scrollPixels);
 
         // Wait after each scroll for content to load (except for the last one, it will use delay after execution)

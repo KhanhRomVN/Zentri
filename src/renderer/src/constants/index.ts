@@ -6,8 +6,14 @@
 // Re-export operators from operators.ts
 export * from './operators';
 
-// Re-export countries
-export * from './countries';
+// Re-export countries from utils/countryFlags.ts for backward compatibility
+export {
+  COUNTRIES,
+  getCountryFlagComponent,
+  getCountryFlagEmoji as getCountryFlag,
+  getCountryName,
+  type Country,
+} from '../utils/countryFlags';
 
 // Search-related constants
 export const TYPE_LABELS: Record<string, string> = {
@@ -23,22 +29,118 @@ export const TYPE_LABELS: Record<string, string> = {
 // Available data fields from the database schema
 export const DATA_FIELDS = [
   { key: 'email', label: 'Email', type: 'text', table: 'emails', description: 'Email address' },
-  { key: 'password', label: 'Password', type: 'text', table: 'emails', description: 'Account password' },
-  { key: 'recoveryEmail', label: 'Recovery Email', type: 'text', table: 'emails', description: 'Backup recovery email' },
-  { key: 'phoneNumber', label: 'Phone Number', type: 'text', table: 'emails', description: 'Linked phone number' },
-  { key: 'status', label: 'Status', type: 'status', table: 'emails', description: 'Account status' },
-  { key: 'createdAt', label: 'Created At', type: 'date', table: 'emails', description: 'Account creation date' },
-  { key: 'lastUsedAt', label: 'Last Used', type: 'date', table: 'emails', description: 'Last usage timestamp' },
-  { key: 'totpSecretKey', label: 'TOTP Key', type: 'text', table: 'emails', description: '2FA secret key status' },
-  { key: 'services.name', label: 'Service Name', type: 'text', table: 'services', description: 'Linked service name' },
-  { key: 'services.url', label: 'Service URL', type: 'text', table: 'services', description: 'Service website URL' },
-  { key: 'services.username', label: 'Service Username', type: 'text', table: 'services', description: 'Login username' },
-  { key: 'services.status', label: 'Service Status', type: 'status', table: 'services', description: 'Link status' },
-  { key: 'proxy.host', label: 'Proxy Host', type: 'text', table: 'proxies', description: 'Proxy server address' },
-  { key: 'proxy.port', label: 'Proxy Port', type: 'number', table: 'proxies', description: 'Proxy port number' },
-  { key: 'proxy.protocol', label: 'Proxy Protocol', type: 'text', table: 'proxies', description: 'HTTP/HTTPS/SOCKS5' },
-  { key: 'proxy.country', label: 'Proxy Country', type: 'text', table: 'proxies', description: 'Geo location' },
-  { key: 'proxy.city', label: 'Proxy City', type: 'text', table: 'proxies', description: 'City level location' },
+  {
+    key: 'password',
+    label: 'Password',
+    type: 'text',
+    table: 'emails',
+    description: 'Account password',
+  },
+  {
+    key: 'recoveryEmail',
+    label: 'Recovery Email',
+    type: 'text',
+    table: 'emails',
+    description: 'Backup recovery email',
+  },
+  {
+    key: 'phoneNumber',
+    label: 'Phone Number',
+    type: 'text',
+    table: 'emails',
+    description: 'Linked phone number',
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'status',
+    table: 'emails',
+    description: 'Account status',
+  },
+  {
+    key: 'createdAt',
+    label: 'Created At',
+    type: 'date',
+    table: 'emails',
+    description: 'Account creation date',
+  },
+  {
+    key: 'lastUsedAt',
+    label: 'Last Used',
+    type: 'date',
+    table: 'emails',
+    description: 'Last usage timestamp',
+  },
+  {
+    key: 'totpSecretKey',
+    label: 'TOTP Key',
+    type: 'text',
+    table: 'emails',
+    description: '2FA secret key status',
+  },
+  {
+    key: 'services.name',
+    label: 'Service Name',
+    type: 'text',
+    table: 'services',
+    description: 'Linked service name',
+  },
+  {
+    key: 'services.url',
+    label: 'Service URL',
+    type: 'text',
+    table: 'services',
+    description: 'Service website URL',
+  },
+  {
+    key: 'services.username',
+    label: 'Service Username',
+    type: 'text',
+    table: 'services',
+    description: 'Login username',
+  },
+  {
+    key: 'services.status',
+    label: 'Service Status',
+    type: 'status',
+    table: 'services',
+    description: 'Link status',
+  },
+  {
+    key: 'proxy.host',
+    label: 'Proxy Host',
+    type: 'text',
+    table: 'proxies',
+    description: 'Proxy server address',
+  },
+  {
+    key: 'proxy.port',
+    label: 'Proxy Port',
+    type: 'number',
+    table: 'proxies',
+    description: 'Proxy port number',
+  },
+  {
+    key: 'proxy.protocol',
+    label: 'Proxy Protocol',
+    type: 'text',
+    table: 'proxies',
+    description: 'HTTP/HTTPS/SOCKS5',
+  },
+  {
+    key: 'proxy.country',
+    label: 'Proxy Country',
+    type: 'text',
+    table: 'proxies',
+    description: 'Geo location',
+  },
+  {
+    key: 'proxy.city',
+    label: 'Proxy City',
+    type: 'text',
+    table: 'proxies',
+    description: 'City level location',
+  },
 ] as const;
 
 export const FIELD_ICONS: Record<string, any> = {

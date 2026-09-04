@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS site_fingerprint_history (
   fingerprint_config_json  TEXT,
   public_ip                TEXT NOT NULL,
   ip_info_json             TEXT,
+  is_proxy                 INTEGER DEFAULT 0,
   started_at               DATETIME NOT NULL,
   ended_at                 DATETIME,
   created_at               DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -42,6 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_sfh_domain_active ON site_fingerprint_history(dom
 const MIGRATE_SQL = [
   'ALTER TABLE site_fingerprint_history ADD COLUMN fingerprint_config_json TEXT',
   'ALTER TABLE site_fingerprint_history ADD COLUMN ip_info_json TEXT',
+  'ALTER TABLE site_fingerprint_history ADD COLUMN is_proxy INTEGER DEFAULT 0',
 ];
 
 function runMigrations(db: sqlite3.Database): void {
@@ -244,6 +246,7 @@ async function trackSiteVisit(
   fpHash: string,
   ip: string,
   ipInfo: Record<string, any> | null,
+  isProxy: boolean,
 ): Promise<void> {
   const now = new Date().toISOString();
   const fpConfigJson = JSON.stringify(fpConfig);
@@ -260,9 +263,9 @@ async function trackSiteVisit(
     await dbRun(
       db,
       `INSERT INTO site_fingerprint_history
-       (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, domain, fpHash, fpConfigJson, ip, ipInfoJson, now],
+       (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, is_proxy, started_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, domain, fpHash, fpConfigJson, ip, ipInfoJson, isProxy ? 1 : 0, now],
     );
     return;
   }
@@ -285,9 +288,9 @@ async function trackSiteVisit(
   await dbRun(
     db,
     `INSERT INTO site_fingerprint_history
-     (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [newId, domain, fpHash, fpConfigJson, ip, ipInfoJson, now],
+     (id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, is_proxy, started_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [newId, domain, fpHash, fpConfigJson, ip, ipInfoJson, isProxy ? 1 : 0, now],
   );
 }
 
@@ -298,6 +301,7 @@ export async function onPageNavigated(
   client: any,
   fpConfig: Record<string, any> | null,
   url: string,
+  isProxy: boolean,
 ): Promise<void> {
   const domain = extractDomain(url);
   if (!domain) {
@@ -324,7 +328,7 @@ export async function onPageNavigated(
 
   const db = openDb(profileDir);
   try {
-    await trackSiteVisit(db, domain, resolvedFp, fpHash, ip, ipInfo);
+    await trackSiteVisit(db, domain, resolvedFp, fpHash, ip, ipInfo, isProxy);
   } catch (e: any) {
     console.error(TAG, 'trackSiteVisit() — error:', e?.message);
   } finally {

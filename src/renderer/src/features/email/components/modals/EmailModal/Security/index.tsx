@@ -29,7 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Globe, Key, Lock, Mail } from 'lucide-react';
 
 // ── Types ──
-import { getServiceById } from '../../../../../constants/services';
+import { getServiceById } from '../../../../../../constants/services';
 
 // ── Sub-components ──
 import ScoreGauge from './ScoreGauge';
@@ -42,12 +42,7 @@ import Service2FA from './Service2FA';
 import { parseBackupCodes, isValidTotp, passwordStrength, zoneForPct } from './utils';
 
 // ── Types ──
-import type {
-  FingerprintEntry,
-  SecurityWarning,
-  BreakdownItem,
-  SecurityTabProps,
-} from './types';
+import type { FingerprintEntry, SecurityWarning, BreakdownItem, SecurityTabProps } from './types';
 
 // ─── Component ──────────────────────────────────────────────────────────
 export default function SecurityTab({ account }: SecurityTabProps) {
@@ -297,7 +292,9 @@ export default function SecurityTab({ account }: SecurityTabProps) {
         <span>
           Last full scan: <b className="text-text-secondary">just now</b>
           {fpLoading && (
-            <span className="ml-2 text-text-secondary/40 italic">· refreshing fingerprint data…</span>
+            <span className="ml-2 text-text-secondary/40 italic">
+              · refreshing fingerprint data…
+            </span>
           )}
         </span>
         <span className="flex items-center gap-1.5 text-green">

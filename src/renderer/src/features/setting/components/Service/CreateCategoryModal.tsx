@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus } from 'lucide-react';
-import { cn } from '../shared/lib/utils';
+import { cn } from '@renderer/shared/lib/utils';
 
 interface CreateCategoryModalProps {
   isOpen: boolean;
@@ -58,7 +58,9 @@ const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
               placeholder="Category title..."
               className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
               autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreate();
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -69,7 +71,9 @@ const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Short description..."
               className="w-full h-10 px-3 rounded-md bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreate();
+              }}
             />
           </div>
         </div>

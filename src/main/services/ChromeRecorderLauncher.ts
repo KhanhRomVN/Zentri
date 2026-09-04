@@ -40,58 +40,6 @@ export class ChromeRecorderLauncher {
   }
 
   /**
-   * Copy extension to profile directory for persistent loading
-   */
-  private copyExtensionToProfile(profileDir: string, extensionPath: string): void {
-    const profileExtensionsDir = path.join(profileDir, 'Extensions');
-    const targetExtensionDir = path.join(profileExtensionsDir, 'zentri-workflow-recorder');
-
-    // Create Extensions directory if needed
-    if (!fs.existsSync(profileExtensionsDir)) {
-      fs.mkdirSync(profileExtensionsDir, { recursive: true });
-    }
-
-    // Remove old extension copy if exists
-    if (fs.existsSync(targetExtensionDir)) {
-      try {
-        fs.rmSync(targetExtensionDir, { recursive: true, force: true });
-      } catch (error) {
-        console.warn('[ChromeRecorderLauncher] ⚠️  Failed to remove old extension:', error);
-      }
-    }
-
-    // Copy extension to profile
-    try {
-      this.copyDirectoryRecursive(extensionPath, targetExtensionDir);
-    } catch (error) {
-      console.error('[ChromeRecorderLauncher] ❌ Failed to copy extension:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Recursively copy directory
-   */
-  private copyDirectoryRecursive(src: string, dest: string): void {
-    if (!fs.existsSync(dest)) {
-      fs.mkdirSync(dest, { recursive: true });
-    }
-
-    const entries = fs.readdirSync(src, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const srcPath = path.join(src, entry.name);
-      const destPath = path.join(dest, entry.name);
-
-      if (entry.isDirectory()) {
-        this.copyDirectoryRecursive(srcPath, destPath);
-      } else {
-        fs.copyFileSync(srcPath, destPath);
-      }
-    }
-  }
-
-  /**
    * Setup Chrome Preferences file to enable Developer Mode for extensions
    */
   private setupChromePreferences(profileDir: string): void {
@@ -142,7 +90,6 @@ export class ChromeRecorderLauncher {
 
     try {
       fs.writeFileSync(preferencesPath, JSON.stringify(preferences, null, 2));
-      console.log('[ChromeRecorderLauncher] ✓ Created Preferences file');
     } catch (error) {
       console.error('[ChromeRecorderLauncher] ⚠️  Failed to create Preferences:', error);
     }
@@ -175,7 +122,6 @@ export class ChromeRecorderLauncher {
       if (fs.existsSync(extensionCachePath)) {
         try {
           fs.rmSync(extensionCachePath, { recursive: true, force: true });
-          console.log('[ChromeRecorderLauncher] ✓ Deleted extension cache');
         } catch (error) {
           console.warn('[ChromeRecorderLauncher] ⚠️  Failed to delete extension cache:', error);
         }
@@ -193,9 +139,6 @@ export class ChromeRecorderLauncher {
       if (!fs.existsSync(manifestPath)) {
         throw new Error(`Extension manifest.json not found at: ${manifestPath}`);
       }
-
-      console.log(`[ChromeRecorderLauncher] Launching with profile: ${profileDir}`);
-      console.log(`[ChromeRecorderLauncher] Loading extension from: ${extensionPath}`);
 
       // Launch browser with Playwright + Extension
       const context = await chromium.launchPersistentContext(profileDir, {
@@ -266,7 +209,6 @@ export class ChromeRecorderLauncher {
         }
       });
 
-      console.log(`[ChromeRecorderLauncher] ✓ Browser launched successfully for ${workflowId}`);
       return { success: true };
     } catch (error: any) {
       console.error('[ChromeRecorderLauncher] Error launching Chrome:', error);
@@ -293,7 +235,6 @@ export class ChromeRecorderLauncher {
       }
 
       // STEP 1: Reset browser - close all tabs except one new tab
-      console.log('[ChromeRecorderLauncher] Resetting browser - closing all tabs...');
       const currentPages = browser.context.pages();
 
       // Create a new blank tab first
@@ -310,8 +251,6 @@ export class ChromeRecorderLauncher {
 
       // Update stored page reference to the new blank page
       this.activeBrowsers.set(workflowId, { ...browser, page: newPage });
-
-      console.log('[ChromeRecorderLauncher] Browser reset complete - fresh new tab created');
       logCallback?.('info', `Starting workflow execution on recorder browser for ${workflowId}`);
 
       // Execute workflow nodes on the fresh page
@@ -461,7 +400,7 @@ export class ChromeRecorderLauncher {
           } else {
             // Scroll by pixels
             await page.evaluate((pixels: number) => {
-              window.scrollBy(0, pixels);
+              (globalThis as any).scrollBy(0, pixels);
             }, scrollPixels);
             logCallback?.('info', `Scrolled ${scrollPixels}px (${i + 1}/${scrollRepeat})`, node.id);
           }

@@ -2,8 +2,8 @@
  * Helpers + constants for SecurityTab scoring logic.
  */
 
-import { getServiceById } from '../../../../../constants/services';
-import type { Account } from '../../../types';
+import { getServiceById } from '../../../../../../constants/services';
+import type { Account } from '../../../../types';
 
 export function parseBackupCodes(value: string | null | undefined): string[] {
   if (!value) return [];
@@ -86,10 +86,7 @@ export function getSecurityScore(account: Account): number {
   return Math.min(score, 100);
 }
 
-export const ZONE_STYLES: Record<
-  string,
-  { iconBg: string; score: string; fill: string }
-> = {
+export const ZONE_STYLES: Record<string, { iconBg: string; score: string; fill: string }> = {
   critical: {
     iconBg: 'bg-red/10 text-red',
     score: 'text-red',

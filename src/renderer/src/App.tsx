@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { Toaster } from 'sonner';
 import { ServiceDrawerProvider } from './contexts/ServiceDrawerContext';
-import { loadServices } from './features/setting/components/Service'; // We'll need to export this
 
 const queryClient = new QueryClient();
 

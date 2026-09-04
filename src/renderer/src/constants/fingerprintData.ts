@@ -1,7 +1,5 @@
 import type { LocaleInfo, OsTemplate, BrowserTemplate } from '../types/fingerprint-generator';
 
-import type { LocaleInfo, OsTemplate, BrowserTemplate } from '../types/fingerprint-generator';
-
 // ── Country → locale mapping ─────────────────────────────────────────
 export const COUNTRY_LOCALE_MAP: Record<string, LocaleInfo> = {
   VN: {

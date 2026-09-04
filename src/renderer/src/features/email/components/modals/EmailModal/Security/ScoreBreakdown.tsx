@@ -3,7 +3,7 @@
  */
 
 import { BarChart3 } from 'lucide-react';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 import { ZONE_STYLES } from './utils';
 import type { BreakdownItem } from './types';
 

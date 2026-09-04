@@ -19,10 +19,10 @@
 import { FC } from 'react';
 
 // ── UI ──
-import { Globe, Eye, Trash2, LayoutGrid } from 'lucide-react';
+import { Globe, Eye, Trash2, LayoutGrid, Search, AlertTriangle } from 'lucide-react';
 
 // ── Utils ──
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 
 // ── UI Components ──
 import {
@@ -30,8 +30,8 @@ import {
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
-} from '../../../../../components/ui/Dropdown';
-import { EmptyState } from '../../../../../components/ui/EmptyState';
+} from '../../../../../../components/ui/Dropdown';
+import { EmptyState } from '../../../../../../components/ui/EmptyState';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────
 interface ServiceListProps {
@@ -41,6 +41,8 @@ interface ServiceListProps {
   onEditServiceLink: (linkId: string) => void;
   onOpenService?: (linkId: string) => void;
   onDeleteService?: (linkId: string) => void;
+  serviceSearch: string;
+  setServiceSearch: (val: string) => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -51,24 +53,34 @@ const ServiceList: FC<ServiceListProps> = ({
   onEditServiceLink,
   onOpenService,
   onDeleteService,
+  serviceSearch,
+  setServiceSearch,
 }) => {
   return (
     <div className="w-[35%] min-w-[240px] max-w-[360px] border-r border-border bg-card/5 backdrop-blur-sm overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-y-scroll overscroll-contain custom-scrollbar">
-        {filteredServices.length === 0 ? (
-          <EmptyState
-            icon={<LayoutGrid />}
-            title="No services linked"
-            description=""
+      <div className="p-0 border-b border-border shrink-0">
+        <div className="relative flex items-center w-full h-9 bg-input-background rounded-md">
+          <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted-foreground/50" />
+          <input
+            type="text"
+            placeholder="Search services..."
+            value={serviceSearch}
+            onChange={(e) => setServiceSearch(e.target.value)}
+            className="w-full h-full pl-9 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
           />
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar">
+        {filteredServices.length === 0 ? (
+          <EmptyState icon={<LayoutGrid />} title="No services linked" description="" />
         ) : (
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-4 p-4">
             {filteredServices.map((service: any) => (
               <Dropdown key={service.id} trigger="contextmenu">
                 <DropdownTrigger asChild>
                   <div
                     className={cn(
-                      'group relative bg-card/30 backdrop-blur-sm border p-3 transition-all duration-300 cursor-pointer',
+                      'group relative bg-card-background border p-3 transition-all duration-300 cursor-pointer',
                       service.id === selectedServiceId
                         ? 'bg-card-background border-border/50'
                         : 'border-border/50 hover:bg-card-hover hover:border-primary/30',
@@ -88,10 +100,22 @@ const ServiceList: FC<ServiceListProps> = ({
                           />
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold text-foreground/90 leading-tight truncate">
-                            {service.name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground/40 font-mono truncate">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm font-bold text-foreground/90 leading-tight truncate">
+                              {service.name}
+                            </span>
+                            {service.twoFa &&
+                              !service.twoFa.totp &&
+                              !(service.twoFa.backupCodes && service.twoFa.backupCodes.length > 0) && (
+                                <span
+                                  className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-error/10 text-error"
+                                  title="2FA incomplete"
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                </span>
+                              )}
+                          </div>
+                          <span className="text-[10px] text-text-secondary font-mono truncate">
                             {service.url ? new URL(service.url).hostname : ''}
                           </span>
                         </div>

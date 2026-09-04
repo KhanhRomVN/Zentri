@@ -14,21 +14,13 @@ export const useWorkflowRecording = ({
   setIsRecording,
 }: UseWorkflowRecordingArgs) => {
   const handleLaunchBrowser = useCallback(async () => {
-    console.log('[CanvasEditor] handleLaunchBrowser called');
     try {
       setIsRecording(true);
-      console.log('[CanvasEditor] Calling window.api.workflow.startRecording...');
-
       const result = await window.api.workflow.startRecording(workflowId, 'https://www.google.com');
-
-      console.log('[CanvasEditor] startRecording result:', result);
-
       if (!result.success) {
         console.error('[CanvasEditor] Failed to start recording:', result.error);
         setIsRecording(false);
         alert(`Failed to start recording: ${result.error}`);
-      } else {
-        console.log('[CanvasEditor] Recording started successfully');
       }
     } catch (error) {
       console.error('[CanvasEditor] Error launching browser:', error);
@@ -53,19 +45,12 @@ export const useWorkflowRecording = ({
   }, [workflowId, setIsRecording]);
 
   const handleRunOnRecorder = useCallback(async () => {
-    console.log('[CanvasEditor] handleRunOnRecorder called');
     try {
-      console.log('[CanvasEditor] Calling window.api.workflow.runOnRecorder...');
-
       const result = await window.api.workflow.runOnRecorder(workflowId, currentNodes);
-
-      console.log('[CanvasEditor] runOnRecorder result:', result);
 
       if (!result.success) {
         console.error('[CanvasEditor] Failed to run workflow on recorder:', result.error);
         alert(`Failed to run workflow on recorder: ${result.error}`);
-      } else {
-        console.log('[CanvasEditor] Workflow executed successfully on recorder browser');
       }
     } catch (error) {
       console.error('[CanvasEditor] Error running workflow on recorder:', error);

@@ -22,12 +22,11 @@ import {
   ChevronDown,
   AlertTriangle,
   CheckCircle,
-  Globe,
   Trash2,
 } from 'lucide-react';
 
 import { format } from 'date-fns';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 
 import { FingerprintEntry } from './FootprintTable';
 
@@ -136,7 +135,10 @@ function getFieldValue(entry: FingerprintEntry, key: string): string {
 }
 
 function countChanged(a: FingerprintEntry, b: FingerprintEntry): number {
-  return cmpFields.reduce((n, [key]) => n + (getFieldValue(a, key) !== getFieldValue(b, key) ? 1 : 0), 0);
+  return cmpFields.reduce(
+    (n, [key]) => n + (getFieldValue(a, key) !== getFieldValue(b, key) ? 1 : 0),
+    0,
+  );
 }
 
 // ─── Sub-component: Session Card ─────────────────────────────────────────
@@ -257,7 +259,12 @@ function SessionCard({
           <div className="flex items-center gap-3 px-3 py-2.5 bg-red/10 border-b border-red/30">
             <AlertTriangle className="w-4 h-4 text-red shrink-0" />
             <div className="flex-1 text-[12px] text-text-primary">
-              Delete session <b className="text-red">{format(new Date(entry.started_at), 'HH:mm:ss')} · {format(new Date(entry.started_at), 'dd/MM')}</b>? This action cannot be undone.
+              Delete session{' '}
+              <b className="text-red">
+                {format(new Date(entry.started_at), 'HH:mm:ss')} ·{' '}
+                {format(new Date(entry.started_at), 'dd/MM')}
+              </b>
+              ? This action cannot be undone.
             </div>
             <button
               className="font-sans text-[11px] font-semibold px-2.5 py-1 rounded-md border border-border-strong bg-muted/20 text-text-secondary/70 hover:text-text-primary transition-colors"
@@ -273,7 +280,10 @@ function SessionCard({
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-3 px-3 py-2.5 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+          <div
+            className="flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+            onClick={() => setExpanded(!expanded)}
+          >
             <div className="flex items-baseline gap-2 flex-1 min-w-0">
               <span className="font-mono text-xs text-text-primary">
                 {format(new Date(entry.started_at), 'HH:mm:ss')}
@@ -305,7 +315,9 @@ function SessionCard({
               <span
                 className={cn(
                   'inline-flex items-center gap-1.5 shrink-0 font-sans text-[11.5px] font-semibold px-2.5 py-1 rounded-md border',
-                  pillState === 'high' ? 'bg-red/10 text-red border-red/30' : 'bg-warn/10 text-warn border-warn/30',
+                  pillState === 'high'
+                    ? 'bg-red/10 text-red border-red/30'
+                    : 'bg-warn/10 text-warn border-warn/30',
                 )}
               >
                 <AlertTriangle className="w-3 h-3" />
@@ -335,7 +347,10 @@ function SessionCard({
         )}
 
         {/* Card info grid */}
-        <div className="grid grid-cols-2 gap-0 px-3 pb-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        <div
+          className="grid grid-cols-2 gap-0 px-3 pb-3 cursor-pointer"
+          onClick={() => setExpanded(!expanded)}
+        >
           <div className="py-2 pr-4">
             <div className="flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-wider text-text-secondary/40 mb-1.5">
               <MapPin className="w-3 h-3" />
@@ -346,7 +361,10 @@ function SessionCard({
               {city}, {country}
             </div>
             <div className="text-[11px] text-text-secondary/60 leading-relaxed">
-              {isp} · <span className="font-mono text-[10px] text-text-secondary/40">{entry.public_ip || '—'}</span>
+              {isp} ·{' '}
+              <span className="font-mono text-[10px] text-text-secondary/40">
+                {entry.public_ip || '—'}
+              </span>
             </div>
           </div>
 
@@ -458,12 +476,23 @@ function SessionCard({
                         const baseVal = getFieldValue(prevEntry, key);
                         const diff = val !== baseVal;
                         return (
-                          <tr key={key} className={cn('border-b border-border/40 last:border-b-0', diff && 'bg-warn/5')}>
+                          <tr
+                            key={key}
+                            className={cn(
+                              'border-b border-border/40 last:border-b-0',
+                              diff && 'bg-warn/5',
+                            )}
+                          >
                             <td className="px-2.5 py-1.5 text-[11px] text-text-secondary/50 whitespace-nowrap w-[150px]">
                               {diff && <span className="text-warn text-[9px] mr-1">●</span>}
                               {label}
                             </td>
-                            <td className={cn('px-2.5 py-1.5 text-[11px] font-mono break-all', diff ? 'text-warn font-semibold' : 'text-text-secondary/70')}>
+                            <td
+                              className={cn(
+                                'px-2.5 py-1.5 text-[11px] font-mono break-all',
+                                diff ? 'text-warn font-semibold' : 'text-text-secondary/70',
+                              )}
+                            >
                               {val}
                             </td>
                             <td className="px-2.5 py-1.5 text-[11px] font-mono text-text-secondary/70 break-all">
@@ -486,31 +515,12 @@ function SessionCard({
 
 // ─── Component ──────────────────────────────────────────────────────────
 export default function FootprintDetail({ entries, onDeleteSession }: FootprintDetailProps) {
-  const domain = entries[0]?.domain || '';
-  const activeCount = entries.filter((e) => !e.ended_at).length;
-
   return (
     <div className="flex flex-col min-h-0">
-      {/* ── Header ── */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border flex-shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-muted/20 border border-border-strong flex items-center justify-center shrink-0">
-          <Globe className="w-4 h-4 text-text-secondary/50" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="font-display text-[14px] font-bold text-text-primary leading-tight mb-0.5">{domain}</h2>
-          <div className="flex items-center gap-1.5 font-mono text-[10px] text-text-secondary/40">
-            <span className="w-1.5 h-1.5 rounded-full bg-green shadow-[0_0_0_3px_rgba(62,207,142,0.1)]" />
-            {entries.length} sessions recorded · {activeCount} active
-          </div>
-        </div>
-      </div>
-
       {/* ── Timeline ── */}
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 py-3">
         {entries.length === 0 ? (
-          <div className="text-xs text-text-secondary/50 italic text-center py-6">
-            No sessions.
-          </div>
+          <div className="text-xs text-text-secondary/50 italic text-center py-6">No sessions.</div>
         ) : (
           entries.map((entry, i) => (
             <SessionCard

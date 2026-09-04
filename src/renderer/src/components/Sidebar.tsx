@@ -140,7 +140,7 @@ const Sidebar = memo(
           {/* Header */}
           <div
             className={cn(
-              'w-full h-[39px] flex items-center shrink-0 border-b border-border',
+              'w-full min-h-[47px] flex items-center shrink-0 border-b border-border py-1.5',
               expanded ? 'px-3 justify-start' : 'justify-center',
             )}
           >

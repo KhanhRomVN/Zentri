@@ -15,6 +15,8 @@ export interface DropdownProps {
   position?: { top: number; left: number };
   /** Enable search bar as first item in dropdown */
   searchable?: boolean;
+  /** Whether clicking on DropdownItem should close the dropdown. Default: true */
+  closeOnSelect?: boolean;
 }
 
 export interface DropdownTriggerProps {
@@ -33,6 +35,7 @@ export interface DropdownItemProps extends React.HTMLAttributes<HTMLDivElement> 
   className?: string;
   disabled?: boolean;
   icon?: React.ReactNode;
+  /** Override the dropdown's closeOnSelect behavior for this specific item */
   closeOnSelect?: boolean;
   variant?: 'default' | 'error';
   noPadding?: boolean;

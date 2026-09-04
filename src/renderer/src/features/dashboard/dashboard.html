@@ -1,0 +1,3136 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zentri — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-void: #08090b;
+        --bg-panel: #121316;
+        --bg-panel-raised: #191b1f;
+        --bg-hover: #212328;
+        --border: #26282f;
+        --border-soft: #1c1e23;
+        --text-primary: #e9eaee;
+        --text-secondary: #8b8d96;
+        --text-tertiary: #54565f;
+
+        --primary: #6f8dff;
+        --primary-dim: #4c63c9;
+        --primary-glow: rgba(111, 141, 255, 0.32);
+
+        --device: #ff6a1f;
+        --device-dim: #b8481a;
+        --identity: #2dd8c8;
+        --identity-dim: #1f9a90;
+        --proxy: #a78bfa;
+        --proxy-dim: #7c5fd6;
+        --workflow: #ffb020;
+        --workflow-dim: #c98a12;
+
+        --ok: #3ddc84;
+        --busy: #ffb020;
+        --off: #4a4d57;
+        --err: #ff4757;
+
+        --radius: 12px;
+        --mono: 'JetBrains Mono', monospace;
+        --disp: 'Space Grotesk', sans-serif;
+        --body: 'Inter', sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: var(--bg-void);
+        color: var(--text-primary);
+        font-family: var(--body);
+        font-size: 14px;
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            ellipse 900px 480px at 10% -8%,
+            rgba(111, 141, 255, 0.08),
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 700px 480px at 100% 0%,
+            rgba(167, 139, 250, 0.05),
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 600px 420px at 60% 100%,
+            rgba(45, 216, 200, 0.04),
+            transparent 60%
+          );
+        pointer-events: none;
+        z-index: 0;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2a2c33;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #35373f;
+      }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+      }
+      input,
+      select,
+      textarea {
+        font-family: inherit;
+      }
+      svg {
+        display: block;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      /* ---------- APP SHELL ---------- */
+      .app {
+        display: grid;
+        grid-template-columns: 68px 1fr;
+        grid-template-rows: 52px 1fr 26px;
+        grid-template-areas:
+          'rail topbar'
+          'rail main'
+          'rail status';
+        height: 100vh;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ---------- ICON RAIL ---------- */
+      .rail {
+        grid-area: rail;
+        border-right: 1px solid var(--border);
+        background: rgba(18, 19, 22, 0.6);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 0;
+        gap: 4px;
+      }
+      .rail .brandmark {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: linear-gradient(135deg, var(--primary), #4457c9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: 15px;
+        color: #060815;
+        margin-bottom: 14px;
+      }
+      .rail-item {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-tertiary);
+        position: relative;
+        transition: all 0.14s;
+      }
+      .rail-item:hover {
+        background: var(--bg-panel-raised);
+        color: var(--text-secondary);
+      }
+      .rail-item.active {
+        background: rgba(111, 141, 255, 0.12);
+        color: var(--primary);
+      }
+      .rail-item.active::before {
+        content: '';
+        position: absolute;
+        left: -12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 18px;
+        background: var(--primary);
+        border-radius: 0 3px 3px 0;
+      }
+      .rail-item svg {
+        width: 19px;
+        height: 19px;
+      }
+      .rail-bottom {
+        margin-top: auto;
+      }
+
+      /* ---------- HEADERBAR ---------- */
+      .headerbar {
+        grid-area: topbar;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(18, 19, 22, 0.85);
+        backdrop-filter: blur(8px);
+      }
+      .hb-title-wrap {
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .hb-title {
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: 15.5px;
+        letter-spacing: -0.01em;
+      }
+      .hb-subtitle {
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+        font-family: var(--mono);
+      }
+      .hb-sep {
+        width: 1px;
+        height: 22px;
+        background: var(--border);
+        flex-shrink: 0;
+      }
+      .range-switch {
+        display: flex;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 2px;
+        gap: 2px;
+        flex-shrink: 0;
+      }
+      .rsw-btn {
+        background: none;
+        border: none;
+        color: var(--text-tertiary);
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 5px 10px;
+        border-radius: 6px;
+        transition: all 0.12s;
+        font-family: var(--mono);
+      }
+      .rsw-btn:hover {
+        color: var(--text-secondary);
+      }
+      .rsw-btn.active {
+        background: var(--bg-hover);
+        color: var(--primary);
+      }
+      .omnibox {
+        position: relative;
+        width: 300px;
+        max-width: 26vw;
+        flex-shrink: 1;
+      }
+      .omnibox svg {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-tertiary);
+        width: 13px;
+        height: 13px;
+      }
+      .omnibox input {
+        width: 100%;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 6px 34px 6px 30px;
+        color: var(--text-primary);
+        font-size: 12.5px;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .omnibox input:focus {
+        border-color: var(--primary-dim);
+      }
+      .omnibox input::placeholder {
+        color: var(--text-tertiary);
+      }
+      .omnibox .kbd {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--text-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+      .clock-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        font-family: var(--mono);
+        flex-shrink: 0;
+      }
+      .clock-wrap .cw-time {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: 0.4px;
+      }
+      .clock-wrap .cw-date {
+        font-size: 9.5px;
+        color: var(--text-tertiary);
+      }
+      .relay-ticker {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-secondary);
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        border-radius: 7px;
+        padding: 5px 11px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .relay-ticker .pulse-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 5px var(--ok);
+        animation: pulse 2s infinite;
+        flex-shrink: 0;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+      .spacer {
+        flex: 1;
+      }
+      .h-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .icon-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        transition: all 0.15s;
+        position: relative;
+      }
+      .icon-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+      }
+      .icon-btn svg {
+        width: 15px;
+        height: 15px;
+      }
+      .icon-btn .dot {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        min-width: 14px;
+        height: 14px;
+        padding: 0 3px;
+        border-radius: 7px;
+        background: var(--err);
+        border: 2px solid var(--bg-void);
+        font-size: 8px;
+        font-weight: 700;
+        color: #1a0a02;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .hdd {
+        position: relative;
+      }
+      .hdd-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 320px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+        z-index: 70;
+        display: none;
+        overflow: hidden;
+      }
+      .hdd.open .hdd-menu {
+        display: block;
+      }
+      .hdd-head {
+        padding: 10px 12px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-soft);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .hdd-head span.n {
+        font-family: var(--mono);
+        color: var(--err);
+      }
+      .hdd-list {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .hdd-row {
+        display: flex;
+        gap: 9px;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 12px;
+      }
+      .hdd-row:last-child {
+        border-bottom: none;
+      }
+      .hdd-row .idot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-top: 4px;
+        flex-shrink: 0;
+      }
+      .hdd-row .idot.err {
+        background: var(--err);
+        box-shadow: 0 0 5px var(--err);
+      }
+      .hdd-row .idot.warn {
+        background: var(--busy);
+        box-shadow: 0 0 5px var(--busy);
+      }
+      .hdd-row .idot.ok {
+        background: var(--ok);
+        box-shadow: 0 0 5px var(--ok);
+      }
+      .hdd-row .txt {
+        flex: 1;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+      .hdd-row .txt b {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+      .hdd-row .tm {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+      }
+      .avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: rgba(111, 141, 255, 0.18);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--primary);
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn-primary {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        background: linear-gradient(135deg, var(--primary), #4457c9);
+        color: #060815;
+        font-weight: 700;
+        font-size: 12.5px;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 14px;
+        box-shadow: 0 2px 12px var(--primary-glow);
+        transition:
+          transform 0.12s,
+          box-shadow 0.12s;
+        white-space: nowrap;
+      }
+      .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 18px var(--primary-glow);
+      }
+      .btn-primary svg {
+        width: 14px;
+        height: 14px;
+      }
+      .btn-ghost {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel-raised);
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.12s;
+      }
+      .btn-ghost:hover {
+        color: var(--text-primary);
+        background: var(--bg-hover);
+      }
+      .btn-ghost svg {
+        width: 13px;
+        height: 13px;
+      }
+
+      /* ---------- MAIN ---------- */
+      .main {
+        grid-area: main;
+        overflow-y: auto;
+        padding: 18px 22px 40px;
+      }
+
+      .dash-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+      }
+      .dash-hero h1 {
+        font-family: var(--disp);
+        font-size: 21px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .dash-hero .dh-sub {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        margin-top: 3px;
+      }
+      .dash-hero .dh-sub b {
+        color: var(--text-secondary);
+        font-family: var(--mono);
+      }
+      .quick-pills {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .qpill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        padding: 7px 12px;
+        border-radius: 20px;
+        transition: all 0.12s;
+      }
+      .qpill:hover {
+        color: var(--text-primary);
+        border-color: #3a3d46;
+        transform: translateY(-1px);
+      }
+      .qpill svg {
+        width: 13px;
+        height: 13px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin: 26px 0 12px;
+      }
+      .section-head:first-of-type {
+        margin-top: 0;
+      }
+      .section-head h2 {
+        font-family: var(--disp);
+        font-size: 15.5px;
+        font-weight: 700;
+      }
+      .section-head .sh-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .sh-link {
+        font-size: 11.5px;
+        color: var(--text-tertiary);
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        transition: color 0.12s;
+      }
+      .sh-link:hover {
+        color: var(--primary);
+      }
+      .sh-link svg {
+        width: 11px;
+        height: 11px;
+      }
+      .mini-select {
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 5px 8px;
+        color: var(--text-secondary);
+        font-size: 11px;
+        outline: none;
+      }
+
+      /* ---------- KPI GRID ---------- */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      .kpi-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-soft);
+        border-radius: var(--radius);
+        padding: 14px 15px;
+        position: relative;
+        overflow: hidden;
+        transition:
+          border-color 0.15s,
+          transform 0.12s;
+      }
+      .kpi-card:hover {
+        border-color: #33363f;
+        transform: translateY(-1px);
+      }
+      .kpi-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .kpi-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .kpi-icon svg {
+        width: 15px;
+        height: 15px;
+      }
+      .kpi-delta {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .kpi-delta.up {
+        color: var(--ok);
+        background: rgba(61, 220, 132, 0.1);
+      }
+      .kpi-delta.down {
+        color: var(--err);
+        background: rgba(255, 71, 87, 0.1);
+      }
+      .kpi-value {
+        font-family: var(--disp);
+        font-size: 23px;
+        font-weight: 700;
+        line-height: 1.1;
+        margin-bottom: 3px;
+      }
+      .kpi-label {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-bottom: 10px;
+      }
+      .kpi-spark {
+        height: 26px;
+        margin: 0 -3px;
+      }
+
+      /* ---------- CHARTS ---------- */
+      .charts-row {
+        display: grid;
+        grid-template-columns: 1.7fr 1fr;
+        gap: 14px;
+      }
+      .panel-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-soft);
+        border-radius: var(--radius);
+        padding: 16px;
+      }
+      .panel-card h3 {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+      .metric-tabs {
+        display: flex;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 2px;
+        gap: 2px;
+      }
+      .mtab {
+        background: none;
+        border: none;
+        color: var(--text-tertiary);
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 4px 9px;
+        border-radius: 5px;
+        transition: all 0.12s;
+      }
+      .mtab.active {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+      }
+      .chart-legend-inline {
+        display: flex;
+        gap: 4px;
+        align-items: baseline;
+        font-family: var(--mono);
+      }
+      .chart-legend-inline .val {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      .chart-legend-inline .unit {
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+      }
+
+      .legend-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+        justify-content: center;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .legend-item .sw {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+      }
+      .module-dist {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border-soft);
+      }
+      .md-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 11.5px;
+      }
+      .md-row .md-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+      .md-row .md-label {
+        width: 78px;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+      }
+      .md-row .md-track {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--bg-void);
+        overflow: hidden;
+      }
+      .md-row .md-fill {
+        height: 100%;
+        border-radius: 3px;
+      }
+      .md-row .md-val {
+        width: 34px;
+        text-align: right;
+        font-family: var(--mono);
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+      }
+
+      /* ---------- 3-COL WIDGETS ---------- */
+      .tri-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .bar-list {
+        display: flex;
+        flex-direction: column;
+        gap: 11px;
+      }
+      .bar-list-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .bar-list-row .bl-lbl {
+        width: 78px;
+        font-size: 11.5px;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .bar-list-row .bl-track {
+        flex: 1;
+        height: 7px;
+        border-radius: 4px;
+        background: var(--bg-void);
+        overflow: hidden;
+      }
+      .bar-list-row .bl-fill {
+        height: 100%;
+        border-radius: 4px;
+      }
+      .bar-list-row .bl-val {
+        width: 54px;
+        text-align: right;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+      }
+
+      .proxy-list,
+      .wf-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        padding-right: 2px;
+      }
+      .proxy-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 9px;
+        border-radius: 8px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+      }
+      .proxy-row .flag {
+        font-size: 15px;
+        flex-shrink: 0;
+      }
+      .proxy-row .p-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .proxy-row .p-host {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .proxy-row .p-sub {
+        font-size: 10px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
+      }
+      .proxy-row .p-right {
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .proxy-row .p-lat {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .proxy-row .p-cnt {
+        font-size: 9.5px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
+      }
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .status-dot.ok {
+        background: var(--ok);
+        box-shadow: 0 0 6px var(--ok);
+      }
+      .status-dot.busy {
+        background: var(--busy);
+        box-shadow: 0 0 6px var(--busy);
+      }
+      .status-dot.off {
+        background: var(--off);
+      }
+      .status-dot.err {
+        background: var(--err);
+        box-shadow: 0 0 6px var(--err);
+      }
+
+      .wf-row {
+        padding: 9px 10px;
+        border-radius: 8px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+      }
+      .wf-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+      .wf-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .wf-icon svg {
+        width: 11px;
+        height: 11px;
+      }
+      .wf-name {
+        flex: 1;
+        font-size: 11.5px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wf-badge {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        font-family: var(--mono);
+      }
+      .wf-badge.running {
+        background: rgba(255, 176, 32, 0.12);
+        color: var(--busy);
+      }
+      .wf-badge.scheduled {
+        background: rgba(111, 141, 255, 0.12);
+        color: var(--primary);
+      }
+      .wf-badge.completed {
+        background: rgba(61, 220, 132, 0.12);
+        color: var(--ok);
+      }
+      .wf-badge.failed {
+        background: rgba(255, 71, 87, 0.12);
+        color: var(--err);
+      }
+      .wf-badge.paused {
+        background: rgba(138, 140, 150, 0.15);
+        color: var(--text-secondary);
+      }
+      .wf-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--text-tertiary);
+        font-family: var(--mono);
+      }
+      .wf-track {
+        height: 4px;
+        border-radius: 3px;
+        background: var(--bg-void);
+        overflow: hidden;
+        margin-top: 6px;
+      }
+      .wf-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: linear-gradient(90deg, var(--workflow), #ffd166);
+      }
+
+      /* ---------- ALERTS + ACTIVITY ---------- */
+      .dual-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .filter-chip-row {
+        display: flex;
+        gap: 6px;
+      }
+      .fchip {
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        color: var(--text-tertiary);
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 4px 9px;
+        border-radius: 20px;
+        transition: all 0.12s;
+      }
+      .fchip:hover {
+        color: var(--text-secondary);
+      }
+      .fchip.active {
+        color: var(--primary);
+        border-color: var(--primary-dim);
+        background: rgba(111, 141, 255, 0.08);
+      }
+      .feed-list {
+        display: flex;
+        flex-direction: column;
+        max-height: 320px;
+        overflow-y: auto;
+        padding-right: 2px;
+      }
+      .alert-row {
+        display: flex;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border-soft);
+      }
+      .alert-row:last-child {
+        border-bottom: none;
+      }
+      .alert-row .a-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .alert-row .a-icon svg {
+        width: 13px;
+        height: 13px;
+      }
+      .alert-row .a-body {
+        flex: 1;
+        min-width: 0;
+      }
+      .alert-row .a-msg {
+        font-size: 12px;
+        color: var(--text-primary);
+        line-height: 1.4;
+      }
+      .alert-row .a-meta {
+        display: flex;
+        gap: 7px;
+        margin-top: 3px;
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+        font-family: var(--mono);
+        align-items: center;
+      }
+      .a-tag {
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      .a-fix {
+        font-size: 10.5px;
+        font-weight: 600;
+        color: var(--primary);
+        background: rgba(111, 141, 255, 0.1);
+        border: 1px solid var(--primary-dim);
+        padding: 3px 9px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        align-self: center;
+      }
+      .a-fix:hover {
+        background: rgba(111, 141, 255, 0.18);
+      }
+
+      .tl-row {
+        display: flex;
+        gap: 10px;
+        padding: 9px 0;
+      }
+      .tl-row .tl-icon-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .tl-row .tl-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tl-row .tl-icon svg {
+        width: 11px;
+        height: 11px;
+      }
+      .tl-row .tl-line {
+        width: 1px;
+        flex: 1;
+        background: var(--border-soft);
+        margin-top: 3px;
+      }
+      .tl-row:last-child .tl-line {
+        display: none;
+      }
+      .tl-row .tl-txt {
+        flex: 1;
+        font-size: 12px;
+        color: var(--text-secondary);
+        padding-bottom: 2px;
+      }
+      .tl-row .tl-txt b {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .tl-row .tl-tm {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
+      }
+
+      /* ---------- LEADERBOARD + SCHEDULE ---------- */
+      .lb-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .lb-table th {
+        text-align: left;
+        font-size: 10px;
+        color: var(--text-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 0 8px 8px;
+        font-weight: 600;
+      }
+      .lb-table td {
+        padding: 8px 8px;
+        font-size: 12px;
+        border-top: 1px solid var(--border-soft);
+        vertical-align: middle;
+      }
+      .lb-rank {
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: 12.5px;
+        width: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .lb-rank.top1 {
+        color: #ffd166;
+      }
+      .lb-rank.top2 {
+        color: #c9ccd6;
+      }
+      .lb-rank.top3 {
+        color: #d99a5e;
+      }
+      .lb-name-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .lb-type-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .lb-type-icon svg {
+        width: 11px;
+        height: 11px;
+      }
+      .lb-name {
+        font-weight: 600;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .lb-sub {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--text-tertiary);
+      }
+      .rate-pill {
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: 11.5px;
+        padding: 2px 7px;
+        border-radius: 5px;
+      }
+      .rate-pill.good {
+        color: var(--ok);
+        background: rgba(61, 220, 132, 0.1);
+      }
+      .rate-pill.mid {
+        color: var(--busy);
+        background: rgba(255, 176, 32, 0.1);
+      }
+      .earn-val {
+        font-family: var(--mono);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .trend-arrow {
+        font-family: var(--mono);
+        font-size: 10.5px;
+      }
+      .trend-arrow.up {
+        color: var(--ok);
+      }
+      .trend-arrow.down {
+        color: var(--err);
+      }
+
+      .sched-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 2px;
+      }
+      .sched-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 10px;
+        border-radius: 8px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+      }
+      .sched-time {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+        width: 46px;
+        flex-shrink: 0;
+        text-align: center;
+      }
+      .sched-mid {
+        flex: 1;
+        min-width: 0;
+      }
+      .sched-name {
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sched-sub {
+        display: flex;
+        gap: 6px;
+        margin-top: 2px;
+        align-items: center;
+      }
+      .sched-sub .swatch {
+        width: 6px;
+        height: 6px;
+        border-radius: 2px;
+      }
+      .sched-sub span {
+        font-size: 10px;
+        color: var(--text-tertiary);
+        font-family: var(--mono);
+      }
+      .toggle-sw {
+        width: 30px;
+        height: 17px;
+        border-radius: 10px;
+        background: var(--bg-void);
+        border: 1px solid var(--border);
+        position: relative;
+        flex-shrink: 0;
+        transition: all 0.15s;
+      }
+      .toggle-sw::after {
+        content: '';
+        position: absolute;
+        top: 1px;
+        left: 1px;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--text-tertiary);
+        transition: all 0.15s;
+      }
+      .toggle-sw.on {
+        background: rgba(111, 141, 255, 0.25);
+        border-color: var(--primary-dim);
+      }
+      .toggle-sw.on::after {
+        left: 14px;
+        background: var(--primary);
+      }
+
+      /* ---------- RELAY INFRA ---------- */
+      .relay-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+      }
+      .relay-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-soft);
+        border-radius: var(--radius);
+        padding: 13px 14px;
+        cursor: pointer;
+        transition: all 0.12s;
+      }
+      .relay-card:hover {
+        border-color: #33363f;
+        transform: translateY(-1px);
+      }
+      .relay-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 9px;
+      }
+      .relay-region {
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .relay-code {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--text-tertiary);
+      }
+      .relay-stats {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+      .relay-track {
+        height: 5px;
+        border-radius: 3px;
+        background: var(--bg-void);
+        overflow: hidden;
+      }
+      .relay-fill {
+        height: 100%;
+        border-radius: 3px;
+      }
+
+      /* ---------- QUICK ACTIONS ---------- */
+      .qa-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 10px;
+      }
+      .qa-tile {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-soft);
+        border-radius: var(--radius);
+        padding: 16px 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 9px;
+        text-align: center;
+        transition: all 0.14s;
+      }
+      .qa-tile:hover {
+        border-color: var(--primary-dim);
+        background: rgba(111, 141, 255, 0.05);
+        transform: translateY(-2px);
+      }
+      .qa-tile .qa-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+      }
+      .qa-tile:hover .qa-icon {
+        color: var(--primary);
+        border-color: var(--primary-dim);
+      }
+      .qa-tile .qa-icon svg {
+        width: 17px;
+        height: 17px;
+      }
+      .qa-tile .qa-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        line-height: 1.3;
+      }
+
+      /* ---------- STATUS BAR ---------- */
+      .statusbar {
+        grid-area: status;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 16px;
+        border-top: 1px solid var(--border-soft);
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+        font-family: var(--mono);
+        background: rgba(18, 19, 22, 0.5);
+      }
+      .statusbar .sep {
+        width: 1px;
+        height: 12px;
+        background: var(--border);
+      }
+      .statusbar .live {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--ok);
+      }
+      .statusbar .live::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 5px var(--ok);
+        animation: pulse 2s infinite;
+      }
+
+      /* ---------- MODAL (System Health) ---------- */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.62);
+        backdrop-filter: blur(3px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        z-index: 80;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .sysmodal {
+        width: 760px;
+        max-width: 94vw;
+        max-height: 84vh;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transform: scale(0.97) translateY(6px);
+        opacity: 0;
+        transition:
+          transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1),
+          opacity 0.2s;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+      }
+      .modal-overlay.show .sysmodal {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+      .sysmodal-head {
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--border-soft);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+      .sysmodal-head h3 {
+        font-family: var(--disp);
+        font-size: 15.5px;
+        font-weight: 700;
+        flex: 1;
+      }
+      .sysmodal-head .sub {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+      }
+      .drawer-close {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .drawer-close svg {
+        width: 14px;
+        height: 14px;
+      }
+      .drawer-close:hover {
+        color: var(--text-primary);
+      }
+      .sysmodal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px;
+      }
+      .server-gauges {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .sgauge {
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        border-radius: 10px;
+        padding: 12px;
+        text-align: center;
+      }
+      .sgauge .sg-ring {
+        width: 76px;
+        height: 76px;
+        margin: 0 auto 8px;
+        position: relative;
+      }
+      .sgauge .sg-val {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .sgauge .sg-label {
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+      }
+      .relay-detail-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 9px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border-soft);
+        margin-bottom: 8px;
+      }
+      .relay-detail-row .rd-region {
+        width: 130px;
+        font-size: 12.5px;
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+      .relay-detail-row .rd-track {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--bg-void);
+        overflow: hidden;
+      }
+      .relay-detail-row .rd-fill {
+        height: 100%;
+        border-radius: 3px;
+      }
+      .relay-detail-row .rd-meta {
+        width: 150px;
+        text-align: right;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+      }
+
+      /* ---------- TOASTS ---------- */
+      .toast-stack {
+        position: fixed;
+        bottom: 40px;
+        right: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 200;
+      }
+      .toast {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: var(--bg-panel-raised);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--ok);
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 12.5px;
+        min-width: 230px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        animation: toastIn 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+      }
+      .toast svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+      }
+      .toast.err {
+        border-left-color: var(--err);
+      }
+      @keyframes toastIn {
+        from {
+          transform: translateX(30px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 1400px) {
+        .kpi-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .relay-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .qa-grid {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+      @media (max-width: 1150px) {
+        .charts-row,
+        .tri-row,
+        .dual-row {
+          grid-template-columns: 1fr;
+        }
+        .omnibox {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- ICON RAIL -->
+      <div class="rail">
+        <div class="brandmark">Z</div>
+        <div class="rail-item active" title="Dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+          </svg>
+        </div>
+        <div class="rail-item" title="Emails">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </div>
+        <div class="rail-item" title="Forge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M8 12h8M12 8v8" />
+          </svg>
+        </div>
+        <div class="rail-item" title="Filter">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+        </div>
+        <div class="rail-item" title="Workflow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+        </div>
+        <div class="rail-item" title="Proxy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6" />
+            <polyline points="8 6 2 12 8 18" />
+          </svg>
+        </div>
+        <div class="rail-item" title="Device">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+        </div>
+        <div class="rail-bottom">
+          <div class="rail-item" title="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- HEADERBAR -->
+      <div class="headerbar">
+        <div class="hb-title-wrap">
+          <span class="hb-title">Dashboard</span>
+          <span class="hb-subtitle">CONTROL CENTER</span>
+        </div>
+        <span class="hb-sep"></span>
+        <div class="range-switch" id="rangeSwitch">
+          <button class="rsw-btn active" data-range="24h">24H</button>
+          <button class="rsw-btn" data-range="7d">7 NGÀY</button>
+          <button class="rsw-btn" data-range="30d">30 NGÀY</button>
+        </div>
+        <div class="omnibox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input type="text" placeholder="Tìm thiết bị, email, proxy, workflow..." />
+          <span class="kbd">Ctrl K</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="relay-ticker">
+          <span class="pulse-dot"></span>Relay
+          <b id="relayLatency" style="color: var(--text-primary)">—</b> ms
+        </div>
+        <div class="clock-wrap">
+          <span class="cw-time" id="clockTime">--:--:--</span>
+          <span class="cw-date" id="clockDate">—</span>
+        </div>
+        <div class="h-actions">
+          <div class="hdd" id="alertDd">
+            <span class="icon-btn" id="alertBell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span class="dot" id="alertDotCount">0</span>
+            </span>
+            <div class="hdd-menu">
+              <div class="hdd-head">
+                Cảnh báo toàn hệ thống <span class="n" id="alertHeadCount">0 mới</span>
+              </div>
+              <div class="hdd-list" id="alertDdList"></div>
+            </div>
+          </div>
+          <div class="hdd" id="userDd">
+            <span class="avatar">TB</span>
+            <div class="hdd-menu" style="width: 200px">
+              <div class="hdd-row">
+                <span class="txt"><b>ThienBaoVN</b> — Hồ sơ</span>
+              </div>
+              <div class="hdd-row"><span class="txt">Cài đặt Dashboard</span></div>
+              <div class="hdd-row"><span class="txt">Đăng xuất</span></div>
+            </div>
+          </div>
+          <button class="btn-ghost" id="refreshBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </button>
+          <button class="btn-primary" id="exportBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Xuất báo cáo
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN -->
+      <div class="main" id="mainScroll">
+        <!-- HERO -->
+        <div class="dash-hero">
+          <div>
+            <h1 id="greetingText">Chào buổi sáng, ThienBaoVN 👋</h1>
+            <div class="dh-sub">
+              Toàn bộ hệ thống đang hoạt động ổn định · <b id="heroFleetCount">—</b> thiết bị ·
+              <b id="heroIdCount">—</b> danh tính · <b id="heroProxyCount">—</b> proxy
+            </div>
+          </div>
+          <div class="quick-pills">
+            <button class="qpill" data-qa="device">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                <path d="M12 5v14M5 12h14" /></svg
+              >Thêm thiết bị
+            </button>
+            <button class="qpill" data-qa="email">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                <path d="M12 5v14M5 12h14" /></svg
+              >Thêm email
+            </button>
+            <button class="qpill" data-qa="workflow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                <path d="M12 5v14M5 12h14" /></svg
+              >Tạo Workflow
+            </button>
+            <button class="qpill" id="openSysHealth">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg
+              >Hạ tầng hệ thống
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI GRID -->
+        <div class="kpi-grid" id="kpiGrid"></div>
+
+        <!-- CHARTS -->
+        <div class="section-head">
+          <h2>Hoạt động &amp; Phân bổ hệ thống</h2>
+        </div>
+        <div class="charts-row">
+          <div class="panel-card">
+            <div class="panel-head">
+              <div>
+                <h3 id="chartMetricLabel">TẢI HỆ THỐNG TRUNG BÌNH</h3>
+                <div class="chart-legend-inline" style="margin-top: 4px">
+                  <span class="val" id="chartMetricVal">—</span
+                  ><span class="unit" id="chartMetricUnit">%</span>
+                </div>
+              </div>
+              <div class="metric-tabs" id="metricTabs">
+                <button class="mtab active" data-metric="load">Tải thiết bị</button>
+                <button class="mtab" data-metric="scripts">Kịch bản</button>
+                <button class="mtab" data-metric="revenue">Doanh thu</button>
+              </div>
+            </div>
+            <div id="mainChart"></div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-head"><h3>Trạng thái Fleet</h3></div>
+            <div id="fleetDonut"></div>
+            <div class="legend-row" id="fleetDonutLegend"></div>
+            <div class="module-dist" id="moduleDist"></div>
+          </div>
+        </div>
+
+        <!-- 3 COL -->
+        <div class="section-head">
+          <h2>Nhóm, Proxy &amp; Workflow</h2>
+          <div class="sh-right">
+            <a class="sh-link" href="#"
+              >Xem tất cả<svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+                <path d="M9 18l6-6-6-6" /></svg
+            ></a>
+          </div>
+        </div>
+        <div class="tri-row">
+          <div class="panel-card">
+            <div class="panel-head">
+              <h3>Top nhóm hoạt động</h3>
+              <span class="sh-link">Fleet</span>
+            </div>
+            <div class="bar-list" id="groupBars"></div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-head">
+              <h3>Tình trạng Proxy Pool</h3>
+              <span class="sh-link" id="proxySummary">—</span>
+            </div>
+            <div class="proxy-list" id="proxyList"></div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-head">
+              <h3>Hàng đợi Workflow</h3>
+              <span class="sh-link" id="wfSummary">—</span>
+            </div>
+            <div class="wf-list" id="wfList"></div>
+          </div>
+        </div>
+
+        <!-- ALERTS + ACTIVITY -->
+        <div class="section-head">
+          <h2>Cảnh báo &amp; Nhật ký hoạt động</h2>
+        </div>
+        <div class="dual-row">
+          <div class="panel-card">
+            <div class="panel-head">
+              <h3>Cảnh báo hệ thống</h3>
+              <div class="filter-chip-row" id="alertFilterRow">
+                <button class="fchip active" data-sev="all">Tất cả</button>
+                <button class="fchip" data-sev="err">Nghiêm trọng</button>
+                <button class="fchip" data-sev="warn">Cảnh báo</button>
+                <button class="fchip" data-sev="ok">Thông tin</button>
+              </div>
+            </div>
+            <div class="feed-list" id="alertFeed"></div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-head">
+              <h3>Nhật ký hoạt động toàn hệ thống</h3>
+              <span class="sh-link" id="activityCount">—</span>
+            </div>
+            <div class="feed-list" id="activityFeed"></div>
+          </div>
+        </div>
+
+        <!-- LEADERBOARD + SCHEDULE -->
+        <div class="section-head">
+          <h2>Hiệu suất &amp; Lịch chạy</h2>
+        </div>
+        <div class="dual-row">
+          <div class="panel-card">
+            <div class="panel-head">
+              <h3>Bảng xếp hạng hiệu suất</h3>
+              <select class="mini-select" id="lbSort">
+                <option value="earn">Sắp xếp: Doanh thu</option>
+                <option value="rate">Tỉ lệ thành công</option>
+                <option value="scripts">Số kịch bản</option>
+              </select>
+            </div>
+            <table class="lb-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tên</th>
+                  <th>Tỉ lệ</th>
+                  <th>Kịch bản</th>
+                  <th>Doanh thu</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="lbBody"></tbody>
+            </table>
+          </div>
+          <div class="panel-card">
+            <div class="panel-head">
+              <h3>Lịch chạy sắp tới (24h)</h3>
+              <span class="sh-link" id="schedSummary">—</span>
+            </div>
+            <div class="sched-list" id="schedList"></div>
+          </div>
+        </div>
+
+        <!-- RELAY -->
+        <div class="section-head">
+          <h2>Hạ tầng Relay</h2>
+          <div class="sh-right">
+            <a class="sh-link" id="relayDetailLink" href="#"
+              >Xem chi tiết<svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+                <path d="M9 18l6-6-6-6" /></svg
+            ></a>
+          </div>
+        </div>
+        <div class="relay-grid" id="relayGrid"></div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="section-head"><h2>Thao tác nhanh</h2></div>
+        <div class="qa-grid" id="qaGrid"></div>
+      </div>
+
+      <!-- STATUS BAR -->
+      <div class="statusbar">
+        <span class="live">Đã kết nối tới Zentri Core</span>
+        <span class="sep"></span>
+        <span id="sbSummary">—</span>
+        <span class="sep"></span>
+        <span id="sbSyncTime">Đồng bộ lần cuối: vừa xong</span>
+        <div class="spacer" style="flex: 1"></div>
+        <span>Zentri Dashboard v1.0</span>
+      </div>
+    </div>
+
+    <!-- SYSTEM HEALTH MODAL -->
+    <div class="modal-overlay" id="sysModalOverlay">
+      <div class="sysmodal">
+        <div class="sysmodal-head">
+          <div>
+            <h3 style="margin-bottom: 3px">Sức khoẻ hạ tầng Zentri Core</h3>
+            <span class="sub">Server chính · relay node · trạng thái realtime</span>
+          </div>
+          <button class="drawer-close" id="sysModalClose">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div class="sysmodal-body">
+          <div class="server-gauges" id="serverGauges"></div>
+          <div
+            class="section-label"
+            style="
+              font-size: 11px;
+              color: var(--text-tertiary);
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              font-weight: 600;
+              margin-bottom: 10px;
+            "
+          >
+            Chi tiết Relay Node
+          </div>
+          <div id="relayDetailList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-stack" id="toastStack"></div>
+
+    <script>
+      /* ==================== HELPERS ==================== */
+      function rand(a, b) {
+        return Math.floor(Math.random() * (b - a + 1)) + a;
+      }
+      function randf(a, b) {
+        return Math.random() * (b - a) + a;
+      }
+      function pick(arr) {
+        return arr[rand(0, arr.length - 1)];
+      }
+      function fmtMins(m) {
+        if (m == null) return '—';
+        if (m < 1) return 'vừa xong';
+        if (m < 60) return m + ' phút trước';
+        if (m < 1440) return Math.floor(m / 60) + ' giờ trước';
+        return Math.floor(m / 1440) + ' ngày trước';
+      }
+      function fmtVND(n) {
+        return n.toLocaleString('vi-VN') + ' ₫';
+      }
+      function ip() {
+        return `10.${rand(0, 20)}.${rand(0, 255)}.${rand(2, 254)}`;
+      }
+      function toast(msg, type = 'ok') {
+        const stack = document.getElementById('toastStack');
+        const el = document.createElement('div');
+        el.className = 'toast' + (type === 'err' ? ' err' : '');
+        el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="${type === 'err' ? '#ff4757' : '#3ddc84'}" stroke-width="2.5"><path d="${type === 'err' ? 'M18 6 6 18M6 6l12 12' : 'M20 6 9 17l-5-5'}"/></svg><span>${msg}</span>`;
+        stack.appendChild(el);
+        setTimeout(() => {
+          el.style.transition = 'opacity .3s';
+          el.style.opacity = '0';
+          setTimeout(() => el.remove(), 300);
+        }, 3200);
+      }
+
+      /* ==================== POOLS ==================== */
+      const GROUPS = ['Farm A', 'Farm B', 'QA Lab', 'Livestream', 'Warm-up'];
+      const GROUP_COLOR = {
+        'Farm A': 'var(--device)',
+        'Farm B': '#4fa8e0',
+        'QA Lab': 'var(--proxy)',
+        Livestream: 'var(--ok)',
+        'Warm-up': 'var(--workflow)',
+      };
+      const COUNTRY_FLAGS = {
+        VN: '🇻🇳',
+        US: '🇺🇸',
+        DE: '🇩🇪',
+        NL: '🇳🇱',
+        SG: '🇸🇬',
+        JP: '🇯🇵',
+        KR: '🇰🇷',
+        GB: '🇬🇧',
+      };
+      const DEVICE_NAMES = ['NODE', 'PHONE', 'RIG', 'BOT', 'UNIT'];
+      const EMAIL_DOMAINS = ['gmail.com', 'outlook.com', 'proton.me'];
+      const NAME_PREFIX = [
+        'nguyen.van',
+        'tran.thi',
+        'le.hoang',
+        'pham.minh',
+        'hoang.anh',
+        'bui.duc',
+        'vo.thanh',
+        'dang.khoa',
+      ];
+      const WORKFLOW_NAMES = [
+        { name: 'Auto Warm-up Facebook', type: 'device' },
+        { name: 'Đồng bộ danh tính mới', type: 'identity' },
+        { name: 'Xoay Proxy theo lịch', type: 'proxy' },
+        { name: 'Batch Follow Instagram', type: 'device' },
+        { name: 'Livestream Keep-alive 24/7', type: 'device' },
+        { name: 'Kiểm tra rò rỉ dữ liệu', type: 'identity' },
+        { name: 'Đổi mật khẩu hàng loạt', type: 'identity' },
+        { name: 'Báo cáo doanh thu tuần', type: 'workflow' },
+        { name: 'Sao lưu Vault', type: 'identity' },
+        { name: 'Dọn dẹp thiết bị lỗi', type: 'device' },
+        { name: 'Đồng bộ lịch đăng bài TikTok', type: 'device' },
+        { name: 'Kiểm tra sức khoẻ Proxy', type: 'proxy' },
+      ];
+      const ALERT_MSG = {
+        device: [
+          'CPU thiết bị vượt ngưỡng 90%',
+          'Mất kết nối tới thiết bị',
+          'Pin thiết bị dưới 15%',
+          'Kịch bản timeout ở bước 4/9',
+          'Thiết bị khởi động lại ngoài lịch',
+        ],
+        identity: [
+          'Phát hiện email trong rò rỉ dữ liệu mới',
+          'Đăng nhập từ IP lạ',
+          'TOTP xác thực thất bại 3 lần',
+          'Recovery email chưa xác minh',
+        ],
+        proxy: [
+          'Proxy phản hồi chậm bất thường',
+          'Không thể xoay IP, thử lại sau 30s',
+          'Proxy bị chặn bởi nền tảng đích',
+          'Băng thông proxy vượt hạn mức',
+        ],
+        workflow: [
+          'Workflow chạy quá thời gian dự kiến',
+          'Workflow thất bại ở bước xác thực',
+          'Lịch chạy trùng tài nguyên',
+        ],
+      };
+      const ALERT_MSG_OK = {
+        device: ['Đồng bộ trạng thái thiết bị thành công', 'Thiết bị hoàn tất kịch bản đúng lịch'],
+        identity: ['Xác thực TOTP thành công', 'Đã cập nhật recovery email'],
+        proxy: ['Proxy hoạt động ổn định dưới 80ms', 'Đã xoay IP proxy thành công'],
+        workflow: ['Workflow hoàn tất tất cả các bước', 'Đã lên lịch workflow mới'],
+      };
+      const ACTIVITY_TEMPLATES = [
+        { m: 'device', t: 'đã thêm thiết bị <b>{x}</b> vào Fleet' },
+        { m: 'device', t: 'đã chạy kịch bản trên <b>{x}</b> thiết bị' },
+        { m: 'identity', t: 'đã thêm danh tính mới <b>{x}</b>' },
+        { m: 'identity', t: 'đã bật 2FA cho <b>{x}</b>' },
+        { m: 'proxy', t: 'đã xoay proxy cho nhóm <b>{x}</b>' },
+        { m: 'workflow', t: 'đã tạo workflow <b>{x}</b>' },
+        { m: 'workflow', t: 'workflow <b>{x}</b> đã hoàn tất' },
+        { m: 'device', t: 'đã khởi động lại <b>{x}</b> thiết bị lỗi' },
+        { m: 'identity', t: 'đã kiểm tra rò rỉ cho <b>{x}</b> danh tính' },
+      ];
+      const MODULE_META = {
+        device: {
+          color: 'var(--device)',
+          bg: 'rgba(255,106,31,0.12)',
+          icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/>',
+        },
+        identity: {
+          color: 'var(--identity)',
+          bg: 'rgba(45,216,200,0.12)',
+          icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/>',
+        },
+        proxy: {
+          color: 'var(--proxy)',
+          bg: 'rgba(167,139,250,0.12)',
+          icon: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+        },
+        workflow: {
+          color: 'var(--workflow)',
+          bg: 'rgba(255,176,32,0.12)',
+          icon: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+        },
+      };
+
+      /* ==================== MOCK DATA GENERATION ==================== */
+      let idc = 1;
+      const groupDevices = {};
+      GROUPS.forEach((g) => {
+        groupDevices[g] = rand(8, 34);
+      });
+      const totalDevices = Object.values(groupDevices).reduce((a, b) => a + b, 0);
+      const onlineDevices = Math.round(totalDevices * randf(0.68, 0.86));
+      const busyDevices = Math.round((totalDevices - onlineDevices) * randf(0.4, 0.7));
+      const offDevices = Math.round((totalDevices - onlineDevices - busyDevices) * randf(0.6, 0.9));
+      const errDevices = Math.max(0, totalDevices - onlineDevices - busyDevices - offDevices);
+      const totalIdentities = rand(60, 140);
+      const identitiesWith2FA = Math.round(totalIdentities * randf(0.45, 0.65));
+      const avgSecurityScore = rand(58, 78);
+
+      function genProxy(i) {
+        const cc = pick(Object.keys(COUNTRY_FLAGS));
+        const status = pick(['ok', 'ok', 'ok', 'busy', 'off', 'err']);
+        return {
+          id: 'px-' + i,
+          country: cc,
+          flag: COUNTRY_FLAGS[cc],
+          host: ip() + ':' + pick([8080, 3128, 9001, 1080]),
+          protocol: pick(['HTTP', 'SOCKS5']),
+          status,
+          latency: status === 'off' ? null : rand(28, 320),
+          assigned: rand(0, 22),
+        };
+      }
+      const proxies = Array.from({ length: 10 }, (_, i) => genProxy(i + 1));
+
+      function genWorkflow(i) {
+        const wf = pick(WORKFLOW_NAMES);
+        const status = pick([
+          'running',
+          'running',
+          'scheduled',
+          'scheduled',
+          'completed',
+          'paused',
+          'failed',
+        ]);
+        return {
+          id: 'wf-' + i,
+          name: wf.name,
+          type: wf.type,
+          status,
+          progress: status === 'running' ? rand(8, 92) : status === 'completed' ? 100 : 0,
+          targets: rand(3, 48),
+          nextRun: status === 'scheduled' ? rand(5, 720) : null,
+        };
+      }
+      const workflows = Array.from({ length: 9 }, (_, i) => genWorkflow(i + 1));
+
+      function genLeaderboardEntry(i) {
+        const isDevice = Math.random() < 0.55;
+        const name = isDevice
+          ? `${pick(DEVICE_NAMES)}-${String(rand(1, 40)).padStart(2, '0')}`
+          : `${pick(NAME_PREFIX)}${rand(1, 99)}@${pick(EMAIL_DOMAINS)}`;
+        return {
+          id: 'lb-' + i,
+          name,
+          type: isDevice ? 'device' : 'identity',
+          rate: rand(58, 99),
+          scripts: rand(20, 640),
+          earnings: rand(80, 4200) * 1000,
+          trend: Math.random() < 0.7 ? 'up' : 'down',
+          trendVal: rand(2, 24),
+        };
+      }
+      const leaderboard = Array.from({ length: 10 }, (_, i) => genLeaderboardEntry(i + 1)).sort(
+        (a, b) => b.earnings - a.earnings,
+      );
+
+      function genSchedule(i) {
+        const wf = pick(WORKFLOW_NAMES);
+        const g = pick(GROUPS);
+        const h = rand(0, 23),
+          m = pick(['00', '15', '30', '45']);
+        return {
+          id: 'sc-' + i,
+          time: `${String(h).padStart(2, '0')}:${m}`,
+          name: wf.name,
+          group: g,
+          targets: rand(2, 30),
+          on: Math.random() < 0.8,
+        };
+      }
+      const scheduleList = Array.from({ length: 9 }, (_, i) => genSchedule(i + 1)).sort((a, b) =>
+        a.time.localeCompare(b.time),
+      );
+
+      const RELAY_NODES = [
+        { region: 'Hà Nội', code: 'HAN' },
+        { region: 'TP.HCM', code: 'SGN' },
+        { region: 'Singapore', code: 'SIN' },
+        { region: 'Tokyo', code: 'NRT' },
+        { region: 'Frankfurt', code: 'FRA' },
+      ].map((r, i) => ({
+        ...r,
+        id: 'relay-' + i,
+        status: pick(['ok', 'ok', 'ok', 'busy', 'err']),
+        latency: rand(8, 140),
+        load: rand(15, 92),
+        connected: rand(10, 120),
+      }));
+
+      function genAlert(i) {
+        const isOk = Math.random() < 0.35;
+        const mod = pick(['device', 'identity', 'proxy', 'workflow']);
+        const sev = isOk ? 'ok' : Math.random() < 0.4 ? 'err' : 'warn';
+        const pool = isOk ? ALERT_MSG_OK[mod] : ALERT_MSG[mod];
+        return { id: 'al-' + i, mod, sev, msg: pick(pool), mins: rand(1, 1400) };
+      }
+      let alerts = Array.from({ length: 24 }, (_, i) => genAlert(i + 1)).sort(
+        (a, b) => a.mins - b.mins,
+      );
+
+      function genActivity(i) {
+        const t = pick(ACTIVITY_TEMPLATES);
+        const x =
+          t.m === 'device'
+            ? rand(1, 12)
+            : t.m === 'identity'
+              ? rand(1, 8)
+              : pick(GROUPS.concat(WORKFLOW_NAMES.map((w) => w.name)));
+        return { id: 'ac-' + i, mod: t.m, txt: t.t.replace('{x}', x), mins: rand(1, 2000) };
+      }
+      let activityLog = Array.from({ length: 22 }, (_, i) => genActivity(i + 1)).sort(
+        (a, b) => a.mins - b.mins,
+      );
+
+      /* ==================== SERIES DATA (per range) ==================== */
+      function walk(len, min, max, start) {
+        const arr = [start];
+        for (let i = 1; i < len; i++)
+          arr.push(
+            Math.max(
+              min,
+              Math.min(
+                max,
+                arr[i - 1] + rand(-Math.round((max - min) * 0.08), Math.round((max - min) * 0.08)),
+              ),
+            ),
+          );
+        return arr;
+      }
+      function buildSeries(range) {
+        const len = range === '24h' ? 24 : range === '7d' ? 7 : 30;
+        return {
+          load: walk(len, 20, 96, rand(40, 60)),
+          scripts: walk(len, 5, 400, rand(80, 180)),
+          revenue: walk(len, 200, 9000, rand(1500, 3000)).map((v) => v * 1000),
+        };
+      }
+      let currentRange = '24h';
+      let seriesCache = {
+        '24h': buildSeries('24h'),
+        '7d': buildSeries('7d'),
+        '30d': buildSeries('30d'),
+      };
+      let currentMetric = 'load';
+
+      function rangeLabels(range) {
+        const len = range === '24h' ? 24 : range === '7d' ? 7 : 30;
+        if (range === '24h')
+          return Array.from({ length: len }, (_, i) => (i % 4 === 0 ? i + 'h' : ''));
+        if (range === '7d') return ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        return Array.from({ length: len }, (_, i) => (i % 5 === 0 ? 'N' + (i + 1) : ''));
+      }
+
+      /* ==================== CHART SVG BUILDERS ==================== */
+      function lineChartSVG(values, color, labels) {
+        const w = 660,
+          h = 220,
+          pad = 30;
+        const max = Math.max(...values) * 1.12,
+          min = Math.min(0, Math.min(...values) * 0.9);
+        const stepX = (w - pad * 2) / (values.length - 1 || 1);
+        const pts = values
+          .map((v, i) => {
+            const x = pad + i * stepX;
+            const y = h - pad - ((v - min) / (max - min || 1)) * (h - pad * 2);
+            return `${x},${y}`;
+          })
+          .join(' ');
+        const gridLines = [0, 0.25, 0.5, 0.75, 1]
+          .map((f) => {
+            const y = pad + f * (h - pad * 2);
+            return `<line x1="${pad}" y1="${y}" x2="${w - pad}" y2="${y}" stroke="var(--border-soft)" stroke-width="1"/>`;
+          })
+          .join('');
+        const areaPts = `${pad},${h - pad} ${pts} ${w - pad},${h - pad}`;
+        const labelEls = (labels || [])
+          .map((lb, i) => {
+            if (!lb) return '';
+            const x = pad + i * stepX;
+            return `<text x="${x}" y="${h - 8}" fill="var(--text-tertiary)" font-size="9" font-family="monospace" text-anchor="middle">${lb}</text>`;
+          })
+          .join('');
+        return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}">
+          ${gridLines}
+          <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${color}" stop-opacity="0.28"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+          </linearGradient></defs>
+          <polygon points="${areaPts}" fill="url(#areaGrad)"/>
+          <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5"/>
+          ${labelEls}
+        </svg>`;
+      }
+      function donutChartSVG(segments, size) {
+        size = size || 148;
+        const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+        const r = size / 2 - 18,
+          cx = size / 2,
+          cy = size / 2,
+          sw = 20,
+          circ = 2 * Math.PI * r;
+        let offset = 0;
+        const circles = segments
+          .map((seg) => {
+            const dash = (seg.value / total) * circ;
+            const el = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${sw}" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+            offset += dash;
+            return el;
+          })
+          .join('');
+        return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block;margin:0 auto">${circles}<text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--text-primary)" font-size="20" font-weight="700" font-family="'Space Grotesk',sans-serif">${total}</text><text x="${cx}" y="${cy + 13}" text-anchor="middle" fill="var(--text-tertiary)" font-size="9" font-family="'Inter',sans-serif">thiết bị</text></svg>`;
+      }
+      function sparkSVG(values, color) {
+        const w = 100,
+          h = 26;
+        const max = Math.max(...values, 1),
+          min = Math.min(...values, 0);
+        const range = Math.max(max - min, 1);
+        const pts = values
+          .map((v, i) => `${(i / (values.length - 1)) * w},${h - ((v - min) / range) * h}`)
+          .join(' ');
+        const areaPts = `0,${h} ${pts} ${w},${h}`;
+        return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+          <polygon points="${areaPts}" fill="${color}" opacity="0.14"/>
+          <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke"/>
+        </svg>`;
+      }
+      function ringSVG(pct, color, size) {
+        size = size || 76;
+        const r = size / 2 - 7,
+          cx = size / 2,
+          cy = size / 2,
+          circ = 2 * Math.PI * r;
+        const dash = (pct / 100) * circ;
+        return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${dash} ${circ}" transform="rotate(-90 ${cx} ${cy})"/>
+        </svg>`;
+      }
+
+      /* ==================== RENDER: KPI GRID ==================== */
+      const kpiHistory = {
+        devices: walk(12, totalDevices - 6, totalDevices + 6, totalDevices),
+        online: walk(12, onlineDevices - 8, onlineDevices + 8, onlineDevices),
+        identities: walk(12, totalIdentities - 10, totalIdentities + 10, totalIdentities),
+        score: walk(12, avgSecurityScore - 6, avgSecurityScore + 6, avgSecurityScore),
+        proxyOn: walk(12, 6, 10, 8),
+        scriptsToday: walk(12, 400, 900, 640),
+        successRate: walk(12, 80, 96, 88),
+        revenue: walk(12, 1800, 4200, 2600),
+      };
+      function kpiDelta(hist) {
+        const first = hist[0],
+          last = hist[hist.length - 1];
+        const pct = first === 0 ? 0 : Math.round(((last - first) / Math.abs(first)) * 100);
+        return pct;
+      }
+      function renderKPIs() {
+        const proxyOn = proxies.filter((p) => p.status !== 'off' && p.status !== 'err').length;
+        const scriptsToday = kpiHistory.scriptsToday[kpiHistory.scriptsToday.length - 1];
+        const successRate = kpiHistory.successRate[kpiHistory.successRate.length - 1];
+        const revenueToday = kpiHistory.revenue[kpiHistory.revenue.length - 1] * 1000;
+        const cards = [
+          {
+            label: 'Tổng thiết bị',
+            value: totalDevices,
+            hist: kpiHistory.devices,
+            color: 'var(--device)',
+            bg: 'rgba(255,106,31,0.12)',
+            icon: MODULE_META.device.icon,
+          },
+          {
+            label: 'Thiết bị online',
+            value: onlineDevices,
+            hist: kpiHistory.online,
+            color: 'var(--ok)',
+            bg: 'rgba(61,220,132,0.12)',
+            icon: '<path d="M20 6 9 17l-5-5"/>',
+          },
+          {
+            label: 'Tổng danh tính',
+            value: totalIdentities,
+            hist: kpiHistory.identities,
+            color: 'var(--identity)',
+            bg: 'rgba(45,216,200,0.12)',
+            icon: MODULE_META.identity.icon,
+          },
+          {
+            label: 'Điểm bảo mật TB',
+            value: avgSecurityScore,
+            hist: kpiHistory.score,
+            color: 'var(--identity)',
+            bg: 'rgba(45,216,200,0.12)',
+            icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+          },
+          {
+            label: 'Proxy hoạt động',
+            value: `${proxyOn}/${proxies.length}`,
+            raw: proxyOn,
+            hist: kpiHistory.proxyOn,
+            color: 'var(--proxy)',
+            bg: 'rgba(167,139,250,0.12)',
+            icon: MODULE_META.proxy.icon,
+          },
+          {
+            label: 'Kịch bản hôm nay',
+            value: scriptsToday,
+            hist: kpiHistory.scriptsToday,
+            color: 'var(--workflow)',
+            bg: 'rgba(255,176,32,0.12)',
+            icon: MODULE_META.workflow.icon,
+          },
+          {
+            label: 'Tỉ lệ thành công TB',
+            value: successRate + '%',
+            raw: successRate,
+            hist: kpiHistory.successRate,
+            color: 'var(--ok)',
+            bg: 'rgba(61,220,132,0.12)',
+            icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+          },
+          {
+            label: 'Doanh thu hôm nay',
+            value: fmtVND(revenueToday),
+            raw: revenueToday,
+            hist: kpiHistory.revenue,
+            color: 'var(--primary)',
+            bg: 'rgba(111,141,255,0.12)',
+            icon: '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+          },
+        ];
+        document.getElementById('kpiGrid').innerHTML = cards
+          .map((c) => {
+            const delta = kpiDelta(c.hist);
+            return `<div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon" style="background:${c.bg};color:${c.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${c.icon}</svg></div>
+              <span class="kpi-delta ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}%</span>
+            </div>
+            <div class="kpi-value">${c.value}</div>
+            <div class="kpi-label">${c.label}</div>
+            <div class="kpi-spark">${sparkSVG(c.hist, c.color)}</div>
+          </div>`;
+          })
+          .join('');
+        document.getElementById('heroFleetCount').textContent = totalDevices;
+        document.getElementById('heroIdCount').textContent = totalIdentities;
+        document.getElementById('heroProxyCount').textContent = proxyOn + '/' + proxies.length;
+      }
+
+      /* ==================== RENDER: MAIN CHART ==================== */
+      const METRIC_META = {
+        load: {
+          label: 'TẢI HỆ THỐNG TRUNG BÌNH',
+          unit: '%',
+          color: 'var(--device)',
+          hex: '#ff6a1f',
+        },
+        scripts: {
+          label: 'KỊCH BẢN ĐÃ CHẠY',
+          unit: 'lượt',
+          color: 'var(--workflow)',
+          hex: '#ffb020',
+        },
+        revenue: { label: 'DOANH THU', unit: '', color: 'var(--primary)', hex: '#6f8dff' },
+      };
+      function renderMainChart() {
+        const series = seriesCache[currentRange][currentMetric];
+        const meta = METRIC_META[currentMetric];
+        const labels = rangeLabels(currentRange);
+        document.getElementById('chartMetricLabel').textContent = meta.label;
+        document.getElementById('mainChart').innerHTML = lineChartSVG(series, meta.hex, labels);
+        const last = series[series.length - 1];
+        document.getElementById('chartMetricVal').textContent =
+          currentMetric === 'revenue' ? fmtVND(last * 1000) : last;
+        document.getElementById('chartMetricUnit').textContent =
+          currentMetric === 'revenue' ? '' : meta.unit;
+      }
+
+      /* ==================== RENDER: FLEET DONUT + MODULE DIST ==================== */
+      function renderFleetDonut() {
+        const segs = [
+          { label: 'Online', value: onlineDevices, color: 'var(--ok)' },
+          { label: 'Đang chạy', value: busyDevices, color: 'var(--busy)' },
+          { label: 'Offline', value: offDevices, color: 'var(--off)' },
+          { label: 'Lỗi', value: errDevices, color: 'var(--err)' },
+        ];
+        document.getElementById('fleetDonut').innerHTML = donutChartSVG(segs);
+        document.getElementById('fleetDonutLegend').innerHTML = segs
+          .map(
+            (s) =>
+              `<span class="legend-item"><span class="sw" style="background:${s.color}"></span>${s.label} (${s.value})</span>`,
+          )
+          .join('');
+        const moduleCounts = [
+          { label: 'Thiết bị', value: totalDevices, color: 'var(--device)' },
+          { label: 'Danh tính', value: totalIdentities, color: 'var(--identity)' },
+          { label: 'Proxy', value: proxies.length, color: 'var(--proxy)' },
+          { label: 'Workflow', value: workflows.length, color: 'var(--workflow)' },
+        ];
+        const maxM = Math.max(...moduleCounts.map((m) => m.value));
+        document.getElementById('moduleDist').innerHTML = moduleCounts
+          .map(
+            (m) =>
+              `<div class="md-row"><span class="md-dot" style="background:${m.color}"></span><span class="md-label">${m.label}</span><div class="md-track"><div class="md-fill" style="width:${(m.value / maxM) * 100}%;background:${m.color}"></div></div><span class="md-val">${m.value}</span></div>`,
+          )
+          .join('');
+      }
+
+      /* ==================== RENDER: GROUP BARS ==================== */
+      function renderGroupBars() {
+        const maxG = Math.max(...Object.values(groupDevices));
+        document.getElementById('groupBars').innerHTML = GROUPS.map((g) => {
+          const n = groupDevices[g];
+          const load = rand(30, 95);
+          return `<div class="bar-list-row"><span class="bl-lbl">${g}</span><div class="bl-track"><div class="bl-fill" style="width:${(n / maxG) * 100}%;background:${GROUP_COLOR[g]}"></div></div><span class="bl-val">${n} máy · ${load}%</span></div>`;
+        }).join('');
+      }
+
+      /* ==================== RENDER: PROXY LIST ==================== */
+      function renderProxyList() {
+        const active = proxies.filter((p) => p.status === 'ok' || p.status === 'busy').length;
+        document.getElementById('proxySummary').textContent =
+          `${active}/${proxies.length} hoạt động`;
+        document.getElementById('proxyList').innerHTML = proxies
+          .map(
+            (p) =>
+              `<div class="proxy-row">
+            <span class="flag">${p.flag}</span>
+            <div class="p-info"><div class="p-host">${p.host}</div><div class="p-sub">${p.protocol} · ${p.country}</div></div>
+            <div class="p-right"><div class="p-lat" style="color:${p.status === 'off' ? 'var(--text-tertiary)' : p.latency > 200 ? 'var(--err)' : p.latency > 100 ? 'var(--busy)' : 'var(--ok)'}">${p.latency ? p.latency + 'ms' : '—'}</div><div class="p-cnt">${p.assigned} thiết bị</div></div>
+            <span class="status-dot ${p.status}"></span>
+          </div>`,
+          )
+          .join('');
+      }
+
+      /* ==================== RENDER: WORKFLOW QUEUE ==================== */
+      const WF_LABEL = {
+        running: 'Đang chạy',
+        scheduled: 'Đã lên lịch',
+        completed: 'Hoàn tất',
+        paused: 'Tạm dừng',
+        failed: 'Thất bại',
+      };
+      function renderWfList() {
+        const runningCount = workflows.filter((w) => w.status === 'running').length;
+        document.getElementById('wfSummary').textContent = `${runningCount} đang chạy`;
+        document.getElementById('wfList').innerHTML = workflows
+          .map((w) => {
+            const meta = MODULE_META[w.type] || MODULE_META.workflow;
+            return `<div class="wf-row">
+            <div class="wf-top">
+              <div class="wf-icon" style="background:${meta.bg};color:${meta.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">${meta.icon}</svg></div>
+              <span class="wf-name">${w.name}</span>
+              <span class="wf-badge ${w.status}">${WF_LABEL[w.status]}</span>
+            </div>
+            ${w.status === 'running' ? `<div class="wf-track"><div class="wf-fill" style="width:${w.progress}%"></div></div>` : ''}
+            <div class="wf-meta" style="margin-top:6px">
+              <span>${w.targets} mục tiêu</span>
+              <span>${w.status === 'running' ? w.progress + '%' : w.status === 'scheduled' ? 'Sau ' + fmtMins(w.nextRun).replace(' trước', '') : w.status === 'completed' ? 'Đã xong' : w.status === 'failed' ? 'Lỗi bước 3' : 'Tạm dừng'}</span>
+            </div>
+          </div>`;
+          })
+          .join('');
+      }
+
+      /* ==================== RENDER: ALERT FEED ==================== */
+      let alertSevFilter = 'all';
+      function renderAlertFeed() {
+        const list =
+          alertSevFilter === 'all' ? alerts : alerts.filter((a) => a.sev === alertSevFilter);
+        const sevMeta = {
+          err: {
+            color: 'var(--err)',
+            bg: 'rgba(255,71,87,0.12)',
+            icon: '<path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>',
+          },
+          warn: {
+            color: 'var(--busy)',
+            bg: 'rgba(255,176,32,0.12)',
+            icon: '<path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>',
+          },
+          ok: {
+            color: 'var(--ok)',
+            bg: 'rgba(61,220,132,0.12)',
+            icon: '<path d="M20 6 9 17l-5-5"/>',
+          },
+        };
+        document.getElementById('alertFeed').innerHTML =
+          list
+            .slice(0, 14)
+            .map((a) => {
+              const s = sevMeta[a.sev];
+              const m = MODULE_META[a.mod];
+              return `<div class="alert-row">
+            <div class="a-icon" style="background:${s.bg};color:${s.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">${s.icon}</svg></div>
+            <div class="a-body">
+              <div class="a-msg">${a.msg}</div>
+              <div class="a-meta"><span class="a-tag" style="background:${m.bg};color:${m.color}">${a.mod}</span>${fmtMins(a.mins)}</div>
+            </div>
+            ${a.sev !== 'ok' ? `<button class="a-fix" data-alertfix="${a.id}">Xử lý</button>` : ''}
+          </div>`;
+            })
+            .join('') ||
+          '<div style="color:var(--text-tertiary);font-size:12px;padding:16px 0;text-align:center">Không có cảnh báo phù hợp</div>';
+        document.querySelectorAll('[data-alertfix]').forEach((btn) => {
+          btn.onclick = () => {
+            const id = btn.dataset.alertfix;
+            alerts = alerts.filter((x) => x.id !== id);
+            toast('Đã xử lý cảnh báo');
+            renderAlertFeed();
+            renderAlertDropdown();
+          };
+        });
+      }
+
+      /* ==================== RENDER: ACTIVITY FEED ==================== */
+      function renderActivityFeed() {
+        document.getElementById('activityCount').textContent = activityLog.length + ' sự kiện';
+        document.getElementById('activityFeed').innerHTML = activityLog
+          .slice(0, 14)
+          .map((a) => {
+            const m = MODULE_META[a.mod];
+            return `<div class="tl-row">
+            <div class="tl-icon-wrap"><div class="tl-icon" style="background:${m.bg};color:${m.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">${m.icon}</svg></div><div class="tl-line"></div></div>
+            <div style="flex:1"><div class="tl-txt">Hệ thống ${a.txt}</div><div class="tl-tm">${fmtMins(a.mins)}</div></div>
+          </div>`;
+          })
+          .join('');
+      }
+
+      /* ==================== RENDER: ALERT DROPDOWN (HEADER) ==================== */
+      function renderAlertDropdown() {
+        const top = alerts.slice(0, 8);
+        const unread = alerts.filter((a) => a.sev !== 'ok' && a.mins < 180).length;
+        document.getElementById('alertDdList').innerHTML = top
+          .map(
+            (a) =>
+              `<div class="hdd-row"><span class="idot ${a.sev}"></span><span class="txt"><b>${a.mod}</b> — ${a.msg}</span><span class="tm">${fmtMins(a.mins)}</span></div>`,
+          )
+          .join('');
+        document.getElementById('alertHeadCount').textContent = unread + ' mới';
+        document.getElementById('alertDotCount').textContent = unread;
+        document.getElementById('alertDotCount').style.display = unread > 0 ? 'flex' : 'none';
+      }
+
+      /* ==================== RENDER: LEADERBOARD ==================== */
+      let lbSortKey = 'earn';
+      function renderLeaderboard() {
+        const sorted = leaderboard.slice().sort((a, b) => {
+          if (lbSortKey === 'earn') return b.earnings - a.earnings;
+          if (lbSortKey === 'rate') return b.rate - a.rate;
+          return b.scripts - a.scripts;
+        });
+        document.getElementById('lbBody').innerHTML = sorted
+          .slice(0, 8)
+          .map((e, i) => {
+            const rank = i + 1;
+            const meta = MODULE_META[e.type];
+            const rateClass = e.rate >= 85 ? 'good' : 'mid';
+            return `<tr>
+            <td><span class="lb-rank ${rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : ''}">${rank}</span></td>
+            <td><div class="lb-name-cell"><div class="lb-type-icon" style="background:${meta.bg};color:${meta.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">${meta.icon}</svg></div><div><div class="lb-name">${e.name}</div><div class="lb-sub">${e.type === 'device' ? 'Thiết bị' : 'Danh tính'}</div></div></div></td>
+            <td><span class="rate-pill ${rateClass}">${e.rate}%</span></td>
+            <td class="lb-sub" style="font-size:11.5px;color:var(--text-secondary)">${e.scripts}</td>
+            <td class="earn-val">${fmtVND(e.earnings)}</td>
+            <td><span class="trend-arrow ${e.trend}">${e.trend === 'up' ? '▲' : '▼'} ${e.trendVal}%</span></td>
+          </tr>`;
+          })
+          .join('');
+      }
+
+      /* ==================== RENDER: SCHEDULE ==================== */
+      function renderSchedule() {
+        const activeCount = scheduleList.filter((s) => s.on).length;
+        document.getElementById('schedSummary').textContent =
+          `${activeCount}/${scheduleList.length} đang bật`;
+        document.getElementById('schedList').innerHTML = scheduleList
+          .map(
+            (s, i) =>
+              `<div class="sched-row">
+            <span class="sched-time">${s.time}</span>
+            <div class="sched-mid"><div class="sched-name">${s.name}</div><div class="sched-sub"><span class="swatch" style="background:${GROUP_COLOR[s.group]}"></span><span>${s.group} · ${s.targets} mục tiêu</span></div></div>
+            <span class="toggle-sw ${s.on ? 'on' : ''}" data-schedidx="${i}"></span>
+          </div>`,
+          )
+          .join('');
+        document.querySelectorAll('[data-schedidx]').forEach((el) => {
+          el.onclick = () => {
+            const idx = parseInt(el.dataset.schedidx, 10);
+            scheduleList[idx].on = !scheduleList[idx].on;
+            renderSchedule();
+          };
+        });
+      }
+
+      /* ==================== RENDER: RELAY ==================== */
+      function renderRelayGrid() {
+        document.getElementById('relayGrid').innerHTML = RELAY_NODES.map((r) => {
+          const color =
+            r.status === 'ok' ? 'var(--ok)' : r.status === 'busy' ? 'var(--busy)' : 'var(--err)';
+          return `<div class="relay-card" data-relaycard="${r.id}">
+            <div class="relay-top"><span class="relay-region">${r.region}</span><span class="status-dot ${r.status}"></span></div>
+            <div class="relay-code" style="margin-bottom:8px">${r.code}</div>
+            <div class="relay-stats"><span>${r.latency}ms</span><span>${r.connected} máy</span></div>
+            <div class="relay-track"><div class="relay-fill" style="width:${r.load}%;background:${color}"></div></div>
+          </div>`;
+        }).join('');
+        document.querySelectorAll('[data-relaycard]').forEach((el) => {
+          el.onclick = () => openSysModal();
+        });
+      }
+
+      /* ==================== SYSTEM HEALTH MODAL ==================== */
+      const serverStats = {
+        cpu: rand(30, 70),
+        ram: rand(40, 75),
+        disk: rand(25, 60),
+        net: rand(20, 85),
+      };
+      function renderSysModal() {
+        const gauges = [
+          { label: 'CPU Server', val: serverStats.cpu, color: '#ff6a1f' },
+          { label: 'RAM Server', val: serverStats.ram, color: '#a78bfa' },
+          { label: 'Disk I/O', val: serverStats.disk, color: '#2dd8c8' },
+          { label: 'Network', val: serverStats.net, color: '#6f8dff' },
+        ];
+        document.getElementById('serverGauges').innerHTML = gauges
+          .map(
+            (g) =>
+              `<div class="sgauge"><div class="sg-ring">${ringSVG(g.val, g.color, 76)}<div class="sg-val">${g.val}%</div></div><div class="sg-label">${g.label}</div></div>`,
+          )
+          .join('');
+        document.getElementById('relayDetailList').innerHTML = RELAY_NODES.map((r) => {
+          const color =
+            r.status === 'ok' ? 'var(--ok)' : r.status === 'busy' ? 'var(--busy)' : 'var(--err)';
+          return `<div class="relay-detail-row">
+            <div class="rd-region"><span class="status-dot ${r.status}" style="display:inline-block;margin-right:6px"></span>${r.region} <span style="color:var(--text-tertiary)">(${r.code})</span></div>
+            <div class="rd-track"><div class="rd-fill" style="width:${r.load}%;background:${color}"></div></div>
+            <div class="rd-meta">${r.latency}ms · ${r.connected} thiết bị · ${r.load}% tải</div>
+          </div>`;
+        }).join('');
+      }
+      const sysModalOverlay = document.getElementById('sysModalOverlay');
+      function openSysModal() {
+        renderSysModal();
+        sysModalOverlay.classList.add('show');
+      }
+      function closeSysModal() {
+        sysModalOverlay.classList.remove('show');
+      }
+      document.getElementById('openSysHealth').onclick = openSysModal;
+      document.getElementById('relayDetailLink').onclick = (e) => {
+        e.preventDefault();
+        openSysModal();
+      };
+      document.getElementById('sysModalClose').onclick = closeSysModal;
+      sysModalOverlay.onclick = (e) => {
+        if (e.target === sysModalOverlay) closeSysModal();
+      };
+
+      /* ==================== QUICK ACTIONS GRID ==================== */
+      const QA_ACTIONS = [
+        {
+          id: 'device',
+          label: 'Thêm thiết bị',
+          icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/>',
+        },
+        {
+          id: 'email',
+          label: 'Thêm email',
+          icon: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+        },
+        {
+          id: 'workflow',
+          label: 'Tạo Workflow',
+          icon: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+        },
+        {
+          id: 'rotate',
+          label: 'Xoay toàn bộ Proxy',
+          icon: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+        },
+        {
+          id: 'broadcast',
+          label: 'Chạy Broadcast Script',
+          icon: '<polygon points="5 3 19 12 5 21 5 3"/>',
+        },
+        {
+          id: 'export',
+          label: 'Xuất báo cáo',
+          icon: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+        },
+        { id: 'backup', label: 'Sao lưu hệ thống', icon: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>' },
+        {
+          id: 'invite',
+          label: 'Mời thành viên',
+          icon: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+        },
+      ];
+      const QA_TOASTS = {
+        device: 'Đang mở form thêm thiết bị...',
+        email: 'Đang mở form thêm email...',
+        workflow: 'Đang mở trình tạo Workflow...',
+        rotate: 'Đã gửi lệnh xoay toàn bộ Proxy',
+        broadcast: 'Đã gửi kịch bản broadcast tới toàn bộ Fleet',
+        export: 'Đang xuất báo cáo tổng hợp...',
+        backup: 'Đã bắt đầu sao lưu hệ thống',
+        invite: 'Đang mở form mời thành viên...',
+      };
+      function renderQaGrid() {
+        document.getElementById('qaGrid').innerHTML = QA_ACTIONS.map(
+          (q) =>
+            `<button class="qa-tile" data-qa="${q.id}"><div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${q.icon}</svg></div><span class="qa-label">${q.label}</span></button>`,
+        ).join('');
+      }
+      document.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-qa]');
+        if (el) toast(QA_TOASTS[el.dataset.qa] || 'Đã thực hiện thao tác');
+      });
+
+      /* ==================== BINDINGS ==================== */
+      document.getElementById('rangeSwitch').addEventListener('click', (e) => {
+        const btn = e.target.closest('.rsw-btn');
+        if (!btn) return;
+        document.querySelectorAll('.rsw-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentRange = btn.dataset.range;
+        renderMainChart();
+      });
+      document.getElementById('metricTabs').addEventListener('click', (e) => {
+        const btn = e.target.closest('.mtab');
+        if (!btn) return;
+        document.querySelectorAll('.mtab').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMetric = btn.dataset.metric;
+        renderMainChart();
+      });
+      document.getElementById('alertFilterRow').addEventListener('click', (e) => {
+        const btn = e.target.closest('.fchip');
+        if (!btn) return;
+        document
+          .querySelectorAll('#alertFilterRow .fchip')
+          .forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        alertSevFilter = btn.dataset.sev;
+        renderAlertFeed();
+      });
+      document.getElementById('lbSort').onchange = (e) => {
+        lbSortKey = e.target.value;
+        renderLeaderboard();
+      };
+      document.getElementById('refreshBtn').onclick = () => {
+        toast('Đã làm mới toàn bộ dữ liệu');
+        renderAll();
+      };
+      document.getElementById('exportBtn').onclick = () =>
+        toast('Đang xuất báo cáo Dashboard ra PDF...');
+
+      function closeAllDropdowns() {
+        document.querySelectorAll('.hdd').forEach((h) => h.classList.remove('open'));
+      }
+      document.getElementById('alertBell').onclick = (e) => {
+        e.stopPropagation();
+        const dd = document.getElementById('alertDd');
+        const willOpen = !dd.classList.contains('open');
+        closeAllDropdowns();
+        if (willOpen) dd.classList.add('open');
+      };
+      document.querySelector('#userDd .avatar').onclick = (e) => {
+        e.stopPropagation();
+        const dd = document.getElementById('userDd');
+        const willOpen = !dd.classList.contains('open');
+        closeAllDropdowns();
+        if (willOpen) dd.classList.add('open');
+      };
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.hdd')) closeAllDropdowns();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeSysModal();
+          closeAllDropdowns();
+        }
+      });
+
+      /* ==================== CLOCK + GREETING ==================== */
+      function tickClock() {
+        const now = new Date();
+        document.getElementById('clockTime').textContent = now.toLocaleTimeString('vi-VN', {
+          hour12: false,
+        });
+        document.getElementById('clockDate').textContent = now.toLocaleDateString('vi-VN', {
+          weekday: 'long',
+          day: '2-digit',
+          month: '2-digit',
+        });
+        const h = now.getHours();
+        const greet =
+          h < 11
+            ? 'Chào buổi sáng'
+            : h < 14
+              ? 'Chào buổi trưa'
+              : h < 18
+                ? 'Chào buổi chiều'
+                : 'Chào buổi tối';
+        document.getElementById('greetingText').textContent = `${greet}, ThienBaoVN 👋`;
+      }
+
+      /* ==================== MASTER RENDER ==================== */
+      function renderAll() {
+        renderKPIs();
+        renderMainChart();
+        renderFleetDonut();
+        renderGroupBars();
+        renderProxyList();
+        renderWfList();
+        renderAlertFeed();
+        renderActivityFeed();
+        renderAlertDropdown();
+        renderLeaderboard();
+        renderSchedule();
+        renderRelayGrid();
+        renderQaGrid();
+        document.getElementById('sbSummary').textContent =
+          `${totalDevices} thiết bị · ${totalIdentities} danh tính · ${proxies.length} proxy`;
+      }
+      renderAll();
+      tickClock();
+      setInterval(tickClock, 1000);
+
+      /* ==================== LIVE SIM ==================== */
+      setInterval(() => {
+        // relay latency ticker
+        document.getElementById('relayLatency').textContent = rand(9, 34);
+        // drift kpi histories
+        Object.keys(kpiHistory).forEach((k) => {
+          const h = kpiHistory[k];
+          h.shift();
+          const last = h[h.length - 1];
+          const delta = Math.max(1, Math.round(last * 0.04));
+          h.push(Math.max(0, last + rand(-delta, delta)));
+        });
+        // drift proxy latencies
+        proxies.forEach((p) => {
+          if (p.latency) p.latency = Math.max(15, p.latency + rand(-15, 15));
+        });
+        // drift workflow progress
+        workflows.forEach((w) => {
+          if (w.status === 'running') w.progress = Math.min(99, w.progress + rand(1, 4));
+        });
+        // occasionally add a new activity event
+        if (Math.random() < 0.6) {
+          activityLog.unshift(genActivity(activityLog.length + 1));
+          activityLog.forEach((a) => (a.mins += rand(0, 1)));
+        }
+        // occasionally add a new alert
+        if (Math.random() < 0.35) {
+          alerts.unshift(genAlert(alerts.length + 100));
+        }
+        alerts.forEach((a) => (a.mins += 1));
+        renderKPIs();
+        renderProxyList();
+        renderWfList();
+        renderAlertFeed();
+        renderActivityFeed();
+        renderAlertDropdown();
+      }, 4000);
+    </script>
+  </body>
+</html>

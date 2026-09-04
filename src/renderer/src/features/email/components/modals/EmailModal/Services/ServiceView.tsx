@@ -25,15 +25,15 @@ import { ShieldCheck, Clock, Eye, Globe, Trash2, List, Link, MoreHorizontal } fr
 
 // ── Utils ──
 import { format } from 'date-fns';
-import { cn } from '../../../../../shared/lib/utils';
-import { generateTotp, isValidBase32, getCodeColor } from '../../../../../shared/lib/totp';
+import { cn } from '../../../../../../shared/lib/utils';
+import { generateTotp, isValidBase32, getCodeColor } from '../../../../../../shared/lib/totp';
 
 // ── UI Components ──
-import { Button } from '../../../../../components/ui/Button';
-import { EmptyState } from '../../../../../components/ui/EmptyState';
+import { Button } from '../../../../../../components/ui/Button';
+import { EmptyState } from '../../../../../../components/ui/EmptyState';
 
 // ── Constants ──
-import { getServiceById } from '../../../../../constants/services';
+import { getServiceById } from '../../../../../../constants/services';
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 function getDomain(url: string): string {
@@ -135,7 +135,7 @@ const SectionBox: FC<{
 }> = ({ title, icon, children, className, headerExtra }) => (
   <div
     className={cn(
-      'bg-card-hover rounded-md border border-border p-4 hover:border-primary transition-colors',
+      'bg-card-background rounded-md border border-border p-4 hover:border-primary transition-colors',
       className,
     )}
   >
@@ -493,7 +493,7 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
                 return (
                   <div
                     key={index}
-                    className="rounded-lg border border-border/40 bg-card/20 overflow-hidden hover:border-primary/30 transition-colors"
+                    className="rounded-lg border border-border/40 bg-card-background overflow-hidden hover:border-primary/30 transition-colors"
                   >
                     <div className="px-3 py-2.5">
                       <div className="flex items-center gap-2 mb-2">

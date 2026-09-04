@@ -1,4 +1,4 @@
-import { FC, useState, useCallback, useRef, useEffect } from 'react';
+import { FC, useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 /**
  * ------------------------------------------------------------------
  * EmailTable
@@ -20,13 +20,25 @@ import { FC, useState, useCallback, useRef, useEffect } from 'react';
 // ─── Imports ────────────────────────────────────────────────────────────
 // ── UI ──
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Globe, Eye, Undo2, X, FolderOpen, RefreshCw, Search } from 'lucide-react';
+import {
+  Trash2,
+  Globe,
+  Eye,
+  Undo2,
+  X,
+  FolderOpen,
+  RefreshCw,
+  Search,
+  Plus,
+  MoreVertical,
+} from 'lucide-react';
 import {
   Dropdown,
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
 } from '../../../components/ui/Dropdown';
+import { Button } from '../../../components/ui/Button';
 
 // ── Services ──
 import { SERVICES } from '../../../constants/services';
@@ -38,7 +50,8 @@ import ServiceDrawer from './modals/ServiceDrawer';
 
 // ── Utils ──
 import { cn } from '../../../shared/lib/utils';
-import { getSecurityScore } from './tabs/Security/utils';
+import { getSecurityScore, isValidTotp } from './modals/EmailModal/Security/utils';
+import { getCountryFlagComponent } from '../../../utils/countryFlags';
 
 // ── Types ──
 import { Account, Service } from '../types';
@@ -53,10 +66,11 @@ interface EmailTableProps {
   accounts: Account[];
   allAccounts?: Account[];
   focusedAccountId?: string | null;
-  onSelectAccount: (account: Account) => void;
+  onSelectAccount: (account: Account | null) => void;
   onHardDelete: (id: string) => void;
   onSaveChanges: (oldAccount: Account, newAccount: Account) => void;
   onRefreshData?: () => void;
+  onAddEmail?: () => void;
   activeTab:
     | 'info'
     | 'services'
@@ -77,6 +91,7 @@ interface EmailTableProps {
   endRecord?: number;
   onPageChange?: (page: number) => void;
   selectedServiceId?: string | null;
+  runningBrowsers: Set<string>;
 }
 
 interface LinkedService {
@@ -100,6 +115,7 @@ const EmailTable: FC<EmailTableProps> = ({
   onSelectAccount,
   onHardDelete,
   onRefreshData,
+  onAddEmail,
   activeTab,
   setActiveTab,
   currentPage,
@@ -109,10 +125,19 @@ const EmailTable: FC<EmailTableProps> = ({
   endRecord,
   onPageChange,
   selectedServiceId,
+  runningBrowsers,
 }) => {
+  // ── Debug Logs ──
+  // console.log('[EmailTable] RENDER', {
+  //   accountsLength: accounts.length,
+  //   focusedAccountId,
+  //   selectedServiceId,
+  //   runningBrowsersSize: runningBrowsers.size,
+  //   timestamp: Date.now(),
+  // });
+
   // ── State ──
   const [avatars, setAvatars] = useState<Record<string, string>>({});
-  const [profileSizes, setProfileSizes] = useState<Record<string, number>>({});
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -123,6 +148,8 @@ const EmailTable: FC<EmailTableProps> = ({
   const [backupCodeSearch, setBackupCodeSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
   const [tableSearchQuery, setTableSearchQuery] = useState('');
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [hoveredEmail, setHoveredEmail] = useState<string | null>(null);
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const browserVersion = '...';
   const [pendingLaunch, setPendingLaunch] = useState<{
@@ -133,8 +160,7 @@ const EmailTable: FC<EmailTableProps> = ({
     title?: string;
   } | null>(null);
 
-  // Track which accounts have an active browser
-  const [runningBrowsers, setRunningBrowsers] = useState<Set<string>>(new Set());
+  // runningBrowsers is provided via props
 
   const [serviceContextMenu, setServiceContextMenu] = useState<{
     x: number;
@@ -184,9 +210,7 @@ const EmailTable: FC<EmailTableProps> = ({
   const [globalServices, setGlobalServices] = useState<Service[]>([]);
   const [isEditServiceMode, setIsEditServiceMode] = useState(false);
 
-  // Two-phase animation: row moves first, then section expands
   const [showDetail, setShowDetail] = useState(false);
-  const detailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const serviceMenuRef = useRef<HTMLDivElement>(null);
@@ -196,198 +220,89 @@ const EmailTable: FC<EmailTableProps> = ({
   const accountServices = focusedAccount?.services || [];
 
   // ── Effects ──
-  const formatBytes = (bytes: number) => {
-    if (!bytes || bytes <= 0) return '—';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let i = 0;
-    let size = bytes;
-    while (size >= 1024 && i < units.length - 1) {
-      size /= 1024;
-      i++;
-    }
-    return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-  };
+  const prevPropsRef = useRef<any>({});
 
   useEffect(() => {
-    const fetchProfileSizes = async () => {
-      const sizes: Record<string, number> = {};
-      for (const acc of accounts) {
-        if (!acc?.email) continue;
-        try {
-          // @ts-ignore
-          const size = await window.electron.ipcRenderer.invoke(
-            'email:get-profile-size',
-            acc.email,
-          );
-          sizes[acc.email] = size ?? 0;
-        } catch {
-          sizes[acc.email] = 0;
-        }
-      }
-      setProfileSizes(sizes);
+    const prev = prevPropsRef.current;
+    const changes: string[] = [];
+
+    if (prev.accounts !== accounts) changes.push('accounts');
+    if (prev.focusedAccountId !== focusedAccountId) changes.push('focusedAccountId');
+    if (prev.selectedServiceId !== selectedServiceId) changes.push('selectedServiceId');
+    if (prev.runningBrowsers !== runningBrowsers) changes.push('runningBrowsers');
+    if (prev.onSelectAccount !== onSelectAccount) changes.push('onSelectAccount');
+    if (prev.onHardDelete !== onHardDelete) changes.push('onHardDelete');
+    if (prev.onRefreshData !== onRefreshData) changes.push('onRefreshData');
+    if (prev.onAddEmail !== onAddEmail) changes.push('onAddEmail');
+    if (prev.setActiveTab !== setActiveTab) changes.push('setActiveTab');
+    if (prev.onPageChange !== onPageChange) changes.push('onPageChange');
+
+    if (changes.length > 0) {
+      console.log('[useEffect] Props CHANGED:', changes);
+    } else {
+      console.log('[useEffect] Props SAME but component re-rendered!');
+    }
+
+    prevPropsRef.current = {
+      accounts,
+      focusedAccountId,
+      selectedServiceId,
+      runningBrowsers,
+      onSelectAccount,
+      onHardDelete,
+      onRefreshData,
+      onAddEmail,
+      setActiveTab,
+      onPageChange,
     };
-    fetchProfileSizes();
-  }, [accounts]);
+  });
 
   useEffect(() => {
     const fetchAvatars = async () => {
-      const newAvatars = { ...avatars };
       let changed = false;
+      const updates: Record<string, string> = {};
 
       for (const acc of accounts) {
-        if (!newAvatars[acc.email]) {
-          try {
-            // @ts-ignore
-            const avatarUrl = await window.electron.ipcRenderer.invoke('email:get-avatar', {
-              email: acc.email,
-            });
-            if (avatarUrl) {
-              newAvatars[acc.email] = avatarUrl;
-              changed = true;
-            } else {
-              // Fallback to Dicebear if no Chrome profile avatar found
-              const seed = acc.email.split('@')[0];
-              newAvatars[acc.email] = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
-              changed = true;
-            }
-          } catch (e) {
-            console.error('Avatar fetch failed', e);
+        // Check if avatar already exists before fetching
+        setAvatars((prevAvatars) => {
+          if (prevAvatars[acc.email]) {
+            return prevAvatars;
           }
-        }
+
+          // Mark for async fetch
+          (async () => {
+            try {
+              // @ts-ignore
+              const avatarUrl = await window.electron.ipcRenderer.invoke('email:get-avatar', {
+                email: acc.email,
+              });
+              if (avatarUrl) {
+                setAvatars((prev) => ({ ...prev, [acc.email]: avatarUrl }));
+              } else {
+                // Fallback to Dicebear if no Chrome profile avatar found
+                const seed = acc.email.split('@')[0];
+                setAvatars((prev) => ({
+                  ...prev,
+                  [acc.email]: `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`,
+                }));
+              }
+            } catch (e) {
+              console.error('Avatar fetch failed', e);
+            }
+          })();
+
+          return prevAvatars;
+        });
       }
-      if (changed) setAvatars(newAvatars);
     };
     fetchAvatars();
   }, [accounts]);
 
   useEffect(() => {
-    if (focusedAccount) {
-      setEditedAccount({ ...focusedAccount });
-      setErrors({});
-      setBackupCodeSearch('');
-    } else {
-      setEditedAccount(null);
-    }
+    setShowDetail(!!focusedAccountId);
   }, [focusedAccountId]);
 
-  // Two-phase detail animation
-  useEffect(() => {
-    if (detailTimerRef.current) {
-      clearTimeout(detailTimerRef.current);
-      detailTimerRef.current = null;
-    }
-
-    if (focusedAccountId) {
-      setShowDetail(false);
-      detailTimerRef.current = setTimeout(() => {
-        setShowDetail(true);
-      }, 400);
-    } else {
-      setShowDetail(false);
-    }
-
-    return () => {
-      if (detailTimerRef.current) {
-        clearTimeout(detailTimerRef.current);
-      }
-    };
-  }, [focusedAccountId]);
-
-  // Listen for browser open/close events from main process
-  useEffect(() => {
-    const onBrowserOpened = (_event: any, data: { accountId: string }) => {
-      if (!data?.accountId) return;
-      setRunningBrowsers((prev) => {
-        const next = new Set(prev);
-        next.add(data.accountId);
-        return next;
-      });
-    };
-    const onBrowserClosed = (_event: any, data: { accountId: string }) => {
-      if (!data?.accountId) return;
-      setRunningBrowsers((prev) => {
-        const next = new Set(prev);
-        next.delete(data.accountId);
-        return next;
-      });
-    };
-
-    // @ts-ignore
-    window.electron.ipcRenderer.on('email:browser-opened', onBrowserOpened);
-    // @ts-ignore
-    window.electron.ipcRenderer.on('email:browser-closed', onBrowserClosed);
-
-    // Poll initial state for all accounts
-    const pollInitial = async () => {
-      const running = new Set<string>();
-      for (const acc of accounts) {
-        if (!acc?.id) continue;
-        try {
-          // @ts-ignore
-          const isOpen = await window.electron.ipcRenderer.invoke('email:is-profile-open', acc.id);
-          if (isOpen) running.add(acc.id);
-        } catch {
-          // silently ignore
-        }
-      }
-      setRunningBrowsers(running);
-    };
-    pollInitial();
-
-    return () => {
-      // @ts-ignore
-      window.electron.ipcRenderer.removeListener('email:browser-opened', onBrowserOpened);
-      // @ts-ignore
-      window.electron.ipcRenderer.removeListener('email:browser-closed', onBrowserClosed);
-    };
-  }, [accounts]);
-
-  // Health-check interval: poll running browsers every 5s, stop when none running
-  const healthCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const runningBrowsersRef = useRef(runningBrowsers);
-  runningBrowsersRef.current = runningBrowsers;
-
-  useEffect(() => {
-    if (runningBrowsers.size > 0) {
-      if (!healthCheckRef.current) {
-        healthCheckRef.current = setInterval(async () => {
-          const currentRunning = runningBrowsersRef.current;
-          if (currentRunning.size === 0) return;
-
-          for (const accountId of currentRunning) {
-            try {
-              // @ts-ignore
-              const isOpen = await window.electron.ipcRenderer.invoke(
-                'email:is-profile-open',
-                accountId,
-              );
-              if (!isOpen) {
-                setRunningBrowsers((prev) => {
-                  const next = new Set(prev);
-                  next.delete(accountId);
-                  return next;
-                });
-              }
-            } catch {
-              // silently ignore IPC errors for individual checks
-            }
-          }
-        }, 5000);
-      }
-    } else {
-      if (healthCheckRef.current) {
-        clearInterval(healthCheckRef.current);
-        healthCheckRef.current = null;
-      }
-    }
-
-    return () => {
-      if (healthCheckRef.current) {
-        clearInterval(healthCheckRef.current);
-        healthCheckRef.current = null;
-      }
-    };
-  }, [runningBrowsers.size]);
+  // Browser running state is managed by parent (Email.tsx)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -701,67 +616,98 @@ const EmailTable: FC<EmailTableProps> = ({
   };
 
   // ── Helpers ──
-  const renderLastActivity = (account: Account) => {
-    if (!account.lastActivity) {
-      return <span className="text-[10px] italic opacity-20 ml-6">—</span>;
+  // Cache flag components by country code to prevent re-renders
+  const flagCache = useRef<Map<string, JSX.Element | null>>(new Map());
+
+  const renderCountryFlag = useCallback((countryCode: string) => {
+    console.log('[renderCountryFlag] Called with:', countryCode);
+    // Return cached flag if exists
+    if (flagCache.current.has(countryCode)) {
+      console.log('[renderCountryFlag] Cache HIT for:', countryCode);
+      return flagCache.current.get(countryCode);
     }
 
-    const { url, title, time } = account.lastActivity;
+    console.log('[renderCountryFlag] Cache MISS for:', countryCode);
+    // Create and cache new flag
+    const FlagComponent = getCountryFlagComponent(countryCode);
+    const flag = FlagComponent ? <FlagComponent className="w-4 h-3 rounded-sm" /> : null;
+    flagCache.current.set(countryCode, flag);
+    return flag;
+  }, []);
 
-    // If a service is selected, only show activity if it matches the service URL
-    if (selectedServiceId) {
-      const selectedService = globalServices.find((s) => s.id === selectedServiceId);
-      if (selectedService && selectedService.url) {
-        try {
-          const activityHostname = new URL(url).hostname;
-          const serviceHostname = new URL(selectedService.url).hostname;
+  const renderLastActivity = useCallback(
+    (account: Account) => {
+      console.log('[renderLastActivity] Called for account:', account.email);
+      if (!account.lastActivity) {
+        return <span className="text-[10px] italic opacity-20 ml-6">—</span>;
+      }
 
-          // If activity hostname doesn't match service hostname, hide it
-          if (
-            !activityHostname.includes(serviceHostname.replace('www.', '')) &&
-            !serviceHostname.includes(activityHostname.replace('www.', ''))
-          ) {
+      const { url, title, time } = account.lastActivity;
+
+      // If a service is selected, only show activity if it matches the service URL
+      if (selectedServiceId) {
+        const selectedService = globalServices.find((s) => s.id === selectedServiceId);
+        if (selectedService && selectedService.url) {
+          try {
+            const activityHostname = new URL(url).hostname;
+            const serviceHostname = new URL(selectedService.url).hostname;
+
+            // If activity hostname doesn't match service hostname, hide it
+            if (
+              !activityHostname.includes(serviceHostname.replace('www.', '')) &&
+              !serviceHostname.includes(activityHostname.replace('www.', ''))
+            ) {
+              return <span className="text-[10px] italic opacity-20 ml-6">—</span>;
+            }
+          } catch {
+            // If URL parsing fails, hide it
             return <span className="text-[10px] italic opacity-20 ml-6">—</span>;
           }
-        } catch {
-          // If URL parsing fails, hide it
-          return <span className="text-[10px] italic opacity-20 ml-6">—</span>;
         }
       }
-    }
 
-    let hostname = '';
-    try {
-      hostname = new URL(url).hostname;
-    } catch {
-      hostname = url;
-    }
+      let hostname = '';
+      try {
+        hostname = new URL(url).hostname;
+      } catch {
+        hostname = url;
+      }
 
-    return (
-      <div className="flex flex-col min-w-0 group/act max-w-full">
-        <div className="flex items-center gap-2">
-          <img
-            src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
-            className="w-4 h-4 opacity-70 group-hover/act:opacity-100 transition-opacity shrink-0"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://www.google.com/s2/favicons?domain=google.com&sz=32';
-            }}
-          />
-          <span className="text-[13px] font-bold text-foreground/80 truncate group-hover/act:text-foreground transition-colors leading-tight">
-            {title || hostname}
+      return (
+        <div className="flex flex-col min-w-0 group/act max-w-full">
+          <div className="flex items-center gap-2">
+            <img
+              src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+              className="w-4 h-4 opacity-70 group-hover/act:opacity-100 transition-opacity shrink-0"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  'https://www.google.com/s2/favicons?domain=google.com&sz=32';
+              }}
+            />
+            <span className="text-[13px] font-bold text-foreground/80 truncate group-hover/act:text-foreground transition-colors leading-tight">
+              {title || hostname}
+            </span>
+          </div>
+          <span className="text-[11px] text-text-secondary font-mono tracking-tight mt-0.5 group-hover/act:text-text-secondary/80">
+            {formatDistanceToNow(new Date(time), { addSuffix: true })}
           </span>
         </div>
-        <span className="text-[11px] text-muted-foreground/40 font-mono tracking-tight mt-0.5 group-hover/act:text-muted-foreground/60">
-          {formatDistanceToNow(new Date(time), { addSuffix: true })}
-        </span>
-      </div>
-    );
-  };
+      );
+    },
+    [selectedServiceId, globalServices],
+  );
 
   // When section is expanded, hide all other rows
   // Sort: running browsers first, then preserve original order
-  const orderedAccounts = (() => {
+  const orderedAccounts = useMemo(() => {
+    console.log('[orderedAccounts] Recalculating...', {
+      accountsLength: accounts.length,
+      showDetail,
+      focusedAccountId,
+      runningBrowsersSize: runningBrowsers.size,
+      tableSearchQuery,
+    });
+
     const base =
       showDetail && focusedAccountId
         ? accounts.filter((a) => a.id === focusedAccountId)
@@ -788,33 +734,77 @@ const EmailTable: FC<EmailTableProps> = ({
       if (a.lastActivity?.title?.toLowerCase().includes(q)) return true;
       return false;
     });
-  })();
+  }, [accounts, showDetail, focusedAccountId, runningBrowsers, tableSearchQuery]);
 
   // Use allAccounts for indexing (original order before pagination)
   const fullAccountList = allAccounts;
 
+  // Memoized icon components to prevent unnecessary re-renders
+  const SearchIcon = useMemo(() => {
+    console.log('[useMemo] Creating SearchIcon');
+    return <Search className="size-3.5 text-text-secondary/60 shrink-0" />;
+  }, []);
+
+  const PlusIcon = useMemo(() => {
+    console.log('[useMemo] Creating PlusIcon');
+    return <Plus className="size-4" />;
+  }, []);
+
+  const RefreshIcon = useMemo(() => {
+    console.log('[useMemo] Creating RefreshIcon');
+    return <RefreshCw className="size-3.5" />;
+  }, []);
+
+  const MoreIcon = useMemo(() => {
+    console.log('[useMemo] Creating MoreIcon');
+    return <MoreVertical className="size-3.5" />;
+  }, []);
+
   // ── Render ──
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-card-background border border-border rounded-lg overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden border-l border-border">
       {/* Toolbar */}
-      <div className="flex items-center gap-2.5 px-3 py-2 border-b border-border shrink-0">
+      <div className="flex items-center gap-2.5 px-2 py-1.5 border-b border-border shrink-0">
         <div className="flex items-center gap-2 bg-input-background border border-border rounded-lg px-2.5 py-1.5 flex-1 max-w-[420px]">
-          <Search className="size-3.5 text-text-secondary/60 shrink-0" />
+          {SearchIcon}
           <input
             value={tableSearchQuery}
             onChange={(e) => setTableSearchQuery(e.target.value)}
             placeholder="Search email, password, proxy, activity…"
-            className="bg-transparent border-none outline-none text-text-primary text-[12.5px] w-full font-sans placeholder:text-text-secondary/40"
+            className="bg-transparent border-none outline-none text-text-primary text-[12.5px] leading-[20px] w-full font-sans placeholder:text-text-secondary/40"
           />
         </div>
         <div className="flex items-center gap-1.5 ml-auto">
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={onAddEmail}
+            className="h-8 px-3 text-[12.5px] bg-primary/10 text-primary hover:bg-button-solid-background hover:text-button-solid-text"
+          >
+            {PlusIcon}
+            Add Email
+          </Button>
           <button
             onClick={onRefreshData}
-            className="size-7 rounded-md border border-border bg-card-background text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors"
+            className="size-8 rounded-md border border-border bg-card-background text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors"
             title="Refresh"
           >
-            <RefreshCw className="size-3.5" />
+            {RefreshIcon}
           </button>
+          <Dropdown align="end">
+            <DropdownTrigger asChild>
+              <button
+                className="size-8 rounded-md border border-border bg-card-background text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors"
+                title="More"
+              >
+                {MoreIcon}
+              </button>
+            </DropdownTrigger>
+            <DropdownContent>
+              <DropdownItem>Import</DropdownItem>
+              <DropdownItem>Export</DropdownItem>
+            </DropdownContent>
+          </Dropdown>
         </div>
       </div>
       {/* Inline Table (merged from ListView) */}
@@ -828,14 +818,13 @@ const EmailTable: FC<EmailTableProps> = ({
                   <th className="w-[60px] pl-6 text-sm font-bold h-10 text-left text-text-secondary">
                     STT
                   </th>
+                  {!selectedServiceId && (
+                    <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
+                      Services
+                    </th>
+                  )}
                   <th className="w-[240px] text-sm font-bold h-10 text-left text-text-secondary">
                     Email
-                  </th>
-                  <th className="w-1/3 text-sm font-bold h-10 text-left text-text-secondary">
-                    Last Activities
-                  </th>
-                  <th className="w-[300px] text-sm font-bold h-10 text-left text-text-secondary">
-                    Last Used Proxy
                   </th>
                   {!selectedServiceId && (
                     <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
@@ -843,7 +832,13 @@ const EmailTable: FC<EmailTableProps> = ({
                     </th>
                   )}
                   <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
-                    Size
+                    2FA
+                  </th>
+                  <th className="w-1/3 text-sm font-bold h-10 text-left text-text-secondary">
+                    Last Activities
+                  </th>
+                  <th className="w-[300px] text-sm font-bold h-10 text-left text-text-secondary">
+                    Last Used Footprint
                   </th>
                   <th className="w-[110px] text-sm font-bold h-10 text-center text-text-secondary">
                     Security
@@ -871,55 +866,129 @@ const EmailTable: FC<EmailTableProps> = ({
                           {focusedAccount.email}
                         </span>
                         {runningBrowsers.has(focusedAccount.id) && (
-                          <span className="relative flex h-2 w-2 shrink-0">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold uppercase tracking-wide shrink-0">
+                            Running
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground/40 font-mono tracking-wider truncate">
-                        {focusedAccount.password || 'No Password'}
+                      <span
+                        onMouseEnter={() => setHoveredEmail(focusedAccount.email)}
+                        onMouseLeave={() => setHoveredEmail(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard?.writeText(focusedAccount.password || '');
+                          setCopiedEmail(focusedAccount.email);
+                          setTimeout(() => setCopiedEmail(null), 1200);
+                        }}
+                        title={focusedAccount.password || 'No Password'}
+                        className={cn(
+                          'inline-block font-mono text-[10px] tracking-wider rounded py-0.5 transition-all cursor-pointer',
+                          copiedEmail === focusedAccount.email
+                            ? 'bg-success/10 text-success'
+                            : hoveredEmail === focusedAccount.email
+                              ? 'bg-text-secondary/10 text-text-primary'
+                              : 'text-text-secondary',
+                        )}
+                      >
+                        {copiedEmail === focusedAccount.email
+                          ? 'Copy'
+                          : hoveredEmail === focusedAccount.email
+                            ? focusedAccount.password || 'No Password'
+                            : '••••••••'}
                       </span>
-                    </div>
-                  </td>
-                  <td>{renderLastActivity(focusedAccount)}</td>
-                  <td>
-                    <div className="flex flex-col items-start gap-1 min-w-0 px-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                      {focusedAccount.lastProxy ? (
-                        <>
-                          <span className="text-[12px] font-bold text-foreground/80">
-                            {focusedAccount.lastProxy.host || 'Unknown'}
-                          </span>
-                          <span className="text-[11px] font-mono text-muted-foreground/40">
-                            {focusedAccount.lastProxy.protocol || '—'}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground/30">No proxy</span>
-                      )}
                     </div>
                   </td>
                   {!selectedServiceId && (
                     <td className="text-center">
-                      <span className="text-[12px] font-bold text-text-secondary/60">
-                        {focusedAccount.services?.length || 0}
-                      </span>
+                      <div className="flex items-center justify-center gap-1">
+                        {(() => {
+                          const sorted = [...(focusedAccount.services || [])]
+                            .filter((s) => s.url)
+                            .sort((a, b) => (b.lastUsedAt || '').localeCompare(a.lastUsedAt || ''));
+                          const top = sorted.slice(0, 4);
+                          const extra = sorted.length - top.length;
+                          return (
+                            <>
+                              {top.map((s, i) => {
+                                let hostname = '';
+                                try {
+                                  hostname = new URL(s.url).hostname;
+                                } catch {
+                                  hostname = s.url;
+                                }
+                                return (
+                                  <img
+                                    key={`${s.serviceId}-${i}`}
+                                    src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+                                    className="w-4 h-4 rounded-sm"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                );
+                              })}
+                              {extra > 0 && (
+                                <span className="text-[10px] font-bold text-text-secondary">
+                                  +{extra}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
                     </td>
                   )}
                   <td className="text-center">
-                    <span className="text-[12px] font-mono text-text-secondary/60">
-                      {formatBytes(profileSizes[focusedAccount.email] || 0)}
+                    <span
+                      className={cn(
+                        'inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase',
+                        isValidTotp(focusedAccount.totp)
+                          ? 'bg-success/10 text-success'
+                          : 'bg-error/10 text-error',
+                      )}
+                    >
+                      {isValidTotp(focusedAccount.totp) ? 'ON' : 'OFF'}
                     </span>
+                  </td>
+                  <td>{renderLastActivity(focusedAccount)}</td>
+                  <td>
+                    <div className="flex flex-col items-start gap-1 min-w-0">
+                      {focusedAccount.lastFootprint ? (
+                        <>
+                          <span className="text-[12px] font-bold text-text-primary flex items-center gap-1.5">
+                            {focusedAccount.lastFootprint.country &&
+                              renderCountryFlag(focusedAccount.lastFootprint.country)}
+                            {[
+                              focusedAccount.lastFootprint.country,
+                              focusedAccount.lastFootprint.city,
+                            ]
+                              .filter(Boolean)
+                              .join(', ') || '—'}
+                          </span>
+                          <span className="text-[11px] font-mono text-text-secondary flex items-center gap-1.5">
+                            {focusedAccount.lastFootprint.systemOS || '—'} ·{' '}
+                            {focusedAccount.lastFootprint.browser || '—'}
+                            {focusedAccount.lastFootprint.isProxy && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-warn/10 text-warn">
+                                PROXY
+                              </span>
+                            )}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-text-secondary/40">No footprint</span>
+                      )}
+                    </div>
                   </td>
                   <td className="text-center">
                     <span
                       className={cn(
-                        'inline-flex items-center justify-center min-w-[36px] px-2 py-1 rounded-md text-xs font-black font-display',
+                        'inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase',
                         getSecurityScore(focusedAccount) >= 80
-                          ? 'text-green'
+                          ? 'bg-green/10 text-green'
                           : getSecurityScore(focusedAccount) >= 50
-                            ? 'text-warn'
-                            : 'text-red',
+                            ? 'bg-warn/10 text-warn'
+                            : 'bg-red/10 text-red',
                       )}
                     >
                       {getSecurityScore(focusedAccount)}
@@ -940,7 +1009,10 @@ const EmailTable: FC<EmailTableProps> = ({
           >
             <EmailModal
               isOpen={showDetail && !!focusedAccount}
-              onClose={() => setShowDetail(false)}
+              onClose={() => {
+                setShowDetail(false);
+                onSelectAccount(null);
+              }}
               focusedAccount={focusedAccount}
               accounts={accounts}
               activeTab={activeTab}
@@ -975,19 +1047,19 @@ const EmailTable: FC<EmailTableProps> = ({
                 <th className="w-[240px] text-sm font-bold h-10 text-left text-text-secondary">
                   Email
                 </th>
-                <th className="w-1/3 text-sm font-bold h-10 text-left text-text-secondary">
-                  Last Activities
-                </th>
-                <th className="w-[300px] text-sm font-bold h-10 text-left text-text-secondary">
-                  Last Used Proxy
-                </th>
                 {!selectedServiceId && (
                   <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
                     Services
                   </th>
                 )}
                 <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
-                  Size
+                  2FA
+                </th>
+                <th className="w-1/3 text-sm font-bold h-10 text-left text-text-secondary">
+                  Last Activities
+                </th>
+                <th className="w-[300px] text-sm font-bold h-10 text-left text-text-secondary">
+                  Last Used Footprint
                 </th>
                 <th className="w-[110px] text-sm font-bold h-10 text-center text-text-secondary">
                   Security
@@ -995,108 +1067,170 @@ const EmailTable: FC<EmailTableProps> = ({
               </tr>
             </thead>
             <tbody>
-              <AnimatePresence>
-                {orderedAccounts.map((account, _index) => {
-                  const isSelected = account.id === focusedAccountId;
-                  const originalIndex = fullAccountList.findIndex((a) => a.id === account.id);
-                  const serviceCount = account.services?.length || 0;
-                  const securityScore = getSecurityScore(account);
-                  return (
-                    <motion.tr
-                      key={account.id}
-                      layout
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{
-                        layout: { type: 'spring', stiffness: 300, damping: 30 },
-                        opacity: { duration: 0.2 },
-                      }}
-                      className={cn(
-                        'group transition-colors cursor-pointer border-b border-border/20 h-[48px] hover:bg-table-row-hover relative',
-                        isSelected && 'bg-primary/5',
-                      )}
-                      onClick={() => onSelectAccount(account)}
-                      onContextMenu={(e) => handleContextMenu(e, account.id)}
-                    >
-                      <td className="text-muted-foreground font-mono text-xs pl-6 py-2">
-                        #{String(originalIndex + 1).padStart(2, '0')}
-                      </td>
-                      <td className="font-medium">
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span
-                              className={cn(
-                                'text-[14px] font-bold tracking-tight truncate',
-                                isSelected ? 'text-primary' : 'text-foreground',
-                              )}
-                            >
-                              {account.email}
-                            </span>
-                            {(() => {
-                              const isRunning = runningBrowsers.has(account.id);
-                              if (isRunning)
-                                return (
-                                  <span className="relative flex h-2 w-2 shrink-0">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                                  </span>
-                                );
-                              return null;
-                            })()}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground/40 font-mono tracking-wider truncate">
-                            {account.password || 'No Password'}
+              {orderedAccounts.map((account, _index) => {
+                const isSelected = account.id === focusedAccountId;
+                const originalIndex = fullAccountList.findIndex((a) => a.id === account.id);
+                const securityScore = getSecurityScore(account);
+                return (
+                  <tr
+                    key={account.id}
+                    className={cn(
+                      'group transition-colors cursor-pointer border-b border-border/20 h-[48px] hover:bg-table-row-hover relative',
+                      isSelected && 'bg-primary/5',
+                    )}
+                    onClick={() => onSelectAccount(account)}
+                    onContextMenu={(e) => handleContextMenu(e, account.id)}
+                  >
+                    <td className="text-muted-foreground font-mono text-xs pl-6 py-2">
+                      #{String(originalIndex + 1).padStart(2, '0')}
+                    </td>
+                    <td className="font-medium">
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={cn(
+                              'text-[14px] font-bold tracking-tight truncate',
+                              isSelected ? 'text-primary' : 'text-foreground',
+                            )}
+                          >
+                            {account.email}
                           </span>
+                          {(() => {
+                            const isRunning = runningBrowsers.has(account.id);
+                            if (isRunning)
+                              return (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold uppercase tracking-wide shrink-0">
+                                  Running
+                                </span>
+                              );
+                            return null;
+                          })()}
                         </div>
-                      </td>
-                      <td>{renderLastActivity(account)}</td>
-                      <td>
-                        <div className="flex flex-col items-start gap-1 min-w-0 px-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                          {account.lastProxy ? (
-                            <>
-                              <span className="text-[12px] font-bold text-foreground/80">
-                                {account.lastProxy.host || 'Unknown'}
-                              </span>
-                              <span className="text-[11px] font-mono text-muted-foreground/40">
-                                {account.lastProxy.protocol || '—'}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground/30">No proxy</span>
-                          )}
-                        </div>
-                      </td>
-                      {!selectedServiceId && (
-                        <td className="text-center">
-                          <span className="text-[12px] font-bold text-text-secondary/60">
-                            {serviceCount}
-                          </span>
-                        </td>
-                      )}
-                      <td className="text-center">
-                        <span className="text-[12px] font-mono text-text-secondary/60">
-                          {formatBytes(profileSizes[account.email] || 0)}
-                        </span>
-                      </td>
-                      <td className="text-center">
                         <span
+                          onMouseEnter={() => setHoveredEmail(account.email)}
+                          onMouseLeave={() => setHoveredEmail(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard?.writeText(account.password || '');
+                            setCopiedEmail(account.email);
+                            setTimeout(() => setCopiedEmail(null), 1200);
+                          }}
+                          title={account.password || 'No Password'}
                           className={cn(
-                            'inline-flex items-center justify-center min-w-[36px] px-2 py-1 rounded-md text-xs font-black font-display',
-                            securityScore >= 80
-                              ? 'text-green'
-                              : securityScore >= 50
-                                ? 'text-warn'
-                                : 'text-red',
+                            'inline-block font-mono text-[10px] tracking-wider rounded py-0.5 transition-all cursor-pointer',
+                            copiedEmail === account.email
+                              ? 'bg-success/10 text-success'
+                              : hoveredEmail === account.email
+                                ? 'bg-text-secondary/10 text-text-primary'
+                                : 'text-text-secondary',
                           )}
                         >
-                          {securityScore}
+                          {copiedEmail === account.email
+                            ? 'Copy'
+                            : hoveredEmail === account.email
+                              ? account.password || 'No Password'
+                              : '••••••••'}
                         </span>
+                      </div>
+                    </td>
+                    {!selectedServiceId && (
+                      <td className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {(() => {
+                            const sorted = [...(account.services || [])]
+                              .filter((s) => s.url)
+                              .sort((a, b) =>
+                                (b.lastUsedAt || '').localeCompare(a.lastUsedAt || ''),
+                              );
+                            const top = sorted.slice(0, 4);
+                            const extra = sorted.length - top.length;
+                            return (
+                              <>
+                                {top.map((s, i) => {
+                                  let hostname = '';
+                                  try {
+                                    hostname = new URL(s.url).hostname;
+                                  } catch {
+                                    hostname = s.url;
+                                  }
+                                  return (
+                                    <img
+                                      key={`${s.serviceId}-${i}`}
+                                      src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+                                      className="w-4 h-4 rounded-sm"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  );
+                                })}
+                                {extra > 0 && (
+                                  <span className="text-[10px] font-bold text-text-secondary">
+                                    +{extra}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
                       </td>
-                    </motion.tr>
-                  );
-                })}
-              </AnimatePresence>
+                    )}
+                    <td className="text-center">
+                      <span
+                        className={cn(
+                          'inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase',
+                          isValidTotp(account.totp)
+                            ? 'bg-success/10 text-success'
+                            : 'bg-error/10 text-error',
+                        )}
+                      >
+                        {isValidTotp(account.totp) ? 'ON' : 'OFF'}
+                      </span>
+                    </td>
+                    <td>{renderLastActivity(account)}</td>
+                    <td>
+                      <div className="flex flex-col items-start gap-1 min-w-0">
+                        {account.lastFootprint ? (
+                          <>
+                            <span className="text-[12px] font-bold text-text-primary flex items-center gap-1.5">
+                              {account.lastFootprint.country &&
+                                renderCountryFlag(account.lastFootprint.country)}
+                              {[account.lastFootprint.country, account.lastFootprint.city]
+                                .filter(Boolean)
+                                .join(', ') || '—'}
+                            </span>
+                            <span className="text-[11px] font-mono text-text-secondary flex items-center gap-1.5">
+                              {account.lastFootprint.systemOS || '—'} ·{' '}
+                              {account.lastFootprint.browser || '—'}
+                              {account.lastFootprint.isProxy && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-warn/10 text-warn">
+                                  PROXY
+                                </span>
+                              )}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-text-secondary/40">No footprint</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="text-center">
+                      <span
+                        className={cn(
+                          'inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase',
+                          securityScore >= 80
+                            ? 'bg-green/10 text-green'
+                            : securityScore >= 50
+                              ? 'bg-warn/10 text-warn'
+                              : 'bg-red/10 text-red',
+                        )}
+                      >
+                        {securityScore}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1383,4 +1517,88 @@ const EmailTable: FC<EmailTableProps> = ({
   );
 };
 
-export default EmailTable;
+// Custom comparison function for memo
+const arePropsEqual = (prevProps: EmailTableProps, nextProps: EmailTableProps) => {
+  // Compare primitive values
+  if (prevProps.focusedAccountId !== nextProps.focusedAccountId) {
+    console.log('[EmailTable memo] focusedAccountId changed');
+    return false;
+  }
+  if (prevProps.selectedServiceId !== nextProps.selectedServiceId) {
+    console.log('[EmailTable memo] selectedServiceId changed');
+    return false;
+  }
+  if (prevProps.activeTab !== nextProps.activeTab) {
+    console.log('[EmailTable memo] activeTab changed');
+    return false;
+  }
+  if (prevProps.currentPage !== nextProps.currentPage) {
+    console.log('[EmailTable memo] currentPage changed');
+    return false;
+  }
+
+  // Compare arrays/objects by reference first (faster)
+  if (prevProps.accounts !== nextProps.accounts) {
+    console.log('[EmailTable memo] accounts reference changed');
+    return false;
+  }
+  if (prevProps.allAccounts !== nextProps.allAccounts) {
+    console.log('[EmailTable memo] allAccounts reference changed');
+    return false;
+  }
+  if (prevProps.sorting !== nextProps.sorting) {
+    console.log('[EmailTable memo] sorting reference changed');
+    return false;
+  }
+  if (prevProps.columnVisibility !== nextProps.columnVisibility) {
+    console.log('[EmailTable memo] columnVisibility reference changed');
+    return false;
+  }
+
+  // Compare Set by size and content
+  if (prevProps.runningBrowsers !== nextProps.runningBrowsers) {
+    if (prevProps.runningBrowsers.size !== nextProps.runningBrowsers.size) {
+      console.log(
+        '[EmailTable memo] runningBrowsers size changed:',
+        prevProps.runningBrowsers.size,
+        '→',
+        nextProps.runningBrowsers.size,
+      );
+      return false;
+    }
+    // Check if content is same
+    for (const id of prevProps.runningBrowsers) {
+      if (!nextProps.runningBrowsers.has(id)) {
+        console.log('[EmailTable memo] runningBrowsers content changed');
+        return false;
+      }
+    }
+  }
+
+  // Compare functions by reference (should be stable with useCallback)
+  if (prevProps.onSelectAccount !== nextProps.onSelectAccount) {
+    console.log('[EmailTable memo] onSelectAccount changed');
+    return false;
+  }
+  if (prevProps.onHardDelete !== nextProps.onHardDelete) {
+    console.log('[EmailTable memo] onHardDelete changed');
+    return false;
+  }
+  if (prevProps.onRefreshData !== nextProps.onRefreshData) {
+    console.log('[EmailTable memo] onRefreshData changed');
+    return false;
+  }
+  if (prevProps.onAddEmail !== nextProps.onAddEmail) {
+    console.log('[EmailTable memo] onAddEmail changed');
+    return false;
+  }
+  if (prevProps.setActiveTab !== nextProps.setActiveTab) {
+    console.log('[EmailTable memo] setActiveTab changed');
+    return false;
+  }
+
+  console.log('[EmailTable memo] Props are equal, skipping render');
+  return true;
+};
+
+export default memo(EmailTable, arePropsEqual);

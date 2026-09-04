@@ -18,20 +18,8 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } fr
 
 // ─── Imports ────────────────────────────────────────────────────────────
 // ── UI ──
-import {
-  Plus,
-  Mail,
-  AlertCircle,
-  Loader2,
-  Shield,
-  Key,
-  Hash,
-  X,
-  RefreshCw,
-  Upload,
-} from 'lucide-react';
-import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '../../components/ui/Drawer';
-import { Button } from '../../components/ui/Button';
+import { Plus, Mail, AlertCircle, Loader2, X } from 'lucide-react';
+import AddEmailModal from './components/modals/AddEmailModal';
 
 // ── Hooks ──
 import { useHashParams } from '../../hooks/useHashParams';
@@ -43,8 +31,8 @@ import ViewsService from './services/api.service';
 
 // ── Components ──
 import EmailTable from './components/EmailTable';
-import FilterBar from './components/FilterBar';
 import FilterPanel from './components/FilterPanel';
+import { isValidTotp, parseBackupCodes } from './components/modals/EmailModal/Security/utils';
 import HeaderBar from './components/HeaderBar';
 import FooterBar from './components/FooterBar';
 
@@ -143,21 +131,28 @@ const ModalWrapper: React.FC<{
 
 // ─── Component ──────────────────────────────────────────────────────────
 const Email = () => {
+  console.log('[Email] RENDER', Date.now());
+
   // ── State ──
   const [searchParams, setSearchParams] = useHashParams();
   const [accounts, setAccounts] = useState<Account[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilterBar, setShowFilterBar] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
   const [selectedView, setSelectedView] = useState<SavedView | null>(null);
   const [serviceFilter, setServiceFilter] = useState<{
     serviceId: string | null;
     websiteUrl: string | null;
+    twoFa: 'on' | 'off' | null;
+    ip: string | null;
+    running: boolean;
   }>({
     serviceId: null,
     websiteUrl: null,
+    twoFa: null,
+    ip: null,
+    running: false,
   });
 
   const [loading, setLoading] = useState(false);
@@ -177,6 +172,7 @@ const Email = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [focusedAccountId, setFocusedAccountId] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'home' | 'analytic' | 'security'>('home');
 
   // ── Derived ──
   const availableColumns = useMemo(() => {
@@ -184,12 +180,109 @@ const Email = () => {
   }, []);
 
   // ── Store ──
+  const [runningBrowsers, setRunningBrowsers] = useState<Set<string>>(new Set());
+
+  // Listen for browser open/close events from main process
+  useEffect(() => {
+    const onBrowserOpened = (_event: any, data: { accountId: string }) => {
+      if (!data?.accountId) return;
+      setRunningBrowsers((prev) => {
+        const next = new Set(prev);
+        next.add(data.accountId);
+        return next;
+      });
+    };
+    const onBrowserClosed = (_event: any, data: { accountId: string }) => {
+      if (!data?.accountId) return;
+      setRunningBrowsers((prev) => {
+        const next = new Set(prev);
+        next.delete(data.accountId);
+        return next;
+      });
+    };
+
+    // @ts-ignore
+    window.electron.ipcRenderer.on('email:browser-opened', onBrowserOpened);
+    // @ts-ignore
+    window.electron.ipcRenderer.on('email:browser-closed', onBrowserClosed);
+
+    const pollInitial = async () => {
+      const running = new Set<string>();
+      for (const acc of accounts) {
+        if (!acc?.id) continue;
+        try {
+          // @ts-ignore
+          const isOpen = await window.electron.ipcRenderer.invoke('email:is-profile-open', acc.id);
+          if (isOpen) running.add(acc.id);
+        } catch {
+          // silently ignore
+        }
+      }
+      setRunningBrowsers(running);
+    };
+    pollInitial();
+
+    return () => {
+      // @ts-ignore
+      window.electron.ipcRenderer.removeListener('email:browser-opened', onBrowserOpened);
+      // @ts-ignore
+      window.electron.ipcRenderer.removeListener('email:browser-closed', onBrowserClosed);
+    };
+  }, [accounts]);
+
+  // Health-check interval: poll running browsers every 5s, stop when none running
+  const healthCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const runningBrowsersRef = useRef(runningBrowsers);
+  runningBrowsersRef.current = runningBrowsers;
+
+  useEffect(() => {
+    if (runningBrowsers.size > 0) {
+      if (!healthCheckRef.current) {
+        healthCheckRef.current = setInterval(async () => {
+          const currentRunning = runningBrowsersRef.current;
+          if (currentRunning.size === 0) return;
+
+          for (const accountId of currentRunning) {
+            try {
+              // @ts-ignore
+              const isOpen = await window.electron.ipcRenderer.invoke(
+                'email:is-profile-open',
+                accountId,
+              );
+              if (!isOpen) {
+                setRunningBrowsers((prev) => {
+                  const next = new Set(prev);
+                  next.delete(accountId);
+                  return next;
+                });
+              }
+            } catch {
+              // silently ignore IPC errors for individual checks
+            }
+          }
+        }, 5000);
+      }
+    } else {
+      if (healthCheckRef.current) {
+        clearInterval(healthCheckRef.current);
+        healthCheckRef.current = null;
+      }
+    }
+
+    return () => {
+      if (healthCheckRef.current) {
+        clearInterval(healthCheckRef.current);
+        healthCheckRef.current = null;
+      }
+    };
+  }, [runningBrowsers.size]);
+
   const { sorting, columnVisibility } = useEmailTableState({
     viewId: null,
     defaultColumns: availableColumns,
   });
 
-  const { filters, addFilter, removeFilter, clearFilters, updateFilter } = useEmailFilter({
+  const { filters } = useEmailFilter({
     viewId: null,
     availableColumns,
   });
@@ -217,6 +310,26 @@ const Email = () => {
       result = result.filter((account) => {
         return account.lastActivity && account.lastActivity.url === serviceFilter.websiteUrl;
       });
+    }
+
+    // Apply 2FA filter
+    if (serviceFilter.twoFa) {
+      result = result.filter((account) => {
+        const hasTotp = isValidTotp(account.totp);
+        const hasBackup = parseBackupCodes(account.backup_codes).length > 0;
+        const enabled = hasTotp || hasBackup;
+        return serviceFilter.twoFa === 'on' ? enabled : !enabled;
+      });
+    }
+
+    // Apply Country filter
+    if (serviceFilter.ip) {
+      result = result.filter((account) => account.lastFootprint?.country === serviceFilter.ip);
+    }
+
+    // Apply running browser filter
+    if (serviceFilter.running) {
+      result = result.filter((account) => runningBrowsers.has(account.id));
     }
 
     // Apply view filters first if a view is selected
@@ -340,6 +453,41 @@ const Email = () => {
     accountsRef.current = accounts;
   }, [accounts]);
 
+  // Debug: Track what's causing Email component to re-render
+  const prevDepsRef = useRef<any>({});
+
+  useEffect(() => {
+    const prev = prevDepsRef.current;
+    const changes: string[] = [];
+
+    if (prev.accounts !== accounts) changes.push(`accounts (${accounts.length})`);
+    if (prev.searchQuery !== searchQuery) changes.push(`searchQuery: "${searchQuery}"`);
+    if (prev.serviceFilter !== serviceFilter) changes.push('serviceFilter');
+    if (prev.selectedView !== selectedView) changes.push('selectedView');
+    if (prev.filters !== filters) changes.push('filters');
+    if (prev.sorting !== sorting) changes.push('sorting');
+    if (prev.runningBrowsers !== runningBrowsers)
+      changes.push(`runningBrowsers (size: ${runningBrowsers.size})`);
+    if (prev.currentPage !== currentPage) changes.push(`currentPage: ${currentPage}`);
+
+    if (changes.length > 0) {
+      console.log('[Email] Re-render caused by:', changes.join(', '));
+    } else {
+      console.log('[Email] Re-render but NO dependency changed (unexpected!)');
+    }
+
+    prevDepsRef.current = {
+      accounts,
+      searchQuery,
+      serviceFilter,
+      selectedView,
+      filters,
+      sorting,
+      runningBrowsers,
+      currentPage,
+    };
+  });
+
   // ── Callbacks ──
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -442,6 +590,50 @@ const Email = () => {
                   city: pResult.city,
                 };
               }
+
+              try {
+                // @ts-ignore
+                const fRes = await window.electron.ipcRenderer.invoke(
+                  'email:get-fingerprint-history',
+                  { email: acc.email },
+                );
+                if (fRes?.success && Array.isArray(fRes.entries) && fRes.entries.length > 0) {
+                  const latest = fRes.entries.sort(
+                    (a: any, b: any) =>
+                      new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+                  )[0];
+                  if (acc.lastActivity) {
+                    acc.lastActivity.ip = latest.public_ip;
+                  }
+                  let cfg: any = {};
+                  try {
+                    cfg = JSON.parse(latest.fingerprint_config_json || '{}');
+                  } catch {}
+                  let ip: any = {};
+                  try {
+                    ip = JSON.parse(latest.ip_info_json || '{}');
+                  } catch {}
+                  const ua = cfg.userAgent || '';
+                  const browser = ua.includes('Edg/')
+                    ? 'Edge'
+                    : ua.includes('Chrome/')
+                      ? 'Chrome'
+                      : ua.includes('Firefox/')
+                        ? 'Firefox'
+                        : ua.includes('Safari/')
+                          ? 'Safari'
+                          : ua.split(' ')[0] || '—';
+                  acc.lastFootprint = {
+                    country: ip.countryCode || ip.country, // Use ISO code (VN) instead of full name (Vietnam)
+                    city: ip.city,
+                    systemOS: cfg.platform,
+                    browser,
+                    isProxy: !!latest.is_proxy,
+                  };
+                }
+              } catch (fErr) {
+                console.error(`Failed to fetch footprint for ${acc.email}`, fErr);
+              }
             } catch (e) {
               console.error(`Failed to fetch history/proxy for ${acc.email}`, e);
             }
@@ -509,6 +701,22 @@ const Email = () => {
     },
     [loadData],
   );
+
+  const handleSelectAccount = useCallback((account: Account | null) => {
+    setFocusedAccountId(account ? account.id : null);
+  }, []);
+
+  const handleOpenDeleteConfirm = useCallback((id: string) => {
+    setHardDeleteConfirmId(id);
+  }, []);
+
+  const handleSaveChanges = useCallback((oldAcc: Account, newAcc: Account) => {
+    setDiffPayload({ old: oldAcc, new: newAcc });
+  }, []);
+
+  const handleOpenAddDrawer = useCallback(() => {
+    setIsDrawerOpen(true);
+  }, []);
 
   const validateField = useCallback((name: string, value: string) => {
     let error = '';
@@ -604,55 +812,18 @@ const Email = () => {
 
   // ── Render ──
   return (
-    <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10">
-      <HeaderBar title="Email" />
-      {/* Filter Bar */}
-      {showFilterBar && (
-        <FilterBar
-          filters={filters}
-          availableColumns={availableColumns}
-          onAddFilter={addFilter}
-          onRemoveFilter={removeFilter}
-          onClearFilters={clearFilters}
-          onUpdateFilter={updateFilter}
-        />
-      )}
-
+    <div className="flex flex-col h-full w-full bg-background overflow-hidden selection:bg-primary/10 border-t border-r border-b border-border">
+      <HeaderBar activeView={activeView} onViewChange={setActiveView} />
       {/* Main Content: Table */}
-      <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden p-3">
-        {/* Page title */}
-        <div className="flex items-end justify-between mb-4 shrink-0">
-          <div>
-            <h1 className="font-display text-[22px] font-semibold text-text-primary tracking-tight">
-              Email Registry
-            </h1>
-            <p className="text-[12.5px] text-text-secondary/60 mt-1">
-              Manage your email accounts — monitor status, linked services, and account health in
-              real time.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={loadData}>
-              <RefreshCw className="size-3.5" />
-              Refresh
-            </Button>
-            <Button variant="outline" onClick={() => setIsDrawerOpen(true)}>
-              <Upload className="size-3.5" />
-              Import
-            </Button>
-            <Button variant="solid" onClick={() => setIsDrawerOpen(true)}>
-              <Plus className="size-3.5" />
-              Add Email
-            </Button>
-          </div>
-        </div>
-        <div className="flex-1 bg-card/30 border-b border-border/50 overflow-hidden flex flex-col gap-4">
-          <div className="flex-1 flex flex-row overflow-hidden gap-4 pt-1">
+      <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
+        <div className="flex-1 bg-card/30 border-b border-border/50 overflow-hidden flex flex-col">
+          <div className="flex-1 flex flex-row overflow-hidden">
             <FilterPanel
               accounts={accounts}
               onFiltersChange={setServiceFilter}
               onViewSelect={setSelectedView}
               selectedViewId={selectedView?.id || null}
+              runningCount={runningBrowsers.size}
             />
             {loading && accounts.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground opacity-50 flex-1">
@@ -705,239 +876,38 @@ const Email = () => {
                 accounts={paginatedData}
                 allAccounts={filteredAccounts}
                 focusedAccountId={focusedAccountId}
-                onSelectAccount={(account) => {
-                  setFocusedAccountId((prev) => (prev === account.id ? null : account.id));
-                }}
-                onHardDelete={(id) => setHardDeleteConfirmId(id)}
-                onSaveChanges={(oldAcc, newAcc) => setDiffPayload({ old: oldAcc, new: newAcc })}
+                onSelectAccount={handleSelectAccount}
+                onHardDelete={handleOpenDeleteConfirm}
+                onSaveChanges={handleSaveChanges}
                 onRefreshData={loadData}
+                onAddEmail={handleOpenAddDrawer}
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 sorting={sorting}
                 columnVisibility={columnVisibility}
                 selectedServiceId={serviceFilter.serviceId}
+                runningBrowsers={runningBrowsers}
               />
             )}
           </div>
         </div>
       </div>
 
-      {/* Add Email Drawer */}
-      <Drawer
+      <AddEmailModal
         isOpen={isDrawerOpen}
         onClose={() => {
           setIsDrawerOpen(false);
           setSelectedAccount(null);
         }}
-        position="right"
-        width="500px"
-      >
-        <DrawerHeader
-          title={selectedAccount ? 'Account Details' : 'Add Account'}
-          description={
-            selectedAccount
-              ? 'View and manage account information'
-              : 'Add a new email account to your repository'
-          }
-          onClose={() => {
-            setIsDrawerOpen(false);
-            setSelectedAccount(null);
-          }}
-        />
-
-        <DrawerBody className="space-y-6">
-          {/* Account Credentials */}
-          <div className="space-y-4">
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Email
-                <span className="text-destructive ml-1">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="identity@example.com"
-                value={newEmailData.email}
-                onChange={(e) => {
-                  setNewEmailData((d) => ({ ...d, email: e.target.value }));
-                  if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
-                }}
-                onBlur={() => validateField('email', newEmailData.email)}
-                className={cn(
-                  'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
-                  errors.email ? 'border-destructive' : 'border-border',
-                )}
-              />
-            </div>
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Password
-                <span className="text-destructive ml-1">*</span>
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••••••"
-                value={newEmailData.password}
-                onChange={(e) => {
-                  setNewEmailData((d) => ({ ...d, password: e.target.value }));
-                  if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
-                }}
-                onBlur={() => validateField('password', newEmailData.password)}
-                className={cn(
-                  'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
-                  errors.password ? 'border-destructive' : 'border-border',
-                )}
-              />
-            </div>
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Recovery Email
-              </label>
-              <input
-                type="text"
-                placeholder="backup@proton.me"
-                value={newEmailData.recoveryEmail}
-                onChange={(e) => {
-                  setNewEmailData((d) => ({ ...d, recoveryEmail: e.target.value }));
-                  if (errors.recoveryEmail) setErrors((prev) => ({ ...prev, recoveryEmail: '' }));
-                }}
-                onBlur={() => validateField('recoveryEmail', newEmailData.recoveryEmail)}
-                className={cn(
-                  'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
-                  errors.recoveryEmail ? 'border-destructive' : 'border-border',
-                )}
-              />
-            </div>
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Phone Number
-              </label>
-              <input
-                type="text"
-                placeholder="+84 ••• ••• •••"
-                value={newEmailData.phoneNumber}
-                onChange={(e) => {
-                  setNewEmailData((d) => ({ ...d, phoneNumber: e.target.value }));
-                  if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: '' }));
-                }}
-                onBlur={() => validateField('phoneNumber', newEmailData.phoneNumber)}
-                className={cn(
-                  'w-full h-10 px-3 rounded-xl bg-input-background border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50',
-                  errors.phoneNumber ? 'border-destructive' : 'border-border',
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Security Secrets */}
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Shield className="w-4 h-4 text-primary" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/90">
-                Security Settings
-              </h3>
-            </div>
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                TOTP Secret Key
-              </label>
-              <div className="relative flex items-center">
-                <Key className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
-                <input
-                  type="text"
-                  placeholder="Paste TOTP secret key..."
-                  value={newEmailData.totpSecretKey}
-                  onChange={(e) =>
-                    setNewEmailData((d) => ({ ...d, totpSecretKey: e.target.value }))
-                  }
-                  className="w-full h-10 pl-10 pr-3 rounded-xl bg-input-background border border-border text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-primary/50"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                Backup Codes
-              </label>
-              <div className="bg-input-background border border-border rounded-xl">
-                {newEmailData.backupCodes.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 p-2 pb-0">
-                    {newEmailData.backupCodes.map((code, idx) => {
-                      const colors = [
-                        'bg-blue-500/20 text-blue-400 border-blue-500/30',
-                        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                        'bg-amber-500/20 text-amber-400 border-amber-500/30',
-                        'bg-pink-500/20 text-pink-400 border-pink-500/30',
-                        'bg-purple-500/20 text-purple-400 border-purple-500/30',
-                        'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-                      ];
-                      const colorClass = colors[idx % colors.length];
-                      return (
-                        <span
-                          key={code}
-                          className={cn(
-                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border',
-                            colorClass,
-                          )}
-                        >
-                          {code}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setNewEmailData((d) => ({
-                                ...d,
-                                backupCodes: d.backupCodes.filter((c) => c !== code),
-                              }))
-                            }
-                            className="hover:opacity-70 transition-opacity"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="relative flex items-center">
-                  <Hash className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
-                  <input
-                    type="text"
-                    placeholder="Type code and press Enter..."
-                    value={backupCodeSearch}
-                    onChange={(e) => setBackupCodeSearch(e.target.value)}
-                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === 'Enter' && backupCodeSearch.trim()) {
-                        const newVal = backupCodeSearch.trim();
-                        if (!newEmailData.backupCodes.includes(newVal)) {
-                          setNewEmailData((d) => ({
-                            ...d,
-                            backupCodes: [...d.backupCodes, newVal],
-                          }));
-                        }
-                        setBackupCodeSearch('');
-                      }
-                    }}
-                    className="w-full h-10 pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none rounded-xl"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </DrawerBody>
-
-        <DrawerFooter>
-          <Button variant="outline" className="flex-1" onClick={() => setIsDrawerOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="solid"
-            className="flex-1"
-            disabled={!newEmailData.email || !newEmailData.password}
-            onClick={handleAddEmail}
-          >
-            Save Account
-          </Button>
-        </DrawerFooter>
-      </Drawer>
+        newEmailData={newEmailData}
+        setNewEmailData={setNewEmailData}
+        backupCodeSearch={backupCodeSearch}
+        setBackupCodeSearch={setBackupCodeSearch}
+        errors={errors}
+        setErrors={setErrors}
+        validateField={validateField}
+        handleAddEmail={handleAddEmail}
+      />
 
       {/* Toast - Native */}
       {toast.visible && (

@@ -2,7 +2,7 @@
  * Shared types for SecurityTab sub-components.
  */
 
-import type { Account } from '../../../types';
+import type { Account } from '../../../../types';
 
 export interface SecurityTabProps {
   account: Account | null;

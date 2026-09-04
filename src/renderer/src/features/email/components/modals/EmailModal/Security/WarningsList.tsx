@@ -3,7 +3,7 @@
  */
 
 import { AlertTriangle, XCircle } from 'lucide-react';
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 import type { SecurityWarning } from './types';
 
 interface WarningsListProps {
@@ -34,9 +34,7 @@ export default function WarningsList({ warnings }: WarningsListProps) {
               <div
                 className={cn(
                   'w-6 h-6 rounded-md flex items-center justify-center shrink-0',
-                  warning.severity === 'critical'
-                    ? 'bg-red/10 text-red'
-                    : 'bg-warn/10 text-warn',
+                  warning.severity === 'critical' ? 'bg-red/10 text-red' : 'bg-warn/10 text-warn',
                 )}
               >
                 {warning.severity === 'critical' ? (
@@ -52,9 +50,7 @@ export default function WarningsList({ warnings }: WarningsListProps) {
               <span
                 className={cn(
                   'shrink-0 text-[12px] font-bold uppercase tracking-wider px-2 py-1 rounded-md',
-                  warning.severity === 'critical'
-                    ? 'bg-red/10 text-red'
-                    : 'bg-warn/10 text-warn',
+                  warning.severity === 'critical' ? 'bg-red/10 text-red' : 'bg-warn/10 text-warn',
                 )}
               >
                 {warning.severity}

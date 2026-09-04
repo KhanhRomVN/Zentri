@@ -8,7 +8,7 @@ import { ServiceProviderConfig } from '../../../email/types';
 import { SERVICES } from '../../../../constants/services';
 import { CATEGORIES, CategoryItem } from '../../../../constants/categories';
 import { useAccentColors } from '../../../../hooks/useAccentColors';
-import CreateCategoryModal from '../../../../components/CreateCategoryModal';
+import CreateCategoryModal from './CreateCategoryModal';
 
 
 interface ServiceDrawerProps {

@@ -24,9 +24,67 @@ import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dn
 import { CSS } from '@dnd-kit/utilities';
 import { SmartView } from '../types/search';
 import { useAccentColors } from '@renderer/hooks/useAccentColors';
-import { getFieldValue, setAccentColorsCache } from '@renderer/utils/searchHelpers';
 import { cn } from '@renderer/shared/lib/utils';
 import { FilterCondition, Operator } from '@renderer/constants';
+
+// ─── Search Helpers (inlined) ────────────────────────────────────────────────
+
+/**
+ * Resolve field value from a row object
+ * Supports nested fields: email, services.*, proxy.*
+ */
+const getFieldValue = (row: any, field: string): string => {
+  if (!field || field === '_stt') return '';
+
+  // Direct email fields
+  const emailFields = [
+    'email',
+    'password',
+    'recoveryEmail',
+    'phoneNumber',
+    'status',
+    'createdAt',
+    'lastUsedAt',
+    'totpSecretKey',
+  ];
+  if (emailFields.includes(field)) {
+    const val = row[field];
+    if (val === null || val === undefined) return '—';
+    if (field === 'createdAt' || field === 'lastUsedAt') {
+      try {
+        return new Date(val).toLocaleDateString();
+      } catch {
+        return String(val);
+      }
+    }
+    return String(val);
+  }
+
+  // Service fields (from linked services)
+  if (field.startsWith('services.')) {
+    const serviceField = field.replace('services.', '');
+    const services = row._services || [];
+    if (services.length === 0) return '—';
+    const firstService = services[0];
+    const val = firstService[serviceField];
+    if (val === null || val === undefined) return '—';
+    return String(val);
+  }
+
+  // Proxy fields
+  if (field.startsWith('proxy.')) {
+    const proxyField = field.replace('proxy.', '');
+    const proxy = row._proxy;
+    if (!proxy) return '—';
+    const val = proxy[proxyField];
+    if (val === null || val === undefined) return '—';
+    return String(val);
+  }
+
+  return '—';
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface FilterTableProps {
   selectedView: SmartView | null;
@@ -125,10 +183,12 @@ const FilterTable: FC<FilterTableProps> = ({
   data,
   loading,
 }) => {
-  const { accentColors, UNIFIED_ACCENT } = useAccentColors();
+  const { accentColors } = useAccentColors();
 
+  // Note: accentColors is fetched but not actively used in this component
+  // Keep for future color customization
   if (typeof accentColors !== 'undefined' && accentColors.length > 0) {
-    setAccentColorsCache(accentColors, UNIFIED_ACCENT);
+    // Reserved for future use
   }
 
   // ─── Sensors for DnD ──────────────────────────────────────────────────────
@@ -352,7 +412,9 @@ const FilterTable: FC<FilterTableProps> = ({
                     {rowModel.rows.length === 0 && !loading && (
                       <tr>
                         <td
-                          colSpan={table.getAllColumns().filter((c: any) => c.getIsVisible()).length}
+                          colSpan={
+                            table.getAllColumns().filter((c: any) => c.getIsVisible()).length
+                          }
                           className="text-center py-12 text-muted-foreground/40 text-sm"
                         >
                           No data found

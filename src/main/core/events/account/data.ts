@@ -636,14 +636,16 @@ export function setupDataHandlers() {
 
       const rows: any[] = await new Promise((resolve) => {
         db.all(
-          'SELECT id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, started_at, ended_at FROM site_fingerprint_history ORDER BY started_at DESC',
+          'SELECT id, domain, fingerprint_hash, fingerprint_config_json, public_ip, ip_info_json, is_proxy, started_at, ended_at FROM site_fingerprint_history ORDER BY started_at DESC',
           (_err, rows) => {
             db.close();
             resolve(rows || []);
           },
         );
       });
-      fs.unlinkSync(tempPath);
+      try {
+        fs.unlinkSync(tempPath);
+      } catch (e) {}
 
       return { success: true, entries: rows };
     } catch (e: any) {

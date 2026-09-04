@@ -51,6 +51,7 @@
     --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
     --dialog-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
     --dropdown-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-primary: 0 4px 16px rgb(var(--primary) / 0.04);
     --table-header-bg: 248 250 252;
     --table-hover-header-bg: 241 245 249;
     --table-body-bg: 255 255 255;
@@ -112,6 +113,7 @@
     --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --dialog-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --dropdown-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-primary: 0 4px 16px rgb(var(--primary) / 0.08);
     --table-header-bg: 26 26 26;
     --table-hover-header-bg: 36 36 36;
     --table-body-bg: 36 36 36;

@@ -1,20 +1,53 @@
+/**
+ * Country flag utilities
+ * Provides functions to get country flags as React SVG components or emoji text
+ */
+
+import * as flags from 'country-flag-icons/react/3x2';
+
 export interface Country {
   code: string;
   name: string;
 }
 
 /**
- * Convert ISO 3166-1 alpha-2 country code to flag emoji using regional indicator symbols.
+ * Get country flag component from country-flag-icons library
+ * Returns a React component for the flag SVG
+ * Example: 'VN' → <VN />, 'US' → <US />
+ */
+export function getCountryFlagComponent(
+  code: string,
+): React.ComponentType<React.SVGProps<SVGSVGElement>> | null {
+  if (!code || code.length !== 2) return null;
+  const upperCode = code.toUpperCase();
+  // @ts-ignore - dynamic key access
+  return flags[upperCode] || null;
+}
+
+/**
+ * Get country flag as emoji text
+ * Converts ISO 3166-1 alpha-2 country code to flag emoji using regional indicator symbols
  * Example: 'VN' → '🇻🇳', 'US' → '🇺🇸'
  */
-export function getCountryFlag(code: string): string {
+export function getCountryFlagEmoji(code: string): string {
   if (!code || code.length !== 2) return '';
-  const a = code.charCodeAt(0) - 65 + 0x1F1E6;
-  const b = code.charCodeAt(1) - 65 + 0x1F1E6;
-  if (a < 0x1F1E6 || a > 0x1F1FF || b < 0x1F1E6 || b > 0x1F1FF) return '';
+  const a = code.charCodeAt(0) - 65 + 0x1f1e6;
+  const b = code.charCodeAt(1) - 65 + 0x1f1e6;
+  if (a < 0x1f1e6 || a > 0x1f1ff || b < 0x1f1e6 || b > 0x1f1ff) return '';
   return String.fromCodePoint(a, b);
 }
 
+/**
+ * Get country name from country code
+ */
+export function getCountryName(code: string): string {
+  const country = COUNTRIES.find((c) => c.code.toUpperCase() === code.toUpperCase());
+  return country?.name || code;
+}
+
+/**
+ * Full list of countries with ISO 3166-1 alpha-2 codes
+ */
 export const COUNTRIES: Country[] = [
   { code: 'AF', name: 'Afghanistan' },
   { code: 'AL', name: 'Albania' },

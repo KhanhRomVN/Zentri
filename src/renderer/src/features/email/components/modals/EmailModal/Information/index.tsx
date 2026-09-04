@@ -21,10 +21,10 @@ import { FC } from 'react';
 import { Key, Hash, Activity, X } from 'lucide-react';
 
 // ── Utils ──
-import { cn } from '../../../../../shared/lib/utils';
+import { cn } from '../../../../../../shared/lib/utils';
 
 // ── Types ──
-import { Account } from '../../../types';
+import { Account } from '../../../../types';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────
 interface InfoTabProps {

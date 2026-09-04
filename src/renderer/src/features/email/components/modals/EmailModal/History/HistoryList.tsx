@@ -24,7 +24,7 @@ import { FC, useState, memo } from 'react';
 import { History, Search, Copy, ExternalLink, Trash2, Globe, X } from 'lucide-react';
 
 // ── UI Components ──
-import { EmptyState } from '../../../../../components/ui/EmptyState';
+import { EmptyState } from '../../../../../../components/ui/EmptyState';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────
 interface ProcessedItem {
