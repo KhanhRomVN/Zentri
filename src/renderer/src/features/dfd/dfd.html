@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FLOWTRACE :: DFD Inspector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0D13;
+    --bg-raised:#10141C;
+    --bg-inset:#0D1119;
+    --panel:#11151F;
+    --border:#1C2430;
+    --border-soft:#161C27;
+    --text:#E7ECF2;
+    --text-dim:#8A94A3;
+    --text-faint:#4E5866;
+    --accent-process:#2FE6B8;
+    --accent-process-dim:#164B3E;
+    --accent-entity:#FFB454;
+    --accent-entity-dim:#4D3A18;
+    --accent-store:#9D7BFF;
+    --accent-store-dim:#2E2450;
+    --flow:#5B6B80;
+    --flow-hi:#2FE6B8;
+    --danger:#FF6B6B;
+    --mono:'JetBrains Mono', monospace;
+    --disp:'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(47,230,184,0.05), transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(157,123,255,0.05), transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:13px;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent-process-dim); color:var(--accent-process); }
+
+  /* ---------- layout shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns: 264px 1fr 300px;
+    grid-template-rows: 56px 1fr 34px;
+    grid-template-areas:
+      "top top top"
+      "side main inspect"
+      "side status inspect";
+    height:100vh;
+    width:100vw;
+  }
+
+  /* ---------- top bar ---------- */
+  .top{
+    grid-area:top;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:0 18px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, var(--bg-raised), var(--bg));
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    font-family:var(--disp);
+    font-weight:700;
+    font-size:16px;
+    letter-spacing:0.5px;
+  }
+  .brand .dot{ color:var(--accent-process); }
+  .brand small{
+    font-family:var(--mono);
+    font-weight:500;
+    font-size:10px;
+    color:var(--text-faint);
+    letter-spacing:1px;
+  }
+  .breadcrumb{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--text-dim);
+    overflow:hidden;
+    flex:1;
+  }
+  .breadcrumb .crumb{
+    padding:5px 10px;
+    border-radius:4px;
+    border:1px solid transparent;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:border-color .15s, color .15s;
+  }
+  .breadcrumb .crumb:hover{ border-color:var(--border); color:var(--text); }
+  .breadcrumb .crumb.active{
+    color:var(--accent-process);
+    border-color:var(--accent-process-dim);
+    background:rgba(47,230,184,0.06);
+  }
+  .breadcrumb .sep{ color:var(--text-faint); }
+  .top-meta{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .pill{
+    font-size:10px;
+    letter-spacing:0.5px;
+    padding:4px 9px;
+    border-radius:20px;
+    border:1px solid var(--border);
+    color:var(--text-dim);
+  }
+  .pill.live{ color:var(--accent-process); border-color:var(--accent-process-dim); }
+  .pill.live::before{
+    content:'';
+    display:inline-block;
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--accent-process);
+    margin-right:6px;
+    box-shadow:0 0 6px var(--accent-process);
+  }
+
+  /* ---------- sidebar ---------- */
+  .side{
+    grid-area:side;
+    border-right:1px solid var(--border);
+    background:var(--bg-raised);
+    overflow-y:auto;
+    padding:16px 14px;
+  }
+  .side h4{
+    font-family:var(--disp);
+    font-size:11px;
+    text-transform:none;
+    letter-spacing:0.3px;
+    color:var(--text-faint);
+    margin:0 0 10px 0;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .tree{ margin-bottom:22px; }
+  .tree-node{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 8px;
+    border-radius:5px;
+    cursor:pointer;
+    color:var(--text-dim);
+    font-size:12px;
+    border:1px solid transparent;
+  }
+  .tree-node .code{
+    font-weight:600;
+    color:var(--text-faint);
+    width:34px;
+    flex-shrink:0;
+  }
+  .tree-node:hover{ background:var(--bg-inset); color:var(--text); }
+  .tree-node.current{
+    background:rgba(47,230,184,0.07);
+    border-color:var(--accent-process-dim);
+    color:var(--accent-process);
+  }
+  .tree-node.current .code{ color:var(--accent-process); }
+  .tree-node .chev{ margin-left:auto; color:var(--text-faint); font-size:10px; }
+  .tree-children{ margin-left:16px; border-left:1px dashed var(--border); padding-left:8px; }
+
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:6px 2px;
+    font-size:11.5px;
+    color:var(--text-dim);
+  }
+  .legend-swatch{ width:20px; height:20px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .sw-process{ border-radius:50%; border:1.6px solid var(--accent-process); }
+  .sw-entity{ border:1.6px solid var(--accent-entity); border-radius:2px; }
+  .sw-store{ border-top:1.6px solid var(--accent-store); border-bottom:1.6px solid var(--accent-store); border-left:1.6px solid var(--accent-store); height:14px; }
+  .sw-flow{ width:20px; border-top:1.4px solid var(--flow); position:relative; }
+  .sw-flow::after{
+    content:'';
+    position:absolute; right:-1px; top:-3px;
+    border:3px solid transparent; border-left-color:var(--flow);
+  }
+
+  .stat-line{
+    display:flex; justify-content:space-between;
+    font-size:11px; color:var(--text-dim); padding:5px 2px;
+  }
+  .stat-line b{ color:var(--text); font-weight:600; }
+
+  /* ---------- main canvas ---------- */
+  .main{
+    grid-area:main;
+    position:relative;
+    overflow:auto;
+    background:
+      linear-gradient(var(--border-soft) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--border-soft) 1px, transparent 1px) 0 0/28px 28px,
+      var(--bg);
+  }
+  .main-head{
+    position:sticky; top:0; left:0; z-index:5;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 20px;
+    background:linear-gradient(180deg, rgba(10,13,19,0.94), rgba(10,13,19,0.7));
+    backdrop-filter:blur(2px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .main-head h2{
+    margin:0; font-family:var(--disp); font-size:15px; font-weight:600; color:var(--text);
+  }
+  .main-head p{ margin:2px 0 0; font-size:11px; color:var(--text-faint); }
+  .hint{
+    font-size:10.5px; color:var(--text-faint);
+    border:1px solid var(--border); padding:5px 10px; border-radius:5px;
+  }
+  .hint b{ color:var(--accent-process); }
+
+  svg.diagram{ display:block; }
+  .node-process circle{
+    fill:var(--bg-raised);
+    stroke:var(--accent-process);
+    stroke-width:1.6;
+    transition:filter .15s, stroke-width .15s;
+  }
+  .node-process line{ stroke:var(--accent-process); stroke-width:1.2; opacity:.55; }
+  .node-process .pcode{ fill:var(--accent-process); font-weight:700; font-family:var(--mono); }
+  .node-process .plabel{ fill:var(--text); font-weight:600; font-family:var(--disp); }
+  .node-process.decomposable circle{ stroke-dasharray:0; }
+  .node-process.decomposable{ cursor:pointer; }
+  .node-process.decomposable:hover circle{ filter:drop-shadow(0 0 7px rgba(47,230,184,0.55)); stroke-width:2.2; }
+  .node-process.selected circle{ stroke-width:2.4; filter:drop-shadow(0 0 8px rgba(47,230,184,0.5)); }
+
+  .node-entity rect{
+    fill:var(--bg-raised);
+    stroke:var(--accent-entity);
+    stroke-width:1.6;
+    cursor:pointer;
+  }
+  .node-entity:hover rect{ filter:drop-shadow(0 0 7px rgba(255,180,84,0.45)); }
+  .node-entity.selected rect{ stroke-width:2.4; filter:drop-shadow(0 0 8px rgba(255,180,84,0.5)); }
+  .node-entity text{ fill:var(--text); font-weight:600; font-family:var(--disp); font-size:13px; }
+
+  .node-store path{
+    fill:var(--bg-raised);
+    stroke:var(--accent-store);
+    stroke-width:1.6;
+    cursor:pointer;
+  }
+  .node-store:hover path{ filter:drop-shadow(0 0 7px rgba(157,123,255,0.45)); }
+  .node-store.selected path{ stroke-width:2.4; filter:drop-shadow(0 0 8px rgba(157,123,255,0.5)); }
+  .node-store text{ fill:var(--text); font-weight:500; font-family:var(--mono); font-size:11.5px; }
+
+  .flow-path{
+    fill:none;
+    stroke:var(--flow);
+    stroke-width:1.4;
+    marker-end:url(#arrow);
+    cursor:pointer;
+  }
+  .flow-hit{ fill:none; stroke:transparent; stroke-width:14; cursor:pointer; }
+  .flow-group:hover .flow-path{ stroke:var(--flow-hi); marker-end:url(#arrow-hi); }
+  .flow-group.selected .flow-path{ stroke:var(--flow-hi); stroke-width:2; marker-end:url(#arrow-hi); }
+  .flow-label-bg{ fill:#0A0D13; opacity:0.92; }
+  .flow-label{ fill:var(--text-dim); font-size:10.5px; font-family:var(--mono); }
+  .flow-group:hover .flow-label, .flow-group.selected .flow-label{ fill:var(--flow-hi); }
+
+  /* ---------- inspector ---------- */
+  .inspect{
+    grid-area:inspect;
+    border-left:1px solid var(--border);
+    background:var(--bg-raised);
+    overflow-y:auto;
+    padding:16px 14px;
+  }
+  .inspect h4{
+    font-family:var(--disp); font-size:11px; color:var(--text-faint);
+    margin:0 0 12px 0; padding-bottom:8px; border-bottom:1px solid var(--border-soft);
+  }
+  .insp-empty{
+    color:var(--text-faint); font-size:12px; line-height:1.7; padding:6px 2px;
+  }
+  .insp-kind{
+    display:inline-block;
+    font-size:10px; letter-spacing:0.4px;
+    padding:3px 8px; border-radius:4px;
+    margin-bottom:10px;
+  }
+  .insp-kind.process{ color:var(--accent-process); background:rgba(47,230,184,0.08); border:1px solid var(--accent-process-dim); }
+  .insp-kind.entity{ color:var(--accent-entity); background:rgba(255,180,84,0.08); border:1px solid var(--accent-entity-dim); }
+  .insp-kind.store{ color:var(--accent-store); background:rgba(157,123,255,0.08); border:1px solid var(--accent-store-dim); }
+  .insp-title{ font-family:var(--disp); font-size:16px; font-weight:600; margin:0 0 4px; }
+  .insp-code{ font-size:11px; color:var(--text-faint); margin-bottom:14px; }
+  .insp-desc{ font-size:12px; line-height:1.65; color:var(--text-dim); margin-bottom:16px; }
+  .insp-section{ margin-bottom:16px; }
+  .insp-section h5{
+    font-size:10.5px; letter-spacing:0.4px; color:var(--text-faint);
+    margin:0 0 8px; font-family:var(--mono); font-weight:600;
+  }
+  .flow-item{
+    display:flex; gap:8px; align-items:flex-start;
+    padding:7px 8px; border-radius:5px; background:var(--bg-inset);
+    border:1px solid var(--border-soft); margin-bottom:6px; font-size:11.5px;
+  }
+  .flow-item .arrow-ico{ color:var(--flow-hi); flex-shrink:0; margin-top:1px; }
+  .flow-item .fl-label{ color:var(--text); }
+  .flow-item .fl-sub{ color:var(--text-faint); font-size:10.5px; margin-top:2px; }
+  .drill-btn{
+    width:100%;
+    margin-top:4px;
+    padding:9px 10px;
+    background:var(--accent-process-dim);
+    color:var(--accent-process);
+    border:1px solid var(--accent-process);
+    border-radius:5px;
+    font-family:var(--mono);
+    font-size:11.5px;
+    font-weight:600;
+    cursor:pointer;
+    letter-spacing:0.3px;
+    transition:background .15s;
+  }
+  .drill-btn:hover{ background:rgba(47,230,184,0.18); }
+
+  /* ---------- status bar ---------- */
+  .status{
+    grid-area:status;
+    border-top:1px solid var(--border);
+    background:var(--bg-raised);
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:0 16px;
+    font-size:10.5px;
+    color:var(--text-faint);
+  }
+  .status span b{ color:var(--text-dim); }
+  .status .fill{ flex:1; }
+
+  /* scrollbars */
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:#232B38; border-radius:5px; }
+  ::-webkit-scrollbar-thumb:hover{ background:#2E3948; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ============ TOP BAR ============ -->
+  <div class="top">
+    <div class="brand"><span class="dot">◆</span> FLOWTRACE<small>DFD INSPECTOR v0.4</small></div>
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="top-meta">
+      <span class="pill" id="nodeCountPill">— node</span>
+      <span class="pill live">ĐANG MÔ PHỎNG</span>
+    </div>
+  </div>
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="side">
+    <h4>CÂY PHÂN RÃ TIẾN TRÌNH</h4>
+    <div class="tree" id="tree"></div>
+
+    <h4>CHÚ GIẢI KÝ HIỆU</h4>
+    <div class="legend-item"><span class="legend-swatch sw-process"></span> Tiến trình (Process)</div>
+    <div class="legend-item"><span class="legend-swatch sw-entity"></span> Thực thể ngoài (External Entity)</div>
+    <div class="legend-item"><span class="legend-swatch sw-store"></span> Kho dữ liệu (Data Store)</div>
+    <div class="legend-item"><span class="legend-swatch sw-flow"></span> Luồng dữ liệu (Data Flow)</div>
+
+    <h4 style="margin-top:22px;">THỐNG KÊ MÔ HÌNH</h4>
+    <div class="stat-line"><span>Tổng số mức</span><b id="statLevels">—</b></div>
+    <div class="stat-line"><span>Tổng số tiến trình</span><b id="statProcesses">—</b></div>
+    <div class="stat-line"><span>Tổng số kho dữ liệu</span><b id="statStores">—</b></div>
+    <div class="stat-line"><span>Tổng số luồng</span><b id="statFlows">—</b></div>
+  </div>
+
+  <!-- ============ MAIN CANVAS ============ -->
+  <div class="main" id="mainScroll">
+    <div class="main-head">
+      <div>
+        <h2 id="levelTitle">—</h2>
+        <p id="levelSub">—</p>
+      </div>
+      <div class="hint">Nhấp vào <b>vòng tròn nét đậm</b> để phân rã xuống mức tiếp theo</div>
+    </div>
+    <div id="canvasWrap" style="padding:20px 30px 60px;"></div>
+  </div>
+
+  <!-- ============ INSPECTOR ============ -->
+  <div class="inspect">
+    <h4>THUỘC TÍNH ĐỐI TƯỢNG</h4>
+    <div id="inspectorBody">
+      <p class="insp-empty">Chọn một tiến trình, thực thể, kho dữ liệu hoặc luồng dữ liệu trên sơ đồ để xem chi tiết.</p>
+    </div>
+  </div>
+
+  <!-- ============ STATUS BAR ============ -->
+  <div class="status">
+    <span>MÔ HÌNH: <b id="statModel">—</b></span>
+    <span>MỨC HIỆN TẠI: <b id="statCurrentLevel">—</b></span>
+    <span class="fill"></span>
+    <span id="statSelected">Chưa chọn đối tượng nào</span>
+  </div>
+
+</div>
+
+<script id="mockData" type="application/json">
+{
+  "meta": {
+    "modelName": "Quy trình Thanh toán Hóa đơn NCC",
+    "rootLevel": "root"
+  },
+  "levels": {
+    "root": {
+      "code": "0",
+      "title": "Mức 0 — Sơ đồ ngữ cảnh",
+      "subtitle": "Toàn bộ quy trình được biểu diễn dưới dạng một tiến trình duy nhất trao đổi dữ liệu với thực thể ngoài NCC.",
+      "parent": null,
+      "canvas": { "w": 760, "h": 420 },
+      "nodes": [
+        {
+          "id": "ncc",
+          "type": "entity",
+          "label": "NCC",
+          "desc": "Nhà cung cấp — thực thể bên ngoài hệ thống, gửi hóa đơn cần thanh toán và nhận lại thông tin xác nhận thanh toán.",
+          "x": 50, "y": 175, "w": 130, "h": 66
+        },
+        {
+          "id": "p1",
+          "type": "process",
+          "code": "1",
+          "label": "Thanh toán hóa đơn",
+          "desc": "Tiến trình tổng quát xử lý toàn bộ chu trình thanh toán hóa đơn nhận từ nhà cung cấp.",
+          "cx": 500, "cy": 210, "r": 100,
+          "childLevel": "1"
+        }
+      ],
+      "flows": [
+        { "id": "f-root-1", "from": "ncc", "to": "p1", "label": "Hóa đơn",
+          "path": [[180,168],[400,150]] },
+        { "id": "f-root-2", "from": "p1", "to": "ncc", "label": "Thông tin thanh toán hóa đơn",
+          "path": [[400,258],[180,235]] }
+      ]
+    },
+
+    "1": {
+      "code": "1",
+      "title": "Mức 1 — Phân rã tiến trình 1",
+      "subtitle": "Tiến trình \"Thanh toán hóa đơn\" được tách thành 3 tiến trình con: xem xét, kiểm tra công nợ và lập séc thanh toán.",
+      "parent": { "id": "p1", "code": "1", "label": "Thanh toán hóa đơn", "level": "root" },
+      "canvas": { "w": 900, "h": 700 },
+      "nodes": [
+        {
+          "id": "ncc",
+          "type": "entity",
+          "label": "NCC",
+          "desc": "Nhà cung cấp — gửi hóa đơn gốc vào tiến trình 1.1 và nhận thông tin thanh toán hóa đơn từ tiến trình 1.3.",
+          "x": 40, "y": 300, "w": 120, "h": 64
+        },
+        {
+          "id": "p11",
+          "type": "process",
+          "code": "1.1",
+          "label": "Xem xét",
+          "desc": "Kiểm tra tính hợp lệ, đối chiếu nội dung hóa đơn nhận từ NCC trước khi chuyển sang bước đối chiếu công nợ.",
+          "cx": 430, "cy": 130, "r": 80
+        },
+        {
+          "id": "p12",
+          "type": "process",
+          "code": "1.2",
+          "label": "Kiểm tra công nợ",
+          "desc": "Đối chiếu hóa đơn đã xem xét với dữ liệu công nợ hiện có để xác định số tiền còn phải thanh toán.",
+          "cx": 430, "cy": 360, "r": 80
+        },
+        {
+          "id": "p13",
+          "type": "process",
+          "code": "1.3",
+          "label": "Lập séc thanh toán",
+          "desc": "Lập séc/uỷ nhiệm chi thanh toán dựa trên công nợ đã xác nhận, cập nhật kho hóa đơn đã thanh toán và phản hồi cho NCC.",
+          "cx": 430, "cy": 590, "r": 80,
+          "childLevel": "1.1"
+        },
+        {
+          "id": "d-congno",
+          "type": "store",
+          "code": "D1",
+          "label": "Công nợ",
+          "desc": "Kho lưu trữ số liệu công nợ hiện tại giữa doanh nghiệp và từng nhà cung cấp.",
+          "x": 680, "y": 335, "w": 175, "h": 52
+        },
+        {
+          "id": "d-hdthanhtoan",
+          "type": "store",
+          "code": "D2",
+          "label": "HD đã thanh toán",
+          "desc": "Kho lưu trữ các hóa đơn đã được lập séc và xử lý thanh toán hoàn tất.",
+          "x": 680, "y": 565, "w": 175, "h": 52
+        }
+      ],
+      "flows": [
+        { "id": "f1-1", "from": "ncc", "to": "p11", "label": "Hóa đơn",
+          "path": [[160,290],[350,155]] },
+        { "id": "f1-2", "from": "p11", "to": "p12", "label": "HD đã xem xét",
+          "path": [[430,210],[430,280]] },
+        { "id": "f1-3", "from": "d-congno", "to": "p12", "label": "Công nợ",
+          "path": [[680,361],[510,355]] },
+        { "id": "f1-4", "from": "p12", "to": "p13", "label": "Công nợ",
+          "path": [[430,440],[430,510]] },
+        { "id": "f1-5", "from": "d-hdthanhtoan", "to": "p13", "label": "HD đã thanh toán",
+          "path": [[680,591],[510,585]] },
+        { "id": "f1-6", "from": "p13", "to": "ncc", "label": "Thông tin thanh toán hóa đơn",
+          "path": [[350,610],[160,340]] }
+      ]
+    },
+
+    "1.1": {
+      "code": "1.1",
+      "title": "Mức 2 — Phân rã tiến trình 1.1",
+      "subtitle": "Tiến trình \"Lập séc thanh toán\" được tách tiếp thành kiểm tra số lượng, lập phiếu xuất và thông báo từ chối (minh hoạ nhánh xử lý xuất hàng).",
+      "parent": { "id": "p13", "code": "1.1", "label": "Lập séc thanh toán", "level": "1" },
+      "canvas": { "w": 900, "h": 760 },
+      "nodes": [
+        {
+          "id": "dl",
+          "type": "entity",
+          "label": "Đại lí",
+          "desc": "Thực thể ngoài đại diện cho đại lý phân phối — gửi yêu cầu xuất hàng và nhận phiếu xuất hoặc thông báo từ chối.",
+          "x": 40, "y": 330, "w": 130, "h": 66
+        },
+        {
+          "id": "p111",
+          "type": "process",
+          "code": "1.1.1",
+          "label": "Kiểm tra số lượng",
+          "desc": "Kiểm tra số lượng mặt hàng kẹo tồn kho có đáp ứng đủ yêu cầu xuất hàng của đại lý hay không.",
+          "cx": 420, "cy": 150, "r": 88
+        },
+        {
+          "id": "p112",
+          "type": "process",
+          "code": "1.1.2",
+          "label": "Lập phiếu xuất",
+          "desc": "Lập phiếu xuất kho cho số lượng hàng đủ điều kiện, đồng thời ghi nhận công nợ phát sinh.",
+          "cx": 420, "cy": 400, "r": 88
+        },
+        {
+          "id": "p113",
+          "type": "process",
+          "code": "1.1.3",
+          "label": "TB từ chối",
+          "desc": "Thông báo từ chối xuất hàng khi số lượng tồn kho không đủ, hoặc ghi nhận công nợ phát sinh từ phiếu xuất.",
+          "cx": 420, "cy": 650, "r": 88
+        },
+        {
+          "id": "d-spkeo",
+          "type": "store",
+          "code": "D1",
+          "label": "SP kẹo",
+          "desc": "Kho dữ liệu tồn kho các mặt hàng kẹo hiện có.",
+          "x": 690, "y": 355, "w": 165, "h": 52
+        },
+        {
+          "id": "d-phieuxuat",
+          "type": "store",
+          "code": "D2",
+          "label": "Phiếu xuất",
+          "desc": "Kho lưu trữ toàn bộ phiếu xuất kho đã được lập.",
+          "x": 690, "y": 565, "w": 165, "h": 52
+        }
+      ],
+      "flows": [
+        { "id": "f2-1", "from": "dl", "to": "p111", "label": "Mặt hàng kẹo",
+          "path": [[170,320],[335,175]] },
+        { "id": "f2-2", "from": "d-spkeo", "to": "p111", "label": "SP đủ",
+          "path": [[690,375],[508,165],[500,150]] },
+        { "id": "f2-3", "from": "p111", "to": "p113", "label": "SP thiếu",
+          "path": [[508,175],[860,175],[860,660],[508,655]] },
+        { "id": "f2-4", "from": "p111", "to": "p112", "label": "HD đã kiểm tra",
+          "path": [[420,238],[420,312]] },
+        { "id": "f2-5", "from": "d-spkeo", "to": "p112", "label": "SP kẹo",
+          "path": [[690,395],[508,395]] },
+        { "id": "f2-6", "from": "p112", "to": "d-phieuxuat", "label": "Phiếu xuất",
+          "path": [[508,420],[690,580]] },
+        { "id": "f2-7", "from": "p112", "to": "dl", "label": "Phiếu xuất",
+          "path": [[335,440],[170,370]] },
+        { "id": "f2-8", "from": "p112", "to": "p113", "label": "Công nợ",
+          "path": [[420,488],[420,562]] },
+        { "id": "f2-9", "from": "p113", "to": "dl", "label": "Thông tin từ chối xuất",
+          "path": [[335,635],[170,395]] }
+      ]
+    }
+  }
+}
+</script>
+
+<script>
+(function(){
+  const RAW = JSON.parse(document.getElementById('mockData').textContent);
+  const LEVELS = RAW.levels;
+  const META = RAW.meta;
+
+  let currentLevelId = META.rootLevel;
+  let selected = null; // {kind:'node'|'flow', levelId, id}
+
+  const el = (id) => document.getElementById(id);
+  const svgNS = 'http://www.w3.org/2000/svg';
+
+  // ---------- helpers ----------
+  function findNode(levelId, nodeId){
+    return LEVELS[levelId].nodes.find(n => n.id === nodeId);
+  }
+  function labelOf(n){ return n.label; }
+  function pathMid(points){
+    // midpoint along polyline (by segment count, good enough for label placement)
+    const seg = Math.floor((points.length-1)/2);
+    const a = points[seg], b = points[Math.min(seg+1, points.length-1)];
+    return [(a[0]+b[0])/2, (a[1]+b[1])/2];
+  }
+  function pointsToPath(points){
+    return points.map((p,i)=> (i===0?'M':'L') + p[0] + ',' + p[1]).join(' ');
+  }
+
+  // ---------- breadcrumb + tree ----------
+  function buildBreadcrumbChain(levelId){
+    const chain = [];
+    let lvl = LEVELS[levelId];
+    chain.unshift({ id: levelId, code: lvl.code, label: lvl.title });
+    while(lvl.parent){
+      const parentLevelId = lvl.parent.level;
+      lvl = LEVELS[parentLevelId];
+      chain.unshift({ id: parentLevelId, code: lvl.code, label: lvl.title });
+    }
+    return chain;
+  }
+
+  function renderBreadcrumb(){
+    const chain = buildBreadcrumbChain(currentLevelId);
+    const wrap = el('breadcrumb');
+    wrap.innerHTML = '';
+    chain.forEach((c, i)=>{
+      const crumb = document.createElement('span');
+      crumb.className = 'crumb' + (c.id === currentLevelId ? ' active' : '');
+      crumb.textContent = 'Mức ' + c.code;
+      crumb.onclick = ()=> goToLevel(c.id);
+      wrap.appendChild(crumb);
+      if(i < chain.length-1){
+        const sep = document.createElement('span');
+        sep.className = 'sep';
+        sep.textContent = '›';
+        wrap.appendChild(sep);
+      }
+    });
+  }
+
+  function renderTree(){
+    const tree = el('tree');
+    tree.innerHTML = '';
+
+    function renderLevelEntry(levelId, depth){
+      const lvl = LEVELS[levelId];
+      const row = document.createElement('div');
+      row.className = 'tree-node' + (levelId === currentLevelId ? ' current' : '');
+      row.style.marginLeft = (depth*0) + 'px';
+      row.innerHTML = '<span class="code">M.' + lvl.code + '</span><span>' + lvl.title.replace(/^Mức \d+ — /,'') + '</span>';
+      row.onclick = ()=> goToLevel(levelId);
+      tree.appendChild(row);
+
+      // find children levels (levels whose parent.level === levelId)
+      const children = Object.keys(LEVELS).filter(k => LEVELS[k].parent && LEVELS[k].parent.level === levelId);
+      if(children.length){
+        const box = document.createElement('div');
+        box.className = 'tree-children';
+        children.forEach(childId => {
+          const childRow = document.createElement('div');
+          childRow.className = 'tree-node' + (childId === currentLevelId ? ' current' : '');
+          childRow.innerHTML = '<span class="code">' + LEVELS[childId].parent.code + '</span><span>' + LEVELS[childId].parent.label + '</span><span class="chev">↳ chi tiết</span>';
+          childRow.onclick = ()=> goToLevel(childId);
+          box.appendChild(childRow);
+        });
+        tree.appendChild(box);
+      }
+    }
+    renderLevelEntry(META.rootLevel, 0);
+  }
+
+  // ---------- stats ----------
+  function renderStats(){
+    let processes=0, stores=0, flows=0;
+    Object.values(LEVELS).forEach(l=>{
+      l.nodes.forEach(n=>{
+        if(n.type==='process') processes++;
+        if(n.type==='store') stores++;
+      });
+      flows += l.flows.length;
+    });
+    el('statLevels').textContent = Object.keys(LEVELS).length;
+    el('statProcesses').textContent = processes;
+    el('statStores').textContent = stores;
+    el('statFlows').textContent = flows;
+    el('statModel').textContent = META.modelName;
+  }
+
+  // ---------- node/flow drawing ----------
+  function edgePointCircle(cx, cy, r, tx, ty){
+    const dx = tx-cx, dy = ty-cy;
+    const dist = Math.sqrt(dx*dx+dy*dy) || 1;
+    return [cx + dx/dist*r, cy + dy/dist*r];
+  }
+
+  function drawProcess(svg, n, levelId){
+    const g = document.createElementNS(svgNS,'g');
+    g.setAttribute('class','node-process' + (n.childLevel ? ' decomposable' : ''));
+    g.dataset.kind='node'; g.dataset.id=n.id; g.dataset.level=levelId;
+
+    const circle = document.createElementNS(svgNS,'circle');
+    circle.setAttribute('cx', n.cx); circle.setAttribute('cy', n.cy); circle.setAttribute('r', n.r);
+    g.appendChild(circle);
+
+    const line = document.createElementNS(svgNS,'line');
+    line.setAttribute('x1', n.cx - n.r*0.86); line.setAttribute('y1', n.cy - n.r*0.32);
+    line.setAttribute('x2', n.cx + n.r*0.86); line.setAttribute('y2', n.cy - n.r*0.32);
+    g.appendChild(line);
+
+    const code = document.createElementNS(svgNS,'text');
+    code.setAttribute('class','pcode');
+    code.setAttribute('x', n.cx); code.setAttribute('y', n.cy - n.r*0.32 - 14);
+    code.setAttribute('text-anchor','middle');
+    code.setAttribute('font-size','15');
+    code.textContent = n.code;
+    g.appendChild(code);
+
+    const words = n.label.split(' ');
+    const lines = [];
+    let line1 = '';
+    words.forEach(w=>{
+      if((line1 + ' ' + w).trim().length > 14 && line1){ lines.push(line1); line1 = w; }
+      else { line1 = (line1 ? line1 + ' ' : '') + w; }
+    });
+    if(line1) lines.push(line1);
+
+    lines.forEach((txt, i)=>{
+      const t = document.createElementNS(svgNS,'text');
+      t.setAttribute('class','plabel');
+      t.setAttribute('x', n.cx);
+      t.setAttribute('y', n.cy - n.r*0.32 + 22 + i*18);
+      t.setAttribute('text-anchor','middle');
+      t.setAttribute('font-size','13');
+      t.textContent = txt;
+      g.appendChild(t);
+    });
+
+    if(n.childLevel){
+      const tag = document.createElementNS(svgNS,'text');
+      tag.setAttribute('x', n.cx);
+      tag.setAttribute('y', n.cy + n.r + 18);
+      tag.setAttribute('text-anchor','middle');
+      tag.setAttribute('font-size','9.5');
+      tag.setAttribute('fill','#2FE6B8');
+      tag.setAttribute('font-family','JetBrains Mono, monospace');
+      tag.textContent = '▾ NHẤP ĐỂ PHÂN RÃ';
+      g.appendChild(tag);
+    }
+
+    g.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      selectObject('node', levelId, n.id);
+    });
+    svg.appendChild(g);
+  }
+
+  function drawEntity(svg, n, levelId){
+    const g = document.createElementNS(svgNS,'g');
+    g.setAttribute('class','node-entity');
+    g.dataset.kind='node'; g.dataset.id=n.id; g.dataset.level=levelId;
+
+    const rect = document.createElementNS(svgNS,'rect');
+    rect.setAttribute('x', n.x); rect.setAttribute('y', n.y);
+    rect.setAttribute('width', n.w); rect.setAttribute('height', n.h);
+    rect.setAttribute('rx', 3);
+    g.appendChild(rect);
+
+    const t = document.createElementNS(svgNS,'text');
+    t.setAttribute('x', n.x + n.w/2); t.setAttribute('y', n.y + n.h/2 + 5);
+    t.setAttribute('text-anchor','middle');
+    t.textContent = n.label;
+    g.appendChild(t);
+
+    g.addEventListener('click', (e)=>{ e.stopPropagation(); selectObject('node', levelId, n.id); });
+    svg.appendChild(g);
+  }
+
+  function drawStore(svg, n, levelId){
+    const g = document.createElementNS(svgNS,'g');
+    g.setAttribute('class','node-store');
+    g.dataset.kind='node'; g.dataset.id=n.id; g.dataset.level=levelId;
+
+    const path = document.createElementNS(svgNS,'path');
+    const x=n.x, y=n.y, w=n.w, h=n.h;
+    path.setAttribute('d', `M${x+w},${y} L${x},${y} L${x},${y+h} L${x+w},${y+h}`);
+    g.appendChild(path);
+
+    const t = document.createElementNS(svgNS,'text');
+    t.setAttribute('x', x + w/2); t.setAttribute('y', y + h/2 + 4);
+    t.setAttribute('text-anchor','middle');
+    t.textContent = (n.code ? n.code + ' · ' : '') + n.label;
+    g.appendChild(t);
+
+    g.addEventListener('click', (e)=>{ e.stopPropagation(); selectObject('node', levelId, n.id); });
+    svg.appendChild(g);
+  }
+
+  function drawFlow(svg, f, levelId){
+    const g = document.createElementNS(svgNS,'g');
+    g.setAttribute('class','flow-group');
+    g.dataset.kind='flow'; g.dataset.id=f.id; g.dataset.level=levelId;
+
+    const hit = document.createElementNS(svgNS,'path');
+    hit.setAttribute('class','flow-hit');
+    hit.setAttribute('d', pointsToPath(f.path));
+    g.appendChild(hit);
+
+    const p = document.createElementNS(svgNS,'path');
+    p.setAttribute('class','flow-path');
+    p.setAttribute('d', pointsToPath(f.path));
+    g.appendChild(p);
+
+    const [mx,my] = pathMid(f.path);
+    const label = f.label;
+    const approxW = Math.max(30, label.length * 6.1);
+
+    const bg = document.createElementNS(svgNS,'rect');
+    bg.setAttribute('class','flow-label-bg');
+    bg.setAttribute('x', mx - approxW/2 - 4);
+    bg.setAttribute('y', my - 12);
+    bg.setAttribute('width', approxW + 8);
+    bg.setAttribute('height', 16);
+    bg.setAttribute('rx', 3);
+    g.appendChild(bg);
+
+    const t = document.createElementNS(svgNS,'text');
+    t.setAttribute('class','flow-label');
+    t.setAttribute('x', mx); t.setAttribute('y', my);
+    t.setAttribute('text-anchor','middle');
+    t.textContent = label;
+    g.appendChild(t);
+
+    g.addEventListener('click', (e)=>{ e.stopPropagation(); selectObject('flow', levelId, f.id); });
+    svg.appendChild(g);
+  }
+
+  function renderDiagram(){
+    const lvl = LEVELS[currentLevelId];
+    const wrap = el('canvasWrap');
+    wrap.innerHTML = '';
+
+    const svg = document.createElementNS(svgNS,'svg');
+    svg.setAttribute('class','diagram');
+    svg.setAttribute('width', lvl.canvas.w);
+    svg.setAttribute('height', lvl.canvas.h);
+    svg.setAttribute('viewBox', `0 0 ${lvl.canvas.w} ${lvl.canvas.h}`);
+
+    const defs = document.createElementNS(svgNS,'defs');
+    defs.innerHTML = `
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#5B6B80"></path>
+      </marker>
+      <marker id="arrow-hi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#2FE6B8"></path>
+      </marker>`;
+    svg.appendChild(defs);
+
+    lvl.flows.forEach(f => drawFlow(svg, f, currentLevelId));
+    lvl.nodes.forEach(n => {
+      if(n.type === 'process') drawProcess(svg, n, currentLevelId);
+      else if(n.type === 'entity') drawEntity(svg, n, currentLevelId);
+      else if(n.type === 'store') drawStore(svg, n, currentLevelId);
+    });
+
+    wrap.appendChild(svg);
+
+    el('levelTitle').textContent = lvl.title;
+    el('levelSub').textContent = lvl.subtitle;
+    el('nodeCountPill').textContent = lvl.nodes.length + ' node · ' + lvl.flows.length + ' luồng';
+    el('statCurrentLevel').textContent = 'Mức ' + lvl.code;
+
+    applySelectionHighlight();
+  }
+
+  function applySelectionHighlight(){
+    document.querySelectorAll('.node-process, .node-entity, .node-store, .flow-group').forEach(g=>{
+      const match = selected && g.dataset.level === selected.levelId && g.dataset.id === selected.id && g.dataset.kind === selected.kind;
+      g.classList.toggle('selected', !!match);
+    });
+  }
+
+  // ---------- inspector ----------
+  function flowsForNode(levelId, nodeId){
+    return LEVELS[levelId].flows.filter(f => f.from === nodeId || f.to === nodeId);
+  }
+
+  function renderInspectorForNode(levelId, nodeId){
+    const n = findNode(levelId, nodeId);
+    const kindLabel = { process:'TIẾN TRÌNH', entity:'THỰC THỂ NGOÀI', store:'KHO DỮ LIỆU' }[n.type];
+    const related = flowsForNode(levelId, nodeId);
+
+    let html = `<span class="insp-kind ${n.type}">${kindLabel}</span>`;
+    html += `<div class="insp-title">${n.label}</div>`;
+    html += `<div class="insp-code">${n.code ? 'Mã định danh: ' + n.code : 'ID: ' + n.id.toUpperCase()}</div>`;
+    if(n.desc) html += `<div class="insp-desc">${n.desc}</div>`;
+
+    html += `<div class="insp-section"><h5>LUỒNG DỮ LIỆU LIÊN QUAN (${related.length})</h5>`;
+    related.forEach(f=>{
+      const isOut = f.from === nodeId;
+      const otherId = isOut ? f.to : f.from;
+      const other = findNode(levelId, otherId);
+      html += `<div class="flow-item">
+        <span class="arrow-ico">${isOut ? '→' : '←'}</span>
+        <div>
+          <div class="fl-label">${f.label}</div>
+          <div class="fl-sub">${isOut ? 'Gửi tới' : 'Nhận từ'}: ${other ? other.label : otherId}</div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+
+    if(n.childLevel){
+      html += `<button class="drill-btn" id="drillBtn">▾ XEM PHÂN RÃ MỨC TIẾP THEO</button>`;
+    }
+
+    el('inspectorBody').innerHTML = html;
+    if(n.childLevel){
+      el('drillBtn').onclick = ()=> goToLevel(n.childLevel);
+    }
+    el('statSelected').textContent = kindLabel + ' — ' + n.label;
+  }
+
+  function renderInspectorForFlow(levelId, flowId){
+    const f = LEVELS[levelId].flows.find(x=>x.id===flowId);
+    const from = findNode(levelId, f.from);
+    const to = findNode(levelId, f.to);
+    let html = `<span class="insp-kind" style="color:var(--flow-hi);background:rgba(47,230,184,0.08);border:1px solid var(--accent-process-dim);">LUỒNG DỮ LIỆU</span>`;
+    html += `<div class="insp-title">${f.label}</div>`;
+    html += `<div class="insp-code">${f.id.toUpperCase()}</div>`;
+    html += `<div class="insp-section"><h5>ĐIỂM ĐI</h5>
+      <div class="flow-item"><span class="arrow-ico">●</span><div><div class="fl-label">${from ? from.label : f.from}</div><div class="fl-sub">${from ? from.type : ''}</div></div></div>
+    </div>`;
+    html += `<div class="insp-section"><h5>ĐIỂM ĐẾN</h5>
+      <div class="flow-item"><span class="arrow-ico">●</span><div><div class="fl-label">${to ? to.label : f.to}</div><div class="fl-sub">${to ? to.type : ''}</div></div></div>
+    </div>`;
+    el('inspectorBody').innerHTML = html;
+    el('statSelected').textContent = 'LUỒNG — ' + f.label;
+  }
+
+  function selectObject(kind, levelId, id){
+    selected = { kind, levelId, id };
+    if(kind === 'node') renderInspectorForNode(levelId, id);
+    else renderInspectorForFlow(levelId, id);
+    applySelectionHighlight();
+  }
+
+  function clearSelection(){
+    selected = null;
+    el('inspectorBody').innerHTML = '<p class="insp-empty">Chọn một tiến trình, thực thể, kho dữ liệu hoặc luồng dữ liệu trên sơ đồ để xem chi tiết.</p>';
+    el('statSelected').textContent = 'Chưa chọn đối tượng nào';
+    applySelectionHighlight();
+  }
+
+  function goToLevel(levelId){
+    currentLevelId = levelId;
+    clearSelection();
+    renderBreadcrumb();
+    renderTree();
+    renderDiagram();
+    el('mainScroll').scrollTop = 0;
+  }
+
+  el('mainScroll').addEventListener('click', clearSelection);
+
+  // ---------- init ----------
+  renderStats();
+  goToLevel(META.rootLevel);
+})();
+</script>
+</body>
+</html>

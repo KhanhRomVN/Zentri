@@ -131,8 +131,6 @@ const ModalWrapper: React.FC<{
 
 // ─── Component ──────────────────────────────────────────────────────────
 const Email = () => {
-  console.log('[Email] RENDER', Date.now());
-
   // ── State ──
   const [searchParams, setSearchParams] = useHashParams();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -167,6 +165,8 @@ const Email = () => {
     phoneNumber: '',
     totpSecretKey: '',
     backupCodes: [] as string[],
+    category: '',
+    tags: [] as string[],
   });
   const [backupCodeSearch, setBackupCodeSearch] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -470,12 +470,6 @@ const Email = () => {
       changes.push(`runningBrowsers (size: ${runningBrowsers.size})`);
     if (prev.currentPage !== currentPage) changes.push(`currentPage: ${currentPage}`);
 
-    if (changes.length > 0) {
-      console.log('[Email] Re-render caused by:', changes.join(', '));
-    } else {
-      console.log('[Email] Re-render but NO dependency changed (unexpected!)');
-    }
-
     prevDepsRef.current = {
       accounts,
       searchQuery,
@@ -540,12 +534,14 @@ const Email = () => {
           email: row.email,
           password: row.password || '',
           status: row.status,
-          phoneNumber: row.phone_number,
-          recoveryEmail: row.recovery_email,
-          totpSecretKey: row.totp,
-          backupCodes: row.backup_codes,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
+          phone_number: row.phone_number,
+          recovery_email: row.recovery_email,
+          totp: row.totp,
+          backup_codes: row.backup_codes,
+          category: row.category,
+          tags: row.tags ? JSON.parse(row.tags) : [],
+          created_at: row.created_at,
+          updated_at: row.updated_at,
           services: linkedServices,
         };
       });
@@ -676,6 +672,16 @@ const Email = () => {
     async (updated: Account) => {
       try {
         setLoading(true);
+        console.log('[DEBUG][Email] handleUpdateAccount called', {
+          id: updated.id,
+          email: updated.email,
+          password: updated.password,
+          recovery_email: updated.recovery_email,
+          phone_number: updated.phone_number,
+          totp: updated.totp,
+          backup_codes: updated.backup_codes,
+          backup_codes_type: typeof updated.backup_codes,
+        });
         // @ts-ignore
         await window.electron.ipcRenderer.invoke(
           'sqlite:run',
@@ -690,10 +696,12 @@ const Email = () => {
             updated.id,
           ],
         );
+        console.log('[DEBUG][Email] handleUpdateAccount success');
         setToast({ visible: true, message: 'Account updated successfully', type: 'success' });
         await loadData();
       } catch (e) {
-        console.error('[Email] Update error:', e);
+        console.error('[DEBUG][Email] Update error:', e);
+        console.error('[DEBUG][Email] Update error stringified:', JSON.stringify(e, null, 2));
         setToast({ visible: true, message: 'Failed to update account', type: 'error' });
       } finally {
         setLoading(false);
@@ -767,8 +775,8 @@ const Email = () => {
       // @ts-ignore
       await window.electron.ipcRenderer.invoke(
         'sqlite:run',
-        `INSERT INTO emails (id, email, password, recovery_email, phone_number, totp, backup_codes)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO emails (id, email, password, recovery_email, phone_number, totp, backup_codes, category, tags)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           newEmailData.email,
@@ -777,6 +785,8 @@ const Email = () => {
           newEmailData.phoneNumber || null,
           newEmailData.totpSecretKey || null,
           newEmailData.backupCodes.length > 0 ? JSON.stringify(newEmailData.backupCodes) : null,
+          newEmailData.category || null,
+          newEmailData.tags.length > 0 ? JSON.stringify(newEmailData.tags) : null,
         ],
       );
 
@@ -795,6 +805,8 @@ const Email = () => {
         phoneNumber: '',
         totpSecretKey: '',
         backupCodes: [],
+        category: '',
+        tags: [],
       });
       setErrors({});
     } catch (e) {
@@ -879,6 +891,7 @@ const Email = () => {
                 onSelectAccount={handleSelectAccount}
                 onHardDelete={handleOpenDeleteConfirm}
                 onSaveChanges={handleSaveChanges}
+                onUpdateAccount={handleUpdateAccount}
                 onRefreshData={loadData}
                 onAddEmail={handleOpenAddDrawer}
                 activeTab={activeTab}
@@ -907,6 +920,16 @@ const Email = () => {
         setErrors={setErrors}
         validateField={validateField}
         handleAddEmail={handleAddEmail}
+        recoveryEmailSuggestions={(() => {
+          const freq: Record<string, number> = {};
+          accounts.forEach((a) => {
+            if (a.recovery_email) freq[a.recovery_email] = (freq[a.recovery_email] || 0) + 1;
+          });
+          return accounts
+            .map((a) => a.email)
+            .filter((email): email is string => !!email)
+            .sort((a, b) => (freq[b] || 0) - (freq[a] || 0));
+        })()}
       />
 
       {/* Toast - Native */}
@@ -1084,7 +1107,42 @@ const Email = () => {
           </div>
         </div>
       </ModalWrapper>
-      <FooterBar />
+      <FooterBar
+        total={accounts.length}
+        filtered={filteredAccounts.length}
+        visible={paginatedData.length}
+        currentPage={currentPage}
+        totalPages={Math.ceil(filteredAccounts.length / pageSize)}
+        runningBrowsers={runningBrowsers.size}
+        twoFaCount={
+          filteredAccounts.filter((acc) => {
+            const hasTotp = isValidTotp(acc.totp);
+            const hasBackup = parseBackupCodes(acc.backup_codes).length > 0;
+            return hasTotp || hasBackup;
+          }).length
+        }
+        noTwoFaCount={
+          filteredAccounts.filter((acc) => {
+            const hasTotp = isValidTotp(acc.totp);
+            const hasBackup = parseBackupCodes(acc.backup_codes).length > 0;
+            return !hasTotp && !hasBackup;
+          }).length
+        }
+        recoveryCount={filteredAccounts.filter((acc) => acc.recovery_email).length}
+        serviceCount={filteredAccounts.reduce((sum, acc) => sum + (acc.services?.length || 0), 0)}
+        proxyCount={filteredAccounts.filter((acc) => acc.lastProxy?.host).length}
+        activeFilterCount={
+          (serviceFilter.serviceId ? 1 : 0) +
+          (serviceFilter.websiteUrl ? 1 : 0) +
+          (serviceFilter.twoFa ? 1 : 0) +
+          (serviceFilter.ip ? 1 : 0) +
+          (serviceFilter.running ? 1 : 0) +
+          filters.length +
+          (selectedView?.filters.length || 0)
+        }
+        loading={loading}
+        onRefresh={loadData}
+      />
     </div>
   );
 };

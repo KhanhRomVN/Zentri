@@ -68,6 +68,8 @@ export interface Account extends Omit<Email, 'services'> {
   avatar?: string;
   twoFactorEnabled?: boolean;
   services?: LinkedService[];
+  category?: string;
+  tags?: string[];
   lastActivity?: {
     title: string;
     url: string;

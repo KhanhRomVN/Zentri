@@ -22,6 +22,10 @@ _Lưu trữ thông tin định danh và bảo mật cốt lõi của tài khoả
   - Mã bí mật 2FA/TOTP phục vụ tự động hóa.
 - **`backup_codes`** [TEXT]
   - Danh sách mã dự phòng.
+- **`category`** [TEXT]
+  - Phân loại tài khoản (Personal, Work, Finance...).
+- **`tags`** [TEXT]
+  - Danh sách nhãn tùy chỉnh (JSON array).
 - **`inbox_cache`** [TEXT]
   - Cache nội dung inbox (JSON).
 - **`created_at`** | **`updated_at`** [DATETIME]

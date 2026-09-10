@@ -3,7 +3,6 @@ import { Settings, Database, Search, Plus } from 'lucide-react';
 import { GeneralSettings } from './components/General';
 import HeaderBar from './components/HeaderBar';
 import FooterBar from './components/FooterBar';
-import { ServiceManager } from './components/Service';
 import { cn } from '../../shared/lib/utils';
 import { useAccentColors } from '../../hooks/useAccentColors';
 
@@ -107,9 +106,6 @@ const Setting = () => {
                 <div className="p-8 h-full overflow-auto">
                   <GeneralSettings />
                 </div>
-              )}
-              {activeTab === 'services' && (
-                <ServiceManager serviceSearch={serviceSearch} setServiceSearch={setServiceSearch} />
               )}
             </div>
           </div>

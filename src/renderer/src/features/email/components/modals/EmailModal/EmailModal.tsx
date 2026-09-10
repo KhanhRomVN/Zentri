@@ -101,17 +101,20 @@ interface EmailModalProps {
   onServiceContextMenu?: (e: React.MouseEvent, linkId: string) => void;
   editedAccount: Account | null;
   setEditedAccount: React.Dispatch<React.SetStateAction<Account | null>>;
+  onUpdateAccount: (updated: Account) => void;
   validateField: (name: string, value: string) => void;
   errors: Record<string, string>;
   backupCodeSearch: string;
   setBackupCodeSearch: (val: string) => void;
+  recoveryEmailSuggestions?: string[];
   serviceSearch: string;
   setServiceSearch: (val: string) => void;
   accountServices: any[];
-  onAddNewServiceLink: () => void;
   onEditServiceLink: (linkId: string) => void;
   onOpenService?: (linkId: string) => void;
   onDeleteService?: (linkId: string) => void;
+  globalServices?: any[];
+  onQuickAddService?: (service: any) => Promise<string | null>;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -123,17 +126,20 @@ const EmailModal: FC<EmailModalProps> = ({
   onServiceContextMenu: _onServiceContextMenu,
   editedAccount,
   setEditedAccount,
+  onUpdateAccount,
   validateField,
   errors,
   backupCodeSearch,
   setBackupCodeSearch,
+  recoveryEmailSuggestions,
   serviceSearch,
   setServiceSearch,
   accountServices,
-  onAddNewServiceLink,
   onEditServiceLink,
   onOpenService,
   onDeleteService,
+  globalServices,
+  onQuickAddService,
 }) => {
   // ── Hooks ──
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
@@ -201,21 +207,24 @@ const EmailModal: FC<EmailModalProps> = ({
               <InfoTab
                 editedAccount={editedAccount}
                 setEditedAccount={setEditedAccount}
+                onUpdateAccount={onUpdateAccount}
                 validateField={validateField}
                 errors={errors}
                 backupCodeSearch={backupCodeSearch}
                 setBackupCodeSearch={setBackupCodeSearch}
+                recoveryEmailSuggestions={recoveryEmailSuggestions}
               />
             ) : activeTab === 'services' ? (
               <ServicesTab
                 serviceSearch={serviceSearch}
                 setServiceSearch={setServiceSearch}
                 accountServices={accountServices}
-                onAddNewServiceLink={onAddNewServiceLink}
                 onEditServiceLink={onEditServiceLink}
                 onOpenService={onOpenService}
                 onDeleteService={onDeleteService}
                 email={editedAccount?.email || ''}
+                globalServices={globalServices}
+                onQuickAddService={onQuickAddService}
               />
             ) : null}
           </div>

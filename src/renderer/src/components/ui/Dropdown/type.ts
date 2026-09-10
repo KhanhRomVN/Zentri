@@ -13,9 +13,10 @@ export interface DropdownProps {
   trigger?: 'click' | 'contextmenu';
   /** Manual position override for fixed strategy (e.g., for context menus at cursor position) */
   position?: { top: number; left: number };
-  /** Enable search bar as first item in dropdown */
+  /** Fixed width in px for dropdown content. If not set, width auto-fits content (for contextmenu) or follows trigger width (for click). */
+  width?: number;
+  fullWidth?: boolean;
   searchable?: boolean;
-  /** Whether clicking on DropdownItem should close the dropdown. Default: true */
   closeOnSelect?: boolean;
 }
 
@@ -27,6 +28,7 @@ export interface DropdownTriggerProps {
 export interface DropdownContentProps {
   children: React.ReactNode;
   className?: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 export interface DropdownItemProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -35,7 +37,6 @@ export interface DropdownItemProps extends React.HTMLAttributes<HTMLDivElement> 
   className?: string;
   disabled?: boolean;
   icon?: React.ReactNode;
-  /** Override the dropdown's closeOnSelect behavior for this specific item */
   closeOnSelect?: boolean;
   variant?: 'default' | 'error';
   noPadding?: boolean;
@@ -43,10 +44,5 @@ export interface DropdownItemProps extends React.HTMLAttributes<HTMLDivElement> 
 }
 
 export interface DropdownSeparatorProps {
-  className?: string;
-}
-
-export interface DropdownLabelProps {
-  children: React.ReactNode;
   className?: string;
 }

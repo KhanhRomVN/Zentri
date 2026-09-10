@@ -19,7 +19,7 @@ import { FC, useState, useCallback, useRef, useEffect, useMemo, memo } from 'rea
 
 // ─── Imports ────────────────────────────────────────────────────────────
 // ── UI ──
-import { motion, AnimatePresence } from 'framer-motion';
+// (framer-motion removed — row/detail animation no longer needed)
 import {
   Trash2,
   Globe,
@@ -31,6 +31,8 @@ import {
   Search,
   Plus,
   MoreVertical,
+  Download,
+  Upload,
 } from 'lucide-react';
 import {
   Dropdown,
@@ -46,8 +48,6 @@ import { SERVICES } from '../../../constants/services';
 // ── Components ──
 import BrowserLaunchModal from './modals/BrowserLaunchModal';
 import EmailModal from './modals/EmailModal/EmailModal';
-import ServiceDrawer from './modals/ServiceDrawer';
-
 // ── Utils ──
 import { cn } from '../../../shared/lib/utils';
 import { getSecurityScore, isValidTotp } from './modals/EmailModal/Security/utils';
@@ -60,6 +60,7 @@ import { SortingState } from '@tanstack/react-table';
 // ── External ──
 import { createPortal } from 'react-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────
 interface EmailTableProps {
@@ -69,6 +70,7 @@ interface EmailTableProps {
   onSelectAccount: (account: Account | null) => void;
   onHardDelete: (id: string) => void;
   onSaveChanges: (oldAccount: Account, newAccount: Account) => void;
+  onUpdateAccount: (updated: Account) => void;
   onRefreshData?: () => void;
   onAddEmail?: () => void;
   activeTab:
@@ -114,6 +116,7 @@ const EmailTable: FC<EmailTableProps> = ({
   focusedAccountId,
   onSelectAccount,
   onHardDelete,
+  onUpdateAccount,
   onRefreshData,
   onAddEmail,
   activeTab,
@@ -127,15 +130,6 @@ const EmailTable: FC<EmailTableProps> = ({
   selectedServiceId,
   runningBrowsers,
 }) => {
-  // ── Debug Logs ──
-  // console.log('[EmailTable] RENDER', {
-  //   accountsLength: accounts.length,
-  //   focusedAccountId,
-  //   selectedServiceId,
-  //   runningBrowsersSize: runningBrowsers.size,
-  //   timestamp: Date.now(),
-  // });
-
   // ── State ──
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const [contextMenu, setContextMenu] = useState<{
@@ -173,7 +167,8 @@ const EmailTable: FC<EmailTableProps> = ({
 
   // Service Linking States
   const [isServiceDrawerOpen, setIsServiceDrawerOpen] = useState(false);
-  const [linkServiceSearchQuery, setLinkServiceSearchQuery] = useState('');
+  const [isAddingService, setIsAddingService] = useState(false);
+  const [, setLinkServiceSearchQuery] = useState('');
   const [newServiceData, setNewServiceData] = useState<{
     linkId?: string;
     serviceId: string;
@@ -195,25 +190,14 @@ const EmailTable: FC<EmailTableProps> = ({
     twoFa: {},
   });
 
-  // Quick Create Service States
-  const [isQuickCreateModalOpen, setIsQuickCreateModalOpen] = useState(false);
-  const [quickCreateData, setQuickCreateData] = useState({
-    name: '',
-    url: '',
-    category: '',
-    tags: '',
-    description: '',
-    metadata: [] as any[],
-  });
-  const [categorySearch, setCategorySearch] = useState('');
-  const [categoryInputOpen, setCategoryInputOpen] = useState(false);
   const [globalServices, setGlobalServices] = useState<Service[]>([]);
   const [isEditServiceMode, setIsEditServiceMode] = useState(false);
 
-  const [showDetail, setShowDetail] = useState(false);
+  const showDetail = !!focusedAccountId;
 
   const menuRef = useRef<HTMLDivElement>(null);
   const serviceMenuRef = useRef<HTMLDivElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   // ── Derived ──
   const focusedAccount = accounts.find((a) => a.id === focusedAccountId) || null;
@@ -236,12 +220,6 @@ const EmailTable: FC<EmailTableProps> = ({
     if (prev.onAddEmail !== onAddEmail) changes.push('onAddEmail');
     if (prev.setActiveTab !== setActiveTab) changes.push('setActiveTab');
     if (prev.onPageChange !== onPageChange) changes.push('onPageChange');
-
-    if (changes.length > 0) {
-      console.log('[useEffect] Props CHANGED:', changes);
-    } else {
-      console.log('[useEffect] Props SAME but component re-rendered!');
-    }
 
     prevPropsRef.current = {
       accounts,
@@ -299,8 +277,8 @@ const EmailTable: FC<EmailTableProps> = ({
   }, [accounts]);
 
   useEffect(() => {
-    setShowDetail(!!focusedAccountId);
-  }, [focusedAccountId]);
+    setEditedAccount(focusedAccount);
+  }, [focusedAccount]);
 
   // Browser running state is managed by parent (Email.tsx)
 
@@ -318,54 +296,63 @@ const EmailTable: FC<EmailTableProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const loadGlobalServices = useCallback(async () => {
+    try {
+      // @ts-ignore
+      const dbServices = await window.electron.ipcRenderer.invoke('service:get-all');
+      const dbList = dbServices || [];
+
+      // Merge: constants SERVICES as base, DB data for enrichment
+      const dbMap: Record<string, any> = {};
+      dbList.forEach((svc: any) => {
+        dbMap[svc.id] = svc;
+      });
+
+      const mergedIds = new Set<string>();
+
+      // Build from constants
+      const merged: Service[] = SERVICES.map((svc) => {
+        mergedIds.add(svc.id);
+        const dbSvc = dbMap[svc.id];
+        return {
+          id: svc.id,
+          name: dbSvc?.name || svc.name,
+          url: dbSvc?.url || svc.url,
+          category: dbSvc?.category || svc.category,
+          tags: dbSvc?.tags || svc.tags,
+          description: dbSvc?.description || svc.description,
+          metadata: dbSvc?.metadata || null,
+          created_at: dbSvc?.created_at || new Date().toISOString(),
+          updated_at: dbSvc?.updated_at || new Date().toISOString(),
+        } as Service;
+      });
+
+      // Add DB-only services
+      dbList.forEach((svc: any) => {
+        if (!mergedIds.has(svc.id)) {
+          merged.push(svc as Service);
+        }
+      });
+
+      setGlobalServices(merged);
+    } catch (err) {
+      console.error('Failed to load global services', err);
+      // Fallback: use constants
+      setGlobalServices(SERVICES as any[]);
+    }
+  }, []);
+
   useEffect(() => {
-    const loadGlobalServices = async () => {
-      try {
-        // @ts-ignore
-        const dbServices = await window.electron.ipcRenderer.invoke('service:get-all');
-        const dbList = dbServices || [];
-
-        // Merge: constants SERVICES as base, DB data for enrichment
-        const dbMap: Record<string, any> = {};
-        dbList.forEach((svc: any) => {
-          dbMap[svc.id] = svc;
-        });
-
-        const mergedIds = new Set<string>();
-
-        // Build from constants
-        const merged: Service[] = SERVICES.map((svc) => {
-          mergedIds.add(svc.id);
-          const dbSvc = dbMap[svc.id];
-          return {
-            id: svc.id,
-            name: dbSvc?.name || svc.name,
-            url: dbSvc?.url || svc.url,
-            category: dbSvc?.category || svc.category,
-            tags: dbSvc?.tags || svc.tags,
-            description: dbSvc?.description || svc.description,
-            metadata: dbSvc?.metadata || null,
-            created_at: dbSvc?.created_at || new Date().toISOString(),
-            updated_at: dbSvc?.updated_at || new Date().toISOString(),
-          } as Service;
-        });
-
-        // Add DB-only services
-        dbList.forEach((svc: any) => {
-          if (!mergedIds.has(svc.id)) {
-            merged.push(svc as Service);
-          }
-        });
-
-        setGlobalServices(merged);
-      } catch (err) {
-        console.error('Failed to load global services', err);
-        // Fallback: use constants
-        setGlobalServices(SERVICES as any[]);
-      }
-    };
     loadGlobalServices();
-  }, [isServiceDrawerOpen, accountServices]);
+  }, [isServiceDrawerOpen, accountServices, loadGlobalServices]);
+
+  useEffect(() => {
+    const handleServicesChanged = () => {
+      loadGlobalServices();
+    };
+    window.addEventListener('services-changed', handleServicesChanged);
+    return () => window.removeEventListener('services-changed', handleServicesChanged);
+  }, [loadGlobalServices]);
 
   // ── Handlers ──
   const handleContextMenu = (e: React.MouseEvent, accountId: string) => {
@@ -490,7 +477,7 @@ const EmailTable: FC<EmailTableProps> = ({
     });
     setLinkServiceSearchQuery('');
     setIsEditServiceMode(false);
-    setIsServiceDrawerOpen(true);
+    setIsAddingService(true);
   };
 
   const handleEditServiceLink = (linkId: string) => {
@@ -581,37 +568,21 @@ const EmailTable: FC<EmailTableProps> = ({
     }
   };
 
-  const handleQuickCreateService = async () => {
-    if (!quickCreateData.name) return;
-
+  const handleQuickAddService = async (service: any) => {
+    if (!focusedAccount) return null;
     try {
       // @ts-ignore
-      const newService = await window.electron.ipcRenderer.invoke('service:create', {
-        name: quickCreateData.name,
-        url: quickCreateData.url,
-        category: quickCreateData.category ? JSON.stringify([quickCreateData.category]) : '[]',
-        tags: quickCreateData.tags
-          ? JSON.stringify(quickCreateData.tags.split(',').map((t) => t.trim()))
-          : '[]',
-        description: quickCreateData.description,
-        metadata: JSON.stringify(quickCreateData.metadata || []),
+      const result = await window.electron.ipcRenderer.invoke('service_emails:insert', {
+        emailId: focusedAccount.id,
+        serviceId: service.serviceId || service.id,
+        metadata: {},
+        twoFa: {},
       });
-
-      if (newService) {
-        setNewServiceData((prev) => ({ ...prev, serviceId: newService.id }));
-        setLinkServiceSearchQuery(newService.name);
-        setIsQuickCreateModalOpen(false);
-        setQuickCreateData({
-          name: '',
-          url: '',
-          category: '',
-          tags: '',
-          description: '',
-          metadata: [],
-        });
-      }
+      if (onRefreshData) onRefreshData();
+      return result?.id ?? result?.linkId ?? null;
     } catch (err) {
-      console.error('Failed to create service', err);
+      console.error('Failed to quick add service', err);
+      return null;
     }
   };
 
@@ -620,14 +591,11 @@ const EmailTable: FC<EmailTableProps> = ({
   const flagCache = useRef<Map<string, JSX.Element | null>>(new Map());
 
   const renderCountryFlag = useCallback((countryCode: string) => {
-    console.log('[renderCountryFlag] Called with:', countryCode);
     // Return cached flag if exists
     if (flagCache.current.has(countryCode)) {
-      console.log('[renderCountryFlag] Cache HIT for:', countryCode);
       return flagCache.current.get(countryCode);
     }
 
-    console.log('[renderCountryFlag] Cache MISS for:', countryCode);
     // Create and cache new flag
     const FlagComponent = getCountryFlagComponent(countryCode);
     const flag = FlagComponent ? <FlagComponent className="w-4 h-3 rounded-sm" /> : null;
@@ -637,7 +605,6 @@ const EmailTable: FC<EmailTableProps> = ({
 
   const renderLastActivity = useCallback(
     (account: Account) => {
-      console.log('[renderLastActivity] Called for account:', account.email);
       if (!account.lastActivity) {
         return <span className="text-[10px] italic opacity-20 ml-6">—</span>;
       }
@@ -700,23 +667,7 @@ const EmailTable: FC<EmailTableProps> = ({
   // When section is expanded, hide all other rows
   // Sort: running browsers first, then preserve original order
   const orderedAccounts = useMemo(() => {
-    console.log('[orderedAccounts] Recalculating...', {
-      accountsLength: accounts.length,
-      showDetail,
-      focusedAccountId,
-      runningBrowsersSize: runningBrowsers.size,
-      tableSearchQuery,
-    });
-
-    const base =
-      showDetail && focusedAccountId
-        ? accounts.filter((a) => a.id === focusedAccountId)
-        : focusedAccountId
-          ? [
-              ...accounts.filter((a) => a.id === focusedAccountId),
-              ...accounts.filter((a) => a.id !== focusedAccountId),
-            ]
-          : accounts;
+    const base = accounts;
 
     // Push running browsers to top
     const running = base.filter((a) => runningBrowsers.has(a.id));
@@ -734,31 +685,100 @@ const EmailTable: FC<EmailTableProps> = ({
       if (a.lastActivity?.title?.toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [accounts, showDetail, focusedAccountId, runningBrowsers, tableSearchQuery]);
+  }, [accounts, runningBrowsers, tableSearchQuery]);
 
   // Use allAccounts for indexing (original order before pagination)
   const fullAccountList = allAccounts;
 
   // Memoized icon components to prevent unnecessary re-renders
   const SearchIcon = useMemo(() => {
-    console.log('[useMemo] Creating SearchIcon');
     return <Search className="size-3.5 text-text-secondary/60 shrink-0" />;
   }, []);
 
   const PlusIcon = useMemo(() => {
-    console.log('[useMemo] Creating PlusIcon');
     return <Plus className="size-4" />;
   }, []);
 
   const RefreshIcon = useMemo(() => {
-    console.log('[useMemo] Creating RefreshIcon');
     return <RefreshCw className="size-3.5" />;
   }, []);
 
   const MoreIcon = useMemo(() => {
-    console.log('[useMemo] Creating MoreIcon');
     return <MoreVertical className="size-3.5" />;
   }, []);
+
+  const handleExport = () => {
+    const data = (allAccounts || accounts).map((a) => ({
+      email: a.email,
+      password: a.password,
+      recovery_email: a.recovery_email,
+      phone_number: a.phone_number,
+      totp: a.totp,
+      backup_codes: a.backup_codes,
+      category: a.category,
+      tags: a.tags,
+    }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'zentri-emails.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!Array.isArray(data)) throw new Error('Invalid file format');
+      // @ts-ignore
+      const existingRows = await window.electron.ipcRenderer.invoke(
+        'sqlite:all',
+        'SELECT email FROM emails',
+      );
+      const existingEmails = new Set(
+        (existingRows || []).map((row: any) => row.email.toLowerCase()),
+      );
+      let importedCount = 0;
+      for (const item of data) {
+        if (!item.email) continue;
+        if (existingEmails.has(item.email.toLowerCase())) continue;
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke(
+          'sqlite:run',
+          `INSERT INTO emails (id, email, password, recovery_email, phone_number, totp, backup_codes, category, tags)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            uuidv4(),
+            item.email,
+            item.password || null,
+            item.recovery_email || null,
+            item.phone_number || null,
+            item.totp || null,
+            item.backup_codes || null,
+            item.category || null,
+            Array.isArray(item.tags) ? JSON.stringify(item.tags) : item.tags || null,
+          ],
+        );
+        importedCount += 1;
+        existingEmails.add(item.email.toLowerCase());
+      }
+      alert(`Imported ${importedCount} account(s).`);
+      onRefreshData?.();
+    } catch (err) {
+      console.error('[EmailTable] Import failed:', err);
+      alert('Failed to import file. Please check JSON format.');
+    } finally {
+      if (importFileRef.current) {
+        importFileRef.current.value = '';
+      }
+    }
+  };
 
   // ── Render ──
   return (
@@ -801,12 +821,29 @@ const EmailTable: FC<EmailTableProps> = ({
               </button>
             </DropdownTrigger>
             <DropdownContent>
-              <DropdownItem>Import</DropdownItem>
-              <DropdownItem>Export</DropdownItem>
+              <DropdownItem
+                icon={<Upload className="size-4" />}
+                onClick={() => importFileRef.current?.click()}
+              >
+                Import
+              </DropdownItem>
+              <DropdownItem
+                icon={<Download className="size-4" />}
+                onClick={handleExport}
+              >
+                Export
+              </DropdownItem>
             </DropdownContent>
           </Dropdown>
         </div>
       </div>
+      <input
+        ref={importFileRef}
+        type="file"
+        accept=".json,application/json"
+        onChange={handleImportFile}
+        className="hidden"
+      />
       {/* Inline Table (merged from ListView) */}
       {showDetail && focusedAccount ? (
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -1000,17 +1037,10 @@ const EmailTable: FC<EmailTableProps> = ({
           </div>
 
           {/* Detail view */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex-1 min-h-0 overflow-hidden"
-          >
+          <div className="flex-1 min-h-0 overflow-hidden">
             <EmailModal
-              isOpen={showDetail && !!focusedAccount}
+              isOpen={!!focusedAccount}
               onClose={() => {
-                setShowDetail(false);
                 onSelectAccount(null);
               }}
               focusedAccount={focusedAccount}
@@ -1022,19 +1052,31 @@ const EmailTable: FC<EmailTableProps> = ({
               onContextMenu={handleContextMenu}
               editedAccount={editedAccount}
               setEditedAccount={setEditedAccount}
+              onUpdateAccount={onUpdateAccount}
               validateField={validateField}
               errors={errors}
               backupCodeSearch={backupCodeSearch}
               setBackupCodeSearch={setBackupCodeSearch}
+              recoveryEmailSuggestions={(() => {
+                const freq: Record<string, number> = {};
+                accounts.forEach((a) => {
+                  if (a.recovery_email) freq[a.recovery_email] = (freq[a.recovery_email] || 0) + 1;
+                });
+                return accounts
+                  .map((a) => a.email)
+                  .filter((email): email is string => !!email)
+                  .sort((a, b) => (freq[b] || 0) - (freq[a] || 0));
+              })()}
               serviceSearch={serviceSearch}
               setServiceSearch={setServiceSearch}
               accountServices={accountServices}
-              onAddNewServiceLink={handleOpenNewServiceDrawer}
               onEditServiceLink={handleEditServiceLink}
               onOpenService={handleOpenService}
               onDeleteService={handleUnlinkService}
+              globalServices={globalServices}
+              onQuickAddService={handleQuickAddService}
             />
-          </motion.div>
+          </div>
         </div>
       ) : (
         <div className="flex-1 overflow-auto custom-scrollbar flex flex-col min-h-0">
@@ -1365,29 +1407,6 @@ const EmailTable: FC<EmailTableProps> = ({
           document.body,
         )}
 
-      <ServiceDrawer
-        isServiceDrawerOpen={isServiceDrawerOpen}
-        setIsServiceDrawerOpen={setIsServiceDrawerOpen}
-        linkServiceSearchQuery={linkServiceSearchQuery}
-        setLinkServiceSearchQuery={setLinkServiceSearchQuery}
-        focusedAccount={focusedAccount}
-        newServiceData={newServiceData}
-        setNewServiceData={setNewServiceData}
-        globalServices={globalServices}
-        handleAddServiceLink={handleAddServiceLink}
-        isQuickCreateModalOpen={isQuickCreateModalOpen}
-        setIsQuickCreateModalOpen={setIsQuickCreateModalOpen}
-        quickCreateData={quickCreateData}
-        setQuickCreateData={setQuickCreateData}
-        handleQuickCreateService={handleQuickCreateService}
-        categorySearch={categorySearch}
-        setCategorySearch={setCategorySearch}
-        categoryInputOpen={categoryInputOpen}
-        setCategoryInputOpen={setCategoryInputOpen}
-        isEditMode={isEditServiceMode}
-        onRestoreService={handleRestoreService}
-      />
-
       {serviceDeleteConfirmId &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -1521,55 +1540,40 @@ const EmailTable: FC<EmailTableProps> = ({
 const arePropsEqual = (prevProps: EmailTableProps, nextProps: EmailTableProps) => {
   // Compare primitive values
   if (prevProps.focusedAccountId !== nextProps.focusedAccountId) {
-    console.log('[EmailTable memo] focusedAccountId changed');
     return false;
   }
   if (prevProps.selectedServiceId !== nextProps.selectedServiceId) {
-    console.log('[EmailTable memo] selectedServiceId changed');
     return false;
   }
   if (prevProps.activeTab !== nextProps.activeTab) {
-    console.log('[EmailTable memo] activeTab changed');
     return false;
   }
   if (prevProps.currentPage !== nextProps.currentPage) {
-    console.log('[EmailTable memo] currentPage changed');
     return false;
   }
 
   // Compare arrays/objects by reference first (faster)
   if (prevProps.accounts !== nextProps.accounts) {
-    console.log('[EmailTable memo] accounts reference changed');
     return false;
   }
   if (prevProps.allAccounts !== nextProps.allAccounts) {
-    console.log('[EmailTable memo] allAccounts reference changed');
     return false;
   }
   if (prevProps.sorting !== nextProps.sorting) {
-    console.log('[EmailTable memo] sorting reference changed');
     return false;
   }
   if (prevProps.columnVisibility !== nextProps.columnVisibility) {
-    console.log('[EmailTable memo] columnVisibility reference changed');
     return false;
   }
 
   // Compare Set by size and content
   if (prevProps.runningBrowsers !== nextProps.runningBrowsers) {
     if (prevProps.runningBrowsers.size !== nextProps.runningBrowsers.size) {
-      console.log(
-        '[EmailTable memo] runningBrowsers size changed:',
-        prevProps.runningBrowsers.size,
-        '→',
-        nextProps.runningBrowsers.size,
-      );
       return false;
     }
     // Check if content is same
     for (const id of prevProps.runningBrowsers) {
       if (!nextProps.runningBrowsers.has(id)) {
-        console.log('[EmailTable memo] runningBrowsers content changed');
         return false;
       }
     }
@@ -1577,27 +1581,20 @@ const arePropsEqual = (prevProps: EmailTableProps, nextProps: EmailTableProps) =
 
   // Compare functions by reference (should be stable with useCallback)
   if (prevProps.onSelectAccount !== nextProps.onSelectAccount) {
-    console.log('[EmailTable memo] onSelectAccount changed');
     return false;
   }
   if (prevProps.onHardDelete !== nextProps.onHardDelete) {
-    console.log('[EmailTable memo] onHardDelete changed');
     return false;
   }
   if (prevProps.onRefreshData !== nextProps.onRefreshData) {
-    console.log('[EmailTable memo] onRefreshData changed');
     return false;
   }
   if (prevProps.onAddEmail !== nextProps.onAddEmail) {
-    console.log('[EmailTable memo] onAddEmail changed');
     return false;
   }
   if (prevProps.setActiveTab !== nextProps.setActiveTab) {
-    console.log('[EmailTable memo] setActiveTab changed');
     return false;
   }
-
-  console.log('[EmailTable memo] Props are equal, skipping render');
   return true;
 };
 

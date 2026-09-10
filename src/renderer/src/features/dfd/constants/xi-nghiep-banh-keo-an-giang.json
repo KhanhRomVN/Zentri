@@ -1,0 +1,397 @@
+{
+  "meta": {
+    "modelName": "Hệ thống Bánh Kẹo An Giang",
+    "rootLevel": "root",
+    "problemStatement": "Hoạt động của Xí Nghiệp Bánh Kẹo An Giang được mô tả như sau:\n\n- Khi có yêu cầu lấy một mặt hàng kẹo nào đó từ các đại lý, bộ phận quản lý việc xuất sản phẩm sẽ kiểm tra số sản phẩm trong kho. Nếu sản phẩm đủ để đáp ứng yêu cầu thì bộ phận này sẽ lập một phiếu xuất để xuất sản phẩm được yêu cầu cho đại lý. Trong phiếu xuất có ghi rõ tên đại lý, địa chỉ đại lý, tên người nhận, ngày xuất, các thông tin về sản phẩm được xuất: tên sản phẩm, đơn giá, số lượng xuất, loại sản phẩm, thành tiền, tổng số tiền, chữ ký của người viết phiếu, người nhận và thủ trưởng đơn vị. Ngoài ra trên phiếu còn ghi rõ số hiệu phiếu. Một bản sao của phiếu xuất được hệ thống lưu lại. Nếu số lượng sản phẩm yêu cầu không đủ thì thông báo từ chối xuất.\n\n- Sản phẩm kẹo từ các phân xưởng sản xuất sẽ chuyển đến bộ phận nhập sản phẩm. Bộ phận này sẽ kiểm tra chất lượng của sản phẩm trước khi nhập kho. Nếu chất lượng đảm bảo, bộ phận nhập sản phẩm sẽ lập một phiếu nhập sản phẩm trên phiếu có ghi rõ tên xưởng sản xuất, địa chỉ, tên người giao, các thông tin về sản phẩm được nhập. Phiếu nhập được viết thành 2 bản, một bản giao cho xưởng sản xuất, một bản lưu giữ lại sau khi sản phẩm được chuyển vào kho.\n\nYêu cầu:\n- Vẽ mô hình chức năng của hệ thống trên.\n- Vẽ mô hình DFD (mức 0, 1, 2; mỗi trường gồm: Đại lý, Phân xưởng)."
+  },
+  "levels": {
+    "root": {
+      "code": "0",
+      "title": "Mức 0 — Sơ đồ ngữ cảnh",
+      "subtitle": "Hệ thống bánh kẹo tương tác với đại lý (yêu cầu xuất hàng, nhận phiếu xuất) và phân xưởng (nhận sản phẩm vào kho).",
+      "parent": null,
+      "canvas": { "w": 860, "h": 520 },
+      "nodes": [
+        {
+          "id": "daily",
+          "type": "entity",
+          "label": "Đại lý",
+          "desc": "Thực thể bên ngoài — gửi yêu cầu xuất hàng và nhận phiếu xuất khi đủ điều kiện hoặc thông báo từ chối khi không đủ hàng.",
+          "x": 50,
+          "y": 130,
+          "w": 140,
+          "h": 70
+        },
+        {
+          "id": "phanxuong",
+          "type": "entity",
+          "label": "Phân xưởng",
+          "desc": "Thực thể bên ngoài — cung cấp sản phẩm kẹo vào kho hệ thống.",
+          "x": 50,
+          "y": 330,
+          "w": 140,
+          "h": 70
+        },
+        {
+          "id": "p0",
+          "type": "process",
+          "code": "0",
+          "label": "Hệ thống Bánh Kẹo AG",
+          "desc": "Tiến trình tổng quát quản lý toàn bộ hoạt động nhận sản phẩm từ phân xưởng, kiểm tra tồn kho và xuất hàng cho đại lý.",
+          "cx": 600,
+          "cy": 260,
+          "r": 120,
+          "childLevel": "1"
+        }
+      ],
+      "flows": [
+        {
+          "id": "f-root-1",
+          "from": "daily",
+          "to": "p0",
+          "label": "Yêu cầu",
+          "path": [
+            [190, 150],
+            [480, 200]
+          ]
+        },
+        {
+          "id": "f-root-2",
+          "from": "p0",
+          "to": "daily",
+          "label": "TB từ chối",
+          "path": [
+            [480, 220],
+            [190, 170]
+          ]
+        },
+        {
+          "id": "f-root-3",
+          "from": "phanxuong",
+          "to": "p0",
+          "label": "SP",
+          "path": [
+            [190, 350],
+            [480, 300]
+          ]
+        },
+        {
+          "id": "f-root-4",
+          "from": "p0",
+          "to": "daily",
+          "label": "PNhập",
+          "path": [
+            [520, 180],
+            [300, 120],
+            [190, 140]
+          ]
+        }
+      ]
+    },
+    "1": {
+      "code": "1",
+      "title": "Mức 1 — Phân rã tiến trình 0",
+      "subtitle": "Hệ thống được tách thành 3 tiến trình: TD từ chối/xuất, Kiểm tra, và Lập phiếu xuất.",
+      "parent": { "id": "p0", "code": "0", "label": "Hệ thống Bánh Kẩo AG", "level": "root" },
+      "canvas": { "w": 980, "h": 750 },
+      "nodes": [
+        {
+          "id": "daily",
+          "type": "entity",
+          "label": "Đại lý",
+          "desc": "Gửi yêu cầu xuất hàng, nhận phiếu xuất hoặc thông báo từ chối.",
+          "x": 50,
+          "y": 180,
+          "w": 130,
+          "h": 66
+        },
+        {
+          "id": "phanxuong",
+          "type": "entity",
+          "label": "Phân xưởng",
+          "desc": "Cung cấp sản phẩm kẹo vào kho.",
+          "x": 50,
+          "y": 520,
+          "w": 130,
+          "h": 66
+        },
+        {
+          "id": "p0-1",
+          "type": "process",
+          "code": "0.1",
+          "label": "Kiểm tra",
+          "desc": "Kiểm tra số lượng sản phẩm tồn kho có đủ để đáp ứng yêu cầu xuất hàng hay không.",
+          "cx": 450,
+          "cy": 160,
+          "r": 85,
+          "childLevel": "2"
+        },
+        {
+          "id": "p0-1-2",
+          "type": "process",
+          "code": "0.1.2",
+          "label": "Lập phiếu xuất",
+          "desc": "Lập phiếu xuất kho khi số lượng đủ, ghi nhận phiếu xuất vào kho.",
+          "cx": 450,
+          "cy": 390,
+          "r": 85
+        },
+        {
+          "id": "p0-1-3",
+          "type": "process",
+          "code": "0.1.3",
+          "label": "TD từ chối/Xuất",
+          "desc": "Thông báo từ chối khi không đủ hàng, hoặc ghi nhận xuất hàng sau khi lập phiếu.",
+          "cx": 450,
+          "cy": 600,
+          "r": 85
+        },
+        {
+          "id": "d-spkeo",
+          "type": "store",
+          "code": "D1",
+          "label": "SP Kẹo",
+          "desc": "Kho dữ liệu tồn kho sản phẩm kẹo từ phân xưởng.",
+          "x": 720,
+          "y": 135,
+          "w": 180,
+          "h": 52
+        },
+        {
+          "id": "d-htbang-px",
+          "type": "store",
+          "code": "D2",
+          "label": "HT bảng PX",
+          "desc": "Kho dữ liệu lưu trữ các phiếu xuất đã lập.",
+          "x": 720,
+          "y": 365,
+          "w": 180,
+          "h": 52
+        }
+      ],
+      "flows": [
+        {
+          "id": "f1-1",
+          "from": "daily",
+          "to": "p0-1",
+          "label": "Yêu cầu",
+          "path": [
+            [180, 195],
+            [365, 150]
+          ]
+        },
+        {
+          "id": "f1-2",
+          "from": "d-spkeo",
+          "to": "p0-1",
+          "label": "SP²",
+          "path": [
+            [720, 161],
+            [535, 155]
+          ]
+        },
+        {
+          "id": "f1-3",
+          "from": "p0-1",
+          "to": "p0-1-3",
+          "label": "P",
+          "path": [
+            [520, 195],
+            [800, 195],
+            [800, 605],
+            [535, 600]
+          ]
+        },
+        {
+          "id": "f1-4",
+          "from": "p0-1",
+          "to": "p0-1-2",
+          "label": "Đủ SL",
+          "path": [
+            [450, 245],
+            [450, 305]
+          ]
+        },
+        {
+          "id": "f1-5",
+          "from": "p0-1-2",
+          "to": "d-htbang-px",
+          "label": "PXuất",
+          "path": [
+            [535, 390],
+            [720, 391]
+          ]
+        },
+        {
+          "id": "f1-6",
+          "from": "p0-1-2",
+          "to": "p0-1-3",
+          "label": "Đủ CN",
+          "path": [
+            [450, 475],
+            [450, 515]
+          ]
+        },
+        {
+          "id": "f1-7",
+          "from": "p0-1-3",
+          "to": "daily",
+          "label": "TB từ chối",
+          "path": [
+            [365, 575],
+            [180, 230]
+          ]
+        },
+        {
+          "id": "f1-8",
+          "from": "phanxuong",
+          "to": "d-spkeo",
+          "label": "PNhập",
+          "path": [
+            [180, 540],
+            [650, 540],
+            [650, 187],
+            [720, 161]
+          ]
+        },
+        {
+          "id": "f1-9",
+          "from": "d-spkeo",
+          "to": "p0-1-2",
+          "label": "SP¹Keo",
+          "path": [
+            [720, 187],
+            [580, 260],
+            [520, 350]
+          ]
+        }
+      ]
+    },
+    "2": {
+      "code": "2",
+      "title": "Mức 2 — Phân rã tiến trình 0.1",
+      "subtitle": "Tiến trình Kiểm tra được tách thành hai tiến trình con: Kiểm tra hàng tồn (0.2.1) và Lập PN (0.2.2).",
+      "parent": { "id": "p0-1", "code": "0.1", "label": "Kiểm tra", "level": "1" },
+      "canvas": { "w": 1000, "h": 740 },
+      "nodes": [
+        {
+          "id": "phanxuong",
+          "type": "entity",
+          "label": "Phân xưởng",
+          "desc": "Cung cấp sản phẩm kẹo vào hệ thống qua tiến trình lập phiếu nhập.",
+          "x": 50,
+          "y": 320,
+          "w": 130,
+          "h": 66
+        },
+        {
+          "id": "p0-2-1",
+          "type": "process",
+          "code": "0.2.1",
+          "label": "K.Hàng tồn",
+          "desc": "Kiểm tra số lượng hàng tồn kho để xác định có đủ đáp ứng yêu cầu xuất hay không.",
+          "cx": 450,
+          "cy": 160,
+          "r": 88
+        },
+        {
+          "id": "p0-2-2",
+          "type": "process",
+          "code": "0.2.2",
+          "label": "Lập PN",
+          "desc": "Lập phiếu nhập kho cho sản phẩm từ phân xưởng, cập nhật dữ liệu tồn kho.",
+          "cx": 450,
+          "cy": 420,
+          "r": 88
+        },
+        {
+          "id": "d-spkeo",
+          "type": "store",
+          "code": "D1",
+          "label": "SP²Keo",
+          "desc": "Kho dữ liệu chứa thông tin tồn kho các sản phẩm kẹo.",
+          "x": 730,
+          "y": 135,
+          "w": 180,
+          "h": 52
+        },
+        {
+          "id": "d-kho-pn",
+          "type": "store",
+          "code": "D3",
+          "label": "Kho PN",
+          "desc": "Kho dữ liệu lưu trữ các phiếu nhập từ phân xưởng.",
+          "x": 730,
+          "y": 395,
+          "w": 180,
+          "h": 52
+        }
+      ],
+      "flows": [
+        {
+          "id": "f2-1",
+          "from": "phanxuong",
+          "to": "p0-2-1",
+          "label": "SP²Keo",
+          "path": [
+            [180, 340],
+            [365, 180]
+          ]
+        },
+        {
+          "id": "f2-2",
+          "from": "d-spkeo",
+          "to": "p0-2-1",
+          "label": "Đủ CN",
+          "path": [
+            [730, 161],
+            [538, 155]
+          ]
+        },
+        {
+          "id": "f2-3",
+          "from": "p0-2-1",
+          "to": "p0-2-2",
+          "label": "P",
+          "path": [
+            [538, 190],
+            [820, 190],
+            [820, 425],
+            [538, 420]
+          ]
+        },
+        {
+          "id": "f2-4",
+          "from": "p0-2-2",
+          "to": "d-kho-pn",
+          "label": "PNhập",
+          "path": [
+            [538, 415],
+            [730, 415]
+          ]
+        },
+        {
+          "id": "f2-5",
+          "from": "phanxuong",
+          "to": "p0-2-2",
+          "label": "PNhập",
+          "path": [
+            [180, 365],
+            [365, 405]
+          ]
+        },
+        {
+          "id": "f2-6",
+          "from": "d-spkeo",
+          "to": "p0-2-2",
+          "label": "SP¹Keo",
+          "path": [
+            [730, 187],
+            [590, 280],
+            [538, 380]
+          ]
+        }
+      ]
+    }
+  }
+}

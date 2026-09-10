@@ -31,11 +31,12 @@ interface ServicesTabProps {
   serviceSearch: string;
   setServiceSearch: (val: string) => void;
   accountServices: any[];
-  onAddNewServiceLink: () => void;
   onEditServiceLink: (linkId: string) => void;
   onOpenService?: (linkId: string) => void;
   onDeleteService?: (linkId: string) => void;
   email?: string;
+  globalServices?: any[];
+  onQuickAddService?: (service: any) => Promise<string | null>;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -43,11 +44,12 @@ const ServicesTab: FC<ServicesTabProps> = ({
   serviceSearch,
   setServiceSearch,
   accountServices,
-  onAddNewServiceLink,
   onEditServiceLink,
   onOpenService,
   onDeleteService,
   email,
+  globalServices,
+  onQuickAddService,
 }) => {
   // ── State ──
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -94,6 +96,8 @@ const ServicesTab: FC<ServicesTabProps> = ({
           onDeleteService={onDeleteService}
           serviceSearch={serviceSearch}
           setServiceSearch={setServiceSearch}
+          globalServices={globalServices}
+          onQuickAddService={onQuickAddService}
         />
 
         {/* Right Panel - Service Detail */}
@@ -102,9 +106,10 @@ const ServicesTab: FC<ServicesTabProps> = ({
             <ServiceDetail
               service={selectedService}
               email={email || ''}
-              onEditServiceLink={onEditServiceLink}
               onOpenService={onOpenService}
               onDeleteService={onDeleteService}
+              onQuickAddService={onQuickAddService}
+              onCancel={() => setSelectedServiceId(null)}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center flex-col gap-3 opacity-30">

@@ -1,0 +1,172 @@
+{
+  "meta": {
+    "modelName": "Hệ thống Thanh toán Hóa đơn",
+    "rootLevel": "root",
+    "problemStatement": "Nhà cung cấp giao cho cửa hàng thông tin hóa đơn về những mặt hàng mà cửa hàng đã đặt. Cửa hàng tiến hành xử lý và giao lại cho nhà cung cấp thông tin về việc thanh toán các hóa đơn đó.\n\nTính chế quá trình xử lý \"Thanh toán hóa đơn\": Sau khi nhận được thông tin hóa đơn từ nhà cung cấp, cửa hàng sẽ xem xét lại đơn đặt hàng để xác nhận hóa đơn. Kế đó, cửa hàng kiểm tra lại tình trạng công nợ của nhà cung cấp và tiến hành lập sếc thanh toán. Sau cùng, thông tin thanh toán được giao lại cho nhà cung cấp.\n\nYêu cầu:\n- Vẽ mô hình DFD (mức 0, 1; môi trường gồm: nhà cung cấp).",
+    "notes": [
+      "Theo đề bài, chỉ cần 3 tiến trình chính: (1) Xem xét hóa đơn, (2) Kiểm tra công nợ, (3) Lập sếc thanh toán",
+      "Thông tin thanh toán được giao trực tiếp từ tiến trình 1.3 về NCC, không cần tiến trình riêng cho việc 'giao thông tin'",
+      "Hóa đơn sau khi xác nhận từ 1.1 đi vào 2 nơi: tiến trình 1.2 (dạng 'HD đã xem xét') và tiến trình 1.3 (để lập sếc)",
+      "Tiến trình 1.2 vừa đọc vừa cập nhật kho D2 (Công nợ)",
+      "Tiến trình 1.3 ghi thông tin vào kho D3 (Thanh toán) và xuất 'Thông tin thanh toán hóa đơn' về NCC",
+      "Kho D1 (Đơn đặt hàng) chỉ được đọc bởi tiến trình 1.1"
+    ]
+  },
+  "levels": {
+    "root": {
+      "code": "0",
+      "title": "Mức 0 — Sơ đồ ngữ cảnh",
+      "subtitle": "Hệ thống thanh toán hóa đơn tương tác với nhà cung cấp (nhận hóa đơn, gửi lại thông tin thanh toán).",
+      "parent": null,
+      "canvas": { "w": 860, "h": 520 },
+      "nodes": [
+        {
+          "id": "ncc",
+          "type": "entity",
+          "label": "Nhà cung cấp",
+          "desc": "Thực thể bên ngoài — gửi thông tin hóa đơn cho cửa hàng và nhận thông tin thanh toán.",
+          "x": 50,
+          "y": 200,
+          "w": 140,
+          "h": 70
+        },
+        {
+          "id": "p0",
+          "type": "process",
+          "code": "0",
+          "label": "Thanh toán hóa đơn",
+          "desc": "Tiến trình tổng quát xử lý thanh toán hóa đơn từ nhà cung cấp.",
+          "cx": 600,
+          "cy": 235,
+          "r": 120,
+          "childLevel": "1"
+        }
+      ],
+      "flows": [
+        {
+          "id": "f-root-1",
+          "from": "ncc",
+          "to": "p0",
+          "label": "Hóa đơn",
+          "path": [
+            [190, 220],
+            [480, 220]
+          ]
+        },
+        {
+          "id": "f-root-2",
+          "from": "p0",
+          "to": "ncc",
+          "label": "TT thanh toán",
+          "path": [
+            [480, 250],
+            [190, 250]
+          ]
+        }
+      ]
+    },
+    "1": {
+      "code": "1",
+      "title": "Mức 1 — Phân rã tiến trình 0",
+      "subtitle": "Hệ thống được tách thành 3 tiến trình: Xem xét, Kiểm tra công nợ, và Lập sếc thanh toán.",
+      "parent": { "id": "p0", "code": "0", "label": "Thanh toán hóa đơn", "level": "root" },
+      "canvas": { "w": 980, "h": 700 },
+      "nodes": [
+        {
+          "id": "ncc",
+          "type": "entity",
+          "label": "NCC",
+          "desc": "Nhà cung cấp - gửi hóa đơn và nhận thông tin thanh toán.",
+          "w": 130,
+          "h": 66
+        },
+        {
+          "id": "p1-1",
+          "type": "process",
+          "code": "1.1",
+          "label": "Xem xét",
+          "desc": "Xem xét lại đơn đặt hàng để xác nhận hóa đơn từ nhà cung cấp.",
+          "r": 85
+        },
+        {
+          "id": "p1-2",
+          "type": "process",
+          "code": "1.2",
+          "label": "Kiểm tra công nợ",
+          "desc": "Kiểm tra tình trạng công nợ của nhà cung cấp.",
+          "r": 85
+        },
+        {
+          "id": "p1-3",
+          "type": "process",
+          "code": "1.3",
+          "label": "Lập sếc thanh toán",
+          "desc": "Lập sếc thanh toán cho nhà cung cấp dựa trên hóa đơn và công nợ, gửi thông tin thanh toán về NCC.",
+          "r": 85
+        },
+        {
+          "id": "d-congno",
+          "type": "store",
+          "code": "D2",
+          "label": "Công nợ",
+          "desc": "Kho dữ liệu lưu trữ tình trạng công nợ với các nhà cung cấp.",
+          "w": 160,
+          "h": 52
+        },
+        {
+          "id": "d-hoadon",
+          "type": "store",
+          "code": "D3",
+          "label": "HĐ đã thanh toán",
+          "desc": "Kho dữ liệu lưu trữ thông tin các hóa đơn đã thanh toán.",
+          "w": 160,
+          "h": 52
+        }
+      ],
+      "flows": [
+        {
+          "id": "f1-1",
+          "from": "ncc",
+          "to": "p1-1",
+          "label": "Hóa đơn",
+          "path": []
+        },
+        {
+          "id": "f1-2",
+          "from": "p1-1",
+          "to": "p1-2",
+          "label": "HD đã xem xét",
+          "path": []
+        },
+        {
+          "id": "f1-3",
+          "from": "d-congno",
+          "to": "p1-2",
+          "label": "Công nợ",
+          "path": []
+        },
+        {
+          "id": "f1-4",
+          "from": "p1-2",
+          "to": "p1-3",
+          "label": "Công nợ",
+          "path": []
+        },
+        {
+          "id": "f1-5",
+          "from": "p1-3",
+          "to": "ncc",
+          "label": "Thông tin thanh toán hóa đơn",
+          "path": []
+        },
+        {
+          "id": "f1-6",
+          "from": "p1-3",
+          "to": "d-hoadon",
+          "label": "HĐ đã thanh toán",
+          "path": []
+        }
+      ]
+    }
+  }
+}

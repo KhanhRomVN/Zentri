@@ -1,0 +1,114 @@
+/* DFD Viewer styles — read-only DFD model viewer */
+
+.dfd-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--background, #0a0d13);
+  color: var(--foreground, #e7ecf2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+
+.dfd-empty {
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary, #4e5866);
+}
+
+/* ---------- loading spinner ---------- */
+.dfd-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.dfd-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-soft, #161c27);
+  border-top-color: var(--accent, #00d9ff);
+  border-radius: 50%;
+  animation: dfd-spin 0.8s linear infinite;
+}
+
+@keyframes dfd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dfd-loading p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #7a8599);
+}
+
+/* ---------- body layout ---------- */
+.dfd-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------- main canvas ---------- */
+.dfd-main {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  background:
+    linear-gradient(var(--border-soft, #161c27) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, var(--border-soft, #161c27) 1px, transparent 1px) 0 0 / 28px 28px,
+    var(--background, #0a0d13);
+}
+
+.dfd-main-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, rgba(10, 13, 19, 0.94), rgba(10, 13, 19, 0.7));
+  backdrop-filter: blur(2px);
+  border-bottom: 1px solid var(--border-soft, #161c27);
+  pointer-events: none;
+}
+
+.dfd-main-head h2 {
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--foreground, #e7ecf2);
+}
+
+.dfd-main-head p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-tertiary, #4e5866);
+}
+
+.dfd-main .react-flow {
+  background: transparent;
+}
+
+/* React Flow overrides */
+.react-flow__node-dfdProcess,
+.react-flow__node-dfdEntity,
+.react-flow__node-dfdStore {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.react-flow__handle {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

@@ -292,6 +292,25 @@ export class DbManager {
       }
     }
 
+    const emailColumnMigrations: Array<{ name: string; type: string }> = [
+      { name: 'phone_number', type: 'TEXT' },
+      { name: 'recovery_email', type: 'TEXT' },
+      { name: 'totp', type: 'TEXT' },
+      { name: 'backup_codes', type: 'TEXT' },
+      { name: 'category', type: 'TEXT' },
+      { name: 'tags', type: 'TEXT' },
+    ];
+    for (const col of emailColumnMigrations) {
+      const hasColumn = columns.some((c) => c.name === col.name);
+      if (!hasColumn) {
+        try {
+          await this.rawRun(`ALTER TABLE emails ADD COLUMN ${col.name} ${col.type}`);
+        } catch (e) {
+          console.error(`[DB] Migration failed (${col.name}):`, e);
+        }
+      }
+    }
+
     // Migration for services table (ensure metadata, auth_method, and description exist)
     const serviceColumns = await this.rawAll<{ name: string }>('PRAGMA table_info(services)');
 

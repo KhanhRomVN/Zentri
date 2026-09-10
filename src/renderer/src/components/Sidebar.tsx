@@ -108,6 +108,13 @@ const NAV_ITEMS = [
     color: '#8b5cf6',
     disabled: false,
   },
+  {
+    title: 'DFD',
+    href: '/dfd',
+    icon: Eye,
+    color: '#2fe6b8',
+    disabled: false,
+  },
 ];
 
 const Sidebar = memo(
