@@ -6,7 +6,6 @@ import Proxy from '../features/proxy/Proxy';
 import Filter from '../features/filter/Filter';
 import Setting from '../features/setting/Setting';
 import Workflow from '../features/workflow/Workflow';
-import Dfd from '../features/dfd/Dfd';
 import Forge from '@renderer/features/forge/Forrge';
 import Device from '@renderer/features/device/Device';
 
@@ -42,10 +41,6 @@ export const routes: RouteObject[] = [
       {
         path: 'workflow',
         element: <Workflow />,
-      },
-      {
-        path: 'dfd',
-        element: <Dfd />,
       },
       {
         path: 'device',

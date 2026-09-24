@@ -33,6 +33,8 @@ import {
   MoreVertical,
   Download,
   Upload,
+  CloudOff,
+  Loader2,
 } from 'lucide-react';
 import {
   Dropdown,
@@ -80,9 +82,18 @@ interface EmailTableProps {
     | 'history'
     | 'bookmarks'
     | 'fingerprint'
-    | 'security';
+    | 'security'
+    | 'password';
   setActiveTab: (
-    tab: 'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint' | 'security',
+    tab:
+      | 'info'
+      | 'services'
+      | 'sessions'
+      | 'history'
+      | 'bookmarks'
+      | 'fingerprint'
+      | 'security'
+      | 'password',
   ) => void;
   sorting?: SortingState;
   columnVisibility?: Record<string, boolean>;
@@ -94,6 +105,7 @@ interface EmailTableProps {
   onPageChange?: (page: number) => void;
   selectedServiceId?: string | null;
   runningBrowsers: Set<string>;
+  loading?: boolean;
 }
 
 interface LinkedService {
@@ -129,6 +141,7 @@ const EmailTable: FC<EmailTableProps> = ({
   onPageChange,
   selectedServiceId,
   runningBrowsers,
+  loading,
 }) => {
   // ── State ──
   const [avatars, setAvatars] = useState<Record<string, string>>({});
@@ -192,6 +205,9 @@ const EmailTable: FC<EmailTableProps> = ({
 
   const [globalServices, setGlobalServices] = useState<Service[]>([]);
   const [isEditServiceMode, setIsEditServiceMode] = useState(false);
+  // Map<accountId, loggedIn>. Only resolved entries are present, so the badge
+  // does not flash before the IPC round-trip completes.
+  const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
 
   const showDetail = !!focusedAccountId;
 
@@ -204,6 +220,15 @@ const EmailTable: FC<EmailTableProps> = ({
   const accountServices = focusedAccount?.services || [];
 
   // ── Effects ──
+  // Refetch account data when ServiceEmailForm finishes persisting a change,
+  // so that reopening the modal reads the freshly saved TOTP/backup values
+  // instead of the stale `focusedAccount.services` snapshot.
+  useEffect(() => {
+    const handler = () => onRefreshData?.();
+    window.addEventListener('account-services-changed', handler);
+    return () => window.removeEventListener('account-services-changed', handler);
+  }, [onRefreshData]);
+
   const prevPropsRef = useRef<any>({});
 
   useEffect(() => {
@@ -365,13 +390,13 @@ const EmailTable: FC<EmailTableProps> = ({
       // @ts-ignore
       await window.electron.ipcRenderer.invoke(
         'sqlite:run',
-        "UPDATE service_emails SET status = 'trash', scheduled_deletion_at = datetime('now', '+30 days') WHERE id = ?",
+        'DELETE FROM service_emails WHERE id = ?',
         [linkId],
       );
       setServiceDeleteConfirmId(null);
       onRefreshData?.();
     } catch (error) {
-      console.error('Failed to soft delete service link:', error);
+      console.error('Failed to delete service link:', error);
     }
   };
 
@@ -418,11 +443,22 @@ const EmailTable: FC<EmailTableProps> = ({
     setIsLaunchModalOpen(true);
   };
 
+  const handleCloseBrowser = async () => {
+    if (!focusedAccount) return;
+    try {
+      // @ts-ignore
+      await window.electron.ipcRenderer.invoke('email:close-profile', focusedAccount.id);
+    } catch (err) {
+      console.error('Failed to close browser:', err);
+    }
+  };
+
   const handleExecuteLaunch = async (
     config: {
       fingerprintId?: string;
       proxyId?: string;
       launchMode?: 'normal' | 'secure';
+      browserPatchType?: 'ungoogled-chromium' | 'cloakbrowser' | 'official-chrome';
     },
     overrideLaunch?: {
       accountId: string;
@@ -448,6 +484,7 @@ const EmailTable: FC<EmailTableProps> = ({
         fingerprintConfig: (config as any).fingerprintConfig,
         proxyId: config.proxyId,
         launchMode: config.launchMode || 'secure',
+        browserPatchType: config.browserPatchType || 'ungoogled-chromium',
       });
 
       // Log proxy usage if a proxy was selected
@@ -569,17 +606,48 @@ const EmailTable: FC<EmailTableProps> = ({
   };
 
   const handleQuickAddService = async (service: any) => {
-    if (!focusedAccount) return null;
+    if (!focusedAccount) {
+      // [DEBUG] early return — no account to link into
+      console.log('[DEBUG EmailTable] handleQuickAddService: no focusedAccount, return null');
+      return null;
+    }
     try {
+      // [DEBUG] Look up the actual UUID id from services table, since the foreign key
+      // expects a UUID, not a slug string like 'github'
+      let actualServiceId = service.serviceId || service.id;
+      console.log('[DEBUG EmailTable] handleQuickAddService: original serviceId =', actualServiceId);
+      
+      // Query services table to get the UUID id by matching id or slug
       // @ts-ignore
-      const result = await window.electron.ipcRenderer.invoke('service_emails:insert', {
+      const serviceRows = await window.electron.ipcRenderer.invoke(
+        'sqlite:all',
+        'SELECT id FROM services WHERE id = ? OR slug = ? OR name = ? LIMIT 1',
+        [actualServiceId, actualServiceId, actualServiceId]
+      );
+      
+      if (serviceRows && serviceRows.length > 0) {
+        actualServiceId = serviceRows[0].id;
+        console.log('[DEBUG EmailTable] handleQuickAddService: resolved to UUID =', actualServiceId);
+      } else {
+        console.error('[DEBUG EmailTable] handleQuickAddService: could not find service in DB', actualServiceId);
+        return null;
+      }
+      
+      const payload = {
         emailId: focusedAccount.id,
-        serviceId: service.serviceId || service.id,
-        metadata: {},
-        twoFa: {},
-      });
+        serviceId: actualServiceId,
+        metadata: service.metadata || {},
+        twoFa: service.twoFa || {},
+      };
+      // [DEBUG] trace IPC insert call
+      console.log('[DEBUG EmailTable] handleQuickAddService: invoking service_emails:insert', payload);
+      // @ts-ignore
+      const result = await window.electron.ipcRenderer.invoke('service_emails:insert', payload);
+      console.log('[DEBUG EmailTable] service_emails:insert result =', result);
       if (onRefreshData) onRefreshData();
-      return result?.id ?? result?.linkId ?? null;
+      const linkId = result?.id ?? result?.linkId ?? null;
+      console.log('[DEBUG EmailTable] returning linkId =', linkId);
+      return linkId;
     } catch (err) {
       console.error('Failed to quick add service', err);
       return null;
@@ -689,6 +757,36 @@ const EmailTable: FC<EmailTableProps> = ({
 
   // Use allAccounts for indexing (original order before pagination)
   const fullAccountList = allAccounts;
+
+  // Check Google sign-in status per visible account.
+  // Runs whenever the accounts array reference changes (i.e. after loadData /
+  // Refresh) so login/logout done between refreshes is reflected immediately.
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      for (const acc of orderedAccounts) {
+        try {
+          // @ts-ignore
+          const res = await window.electron.ipcRenderer.invoke('email:check-google-login', {
+            email: acc.email,
+          });
+          if (cancelled) return;
+          if (res?.success) {
+            setSyncStatus((prev) => ({ ...prev, [acc.id]: !!res.loggedIn }));
+          }
+        } catch (err) {
+          console.error('Failed to check Google login status', acc.email, err);
+        }
+      }
+    };
+    // Reset the cache first so the UI does not show stale status mid-refresh.
+    setSyncStatus({});
+    check();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts]);
 
   // Memoized icon components to prevent unnecessary re-renders
   const SearchIcon = useMemo(() => {
@@ -806,10 +904,11 @@ const EmailTable: FC<EmailTableProps> = ({
           </Button>
           <button
             onClick={onRefreshData}
-            className="size-8 rounded-md border border-border bg-card-background text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors"
+            disabled={loading}
+            className="size-8 rounded-md border border-border bg-card-background text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Refresh"
           >
-            {RefreshIcon}
+            {loading ? <Loader2 className="size-3.5 animate-spin" /> : RefreshIcon}
           </button>
           <Dropdown align="end">
             <DropdownTrigger asChild>
@@ -827,10 +926,7 @@ const EmailTable: FC<EmailTableProps> = ({
               >
                 Import
               </DropdownItem>
-              <DropdownItem
-                icon={<Download className="size-4" />}
-                onClick={handleExport}
-              >
+              <DropdownItem icon={<Download className="size-4" />} onClick={handleExport}>
                 Export
               </DropdownItem>
             </DropdownContent>
@@ -1070,8 +1166,9 @@ const EmailTable: FC<EmailTableProps> = ({
               serviceSearch={serviceSearch}
               setServiceSearch={setServiceSearch}
               accountServices={accountServices}
-              onEditServiceLink={handleEditServiceLink}
               onOpenService={handleOpenService}
+              onCloseBrowser={handleCloseBrowser}
+              isBrowserOpen={focusedAccount ? runningBrowsers.has(focusedAccount.id) : false}
               onDeleteService={handleUnlinkService}
               globalServices={globalServices}
               onQuickAddService={handleQuickAddService}
@@ -1147,6 +1244,14 @@ const EmailTable: FC<EmailTableProps> = ({
                               );
                             return null;
                           })()}
+                          {syncStatus[account.id] === false && (
+                            <span
+                              className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/10 text-amber-500 shrink-0"
+                              title="No Google account signed in on this browser profile"
+                            >
+                              <CloudOff className="w-3 h-3" />
+                            </span>
+                          )}
                         </div>
                         <span
                           onMouseEnter={() => setHoveredEmail(account.email)}
@@ -1416,7 +1521,7 @@ const EmailTable: FC<EmailTableProps> = ({
             />
             <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-                <h3 className="text-sm font-bold text-foreground">Move to Trash</h3>
+                <h3 className="text-sm font-bold text-foreground">Delete Permanently</h3>
                 <button
                   onClick={() => setServiceDeleteConfirmId(null)}
                   className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
@@ -1426,7 +1531,7 @@ const EmailTable: FC<EmailTableProps> = ({
               </div>
               <div className="px-6 py-4">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  The service link will be moved to trash and can be restored within 30 days.
+                  This service link will be permanently deleted. This action cannot be undone.
                 </p>
               </div>
               <div className="px-6 py-4 border-t border-border/50">
@@ -1441,7 +1546,7 @@ const EmailTable: FC<EmailTableProps> = ({
                     onClick={() => handleUnlinkService(serviceDeleteConfirmId)}
                     className="flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-red-500 text-white hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
                   >
-                    Move to Trash
+                    Delete
                   </button>
                 </div>
               </div>

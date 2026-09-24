@@ -10,7 +10,6 @@ import {
   Zap,
   Network,
   Monitor,
-  Eye,
 } from 'lucide-react';
 import { useAccentColors } from '../hooks/useAccentColors';
 
@@ -108,13 +107,6 @@ const NAV_ITEMS = [
     color: '#8b5cf6',
     disabled: false,
   },
-  {
-    title: 'DFD',
-    href: '/dfd',
-    icon: Eye,
-    color: '#2fe6b8',
-    disabled: false,
-  },
 ];
 
 const Sidebar = memo(
@@ -147,7 +139,7 @@ const Sidebar = memo(
           {/* Header */}
           <div
             className={cn(
-              'w-full min-h-[47px] flex items-center shrink-0 border-b border-border py-1.5',
+              'w-full h-12 flex items-center shrink-0 border-b border-border py-1.5',
               expanded ? 'px-3 justify-start' : 'justify-center',
             )}
           >

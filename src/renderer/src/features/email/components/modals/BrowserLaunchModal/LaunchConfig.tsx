@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { Shield, Check, ChevronDown, Globe, MapPin, Clock, Monitor } from 'lucide-react';
+import { Shield, Check, ChevronDown, Globe, MapPin, Clock, Monitor, Chrome } from 'lucide-react';
 import { cn } from '../../../../../shared/lib/utils';
 import ModalHeader from '../../../../../components/ui/Modal/ModalHeader';
 import ModalBody from '../../../../../components/ui/Modal/ModalBody';
@@ -13,6 +13,8 @@ import Button from '../../../../../components/ui/Button/Button';
 import { IpApiResponse } from '../../../../../types/ip-api';
 import { Fingerprint } from '../../../../../types/fingerprint-profile';
 import { OS_ICONS } from './index';
+
+export type BrowserPatchType = 'ungoogled-chromium' | 'cloakbrowser' | 'official-chrome';
 
 interface LaunchConfigProps {
   onClose: () => void;
@@ -31,11 +33,39 @@ interface LaunchConfigProps {
   proxySearch: string;
   proxyHistory: any[];
   filteredProxies: any[];
+  browserPatchType: BrowserPatchType;
   onProxySearchChange: (v: string) => void;
   onSelectProxy: (id?: string) => void;
+  onBrowserPatchTypeChange: (type: BrowserPatchType) => void;
   onOpenPicker: () => void;
   onLaunch: () => void;
 }
+
+const BROWSER_PATCH_OPTIONS: Array<{
+  value: BrowserPatchType;
+  label: string;
+  description: string;
+  icon: string;
+}> = [
+  {
+    value: 'ungoogled-chromium',
+    label: 'Ungoogled Chromium',
+    description: 'Standard ungoogled-chromium (privacy-focused)',
+    icon: '🛡️',
+  },
+  {
+    value: 'cloakbrowser',
+    label: 'CloakBrowser',
+    description: '87 C++ patches • Bypass bot detection • Stealth mode',
+    icon: '🥷',
+  },
+  {
+    value: 'official-chrome',
+    label: 'Chrome chính thức',
+    description: 'Google Chrome gốc • Chỉ dùng profile folder (không fingerprint/proxy)',
+    icon: '🌐',
+  },
+];
 
 const LaunchConfig: FC<LaunchConfigProps> = ({
   onClose,
@@ -52,11 +82,14 @@ const LaunchConfig: FC<LaunchConfigProps> = ({
   proxySearch,
   proxyHistory,
   filteredProxies,
+  browserPatchType,
   onProxySearchChange,
   onSelectProxy,
+  onBrowserPatchTypeChange,
   onOpenPicker,
   onLaunch,
 }) => {
+  const selectedBrowserPatch = BROWSER_PATCH_OPTIONS.find((opt) => opt.value === browserPatchType);
   return (
     <>
       <ModalHeader title="Browser Configuration" description={email} onClose={onClose} />
@@ -119,6 +152,74 @@ const LaunchConfig: FC<LaunchConfigProps> = ({
         )}
 
         <div className="space-y-2">
+          <label className="text-xs font-bold text-secondary">Browser Engine</label>
+          <Dropdown align="start" side="bottom" strategy="fixed" className="w-full">
+            <DropdownTrigger>
+              <div
+                className={cn(
+                  'w-full px-3 py-2.5 border rounded-xl cursor-pointer transition-all duration-200',
+                  'hover:border-primary/40 hover:bg-primary/5',
+                  'border-primary/30 bg-primary/5',
+                  'flex items-center gap-3',
+                )}
+              >
+                <span className="text-xl">{selectedBrowserPatch?.icon || '🌐'}</span>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-bold text-foreground">
+                    {selectedBrowserPatch?.label || 'Select Browser'}
+                  </p>
+                  <p className="text-[10px] text-secondary truncate">
+                    {selectedBrowserPatch?.description || 'Choose browser patch type'}
+                  </p>
+                </div>
+                <ChevronDown className="w-4 h-4 text-secondary shrink-0" />
+              </div>
+            </DropdownTrigger>
+            <DropdownContent className="min-w-[350px] bg-dropdown-background border border-border rounded-xl shadow-2xl p-1">
+              {BROWSER_PATCH_OPTIONS.map((option) => (
+                <DropdownItem
+                  key={option.value}
+                  onClick={() => onBrowserPatchTypeChange(option.value)}
+                  icon={
+                    browserPatchType === option.value ? (
+                      <Check className="w-3.5 h-3.5 text-success" />
+                    ) : undefined
+                  }
+                  closeOnSelect
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg">{option.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground">{option.label}</p>
+                      <p className="text-[10px] text-secondary">{option.description}</p>
+                    </div>
+                  </div>
+                </DropdownItem>
+              ))}
+            </DropdownContent>
+          </Dropdown>
+          {browserPatchType === 'cloakbrowser' && (
+            <div className="p-2.5 bg-success/5 border border-success/20 rounded-lg animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-2">
+                <Chrome className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] text-success font-bold mb-0.5">CloakBrowser Active</p>
+                  <p className="text-[9px] text-secondary leading-relaxed">
+                    Advanced fingerprint protection with 87 C++ patches. Bypasses Cloudflare,
+                    reCAPTCHA, and FingerprintJS detection.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div
+          className={cn(
+            'space-y-2',
+            browserPatchType === 'official-chrome' && 'opacity-40 pointer-events-none',
+          )}
+        >
           <label className="text-xs font-bold text-secondary">Proxy Connection</label>
           <Dropdown
             open={proxySearch !== '' || !!selectedProxyId}
@@ -214,7 +315,12 @@ const LaunchConfig: FC<LaunchConfigProps> = ({
           )}
         </div>
 
-        <div className="space-y-2">
+        <div
+          className={cn(
+            'space-y-2',
+            browserPatchType === 'official-chrome' && 'opacity-40 pointer-events-none',
+          )}
+        >
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-secondary">Fingerprint</label>
             <span className="text-[10px] text-success font-bold">

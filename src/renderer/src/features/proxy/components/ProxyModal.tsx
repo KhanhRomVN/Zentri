@@ -10,7 +10,7 @@ import {
   DropdownItem,
 } from '../../../components/ui/Dropdown';
 import { Toggle } from '../../../components/ui/Toggle';
-import { COUNTRIES, getCountryFlag } from '../../../constants';
+import { COUNTRIES, getCountryFlagEmoji, type Country } from '../../../utils/countryFlags';
 
 interface ProxyModalProps {
   isOpen: boolean;
@@ -44,8 +44,8 @@ const MOCK_EXISTING: Set<string> = new Set();
 
 // --- Country helpers ---
 function getCountryDisplay(code: string): string {
-  const flag = getCountryFlag(code);
-  const country = COUNTRIES.find((c) => c.code === code);
+  const flag = getCountryFlagEmoji(code);
+  const country = COUNTRIES.find((c: Country) => c.code === code);
   const name = country?.name || code;
   return flag ? `${flag} ${name}` : name;
 }
@@ -585,7 +585,7 @@ export default function ProxyModal({ isOpen, onClose, onSuccess }: ProxyModalPro
                 </button>
               </DropdownTrigger>
               <DropdownContent className="w-[var(--trigger-width)]">
-                {COUNTRIES.map((c) => (
+                {COUNTRIES.map((c: Country) => (
                   <DropdownItem
                     key={c.code}
                     onClick={() => {
@@ -664,11 +664,7 @@ export default function ProxyModal({ isOpen, onClose, onSuccess }: ProxyModalPro
               Keep the same exit IP bound to an account for a set duration.
             </div>
           </div>
-          <Toggle
-            checked={stickyEnabled}
-            onChange={setStickyEnabled}
-            className="shrink-0 ml-4"
-          />
+          <Toggle checked={stickyEnabled} onChange={setStickyEnabled} className="shrink-0 ml-4" />
         </div>
 
         {stickyEnabled && (

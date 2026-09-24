@@ -9,12 +9,13 @@
  * ------------------------------------------------------------------
  */
 
-import { FC, useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, Eye, EyeOff, List, Copy, Key, Wand } from 'lucide-react';
-import { cn } from '../../../../../../shared/lib/utils';
+import { FC, useState, useEffect, useCallback, useRef } from 'react';
+import { List } from 'lucide-react';
 import { generateTotp, isValidBase32 } from '../../../../../../shared/lib/totp';
 import Input from '../../../../../../components/ui/Input/Input';
 import { EmptyState } from '../../../../../../components/ui/EmptyState';
+import TwoFactorAuthFields from '../TwoFactorAuthFields';
+import QRCodeTOTPScannerModal from '../../../modals/QRCodeTOTPScannerModal';
 
 const normalizeMetadata = (meta: any): Record<string, any> => {
   if (!meta) return {};
@@ -54,6 +55,7 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
   const [totpCode, setTotpCode] = useState<string | null>(null);
   const [totpTimer, setTotpTimer] = useState(30);
   const [showTotp, setShowTotp] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [backupInput, setBackupInput] = useState('');
   const [previewBackupCodes, setPreviewBackupCodes] = useState<string[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -64,6 +66,24 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
 
   const hasTotpValue = !!totpSecret && isValidBase32(totpSecret);
 
+  // [DEBUG] latest-value refs so mount/unmount logs report current state, not the
+  // values captured at mount time.
+  const totpSecretRef = useRef(totpSecret);
+  totpSecretRef.current = totpSecret;
+  const backupCodesRef = useRef(backupCodes);
+  backupCodesRef.current = backupCodes;
+
+  // Notify the parent list (EmailTable) to refetch account data after a save.
+  // Without this, reopening the modal reads stale `focusedAccount.services`
+  // and the TOTP/backup values appear to be lost even though they are in the DB.
+  const notifyServiceLinkChanged = useCallback(() => {
+    try {
+      window.dispatchEvent(new Event('account-services-changed'));
+    } catch (err) {
+      console.error('Failed to dispatch account-services-changed', err);
+    }
+  }, []);
+
   const persistServiceLink = useCallback(
     async (overrides?: { metadata?: Record<string, any>; twoFa?: { totp?: string; backupCodes?: string[] } }) => {
       const metadata = overrides?.metadata ?? metadataValues;
@@ -71,6 +91,14 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
         totp: overrides?.twoFa?.totp ?? totpSecret,
         backupCodes: overrides?.twoFa?.backupCodes ?? backupCodes,
       };
+      // [DEBUG] trace every explicit persist call path (blur + handlers).
+      console.log('[DEBUG ServiceEmailForm] persistServiceLink called', {
+        serviceId: service.id,
+        autoSave,
+        totp: twoFa.totp,
+        backupCodesCount: twoFa.backupCodes.length,
+        metadataKeys: Object.keys(metadata).length,
+      });
       if (autoSave && service.id) {
         try {
           // @ts-ignore
@@ -79,15 +107,120 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
             metadata,
             twoFa,
           });
+          // [DEBUG] confirm the IPC round-trip actually succeeded.
+          console.log('[DEBUG ServiceEmailForm] service_emails:update OK', {
+            serviceId: service.id,
+          });
+          notifyServiceLinkChanged();
         } catch (err) {
           console.error('Failed to update service link', err);
         }
       } else {
+        // [DEBUG] early-return path: draft link or autoSave disabled.
+        console.log('[DEBUG ServiceEmailForm] skip persist (no autoSave or no service.id)', {
+          autoSave,
+          hasId: !!service.id,
+        });
         onChange?.({ metadata, twoFa });
       }
     },
-    [service.id, metadataValues, totpSecret, backupCodes, autoSave, onChange],
+    [service.id, metadataValues, totpSecret, backupCodes, autoSave, onChange, notifyServiceLinkChanged],
   );
+
+  // [DEBUG] mount/unmount trace. Unmount is the prime suspect for the
+  // "value lost on close" bug since Modal.tsx returns null when isOpen=false.
+  useEffect(() => {
+    console.log('[DEBUG ServiceEmailForm] MOUNTED', {
+      serviceId: service.id,
+      linkedTotp: linkedTotpSecret,
+    });
+    return () => {
+      console.log('[DEBUG ServiceEmailForm] UNMOUNTED', {
+        serviceId: service.id,
+        localTotp: totpSecretRef.current,
+        localBackupCodesCount: backupCodesRef.current.length,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // [DEBUG] log each change of the TOTP input value.
+  useEffect(() => {
+    console.log('[DEBUG ServiceEmailForm] totpSecret changed', {
+      serviceId: service.id,
+      value: totpSecret,
+      linked: linkedTotpSecret,
+      dirty: totpSecret !== linkedTotpSecret,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totpSecret]);
+
+  // Debounced auto-save: persist any change 400ms after the last keystroke,
+  // following the InfoTab pattern of saving on input instead of waiting for
+  // blur (which never fires when the modal is closed while an input is focused).
+  const isFirstRenderRef = useRef(true);
+  useEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      console.log('[DEBUG ServiceEmailForm] debounce effect: first render, skip', {
+        serviceId: service.id,
+      });
+      return;
+    }
+    if (!autoSave || !service.id) {
+      console.log('[DEBUG ServiceEmailForm] debounce effect: skip (no autoSave or no service.id)', {
+        autoSave,
+        hasId: !!service.id,
+      });
+      return;
+    }
+    const linkedTotp = (service.twoFa || {}).totp || '';
+    const linkedBackupCodes: string[] = (service.twoFa || {}).backupCodes || [];
+    const linkedMetadata = normalizeMetadata(service.metadata);
+    const changed =
+      totpSecret !== linkedTotp ||
+      JSON.stringify(backupCodes) !== JSON.stringify(linkedBackupCodes) ||
+      JSON.stringify(metadataValues) !== JSON.stringify(linkedMetadata);
+    // [DEBUG] show whether the effect schedules a save or exits early.
+    console.log('[DEBUG ServiceEmailForm] debounce effect: evaluating', {
+      serviceId: service.id,
+      changed,
+      localTotp: totpSecret,
+      linkedTotp,
+    });
+    if (!changed) return;
+    const timer = setTimeout(() => {
+      // [DEBUG] the critical log: does the timer actually fire before unmount?
+      console.log('[DEBUG ServiceEmailForm] debounce timer FIRED → invoking IPC', {
+        serviceId: service.id,
+        totp: totpSecret,
+      });
+     // @ts-ignore
+      window.electron.ipcRenderer
+        .invoke('service_emails:update', {
+          linkId: service.id,
+          metadata: metadataValues,
+          twoFa: { totp: totpSecret, backupCodes },
+        })
+        .then(() => {
+          console.log('[DEBUG ServiceEmailForm] debounce IPC resolved OK', {
+            serviceId: service.id,
+          });
+          notifyServiceLinkChanged();
+        })
+        .catch((err: any) => console.error('Failed to persist service link', err));
+    }, 400);
+    return () => {
+      // [DEBUG] if this fires before the timer, the value is lost on unmount.
+      console.log('[DEBUG ServiceEmailForm] debounce cleanup (timer cleared before fire)', {
+        serviceId: service.id,
+        localTotp: totpSecret,
+      });
+      clearTimeout(timer);
+    };
+    // Only re-run when the editable values actually change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totpSecret, backupCodes, metadataValues]);
 
   const handleAddBackupCode = () => {
     const val = backupInput.trim();
@@ -96,14 +229,6 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
     setBackupCodes(next);
     setBackupInput('');
     persistServiceLink({ twoFa: { totp: totpSecret, backupCodes: next } });
-  };
-
-  const handleConvertPreview = () => {
-    const parts = backupInput
-      .split(',')
-      .map((p) => p.trim())
-      .filter((p) => p.length >= 6);
-    setPreviewBackupCodes(Array.from(new Set(parts)));
   };
 
   const handleClearPreview = () => {
@@ -150,6 +275,13 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
 
   useEffect(() => {
     if (!autoSave && onChange) {
+      // [DEBUG] trace onChange propagation to parent when in draft mode
+      console.log('[DEBUG ServiceEmailForm] onChange fired (autoSave=false)', {
+        serviceId: service.id,
+        metadata: metadataValues,
+        totp: totpSecret,
+        backupCodesCount: backupCodes.length,
+      });
       onChange({
         metadata: metadataValues,
         twoFa: { totp: totpSecret, backupCodes },
@@ -183,206 +315,80 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
     };
     if (service.serviceId) {
       fetchServiceConfig();
+      // ServiceFormModal dispatches this after editing a service; re-fetch the
+      // definition so the rendered fields update without remounting.
+      const handler = () => fetchServiceConfig();
+      window.addEventListener('services-changed', handler);
+      return () => window.removeEventListener('services-changed', handler);
     }
+    return undefined;
   }, [service.serviceId]);
 
   return (
     <>
-      <section className="space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-success/10 text-success flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-base font-bold text-foreground">Security</h3>
-            <p className="text-sm text-text-secondary">
-              TOTP live code and one-time backup codes
-            </p>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
-            <Input
-              label="TOTP Key"
-              type={showTotp ? 'text' : 'password'}
-              value={totpSecret}
-              onChange={(e) => setTotpSecret(e.target.value)}
-              onBlur={() => persistServiceLink({ twoFa: { totp: totpSecret, backupCodes } })}
-              placeholder="Enter TOTP key..."
-              leftIcon={<Key className="w-4 h-4" />}
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowTotp((prev) => !prev)}
-                  className="flex items-center hover:opacity-70 transition-opacity"
-                  aria-label={showTotp ? 'Hide TOTP key' : 'Show TOTP key'}
-                >
-                  {showTotp ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              }
-            />
-
-            <div className="flex items-end gap-2">
-              {hasTotpValue && (
-                <div className="relative h-10 w-10 shrink-0 rounded-lg bg-input-background border border-input-border-default flex items-center justify-center">
-                  <svg className="w-6 h-6 -rotate-90" viewBox="0 0 24 24">
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="text-border"
-                    />
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeDasharray="62.83"
-                      strokeDashoffset={62.83 * (1 - totpTimer / 30)}
-                      className={
-                        totpTimer > 10
-                          ? 'text-success'
-                          : totpTimer > 5
-                            ? 'text-warn'
-                            : 'text-error'
-                      }
-                    />
-                  </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-[9px] font-mono text-text-primary">
-                    {totpTimer}
-                  </span>
-                </div>
-              )}
-              <Input
-                label="Live code"
-                value={hasTotpValue && totpCode ? totpCode : ''}
-                readOnly
-                placeholder="------"
-                className="!w-[150px] font-mono tracking-[0.35em] text-center"
-                inputClassName="pr-14"
-                rightIcon={
-                  <button
-                    type="button"
-                    onClick={copyTotp}
-                    disabled={!hasTotpValue}
-                    className="flex items-center hover:opacity-70 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                    aria-label="Copy live code"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-text-primary">Backup Codes</label>
-            <div className="flex items-start gap-2">
-              <Input
-                value={backupInput}
-                onChange={(e) => setBackupInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddBackupCode();
-                  }
-                }}
-                placeholder='Paste codes, e.g. "ABC123, DEF456"'
-                containerClassName="flex-1"
-              />
-              <button
-                type="button"
-                onClick={handleConvertPreview}
-                disabled={!backupInput.trim()}
-                className="flex items-center justify-center w-10 h-10 rounded-lg bg-card-background border border-border text-text-secondary hover:text-primary hover:border-primary/50 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label="Convert to preview badges"
-              >
-                <Wand className="w-4 h-4" />
-              </button>
-            </div>
-
-            {previewBackupCodes.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {previewBackupCodes.map((code) => {
-                  const isDuplicate = backupCodes.includes(code);
-                  return (
-                    <span
-                      key={code}
-                      onClick={() => {
-                        if (!isDuplicate) {
-                          setPreviewBackupCodes((prev) => prev.filter((c) => c !== code));
-                        }
-                      }}
-                      className={cn(
-                        'inline-flex items-center px-3 py-1.5 rounded-lg text-[13px] font-medium border select-none',
-                        isDuplicate
-                          ? 'border-dashed border-border/40 bg-muted/20 text-text-tertiary cursor-default'
-                          : 'border-dashed border-primary/40 bg-primary/5 text-primary cursor-pointer hover:bg-error/10 hover:border-error/40 hover:text-error transition-colors',
-                      )}
-                    >
-                      {code}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-
-            {previewBackupCodes.length > 0 && (
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handleClearPreview}
-                  className="h-9 px-3 rounded-lg text-sm font-medium text-text-secondary hover:text-foreground border border-border hover:bg-muted transition-colors"
-                >
-                  Delete All
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddPreview}
-                  className="h-9 px-3 rounded-lg text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-            )}
-
-            {backupCodes.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {backupCodes.map((code) => (
-                  <div
-                    key={code}
-                    onClick={() => {
-                      navigator.clipboard.writeText(code).catch(() => {});
-                      setCopiedCode(code);
-                      window.setTimeout(() => {
-                        setCopiedCode((prev) => (prev === code ? null : prev));
-                      }, 1500);
-                    }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleRemoveBackupCode(code);
-                    }}
-                    className={cn(
-                      'flex items-center px-3 py-2 rounded-lg border bg-input-background cursor-pointer transition-colors',
-                      copiedCode === code
-                        ? 'border-dashed border-green'
-                        : 'border-border/50 hover:border-primary/40',
-                    )}
-                  >
-                    <span className="text-xs font-mono text-text-primary">{code}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+      <TwoFactorAuthFields
+        title="Security"
+        description="TOTP live code and one-time backup codes"
+        totpValue={totpSecret}
+        onTotpChange={(e) => {
+          // [DEBUG] confirm the input event fires and value propagates.
+          console.log('[DEBUG ServiceEmailForm] TOTP input onChange', {
+            serviceId: service.id,
+            value: e.target.value,
+          });
+          setTotpSecret(e.target.value);
+        }}
+        onTotpBlur={() => {
+          // [DEBUG] confirm whether blur fires before unmount.
+          console.log('[DEBUG ServiceEmailForm] TOTP input onBlur → persist', {
+            serviceId: service.id,
+            value: totpSecret,
+          });
+          persistServiceLink({ twoFa: { totp: totpSecret, backupCodes } });
+        }}
+        showTotp={showTotp}
+        onToggleShowTotp={() => setShowTotp((prev) => !prev)}
+        hasTotp={hasTotpValue}
+        totpValid={hasTotpValue}
+        liveCode={totpCode ?? ''}
+        totpRemaining={totpTimer}
+        onCopyLiveCode={copyTotp}
+        onScanQr={() => setQrModalOpen(true)}
+        backupCodes={backupCodes}
+        onCopyBackupCode={(code) => {
+          navigator.clipboard.writeText(code).catch(() => {});
+          setCopiedCode(code);
+          window.setTimeout(() => {
+            setCopiedCode((prev) => (prev === code ? null : prev));
+          }, 1500);
+        }}
+        onRemoveBackupCode={handleRemoveBackupCode}
+        copiedCode={copiedCode}
+        backupCodeInput={backupInput}
+        onBackupCodeInputChange={(e) => {
+          const val = e.target.value;
+          setBackupInput(val);
+          // Auto-derive preview badges live — accepts comma- or
+          // whitespace-separated codes, no separate "convert" step.
+          const parts = val
+            .split(/[,\s]+/)
+            .map((p) => p.trim())
+            .filter((p) => p.length >= 6);
+          setPreviewBackupCodes(Array.from(new Set(parts)));
+        }}
+        onBackupCodeInputKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddBackupCode();
+          }
+        }}
+        previewBackupCodes={previewBackupCodes}
+        onRemovePreviewCode={(code) =>
+          setPreviewBackupCodes((prev) => prev.filter((c) => c !== code))
+        }
+        onClearPreviewCodes={handleClearPreview}
+        onAddPreviewCodes={handleAddPreview}
+      />
 
       <section className="space-y-4">
         <div className="flex items-start gap-3">
@@ -428,6 +434,14 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
           />
         )}
       </section>
+      <QRCodeTOTPScannerModal
+        isOpen={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        onScanSuccess={(secret) => {
+          setTotpSecret(secret);
+          persistServiceLink({ twoFa: { totp: secret, backupCodes } });
+        }}
+      />
     </>
   );
 };

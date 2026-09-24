@@ -33,7 +33,7 @@ export interface DropdownContentProps {
 
 export interface DropdownItemProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
   className?: string;
   disabled?: boolean;
   icon?: React.ReactNode;

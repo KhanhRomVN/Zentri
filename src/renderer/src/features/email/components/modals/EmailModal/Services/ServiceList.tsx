@@ -18,11 +18,11 @@
 // ── React ──
 import { FC, useState } from 'react';
 import { createPortal } from 'react-dom';
-import CreateServiceModal from '../../CreateServiceModal';
+import ServiceFormModal from '../../ServiceFormModal';
 import ServiceListModal from '../../ServiceListModal';
 
 // ── UI ──
-import { Globe, Eye, Trash2, Search, AlertTriangle, Plus, List } from 'lucide-react';
+import { Globe, Trash2, Search, AlertTriangle, Plus, List } from 'lucide-react';
 
 // ── Utils ──
 import { cn } from '../../../../../../shared/lib/utils';
@@ -41,13 +41,15 @@ interface ServiceListProps {
   filteredServices: any[];
   selectedServiceId: string | null;
   onSelectService: (id: string) => void;
-  onEditServiceLink: (linkId: string) => void;
   onOpenService?: (linkId: string) => void;
   onDeleteService?: (linkId: string) => void;
   serviceSearch: string;
   setServiceSearch: (val: string) => void;
   globalServices?: any[];
   onQuickAddService?: (service: any) => Promise<string | null>;
+  /** When provided, picking a service from the global list creates a local draft
+   *  instead of inserting it into the DB immediately. */
+  onPickDraftService?: (service: any) => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -55,13 +57,13 @@ const ServiceList: FC<ServiceListProps> = ({
   filteredServices,
   selectedServiceId,
   onSelectService,
-  onEditServiceLink,
   onOpenService,
   onDeleteService,
   serviceSearch,
   setServiceSearch,
   globalServices,
   onQuickAddService,
+  onPickDraftService,
 }) => {
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const [isCreateServiceModalOpen, setIsCreateServiceModalOpen] = useState(false);
@@ -143,6 +145,12 @@ const ServiceList: FC<ServiceListProps> = ({
                       <DropdownItem
                         key={service.id}
                         onClick={async () => {
+                          // Prefer the draft flow: create a local-only service and let the
+                          // user confirm via "Save Service" before writing to the DB.
+                          if (onPickDraftService) {
+                            onPickDraftService(service);
+                            return;
+                          }
                           const linkId = await onQuickAddService(service);
                           if (linkId) onSelectService(linkId);
                         }}
@@ -225,7 +233,10 @@ const ServiceList: FC<ServiceListProps> = ({
                   </DropdownTrigger>
                   <DropdownContent>
                     <DropdownItem
-                      onClick={() => {
+                      onClick={(e) => {
+                        // Portal content still bubbles through the React tree; stop it
+                        // so the card's onSelectService is not triggered.
+                        e.stopPropagation();
                         if (onOpenService) {
                           onOpenService(service.id);
                         }
@@ -236,20 +247,18 @@ const ServiceList: FC<ServiceListProps> = ({
                     </DropdownItem>
                     <div className="h-px bg-divider my-1" />
                     <DropdownItem
-                      onClick={() => {
-                        onEditServiceLink(service.id);
-                      }}
-                    >
-                      <Eye className="w-3.5 h-3.5 text-blue-500/50" />
-                      View Info
-                    </DropdownItem>
-                    <div className="h-px bg-divider my-1" />
-                    <DropdownItem
                       className="text-error focus:text-error focus:bg-error/10"
-                      onClick={() => {
-                        if (onDeleteService) {
-                          onDeleteService(service.id);
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!onDeleteService) return;
+                        if (
+                          !window.confirm(
+                            'Delete this service link permanently? This action cannot be undone.',
+                          )
+                        ) {
+                          return;
                         }
+                        onDeleteService(service.id);
                       }}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -262,7 +271,7 @@ const ServiceList: FC<ServiceListProps> = ({
           </div>
       </div>
       {createPortal(
-        <CreateServiceModal
+        <ServiceFormModal
           isOpen={isCreateServiceModalOpen}
           onClose={() => setIsCreateServiceModalOpen(false)}
         />,

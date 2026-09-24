@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import HeaderBar from './components/HeaderBar';
-import FooterBar from './components/FooterBar';
 import FilterList from './components/FilterList';
 import FilterTable from './components/FilterTable';
 import { SmartView } from './types/search';
@@ -129,7 +128,7 @@ const Filter = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10">
+    <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10 border-t border-r border-b border-border">
       <HeaderBar title="Filter" />
       <div className="flex-1 flex overflow-hidden">
         <FilterList
@@ -178,7 +177,6 @@ const Filter = () => {
         }}
         availableFields={AVAILABLE_FIELDS}
       />
-      <FooterBar />
     </div>
   );
 };

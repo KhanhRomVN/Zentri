@@ -29,7 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Globe, Key, Lock, Mail } from 'lucide-react';
 
 // ── Types ──
-import { getServiceById } from '../../../../../../constants/services';
+import { getServiceTemplateById } from '@renderer/constants/services';
 
 // ── Sub-components ──
 import ScoreGauge from './ScoreGauge';
@@ -110,10 +110,12 @@ export default function SecurityTab({ account }: SecurityTabProps) {
     // === 2. Service 2FA (25) ===
     let serviceScore = 0;
     const linkedServices = account.services || [];
-    const servicesWith2fa = linkedServices.filter((s) => getServiceById(s.serviceId)?.two_fa);
+    const servicesWith2fa = linkedServices.filter(
+      (s) => getServiceTemplateById(s.serviceId)?.two_fa,
+    );
 
     for (const service of servicesWith2fa) {
-      const template = getServiceById(service.serviceId);
+      const template = getServiceTemplateById(service.serviceId);
       if (!template?.two_fa) continue;
       const templateTwoFa = template.two_fa;
       const linkedTwoFa = (service as any).twoFa || {};

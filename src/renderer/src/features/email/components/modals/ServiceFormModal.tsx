@@ -1,6 +1,6 @@
 /**
- * CreateServiceModal
- * Form tạo service mới — UI theo AccountForm/ServiceEmailForm, dùng Dropdown component.
+ * ServiceFormModal
+ * Form tạo / chỉnh sửa service — UI theo AccountForm/ServiceEmailForm, dùng Dropdown component.
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -27,14 +27,17 @@ import {
   DropdownContent,
   DropdownItem,
 } from '../../../../components/ui/Dropdown';
-import { SERVICES } from '../../constants/services';
+import { SERVICES } from '../../../../constants/services';
 import { CATEGORIES } from '../../constants/categories';
 import { useAccentColors } from '../../../../hooks/useAccentColors';
+import type { ServiceProviderConfig } from '../../types';
 import CreateCategoryModal from './CreateCategoryModal';
 
-interface CreateServiceModalProps {
+interface ServiceFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** When provided, the modal opens in edit mode and pre-fills from this service. */
+  service?: ServiceProviderConfig | null;
 }
 
 const getFaviconUrl = (url: string) => {
@@ -158,8 +161,9 @@ const SERVICE_TEMPLATE_OPTIONS = [
   })),
 ];
 
-const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ isOpen, onClose }) => {
+const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ isOpen, onClose, service }) => {
   const { accentColors, UNIFIED_ACCENT, parseRgb } = useAccentColors();
+  const isEditMode = !!service;
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [category, setCategory] = useState('');
@@ -289,6 +293,35 @@ const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ isOpen, onClose
     }
   }, [selectedTemplate]);
 
+  // Edit mode: seed all form state from the service being edited.
+  useEffect(() => {
+    if (!service || !isOpen) return;
+    setName(service.name || '');
+    setUrl(service.websiteUrl || '');
+    setCategory(service.defaultCategories?.[0] || '');
+    setTagsList(service.defaultTags || []);
+    setDescription(service.description || '');
+    setMetadataFields(
+      (service.metadata || []).map((m: any) => {
+        let parsed: any = {};
+        try {
+          parsed = typeof m.value === 'string' ? JSON.parse(m.value) : m.value || {};
+        } catch {
+          parsed = {};
+        }
+        return {
+          name: m.key || m.name || '',
+          type: parsed.type || 'string',
+          feature: parsed.feature || '',
+        };
+      }),
+    );
+    setAuthMethods(service.authMethods || []);
+    setTwoFa(service.twoFa || { has_totp: false, has_backup_codes: false });
+    setSelectedTemplate('');
+    setExistingServiceWarning(null);
+  }, [service, isOpen]);
+
   const addMetadataField = () => {
     setMetadataFields([...metadataFields, { name: '', type: 'string', feature: '' }]);
     setExpandedFieldIdx(metadataFields.length);
@@ -357,7 +390,9 @@ const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ isOpen, onClose
     if (!name.trim() || !url.trim() || saving) return;
     setSaving(true);
     try {
-      const id = name.trim().toLowerCase().replace(/\s+/g, '-');
+      // In edit mode keep the original id so renaming does not create a new row.
+      const id =
+        isEditMode && service ? service.id : name.trim().toLowerCase().replace(/\s+/g, '-');
       const metadata = metadataFields
         .filter((f) => f.name.trim())
         .map((f) => ({
@@ -365,9 +400,24 @@ const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ isOpen, onClose
           value: JSON.stringify({ type: f.type, feature: f.feature || undefined }),
         }));
       // @ts-ignore
+      // UPSERT instead of INSERT OR REPLACE: SQLite implements the latter as
+      // DELETE + INSERT which fires the `service_emails` FK ON DELETE CASCADE
+      // and wipes all linked emails whenever an existing service is edited.
       await window.electron.ipcRenderer.invoke(
         'sqlite:run',
-        `INSERT OR REPLACE INTO services (id, name, url, tags, category, description, metadata, config_json, auth_method, two_fa, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        `INSERT INTO services (id, name, url, tags, category, description, metadata, config_json, auth_method, two_fa, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(id) DO UPDATE SET
+           name = excluded.name,
+           url = excluded.url,
+           tags = excluded.tags,
+           category = excluded.category,
+           description = excluded.description,
+           metadata = excluded.metadata,
+           config_json = excluded.config_json,
+           auth_method = excluded.auth_method,
+           two_fa = excluded.two_fa,
+           updated_at = CURRENT_TIMESTAMP`,
         [
           id,
           name.trim(),
@@ -393,8 +443,10 @@ const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ isOpen, onClose
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl h-[80vh]" hideCloseButton>
       <ModalHeader
-        title="Service Registry"
-        description="Manage available services for your email accounts"
+        title={isEditMode ? 'Edit Service' : 'Create Service'}
+        description={
+          isEditMode ? 'Update service details' : 'Register a new service for your email accounts'
+        }
         onClose={onClose}
       />
       <ModalBody className="p-0 flex-1 overflow-hidden flex flex-col">
@@ -905,7 +957,7 @@ const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ isOpen, onClose
               disabled={!name || !url || !!existingServiceWarning || isChecking || saving}
               onClick={handleSave}
             >
-              {saving ? 'Saving...' : 'Create Service'}
+              {saving ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Service'}
             </Button>
           </div>
           <CreateCategoryModal
@@ -923,4 +975,4 @@ const CreateServiceModal: React.FC<CreateServiceModalProps> = ({ isOpen, onClose
   );
 };
 
-export default CreateServiceModal;
+export default ServiceFormModal;

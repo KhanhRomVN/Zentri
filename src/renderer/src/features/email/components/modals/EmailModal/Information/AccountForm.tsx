@@ -18,11 +18,8 @@ import {
   Eye,
   EyeOff,
   LifeBuoy,
-  ShieldCheck,
-  Key,
   Tags,
   ChevronDown,
-  Wand,
   X,
   User,
   Briefcase,
@@ -32,7 +29,6 @@ import {
   ShoppingCart,
   GraduationCap,
   Clapperboard,
-  QrCode,
   type LucideIcon,
 } from 'lucide-react';
 import Input from '../../../../../../components/ui/Input/Input';
@@ -43,6 +39,7 @@ import {
   DropdownItem,
 } from '../../../../../../components/ui/Dropdown';
 import QRCodeTOTPScannerModal from '../../../modals/QRCodeTOTPScannerModal';
+import TwoFactorAuthFields from '../TwoFactorAuthFields';
 import { cn } from '../../../../../../shared/lib/utils';
 import { getCountryFlagComponent } from '../../../../../../utils/countryFlags';
 import { getIsoFromDialCode, parsePhoneParts } from '../../../../../../utils/phoneNumber';
@@ -141,18 +138,11 @@ const AccountForm: FC<AccountFormProps> = ({
   const backupCodeError = useMemo(() => {
     const val = backupCodeSearch.trim();
     if (!val) return '';
-    if (val.includes(',')) return '';
+    if (/[,\s]/.test(val)) return '';
     if (val.length < 6) return 'Code too short';
     if (values.backupCodes.includes(val)) return 'Code already exists';
     return '';
   }, [backupCodeSearch, values.backupCodes]);
-
-  const canConvert = useMemo(() => {
-    const val = backupCodeSearch.trim();
-    if (!val) return false;
-    const parts = val.split(',').map((p) => p.trim()).filter(Boolean);
-    return parts.some((p) => p.length >= 6);
-  }, [backupCodeSearch]);
 
   const phone = parsePhoneParts(values.phoneNumber || '');
   const iso = getIsoFromDialCode(phone.dialCode);
@@ -216,13 +206,15 @@ const AccountForm: FC<AccountFormProps> = ({
   };
 
   const handleBackupCodeInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    onBackupCodeSearchChange(sanitizeLatin(e.target.value));
-  };
-
-  const handleConvertToPreviewBadges = () => {
-    const val = backupCodeSearch.trim();
-    if (!val) return;
-    const parts = val.split(',').map((part) => part.trim()).filter((part) => part.length >= 6);
+    const sanitized = sanitizeLatin(e.target.value);
+    onBackupCodeSearchChange(sanitized);
+    // Auto-derive preview badges live from whatever was just typed/pasted —
+    // no separate "convert" step. Accepts comma- or whitespace-separated
+    // codes (e.g. pasted from a password manager export).
+    const parts = sanitized
+      .split(/[,\s]+/)
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 6);
     setPreviewBackupCodes(Array.from(new Set(parts)));
   };
 
@@ -427,203 +419,32 @@ const AccountForm: FC<AccountFormProps> = ({
         </section>
 
         {/* Two-factor authentication */}
-        <section className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-success/10 text-success flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-base font-bold text-foreground">Two-factor authentication</h3>
-              <p className="text-sm text-text-secondary">
-                TOTP app codes and one-time backup codes
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
-              <div className="flex items-start gap-2">
-                <Input
-                  label="TOTP Key"
-                  type={showTotp ? 'text' : 'password'}
-                  value={values.totp}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    onChange('totp', sanitizeLatin(e.target.value))
-                  }
-                  onBlur={(e) => onBlur?.('totp', e.target.value)}
-                  placeholder="Enter TOTP key..."
-                  leftIcon={<Key className="w-4 h-4" />}
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={() => setShowTotp((prev) => !prev)}
-                      className="flex items-center justify-center hover:opacity-70 transition-opacity"
-                      aria-label={showTotp ? 'Hide TOTP key' : 'Show TOTP key'}
-                    >
-                      {showTotp ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  }
-                  error={displayErrors.totp}
-                  containerClassName="flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={() => setQrModalOpen(true)}
-                  className="mt-[22px] shrink-0 w-10 h-10 rounded-lg bg-card-background border border-border text-text-secondary hover:text-primary hover:border-primary/50 flex items-center justify-center transition-colors"
-                  title="Scan QR code from image/clipboard"
-                >
-                  <QrCode className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="flex items-end gap-2">
-                {hasTotp && (
-                  <div className="relative h-10 w-10 shrink-0 rounded-lg bg-input-background border border-input-border-default flex items-center justify-center">
-                    <svg className="w-6 h-6 -rotate-90" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" className="text-border" />
-                      <circle
-                        cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"
-                        strokeLinecap="round" strokeDasharray="62.83"
-                        strokeDashoffset={62.83 * (1 - totpRemaining / 30)}
-                        className={
-                          totpRemaining > 10
-                            ? 'text-success'
-                            : totpRemaining > 5
-                              ? 'text-warn'
-                              : 'text-error'
-                        }
-                      />
-                    </svg>
-                    <span className="absolute inset-0 flex items-center justify-center text-[9px] font-mono text-text-primary">
-                      {totpRemaining}
-                    </span>
-                  </div>
-                )}
-                <Input
-                  label="Live code"
-                  value={hasTotp ? liveCode : ''}
-                  readOnly
-                  placeholder="------"
-                  error={hasTotp && !totpValid ? 'Invalid TOTP key' : undefined}
-                  className={cn(
-                    '!w-[150px] font-mono tracking-[0.35em] text-center',
-                    hasTotp && !totpValid ? 'text-error' : 'text-primary',
-                  )}
-                  inputClassName="pr-14"
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(liveCode)}
-                      disabled={!hasTotp}
-                      className="flex items-center justify-center hover:opacity-70 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Copy live code"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              <label className="text-sm font-medium text-text-primary">Backup Codes</label>
-              {displayErrors.backupCodes && (
-                <span className="text-xs text-error">{displayErrors.backupCodes}</span>
-              )}
-
-              <div className="flex items-start gap-2">
-                <Input
-                  value={backupCodeSearch}
-                  onChange={handleBackupCodeInputChange}
-                  placeholder='Paste codes, e.g. "ABC123, DEF456"'
-                  error={backupCodeError}
-                  containerClassName="flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={handleConvertToPreviewBadges}
-                  disabled={!canConvert}
-                  className={cn(
-                    'flex items-center justify-center w-10 h-10 rounded-lg transition-colors shrink-0',
-                    canConvert
-                      ? 'bg-card-background text-card-background hover:bg-primary/10 hover:text-primary cursor-pointer'
-                      : 'bg-card-background text-text-secondary cursor-not-allowed',
-                  )}
-                  aria-label="Convert to preview badges"
-                >
-                  <Wand className="w-4 h-4" />
-                </button>
-              </div>
-
-              {previewBackupCodes.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {previewBackupCodes.map((code) => {
-                    const isDuplicate = values.backupCodes.includes(code);
-                    return (
-                      <span
-                        key={code}
-                        onClick={() => {
-                          if (!isDuplicate) handleRemovePreviewCode(code);
-                        }}
-                        className={cn(
-                          'inline-flex items-center px-3 py-1.5 rounded-lg text-[13px] font-medium border select-none',
-                          isDuplicate
-                            ? 'border-dashed border-border/40 bg-muted/20 text-text-tertiary cursor-default'
-                            : 'border-dashed border-primary/40 bg-primary/5 text-primary cursor-pointer hover:bg-error/10 hover:border-error/40 hover:text-error transition-colors',
-                        )}
-                        title={isDuplicate ? 'Already exists — cannot add' : 'Click to remove'}
-                      >
-                        {code}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              {previewBackupCodes.length > 0 && (
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={handleClearPreviewCodes}
-                    className="h-9 px-3 rounded-lg text-sm font-medium text-text-secondary hover:text-foreground border border-border hover:bg-muted transition-colors"
-                  >
-                    Delete All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddPreviewCodes}
-                    className="h-9 px-3 rounded-lg text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                  >
-                    Add
-                  </button>
-                </div>
-              )}
-
-              {values.backupCodes.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {values.backupCodes.map((code) => (
-                    <div
-                      key={code}
-                      onClick={() => handleCopyBackupCode(code)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        handleRemoveBackupCode(code);
-                      }}
-                      className={cn(
-                        'flex items-center px-3 py-2 rounded-lg border bg-input-background cursor-pointer transition-colors',
-                        copiedCode === code
-                          ? 'border-dashed border-green'
-                          : 'border-border/50 hover:border-primary/40',
-                      )}
-                    >
-                      <span className="text-xs font-mono text-text-primary">{code}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+        <TwoFactorAuthFields
+          totpValue={values.totp}
+          onTotpChange={(e) => onChange('totp', sanitizeLatin(e.target.value))}
+          onTotpBlur={(e) => onBlur?.('totp', e.target.value)}
+          totpError={displayErrors.totp}
+          showTotp={showTotp}
+          onToggleShowTotp={() => setShowTotp((prev) => !prev)}
+          hasTotp={hasTotp}
+          totpValid={totpValid}
+          liveCode={liveCode}
+          totpRemaining={totpRemaining}
+          onCopyLiveCode={() => handleCopy(liveCode)}
+          onScanQr={() => setQrModalOpen(true)}
+          backupCodes={values.backupCodes}
+          onCopyBackupCode={handleCopyBackupCode}
+          onRemoveBackupCode={handleRemoveBackupCode}
+          copiedCode={copiedCode}
+          backupCodeInput={backupCodeSearch}
+          onBackupCodeInputChange={handleBackupCodeInputChange}
+          backupCodeError={backupCodeError}
+          backupCodeLabelError={displayErrors.backupCodes}
+          previewBackupCodes={previewBackupCodes}
+          onRemovePreviewCode={handleRemovePreviewCode}
+          onClearPreviewCodes={handleClearPreviewCodes}
+          onAddPreviewCodes={handleAddPreviewCodes}
+        />
 
         {/* Classification */}
         <section className="space-y-4">

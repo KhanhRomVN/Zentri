@@ -2,7 +2,7 @@
  * Helpers + constants for SecurityTab scoring logic.
  */
 
-import { getServiceById } from '../../../../../../constants/services';
+import { getServiceTemplateById } from '@renderer/constants/services';
 import type { Account } from '../../../../types';
 
 export function parseBackupCodes(value: string | null | undefined): string[] {
@@ -68,7 +68,7 @@ export function getSecurityScore(account: Account): number {
   // Service 2FA (25)
   let serviceScore = 0;
   for (const service of account.services || []) {
-    const template = getServiceById(service.serviceId);
+    const template = getServiceTemplateById(service.serviceId);
     if (!template?.two_fa) continue;
     const linkedTwoFa = (service as any).twoFa || {};
     if (template.two_fa.has_totp && isValidTotp(linkedTwoFa.totp)) serviceScore += 5;

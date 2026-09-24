@@ -1,4 +1,3 @@
-import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 /**
  * ------------------------------------------------------------------
  * Email
@@ -17,6 +16,8 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } fr
  */
 
 // ─── Imports ────────────────────────────────────────────────────────────
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
+
 // ── UI ──
 import { Plus, Mail, AlertCircle, Loader2, X } from 'lucide-react';
 import AddEmailModal from './components/modals/AddEmailModal';
@@ -34,7 +35,6 @@ import EmailTable from './components/EmailTable';
 import FilterPanel from './components/FilterPanel';
 import { isValidTotp, parseBackupCodes } from './components/modals/EmailModal/Security/utils';
 import HeaderBar from './components/HeaderBar';
-import FooterBar from './components/FooterBar';
 
 // ── Utils ──
 import { cn } from '../../shared/lib/utils';
@@ -439,7 +439,14 @@ const Email = () => {
   }, [toast.visible]);
 
   const [activeTab, setActiveTab] = useState<
-    'info' | 'services' | 'sessions' | 'history' | 'bookmarks' | 'fingerprint' | 'security'
+    | 'info'
+    | 'services'
+    | 'sessions'
+    | 'history'
+    | 'bookmarks'
+    | 'fingerprint'
+    | 'security'
+    | 'password'
   >('info');
   const [hardDeleteConfirmId, setHardDeleteConfirmId] = useState<string | null>(null);
   const [diffPayload, setDiffPayload] = useState<{
@@ -496,8 +503,8 @@ const Email = () => {
         ),
         window.electron.ipcRenderer.invoke(
           'sqlite:all',
-          `SELECT se.*, s.name as serviceName, s.url as serviceUrl, s.metadata as serviceMetadataDef,
-                  0 as secretCount
+          `SELECT se.*, s.name as serviceName, s.url as serviceUrl, s.category as serviceCategory,
+                  s.metadata as serviceMetadataDef, 0 as secretCount
            FROM service_emails se 
            JOIN services s ON se.service_id = s.id`,
         ),
@@ -518,6 +525,7 @@ const Email = () => {
               serviceId: link.service_id,
               name: link.serviceName,
               url: link.serviceUrl,
+              category: link.serviceCategory || null,
               username: link.username,
               password: link.password,
               notes: link.notes,
@@ -639,6 +647,14 @@ const Email = () => {
         console.error('Failed to fetch account activities/proxies', e);
       }
 
+      console.log(
+        '[DEBUG Email.loadData] fetched',
+        rows.length,
+        'email rows →',
+        loadedAccounts.length,
+        'accounts at',
+        new Date().toISOString(),
+      );
       setAccounts(loadedAccounts);
     } catch (err: any) {
       console.error('[Email] Load error:', err);
@@ -900,6 +916,7 @@ const Email = () => {
                 columnVisibility={columnVisibility}
                 selectedServiceId={serviceFilter.serviceId}
                 runningBrowsers={runningBrowsers}
+                loading={loading}
               />
             )}
           </div>
@@ -1107,42 +1124,6 @@ const Email = () => {
           </div>
         </div>
       </ModalWrapper>
-      <FooterBar
-        total={accounts.length}
-        filtered={filteredAccounts.length}
-        visible={paginatedData.length}
-        currentPage={currentPage}
-        totalPages={Math.ceil(filteredAccounts.length / pageSize)}
-        runningBrowsers={runningBrowsers.size}
-        twoFaCount={
-          filteredAccounts.filter((acc) => {
-            const hasTotp = isValidTotp(acc.totp);
-            const hasBackup = parseBackupCodes(acc.backup_codes).length > 0;
-            return hasTotp || hasBackup;
-          }).length
-        }
-        noTwoFaCount={
-          filteredAccounts.filter((acc) => {
-            const hasTotp = isValidTotp(acc.totp);
-            const hasBackup = parseBackupCodes(acc.backup_codes).length > 0;
-            return !hasTotp && !hasBackup;
-          }).length
-        }
-        recoveryCount={filteredAccounts.filter((acc) => acc.recovery_email).length}
-        serviceCount={filteredAccounts.reduce((sum, acc) => sum + (acc.services?.length || 0), 0)}
-        proxyCount={filteredAccounts.filter((acc) => acc.lastProxy?.host).length}
-        activeFilterCount={
-          (serviceFilter.serviceId ? 1 : 0) +
-          (serviceFilter.websiteUrl ? 1 : 0) +
-          (serviceFilter.twoFa ? 1 : 0) +
-          (serviceFilter.ip ? 1 : 0) +
-          (serviceFilter.running ? 1 : 0) +
-          filters.length +
-          (selectedView?.filters.length || 0)
-        }
-        loading={loading}
-        onRefresh={loadData}
-      />
     </div>
   );
 };

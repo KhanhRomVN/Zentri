@@ -48,6 +48,7 @@ export interface ServiceProviderConfig {
   description: string;
   metadata?: MetadataItem[];
   authMethods?: string[];
+  twoFa?: { has_totp: boolean; has_backup_codes: boolean };
 }
 
 export interface LinkedService {

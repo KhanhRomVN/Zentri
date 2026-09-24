@@ -10,7 +10,7 @@ import {
   DropdownContent,
   DropdownItem,
 } from '../../../../../components/ui/Dropdown';
-import { getAllTags, SERVICES } from '@renderer/constants/services';
+import { SERVICES } from '@renderer/constants/services';
 
 export interface CreateWorkflowInput {
   name: string;
@@ -24,6 +24,28 @@ interface CreateWorkflowModalProps {
   onClose: () => void;
   onCreate: (input: CreateWorkflowInput) => void;
 }
+
+// Helper function to get all available tags
+const getAllTags = (): string[] => {
+  // Common workflow tags
+  return [
+    'login',
+    'signup',
+    'checkout',
+    'search',
+    'form',
+    'automation',
+    'testing',
+    'scraping',
+    'monitoring',
+    'social-media',
+    'e-commerce',
+    'admin',
+    'user-flow',
+    'api',
+    'data-entry',
+  ];
+};
 
 export const CreateWorkflowModal = ({ open, onClose, onCreate }: CreateWorkflowModalProps) => {
   const [name, setName] = useState('');
@@ -152,7 +174,7 @@ export const CreateWorkflowModal = ({ open, onClose, onCreate }: CreateWorkflowM
                 </button>
               </DropdownTrigger>
               <DropdownContent className="min-w-[200px]">
-                {getAllTags().map((tag) => (
+                {getAllTags().map((tag: string) => (
                   <DropdownItem key={tag} onClick={() => handleAddTagFromDropdown(tag)}>
                     #{tag}
                   </DropdownItem>

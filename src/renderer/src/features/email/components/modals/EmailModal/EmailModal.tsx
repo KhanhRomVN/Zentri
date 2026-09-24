@@ -13,7 +13,7 @@
 import { FC } from 'react';
 
 // ── UI ──
-import { User, LayoutGrid, Clock, Shield, ShieldCheck } from 'lucide-react';
+import { User, LayoutGrid, Clock, Shield, ShieldCheck, Key } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody } from '../../../../../components/ui/Modal';
 
 // ── Utils ──
@@ -31,6 +31,7 @@ import ServicesTab from './Services/index';
 import HistoryTab from './History/index';
 import FingerprintTab from './Footprint/index';
 import SecurityTab from './Security/index';
+import PasswordTab from './Password/index';
 
 // ─── Functions ──────────────────────────────────────────────────────────
 let accentColorsCache: string[] = ['rgb(54, 134, 255)'];
@@ -84,7 +85,8 @@ interface EmailModalProps {
     | 'history'
     | 'bookmarks'
     | 'fingerprint'
-    | 'security';
+    | 'security'
+    | 'password';
   setActiveTab: (
     tab:
       | 'info'
@@ -93,7 +95,8 @@ interface EmailModalProps {
       | 'history'
       | 'bookmarks'
       | 'fingerprint'
-      | 'security',
+      | 'security'
+      | 'password',
   ) => void;
   avatars: Record<string, string>;
   onSelectAccount: (account: Account | null) => void;
@@ -110,8 +113,9 @@ interface EmailModalProps {
   serviceSearch: string;
   setServiceSearch: (val: string) => void;
   accountServices: any[];
-  onEditServiceLink: (linkId: string) => void;
   onOpenService?: (linkId: string) => void;
+  onCloseBrowser?: () => void;
+  isBrowserOpen?: boolean;
   onDeleteService?: (linkId: string) => void;
   globalServices?: any[];
   onQuickAddService?: (service: any) => Promise<string | null>;
@@ -135,8 +139,9 @@ const EmailModal: FC<EmailModalProps> = ({
   serviceSearch,
   setServiceSearch,
   accountServices,
-  onEditServiceLink,
   onOpenService,
+  onCloseBrowser,
+  isBrowserOpen,
   onDeleteService,
   globalServices,
   onQuickAddService,
@@ -153,6 +158,7 @@ const EmailModal: FC<EmailModalProps> = ({
     { id: 'services', label: 'Services', icon: LayoutGrid },
     { id: 'history', label: 'History', icon: Clock },
     { id: 'fingerprint', label: 'Fingerprint', icon: Shield },
+    { id: 'password', label: 'Passwords', icon: Key },
     { id: 'security', label: 'Security', icon: ShieldCheck },
   ];
 
@@ -219,13 +225,16 @@ const EmailModal: FC<EmailModalProps> = ({
                 serviceSearch={serviceSearch}
                 setServiceSearch={setServiceSearch}
                 accountServices={accountServices}
-                onEditServiceLink={onEditServiceLink}
                 onOpenService={onOpenService}
+                onCloseBrowser={onCloseBrowser}
+                isBrowserOpen={isBrowserOpen}
                 onDeleteService={onDeleteService}
                 email={editedAccount?.email || ''}
                 globalServices={globalServices}
                 onQuickAddService={onQuickAddService}
               />
+            ) : activeTab === 'password' ? (
+              <PasswordTab email={editedAccount?.email || ''} />
             ) : null}
           </div>
         )}

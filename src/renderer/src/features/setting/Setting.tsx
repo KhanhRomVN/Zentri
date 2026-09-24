@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { Settings, Database, Search, Plus } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { GeneralSettings } from './components/General';
 import HeaderBar from './components/HeaderBar';
-import FooterBar from './components/FooterBar';
 import { cn } from '../../shared/lib/utils';
 import { useAccentColors } from '../../hooks/useAccentColors';
 
-type Tab = 'general' | 'services';
+type Tab = 'general';
 
 const Setting = () => {
   const [activeTab, setActiveTab] = useState<Tab>('general');
-  const [serviceSearch, setServiceSearch] = useState('');
   const { getColorByIndex, toRgba } = useAccentColors();
 
   const tabs = [
@@ -21,22 +19,10 @@ const Setting = () => {
       description: 'Repository and storage settings',
       color: '#3b82f6',
     },
-    {
-      id: 'services',
-      label: 'Services',
-      icon: Database,
-      description: 'Manage custom service providers',
-      color: '#f59e0b',
-    },
   ];
 
-  const handleAddService = () => {
-    const event = new CustomEvent('add-service-click');
-    window.dispatchEvent(event);
-  };
-
   return (
-    <div className="flex flex-col h-full bg-background text-foreground overflow-hidden">
+    <div className="flex flex-col h-full bg-background text-foreground overflow-hidden border-t border-r border-b border-border">
       <HeaderBar title="Setting" />
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-[280px] border-r border-border bg-card/10 flex flex-col shrink-0">
@@ -77,29 +63,6 @@ const Setting = () => {
         </aside>
 
         <main className="flex-1 flex flex-col overflow-hidden bg-background/50">
-          {activeTab === 'services' && (
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-border shrink-0">
-              <div className="w-80 flex items-center transition-all duration-500">
-                <div className="relative flex items-center w-full h-7 bg-input-background border border-border rounded-md transition-all duration-300">
-                  <Search className="absolute left-3 w-4 h-4 text-muted-foreground/50" />
-                  <input
-                    type="text"
-                    placeholder="Search services..."
-                    value={serviceSearch}
-                    onChange={(e) => setServiceSearch(e.target.value)}
-                    className="w-full h-full pl-10 pr-3 bg-transparent text-sm text-foreground placeholder:text-text-secondary outline-none rounded-md"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={handleAddService}
-                className="w-7 h-7 flex items-center justify-center bg-card-background text-text-secondary rounded-md hover:text-primary hover:bg-primary/30 transition-all active:scale-90 border border-border group"
-                title="Add Service"
-              >
-                <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-500" />
-              </button>
-            </div>
-          )}
           <div className="flex-1 overflow-hidden">
             <div className="h-full">
               {activeTab === 'general' && (
@@ -111,7 +74,6 @@ const Setting = () => {
           </div>
         </main>
       </div>
-      <FooterBar />
     </div>
   );
 };

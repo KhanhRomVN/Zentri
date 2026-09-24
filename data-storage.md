@@ -7,10 +7,10 @@ Tài liệu này mô tả cấu trúc lưu trữ dữ liệu tập trung cho Zen
 Khi người dùng chọn một thư mục lưu trữ (ví dụ: `D:/ZentriData/`), cấu trúc bên trong sẽ như sau:
 
 ```text
-[SELECTED FOLDER]/
+[.zentri]/
 ├── zentri.db
 └── profiles/
-    └── [profile_folder_id]/
+    └── [profile_email]/
 ```
 
 ## 2. Đặc tả Cơ sở dữ liệu (Database)

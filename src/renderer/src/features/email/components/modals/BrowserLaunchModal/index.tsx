@@ -1,7 +1,7 @@
 import { FC, useState, useEffect, useMemo } from 'react';
 import { Fingerprint, FingerprintConfig } from '../../../../../types/fingerprint-profile';
 import Modal from '../../../../../components/ui/Modal/Modal';
-import LaunchConfig from './LaunchConfig';
+import LaunchConfig, { BrowserPatchType } from './LaunchConfig';
 import FingerprintPicker from './FingerprintPicker';
 import FingerprintDetail from './FingerprintDetail';
 import { IpApiResponse } from '../../../../../types/ip-api';
@@ -34,6 +34,7 @@ export interface BrowserLaunchModalProps {
     fingerprintId?: string;
     proxyId?: string;
     fingerprintConfig?: object;
+    browserPatchType: BrowserPatchType;
   }) => void;
 }
 
@@ -85,6 +86,8 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
   const [proxySearch, setProxySearch] = useState('');
   const [proxyHistory, setProxyHistory] = useState<any[]>([]);
 
+  const [browserPatchType, setBrowserPatchType] = useState<BrowserPatchType>('ungoogled-chromium');
+
   // ── Fetch on open ──────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
@@ -109,13 +112,23 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
         }
 
         try {
+          console.log('[BrowserLaunchModal] 🔍 Fetching proxies from database...');
           const pxs = await window.electron.ipcRenderer.invoke(
             'sqlite:all',
             "SELECT id, host, port, protocol, country, city, isp FROM proxies WHERE status = 'active' ORDER BY created_at DESC",
           );
+          console.log(`[BrowserLaunchModal] ✅ Found ${pxs?.length || 0} active proxies`);
+          if (pxs && pxs.length > 0) {
+            console.log(
+              '[BrowserLaunchModal] 📋 Available proxies:',
+              pxs.map(
+                (p: any) => `${p.protocol}://${p.host}:${p.port} (${p.country || 'unknown'})`,
+              ),
+            );
+          }
           setProxies(pxs || []);
         } catch (error) {
-          console.error('Failed to fetch proxies:', error);
+          console.error('[BrowserLaunchModal] ❌ Failed to fetch proxies:', error);
         }
       };
       fetchData();
@@ -200,10 +213,32 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
   };
 
   const handleLaunch = () => {
+    console.log('[BrowserLaunchModal] 🚀 Launch button clicked');
+    console.log(`[BrowserLaunchModal]    • Browser Type: ${browserPatchType}`);
+    console.log(
+      `[BrowserLaunchModal]    • Fingerprint ID: ${selectedFingerprintId || 'NOT SELECTED'}`,
+    );
+    console.log(`[BrowserLaunchModal]    • Proxy ID: ${selectedProxyId || 'NOT SELECTED'}`);
+
+    if (selectedFingerprint) {
+      console.log(
+        `[BrowserLaunchModal]    • Fingerprint Config: ✅ Available (${Object.keys(selectedFingerprint.config).length} keys)`,
+      );
+    }
+
+    if (selectedProxy) {
+      console.log(
+        `[BrowserLaunchModal]    • Selected Proxy: ${selectedProxy.protocol}://${selectedProxy.host}:${selectedProxy.port}`,
+      );
+    } else {
+      console.log(`[BrowserLaunchModal]    ⚠️  WARNING: No proxy selected!`);
+    }
+
     onLaunch({
       fingerprintId: selectedFingerprintId,
       proxyId: selectedProxyId,
       fingerprintConfig: selectedFingerprint?.config,
+      browserPatchType,
     });
   };
 
@@ -211,6 +246,17 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
     setView('main');
     setFpSearch('');
     setFpFilters({ groups: [], browsers: [] });
+  };
+
+  // Official Chrome only launches with the profile folder — fingerprint and
+  // proxy selections are cleared automatically when this mode is chosen.
+  const handleBrowserPatchTypeChange = (type: BrowserPatchType) => {
+    setBrowserPatchType(type);
+    if (type === 'official-chrome') {
+      setSelectedFingerprintId(undefined);
+      setSelectedProxyId(undefined);
+      setProxySearch('');
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────
@@ -259,11 +305,13 @@ const BrowserLaunchModal: FC<BrowserLaunchModalProps> = (props) => {
           proxySearch={proxySearch}
           proxyHistory={proxyHistory}
           filteredProxies={filteredProxies}
+          browserPatchType={browserPatchType}
           onProxySearchChange={setProxySearch}
           onSelectProxy={(id) => {
             setSelectedProxyId(id);
             setProxySearch('');
           }}
+          onBrowserPatchTypeChange={handleBrowserPatchTypeChange}
           onOpenPicker={() => setView('picker')}
           onLaunch={handleLaunch}
         />

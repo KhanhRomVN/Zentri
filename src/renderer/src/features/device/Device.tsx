@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Search, RefreshCw, Plus, LayoutGrid, List } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import HeaderBar from './components/HeaderBar';
-import FooterBar from './components/FooterBar';
 import DeviceTable from './components/WorkspacePanel/DeviceTable';
 import DeviceGrid from './components/WorkspacePanel/DeviceGrid';
 import AddDeviceModal from './components/WorkspacePanel/modal/AddDeviceModal';
@@ -21,7 +20,7 @@ const DevicePage = () => {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
   return (
-    <div className="flex flex-col h-full bg-background text-foreground overflow-hidden">
+    <div className="flex flex-col h-full bg-background text-foreground overflow-hidden border-t border-r border-b border-border">
       <HeaderBar title="Device" />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -117,7 +116,6 @@ const DevicePage = () => {
       />
 
       <DeviceDetailModal device={selectedDevice} onClose={() => setSelectedDevice(null)} />
-      <FooterBar />
     </div>
   );
 };

@@ -49,9 +49,19 @@ export const addPlatform = async (platform: {
   category?: string;
   description?: string;
 }): Promise<void> => {
+  // UPSERT instead of INSERT OR REPLACE — REPLACE is implemented as DELETE + INSERT
+  // in SQLite and would fire the `service_emails` FK ON DELETE CASCADE, wiping
+  // every email linked to this platform. Also preserves columns the caller does
+  // not touch (tags, metadata, two_fa, ...).
   await sqliteRun(
-    `INSERT OR REPLACE INTO services (id, name, url, category, description, updated_at)
-     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+    `INSERT INTO services (id, name, url, category, description, updated_at)
+     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       url = excluded.url,
+       category = excluded.category,
+       description = excluded.description,
+       updated_at = CURRENT_TIMESTAMP`,
     [platform.id, platform.name, platform.url || null, platform.category || null, platform.description || null],
   );
 };

@@ -420,6 +420,24 @@ export function setupEventHandlers() {
     }
   });
 
+  // Backup Zentri database file to a user-chosen location via Save As dialog
+  ipcMain.handle('storage:backup-zentri', async (_event, sourcePath: string) => {
+    if (!sourcePath || !fs.existsSync(sourcePath)) {
+      throw new Error('Source database file not found');
+    }
+    const defaultName = `zentri_${new Date().toISOString().slice(0, 10)}.sql`;
+    const result = await dialog.showSaveDialog({
+      title: 'Backup Zentri Database',
+      defaultPath: defaultName,
+      filters: [{ name: 'SQL Database', extensions: ['sql'] }],
+    });
+    if (result.canceled || !result.filePath) {
+      return { success: false, canceled: true };
+    }
+    fs.copyFileSync(sourcePath, result.filePath);
+    return { success: true, path: result.filePath };
+  });
+
   // Open email profile folder in system file explorer
   ipcMain.handle('email:open-profile-folder', async (_event, email: string) => {
     if (!email) {

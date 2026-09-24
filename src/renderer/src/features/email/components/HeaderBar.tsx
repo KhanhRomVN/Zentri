@@ -28,7 +28,7 @@ const HeaderBar: FC<HeaderBarProps> = ({ activeView = 'home', onViewChange, chil
   const { applyPresetTheme, currentPreset } = useTheme();
 
   return (
-    <header className="shrink-0 border-b border-border flex items-center justify-between px-2 py-1.5 bg-background/80 backdrop-blur-xl sticky top-0 z-30 transition-all duration-500">
+    <header className="h-12 shrink-0 border-b border-border flex items-center justify-between px-2 py-1.5 bg-background/80 backdrop-blur-xl sticky top-0 z-30 transition-all duration-500">
       <div className="flex items-center gap-3">
         <span className="text-text-primary text-sm font-semibold">Email</span>
         <div className="w-px h-5 bg-border" />

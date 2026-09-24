@@ -9,11 +9,19 @@
  */
 
 import { FC, useState, useEffect, useMemo, useCallback } from 'react';
-import { ShieldCheck, Clock, Eye, Globe, Trash2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ShieldCheck, Clock, Eye, Globe, Trash2, MoreVertical, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '../../../../../../shared/lib/utils';
 import { Button } from '../../../../../../components/ui/Button';
 import { EmptyState } from '../../../../../../components/ui/EmptyState';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+} from '../../../../../../components/ui/Dropdown';
+import { useAccentColors } from '../../../../../../hooks/useAccentColors';
+import ServiceFormModal from '../../ServiceFormModal';
 import ServiceEmailForm from './ServiceEmailForm';
 
 function getDomain(url: string): string {
@@ -24,16 +32,79 @@ function getDomain(url: string): string {
   }
 }
 
+/**
+ * `services.category` is stored as a JSON-encoded array string (e.g. '["Social"]'),
+ * but some code paths pass it through as an already-parsed array or a plain string.
+ * Normalize all of these to a single display label.
+ */
+function normalizeCategoryLabel(cat: any): string | null {
+  if (!cat) return null;
+  if (Array.isArray(cat)) return cat[0] ?? null;
+  if (typeof cat !== 'string') return null;
+  const trimmed = cat.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? (parsed[0] ?? null) : parsed;
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
 const ServiceHero: FC<{
   service: any;
+  isBrowserOpen?: boolean;
   onOpenService?: (linkId: string) => void;
+  onCloseBrowser?: () => void;
   onDeleteService?: (linkId: string) => void;
-}> = ({ service, onOpenService, onDeleteService }) => {
+}> = ({ service, isBrowserOpen, onOpenService, onCloseBrowser, onDeleteService }) => {
+  const { getColorByIndex, toRgba } = useAccentColors();
   const faviconUrl = service.url
     ? `https://www.google.com/s2/favicons?domain=${service.url}&sz=64`
     : '';
-  const serviceTags: string[] = Array.isArray(service.tags) ? service.tags : [];
-  const allTags: string[] = [...new Set(serviceTags.filter(Boolean) as string[])];
+  const categoryLabel = normalizeCategoryLabel(service.category);
+  // Deterministic hash so the same category always gets the same accent color.
+  const categoryColor = categoryLabel
+    ? getColorByIndex(
+        categoryLabel.split('').reduce((sum: number, c: string) => sum + c.charCodeAt(0), 0),
+      )
+    : null;
+  // A draft service has no id yet → hide edit/delete menu entries.
+  const isDraft = !service.id;
+  const [editingService, setEditingService] = useState<any | null>(null);
+
+  // Fetch the raw service row from the DB so ServiceFormModal gets a
+  // ServiceProviderConfig-shaped object (accountServices only carries link data).
+  const handleOpenEdit = async () => {
+    if (!service.serviceId) return;
+    try {
+      // @ts-ignore
+      const rows = await window.electron.ipcRenderer.invoke(
+        'sqlite:all',
+        'SELECT * FROM services WHERE id = ?',
+        [service.serviceId],
+      );
+      if (rows.length > 0) {
+        const row = rows[0];
+        setEditingService({
+          id: row.id,
+          name: row.name,
+          websiteUrl: row.url || '',
+          defaultTags: row.tags ? JSON.parse(row.tags) : [],
+          defaultCategories: row.category ? JSON.parse(row.category) : [],
+          description: row.description || '',
+          metadata: row.metadata ? JSON.parse(row.metadata) : [],
+          authMethods: row.auth_method ? JSON.parse(row.auth_method) : [],
+          twoFa: row.two_fa ? JSON.parse(row.two_fa) : { has_totp: false, has_backup_codes: false },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load service for edit:', err);
+    }
+  };
   return (
     <div className="relative flex flex-col px-4 py-4 border-b border-border">
       <div className="flex items-start gap-3">
@@ -48,13 +119,19 @@ const ServiceHero: FC<{
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-foreground truncate">{service.name}</h2>
-            {service.category && (
-              <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-bold bg-primary/10 text-primary border border-primary/20">
-                {service.category}
+            {categoryLabel && categoryColor && (
+              <span
+                className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold"
+                style={{
+                  backgroundColor: toRgba(categoryColor, 0.12),
+                  color: categoryColor,
+                }}
+              >
+                {categoryLabel}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground/60">
+          <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-text-secondary">
             <span className="truncate font-mono">{service.url || 'No URL'}</span>
             {service.lastUsedAt && (
               <span className="flex items-center gap-1 text-[10px] font-mono">
@@ -63,44 +140,85 @@ const ServiceHero: FC<{
               </span>
             )}
           </div>
-          {allTags.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              {allTags.map((tag) => (
-                <span
-                  key={tag}
-                  className={cn(
-                    'px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border',
-                    tag === 'auth' && 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-                    tag === 'security' && 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-                    tag === 'search' && 'bg-violet-500/10 text-violet-500 border-violet-500/20',
-                    tag === 'social' && 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
-                    !['auth', 'security', 'search', 'social'].includes(tag) &&
-                      'bg-muted text-muted-foreground border-border',
-                  )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!isDraft && (
+            <Dropdown trigger="click" align="end" side="bottom">
+              <DropdownTrigger asChild>
+                <button
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-md text-text-secondary bg-text-secondary/10 hover:text-foreground hover:bg-muted/50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  aria-label="Service actions"
                 >
-                  {tag}
-                </span>
-              ))}
-            </div>
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </DropdownTrigger>
+              <DropdownContent>
+                {(onOpenService || onCloseBrowser) && (
+                  <>
+                    <DropdownItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isBrowserOpen) {
+                          onCloseBrowser?.();
+                        } else {
+                          onOpenService?.(service.id);
+                        }
+                      }}
+                    >
+                      <Globe
+                        className={`w-3.5 h-3.5 ${
+                          isBrowserOpen ? 'text-red-400' : 'text-emerald-400'
+                        }`}
+                      />
+                      {isBrowserOpen ? 'Close Browser' : 'Open Browser'}
+                    </DropdownItem>
+                    <div className="h-px bg-divider my-1" />
+                  </>
+                )}
+                <DropdownItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenEdit();
+                  }}
+                >
+                  <Pencil className="w-3.5 h-3.5 text-blue-500/60" />
+                  Edit service
+                </DropdownItem>
+                {onDeleteService && service.status !== 'trash' && (
+                  <>
+                    <div className="h-px bg-divider my-1" />
+                    <DropdownItem
+                      className="text-error focus:text-error focus:bg-error/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (
+                          window.confirm(
+                            'Delete this service link permanently? This action cannot be undone.',
+                          )
+                        ) {
+                          onDeleteService(service.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete service
+                    </DropdownItem>
+                  </>
+                )}
+              </DropdownContent>
+            </Dropdown>
           )}
         </div>
       </div>
-      {/* Temporarily hidden — Open Browser / Delete buttons
-      <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
-        {onOpenService && (
-          <Button variant="soft-success" size="sm" onClick={() => onOpenService(service.id)}>
-            <Globe className="w-3.5 h-3.5" />
-            Open Browser
-          </Button>
-        )}
-        {onDeleteService && service.status !== 'trash' && (
-          <Button variant="soft-error" size="sm" onClick={() => onDeleteService(service.id)}>
-            <Trash2 className="w-3.5 h-3.5" />
-            Delete
-          </Button>
-        )}
-      </div>
-      */}
+      {createPortal(
+        <ServiceFormModal
+          isOpen={!!editingService}
+          onClose={() => setEditingService(null)}
+          service={editingService}
+        />,
+        document.body,
+      )}
     </div>
   );
 };
@@ -108,42 +226,64 @@ const ServiceHero: FC<{
 interface ServiceDetailProps {
   service: any;
   email: string;
+  isBrowserOpen?: boolean;
   onOpenService?: (linkId: string) => void;
+  onCloseBrowser?: () => void;
   onDeleteService?: (linkId: string) => void;
   onQuickAddService?: (service: any) => Promise<string | null>;
   onCancel?: () => void;
+  /** Called after a draft service is successfully persisted to the DB. */
+  onSaved?: (linkId: string) => void;
 }
 
 const ServiceDetail: FC<ServiceDetailProps> = ({
   service,
   email,
+  isBrowserOpen,
   onOpenService,
+  onCloseBrowser,
   onDeleteService,
   onQuickAddService,
   onCancel,
+  onSaved,
 }) => {
   const [fingerprintLoading, setFingerprintLoading] = useState(false);
   const [fingerprintEntries, setFingerprintEntries] = useState<any[]>([]);
   const [fingerprintError, setFingerprintError] = useState<string | null>(null);
   const [expandedFingerprint, setExpandedFingerprint] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
-  const [linkMessage, setLinkMessage] = useState<string | null>(null);
-  const [isLinked, setIsLinked] = useState(false);
+  const [draftData, setDraftData] = useState<{
+    metadata: Record<string, any>;
+    twoFa: { totp: string; backupCodes: string[] };
+  }>({ metadata: {}, twoFa: { totp: '', backupCodes: [] } });
 
-  const handleLinkService = async () => {
-    if (!onQuickAddService) return;
+  // A draft service has no DB id yet → show Save/Cancel and skip auto-persist.
+  const isDraft = !service.id;
+
+  const handleSaveService = async () => {
+    if (!onQuickAddService || !isDraft) return;
+    // [DEBUG] log draft state at save time
+    console.log('[DEBUG ServiceView] handleSaveService CALLED', {
+      serviceId: service.serviceId || service.id,
+      isDraft,
+      draftData,
+      hasOnQuickAddService: !!onQuickAddService,
+    });
     setLinking(true);
-    setLinkMessage(null);
     try {
-      const linkId = await onQuickAddService(service);
+      // Pass the user-entered metadata and twoFa data to the insert handler
+      const payload = { ...service, ...draftData };
+      console.log('[DEBUG ServiceView] invoking onQuickAddService with payload', payload);
+      const linkId = await onQuickAddService(payload);
+      console.log('[DEBUG ServiceView] onQuickAddService resolved, linkId =', linkId);
       if (linkId) {
-        setLinkMessage('Service linked successfully');
-        setIsLinked(true);
+        console.log('[DEBUG ServiceView] calling onSaved with linkId =', linkId);
+        onSaved?.(linkId);
       } else {
-        setLinkMessage('Failed to link service');
+        console.log('[DEBUG ServiceView] linkId is falsy — onSaved NOT called');
       }
-    } catch {
-      setLinkMessage('Failed to link service');
+    } catch (err) {
+      console.error('Failed to save service', err);
     } finally {
       setLinking(false);
     }
@@ -195,12 +335,21 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
     <div className="flex-1 flex flex-col min-h-0">
       <ServiceHero
         service={service}
+        isBrowserOpen={isBrowserOpen}
         onOpenService={onOpenService}
+        onCloseBrowser={onCloseBrowser}
         onDeleteService={onDeleteService}
       />
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-hide">
         <div className="space-y-4 px-4 mt-4">
-          <ServiceEmailForm service={service} />
+          {/* key forces a remount when switching services so local state
+              (totpSecret, metadataValues, backup codes) resets properly. */}
+          <ServiceEmailForm
+            key={service.id || 'draft'}
+            service={service}
+            autoSave={!isDraft}
+            onChange={isDraft ? setDraftData : undefined}
+          />
 
           <section className="space-y-4">
             <div className="flex items-start gap-3">
@@ -328,23 +477,13 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
           <div className="h-10" />
         </div>
       </div>
-      {!isLinked && (
-        <div className="h-12 border-t border-border bg-card-background/80 flex items-center justify-end gap-2 px-4 shrink-0">
-          {linkMessage && (
-            <span
-              className={cn(
-                'text-xs font-bold',
-                linkMessage.includes('success') ? 'text-success' : 'text-error',
-              )}
-            >
-              {linkMessage}
-            </span>
-          )}
-          <Button variant="outline" size="sm" onClick={onCancel}>
+      {isDraft && (
+        <div className="border-t border-border bg-card-background/80 flex items-center justify-end gap-2 px-4 py-2 shrink-0">
+          <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="soft" size="sm" disabled={linking} onClick={handleLinkService}>
-            {linking ? 'Linking...' : 'Linked Service'}
+          <Button variant="soft" disabled={linking} onClick={handleSaveService}>
+            {linking ? 'Saving...' : 'Save Service'}
           </Button>
         </div>
       )}

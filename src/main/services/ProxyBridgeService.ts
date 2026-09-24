@@ -5,7 +5,6 @@ export interface ProxyConfig {
   port: number;
   username?: string;
   password?: string;
-  protocol?: 'http' | 'socks5';
 }
 
 export interface BridgeInfo {

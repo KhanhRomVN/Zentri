@@ -7,7 +7,6 @@ import Proxy from '../features/proxy/Proxy';
 import Filter from '../features/filter/Filter';
 import Setting from '../features/setting/Setting';
 import Workflow from '../features/workflow/Workflow';
-import Dfd from '../features/dfd/Dfd';
 import Device from '@renderer/features/device/Device';
 
 const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
@@ -18,19 +17,7 @@ const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   '/filter': Filter,
   '/setting': Setting,
   '/workflow': Workflow,
-  '/dfd': Dfd,
   '/device': Device,
-};
-
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'Dashboard',
-  '/email': 'Email',
-  '/forge': 'Forge',
-  '/proxy': 'Proxy',
-  '/filter': 'Search',
-  '/setting': 'Setting',
-  '/workflow': 'Workflow',
-  '/device': 'Device',
 };
 
 const MainLayout = () => {

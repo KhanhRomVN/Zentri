@@ -4,7 +4,7 @@
 
 import { Key } from 'lucide-react';
 import { cn } from '../../../../../../shared/lib/utils';
-import { getServiceById } from '../../../../../../constants/services';
+import { getServiceTemplateById } from '@renderer/constants/services';
 import { isValidTotp } from './utils';
 import type { Account } from '../../../../types';
 
@@ -23,7 +23,7 @@ function getHostname(url: string | undefined): string {
 
 export default function Service2FA({ account }: Service2FAProps) {
   const services = (account.services || []).filter(
-    (service) => getServiceById(service.serviceId)?.two_fa,
+    (service) => getServiceTemplateById(service.serviceId)?.two_fa,
   );
 
   return (
@@ -37,7 +37,7 @@ export default function Service2FA({ account }: Service2FAProps) {
       <div className="flex flex-col">
         {services.length > 0 ? (
           services.map((service) => {
-            const template = getServiceById(service.serviceId);
+            const template = getServiceTemplateById(service.serviceId);
             const linkedTwoFa = (service as any).twoFa || {};
             const totpOn = template?.two_fa?.has_totp && isValidTotp(linkedTwoFa.totp);
             const backupOn =

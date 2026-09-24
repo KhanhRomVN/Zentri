@@ -9,7 +9,6 @@ import { usePlatforms } from './hooks/usePlatforms';
 import { fetchSessions, fetchAccounts } from './services/forgeService';
 import Sidebar from './components/Sidebar';
 import HeaderBar from './components/HeaderBar';
-import FooterBar from './components/FooterBar';
 import AddPlatformModal from './components/AddPlatformModal';
 import Dashboard from './components/Dashboard';
 import PlatformSessions from './components/PlatformSessions';
@@ -72,7 +71,7 @@ const Forge = () => {
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10">
+    <div className="flex flex-col h-full w-full bg-background overflow-hidden relative selection:bg-primary/10 border-t border-r border-b border-border">
       <HeaderBar title="Forge" />
       <div className="flex flex-1 min-h-0">
         <Sidebar
@@ -116,7 +115,6 @@ const Forge = () => {
         onClose={() => setIsModalOpen(false)}
         onAdded={refresh}
       />
-      <FooterBar />
     </div>
   );
 };
