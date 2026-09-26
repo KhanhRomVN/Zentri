@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePlatforms } from './hooks/usePlatforms';
-import { fetchSessions, fetchAccounts } from './services/forgeService';
+import { fetchAccounts } from './services/forgeService';
 import Sidebar from './components/Sidebar';
 import HeaderBar from './components/HeaderBar';
 import AddPlatformModal from './components/AddPlatformModal';
@@ -51,11 +51,9 @@ const Forge = () => {
   // ─── Data fetching ───────────────────────────────────────────────────────
   useEffect(() => {
     if (view === 'platform' && activePlatformId) {
-      setIsLoadingSessions(true);
-      fetchSessions(activePlatformId)
-        .then(setSessions)
-        .catch((err) => console.error('[Forge] Failed to fetch sessions:', err))
-        .finally(() => setIsLoadingSessions(false));
+      // sessions table removed — return empty list
+      setSessions([]);
+      setIsLoadingSessions(false);
     }
   }, [view, activePlatformId]);
 

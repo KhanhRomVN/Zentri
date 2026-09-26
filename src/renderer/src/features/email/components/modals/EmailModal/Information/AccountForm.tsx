@@ -205,7 +205,7 @@ const AccountForm: FC<AccountFormProps> = ({
     }, 1500);
   };
 
-  const handleBackupCodeInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleBackupCodeInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const sanitized = sanitizeLatin(e.target.value);
     onBackupCodeSearchChange(sanitized);
     // Auto-derive preview badges live from whatever was just typed/pasted —
@@ -367,7 +367,7 @@ const AccountForm: FC<AccountFormProps> = ({
                     onBlur={(e) => onBlur?.('recoveryEmail', e.target.value)}
                     onFocus={() => setRecoveryDropdownOpen(true)}
                     placeholder="backup@zentri.node"
-                    className="w-full h-10 px-3 rounded-lg bg-input-background border border-input-border-default text-sm text-text-primary outline-none transition-colors focus:border-primary/50 placeholder:text-text-secondary/60"
+                    className="w-full bg-input-background border rounded-lg px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary/50 placeholder:text-text-secondary/60 disabled:opacity-50 disabled:cursor-not-allowed border-input-border-default"
                   />
                 </DropdownTrigger>
                 <DropdownContent className="min-w-full">
@@ -444,6 +444,11 @@ const AccountForm: FC<AccountFormProps> = ({
           onRemovePreviewCode={handleRemovePreviewCode}
           onClearPreviewCodes={handleClearPreviewCodes}
           onAddPreviewCodes={handleAddPreviewCodes}
+          onImportBackupCodesFromFile={(codes) => {
+            const sanitized = sanitizeLatin(codes.join(' '));
+            onBackupCodeSearchChange(sanitized);
+            setPreviewBackupCodes(Array.from(new Set(codes)));
+          }}
         />
 
         {/* Classification */}
@@ -460,14 +465,14 @@ const AccountForm: FC<AccountFormProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 items-start">
+          <div className="grid grid-cols-2 gap-3 items-start">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-text-primary">Category</label>
-              <Dropdown searchable closeOnSelect>
+              <Dropdown searchable closeOnSelect className="w-full">
                 <DropdownTrigger asChild>
                   <button
                     type="button"
-                    className="w-full max-w-xs h-10 px-3 rounded-lg bg-input-background border border-border/50 text-sm flex items-center gap-2 text-text-primary outline-none transition-colors focus:border-primary/50"
+                    className="w-full h-10 px-3 rounded-lg bg-input-background border border-border/50 text-sm flex items-center gap-2 text-text-primary outline-none transition-colors focus:border-primary/50"
                   >
                     {selectedCategory ? (
                       <>
@@ -508,7 +513,7 @@ const AccountForm: FC<AccountFormProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-text-primary">Tag</label>
+              <label className="block text-sm font-medium text-text-primary">Tags</label>
 
               {values.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pb-1">
@@ -531,7 +536,7 @@ const AccountForm: FC<AccountFormProps> = ({
                 </div>
               )}
 
-              <Dropdown open={tagDropdownOpen} onOpenChange={setTagDropdownOpen} closeOnSelect>
+              <Dropdown open={tagDropdownOpen} onOpenChange={setTagDropdownOpen} closeOnSelect className="w-full">
                 <DropdownTrigger asChild>
                   <input
                     type="text"
@@ -548,7 +553,7 @@ const AccountForm: FC<AccountFormProps> = ({
                       }
                     }}
                     placeholder="Add tag and press Enter..."
-                    className="w-full max-w-xs h-10 px-3 rounded-lg bg-input-background border border-border/50 text-sm text-text-primary outline-none transition-colors focus:border-primary/50 placeholder:text-text-tertiary"
+                    className="w-full h-10 px-3 rounded-lg bg-input-background border border-border/50 text-sm text-text-primary outline-none transition-colors focus:border-primary/50 placeholder:text-text-tertiary"
                   />
                 </DropdownTrigger>
                 <DropdownContent className="min-w-full">

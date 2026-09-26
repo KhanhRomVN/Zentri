@@ -20,7 +20,7 @@ export const ModalHeader: React.FC<ModalHeaderProps> = ({
   className,
 }) => {
   return (
-    <div className={cn('px-5 border-b border-divider shrink-0 flex items-center gap-3', description ? 'pt-5 pb-2' : 'py-3', className)}>
+    <div className={cn('px-5 py-3 border-b border-divider shrink-0 flex items-center gap-3', className)}>
       {onBack && (
         <button
           onClick={onBack}

@@ -256,10 +256,6 @@ export const FIELD_TYPES: Record<string, FieldType> = {
   'proxies.created_at': 'string',
   'proxies.updated_at': 'string',
 
-  // proxy_history table
-  'proxy_history.target_site': 'string',
-  'proxy_history.used_at': 'string',
-
   // services table
   'services.name': 'string',
   'services.description': 'string',
@@ -269,10 +265,6 @@ export const FIELD_TYPES: Record<string, FieldType> = {
   'services.metadata': 'object',
   'services.auth_method': 'array',
 
-  // fingerprints table
-  'fingerprints.name': 'string',
-  'fingerprints.description': 'string',
-  'fingerprints.config_json': 'object',
 };
 
 // Available fields grouped by table with labels
@@ -403,20 +395,6 @@ export const AVAILABLE_FIELDS = [
     tableName: 'Proxies',
   },
 
-  // proxy_history table
-  {
-    name: 'proxy_history.target_site',
-    type: 'string' as FieldType,
-    label: 'Target Site',
-    tableName: 'Proxy History',
-  },
-  {
-    name: 'proxy_history.used_at',
-    type: 'string' as FieldType,
-    label: 'Used At',
-    tableName: 'Proxy History',
-  },
-
   // services table
   { name: 'services.name', type: 'string' as FieldType, label: 'Name', tableName: 'Services' },
   {
@@ -446,23 +424,4 @@ export const AVAILABLE_FIELDS = [
     tableName: 'Services',
   },
 
-  // fingerprints table
-  {
-    name: 'fingerprints.name',
-    type: 'string' as FieldType,
-    label: 'Name',
-    tableName: 'Fingerprints',
-  },
-  {
-    name: 'fingerprints.description',
-    type: 'string' as FieldType,
-    label: 'Description',
-    tableName: 'Fingerprints',
-  },
-  {
-    name: 'fingerprints.config_json',
-    type: 'object' as FieldType,
-    label: 'Config JSON',
-    tableName: 'Fingerprints',
-  },
 ];

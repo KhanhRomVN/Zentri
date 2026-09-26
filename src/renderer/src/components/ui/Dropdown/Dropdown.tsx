@@ -217,14 +217,20 @@ export const Dropdown = React.memo(function Dropdown({
   // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Prevent closing when clicking inside the dropdown content or trigger
       if (
         contentRef.current &&
-        !contentRef.current.contains(event.target as Node) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(event.target as Node)
+        contentRef.current.contains(event.target as Node)
       ) {
-        setOpen(false);
+        return;
       }
+      if (
+        triggerRef.current &&
+        triggerRef.current.contains(event.target as Node)
+      ) {
+        return;
+      }
+      setOpen(false);
     };
     if (open) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -378,9 +384,10 @@ export const Dropdown = React.memo(function Dropdown({
     <DropdownContext.Provider
       value={{ close, searchText, hasSearchbar: searchable, closeOnSelect }}
     >
-      <div className={cn('relative inline-block', className)}>
+      <div className={cn('relative', fullWidth || className?.includes('w-full') ? 'block w-full' : 'inline-block', className)}>
         <div
           ref={triggerRef}
+          className={fullWidth || className?.includes('w-full') ? 'w-full' : ''}
           onClick={trigger === 'click' ? () => setOpen(!open) : undefined}
           onContextMenu={
             trigger === 'contextmenu'

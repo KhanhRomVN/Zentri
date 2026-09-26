@@ -183,62 +183,21 @@ export function setupProxyHandlers() {
     }
   });
 
-  // Get proxy history
-  ipcMain.handle('proxy:get-history', async (_event, proxyId: string) => {
-    try {
-      const query = `
-        SELECT h.*, e.email as email_address 
-        FROM proxy_history h
-        JOIN emails e ON h.email_id = e.id
-        WHERE h.proxy_id = ?
-        ORDER BY h.used_at DESC
-      `;
-      return await dbManager.all(query, [proxyId]);
-    } catch (error) {
-      console.error('[proxy:get-history] FAILED:', error);
-      throw error;
-    }
+  // Get proxy history — table removed, return empty array
+  ipcMain.handle('proxy:get-history', async () => {
+    return [];
   });
 
-  // Log proxy usage
+  // Log proxy usage — table removed, no-op
   ipcMain.handle(
     'proxy:log-usage',
-    async (
-      _event,
-      { proxyId, emailId, targetSite }: { proxyId: string; emailId: string; targetSite?: string },
-    ) => {
-      try {
-        const id = crypto.randomUUID();
-        const query = `
-          INSERT INTO proxy_history (id, proxy_id, email_id, target_site)
-          VALUES (?, ?, ?, ?)
-        `;
-        await dbManager.run(query, [id, proxyId, emailId, targetSite || null]);
-        return true;
-      } catch (error) {
-        console.error('[proxy:log-usage] FAILED:', error);
-        throw error;
-      }
+    async () => {
+      return true;
     },
   );
 
-  // Get proxy health history (last 24 checks)
-  ipcMain.handle('proxy:get-health-history', async (_event, proxyId: string) => {
-    try {
-      const rows = await dbManager.all(
-        'SELECT * FROM proxy_health_history WHERE proxy_id = ? ORDER BY timestamp DESC LIMIT 24',
-        [proxyId],
-      );
-      return rows.map((row: any) => ({
-        id: row.id,
-        proxyId: row.proxy_id,
-        timestamp: row.timestamp,
-        isHealthy: row.is_healthy === 1,
-        latency: row.latency,
-      }));
-    } catch (error) {
-      console.error('[proxy:get-health-history] FAILED:', error);
-      return [];
-    }
+  // Get proxy health history — table removed, return empty array
+  ipcMain.handle('proxy:get-health-history', async () => {
+    return [];
   });
 }

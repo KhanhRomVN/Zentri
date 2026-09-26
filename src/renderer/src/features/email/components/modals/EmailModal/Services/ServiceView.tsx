@@ -54,6 +54,20 @@ function normalizeCategoryLabel(cat: any): string | null {
   return trimmed;
 }
 
+const AUTH_METHOD_LABELS: Record<string, string> = {
+  basic_auth: 'Basic Auth',
+  google_oauth: 'Google OAuth',
+  github_oauth: 'GitHub OAuth',
+  facebook_oauth: 'Facebook OAuth',
+  twitter_oauth: 'Twitter/X OAuth',
+  microsoft_oauth: 'Microsoft OAuth',
+  apple_oauth: 'Apple OAuth',
+  discord_oauth: 'Discord OAuth',
+  totp_2fa: 'TOTP 2FA',
+  smtp_auth: 'SMTP Auth',
+  api_key: 'API Key',
+};
+
 const ServiceHero: FC<{
   service: any;
   isBrowserOpen?: boolean;
@@ -75,6 +89,27 @@ const ServiceHero: FC<{
   // A draft service has no id yet → hide edit/delete menu entries.
   const isDraft = !service.id;
   const [editingService, setEditingService] = useState<any | null>(null);
+  const [isHeaderHovered, setIsHeaderHovered] = useState(false);
+
+  // Parse authMethods and tags from the service object for display.
+  const authMethods: string[] = useMemo(() => {
+    try {
+      if (Array.isArray(service.authMethods)) return service.authMethods;
+      if (typeof service.authMethods === 'string') return JSON.parse(service.authMethods);
+      if (Array.isArray(service.auth_method)) return service.auth_method;
+      if (typeof service.auth_method === 'string') return JSON.parse(service.auth_method);
+    } catch { /* ignore */ }
+    return [];
+  }, [service.authMethods, service.auth_method]);
+
+  const tags: string[] = useMemo(() => {
+    try {
+      if (Array.isArray(service.tags)) return service.tags;
+      if (typeof service.tags === 'string') return JSON.parse(service.tags);
+      if (Array.isArray(service.defaultTags)) return service.defaultTags;
+    } catch { /* ignore */ }
+    return [];
+  }, [service.tags, service.defaultTags]);
 
   // Fetch the raw service row from the DB so ServiceFormModal gets a
   // ServiceProviderConfig-shaped object (accountServices only carries link data).
@@ -106,7 +141,11 @@ const ServiceHero: FC<{
     }
   };
   return (
-    <div className="relative flex flex-col px-4 py-4 border-b border-border">
+    <div
+      className="relative flex flex-col px-4 py-4 border-b border-border"
+      onMouseEnter={() => setIsHeaderHovered(true)}
+      onMouseLeave={() => setIsHeaderHovered(false)}
+    >
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center p-1.5 border border-border shadow-sm shrink-0">
           <img
@@ -119,9 +158,23 @@ const ServiceHero: FC<{
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-foreground truncate">{service.name}</h2>
+            {isHeaderHovered && !isDraft && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenEdit();
+                }}
+                className="w-6 h-6 flex items-center justify-center rounded-md text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                aria-label="Edit service"
+                title="Edit service"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
             {categoryLabel && categoryColor && (
               <span
-                className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold"
+                className="px-2.5 py-0.5 rounded-md text-[10px] font-bold"
                 style={{
                   backgroundColor: toRgba(categoryColor, 0.12),
                   color: categoryColor,
@@ -140,6 +193,27 @@ const ServiceHero: FC<{
               </span>
             )}
           </div>
+          {/* Auth Methods & Tags display */}
+          {(authMethods.length > 0 || tags.length > 0) && (
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              {authMethods.map((method) => (
+                <span
+                  key={method}
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-success/10 text-success border border-success/20"
+                >
+                  {AUTH_METHOD_LABELS[method] || method}
+                </span>
+              ))}
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-text-secondary/10 text-text-secondary border border-text-secondary/20"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {!isDraft && (
@@ -176,15 +250,6 @@ const ServiceHero: FC<{
                     <div className="h-px bg-divider my-1" />
                   </>
                 )}
-                <DropdownItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenEdit();
-                  }}
-                >
-                  <Pencil className="w-3.5 h-3.5 text-blue-500/60" />
-                  Edit service
-                </DropdownItem>
                 {onDeleteService && service.status !== 'trash' && (
                   <>
                     <div className="h-px bg-divider my-1" />
@@ -347,7 +412,7 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
           <ServiceEmailForm
             key={service.id || 'draft'}
             service={service}
-            autoSave={!isDraft}
+            autoSave={isDraft ? false : undefined}
             onChange={isDraft ? setDraftData : undefined}
           />
 

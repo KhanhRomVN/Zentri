@@ -11,11 +11,12 @@
 
 import { FC, useState, useEffect, useCallback, useRef } from 'react';
 import { List } from 'lucide-react';
-import { generateTotp, isValidBase32 } from '../../../../../../shared/lib/totp';
+import { generateTOTP, getTOTPTimeRemaining } from '../../../../utils/totp';
 import Input from '../../../../../../components/ui/Input/Input';
 import { EmptyState } from '../../../../../../components/ui/EmptyState';
 import TwoFactorAuthFields from '../TwoFactorAuthFields';
 import QRCodeTOTPScannerModal from '../../../modals/QRCodeTOTPScannerModal';
+import { getServiceTemplateById } from '../../../../../../constants/services';
 
 const normalizeMetadata = (meta: any): Record<string, any> => {
   if (!meta) return {};
@@ -64,7 +65,7 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
   );
   const [serviceMetadata, setServiceMetadata] = useState<any[]>([]);
 
-  const hasTotpValue = !!totpSecret && isValidBase32(totpSecret);
+  const hasTotpValue = !!totpSecret?.trim();
 
   // [DEBUG] latest-value refs so mount/unmount logs report current state, not the
   // values captured at mount time.
@@ -259,8 +260,8 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
       return;
     }
     const tick = () => {
-      setTotpCode(generateTotp(totpSecret));
-      setTotpTimer(30 - (Math.floor(Date.now() / 1000) % 30));
+      setTotpCode(generateTOTP(totpSecret));
+      setTotpTimer(getTOTPTimeRemaining());
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -291,6 +292,10 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
 
   useEffect(() => {
     const fetchServiceConfig = async () => {
+      console.log('[DEBUG ServiceEmailForm] fetchServiceConfig called', {
+        serviceId: service.serviceId,
+        fullService: service,
+      });
       try {
         // @ts-ignore
         const rows = await window.electron.ipcRenderer.invoke(
@@ -298,19 +303,64 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
           'SELECT metadata FROM services WHERE id = ?',
           [service.serviceId],
         );
+        console.log('[DEBUG ServiceEmailForm] sqlite:all result', {
+          serviceId: service.serviceId,
+          rowCount: rows.length,
+          rows,
+        });
         if (rows.length > 0) {
           const row = rows[0];
           if (row.metadata) {
             const parsed = JSON.parse(row.metadata);
-            setServiceMetadata(Array.isArray(parsed) ? parsed : parsed.fields || []);
+            console.log('[DEBUG ServiceEmailForm] parsed metadata', {
+              serviceId: service.serviceId,
+              parsed,
+              isArray: Array.isArray(parsed),
+              hasFields: !!parsed.fields,
+            });
+            // Extract fields from DB metadata; fallback to constants if empty
+            const dbFields = Array.isArray(parsed) ? parsed : parsed.fields || [];
+            if (dbFields.length > 0) {
+              setServiceMetadata(dbFields);
+            } else {
+              console.log('[DEBUG ServiceEmailForm] DB metadata fields empty, falling back to constants', {
+                serviceId: service.serviceId,
+              });
+              const template = getServiceTemplateById(service.serviceId);
+              setServiceMetadata(template?.metadata?.fields || []);
+            }
           } else {
-            setServiceMetadata([]);
+            console.log('[DEBUG ServiceEmailForm] row.metadata is empty', {
+              serviceId: service.serviceId,
+            });
+            // Fallback to constants if DB row has no metadata
+            const template = getServiceTemplateById(service.serviceId);
+            setServiceMetadata(template?.metadata?.fields || []);
           }
         } else {
-          setServiceMetadata([]);
+          console.log('[DEBUG ServiceEmailForm] no rows returned, using constants fallback', {
+            serviceId: service.serviceId,
+          });
+          // Fallback to constants when no DB row exists
+          const template = getServiceTemplateById(service.serviceId);
+          const fields = template?.metadata?.fields || [];
+          console.log('[DEBUG ServiceEmailForm] constants fallback result', {
+            serviceId: service.serviceId,
+            foundTemplate: !!template,
+            templateName: template?.name,
+            fieldsCount: fields.length,
+            fields,
+          });
+          setServiceMetadata(fields);
         }
-      } catch {
-        setServiceMetadata([]);
+      } catch (error) {
+        console.error('[DEBUG ServiceEmailForm] fetchServiceConfig error', {
+          serviceId: service.serviceId,
+          error,
+        });
+        // Fallback to constants on error
+        const template = getServiceTemplateById(service.serviceId);
+        setServiceMetadata(template?.metadata?.fields || []);
       }
     };
     if (service.serviceId) {
@@ -321,6 +371,9 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
       window.addEventListener('services-changed', handler);
       return () => window.removeEventListener('services-changed', handler);
     }
+    console.log('[DEBUG ServiceEmailForm] service.serviceId is falsy, skip fetch', {
+      serviceId: service.serviceId,
+    });
     return undefined;
   }, [service.serviceId]);
 
@@ -388,6 +441,10 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
         }
         onClearPreviewCodes={handleClearPreview}
         onAddPreviewCodes={handleAddPreview}
+        onImportBackupCodesFromFile={(codes) => {
+          setBackupInput(codes.join(' '));
+          setPreviewBackupCodes(Array.from(new Set(codes)));
+        }}
       />
 
       <section className="space-y-4">

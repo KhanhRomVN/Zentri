@@ -572,10 +572,52 @@ const EmailTable: FC<EmailTableProps> = ({
         // @ts-ignore
         await window.electron.ipcRenderer.invoke('service_emails:update', payload);
       } else {
+        // Ensure the service exists in the `services` table before inserting into
+        // `service_emails`, otherwise the FK ON DELETE CASCADE constraint fails.
+        let resolvedServiceId = newServiceData.serviceId;
+        // @ts-ignore
+        const serviceRows = await window.electron.ipcRenderer.invoke(
+          'sqlite:all',
+          'SELECT id FROM services WHERE id = ? LIMIT 1',
+          [resolvedServiceId],
+        );
+        if (!serviceRows || serviceRows.length === 0) {
+          // Look up the service template to populate the missing row.
+          const { SERVICES } = await import('../../../constants/services');
+          const template = SERVICES.find((s: any) => s.id === resolvedServiceId) as any;
+          if (template) {
+            const metadataFields = template.metadata?.fields || [];
+            // @ts-ignore
+            await window.electron.ipcRenderer.invoke(
+              'sqlite:run',
+              `INSERT INTO services (id, name, url, tags, category, description, metadata, auth_method, two_fa, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+              [
+                template.id,
+                template.name || '',
+                template.url || '',
+                JSON.stringify(template.tags || []),
+                JSON.stringify(template.category ? [template.category] : []),
+                template.description || '',
+                JSON.stringify(
+                  metadataFields.map((f: any) => ({
+                    key: f.name,
+                    value: JSON.stringify({ type: f.type, feature: f.feature || undefined }),
+                  })),
+                ),
+                JSON.stringify(template.auth_method || []),
+                JSON.stringify(template.two_fa || { has_totp: false, has_backup_codes: false }),
+              ],
+            );
+            resolvedServiceId = template.id;
+            window.dispatchEvent(new CustomEvent('services-changed'));
+          }
+        }
+
         // @ts-ignore
         await window.electron.ipcRenderer.invoke('service_emails:insert', {
           emailId: focusedAccount.id,
-          serviceId: newServiceData.serviceId,
+          serviceId: resolvedServiceId,
           metadata: newServiceData.metadata || {},
           twoFa: newServiceData.twoFa
             ? { totp: newServiceData.twoFa.totp, backupCodes: newServiceData.twoFa.backupCodes }
@@ -617,20 +659,48 @@ const EmailTable: FC<EmailTableProps> = ({
       let actualServiceId = service.serviceId || service.id;
       console.log('[DEBUG EmailTable] handleQuickAddService: original serviceId =', actualServiceId);
       
-      // Query services table to get the UUID id by matching id or slug
+      // Query services table to get the id (PRIMARY KEY) — per database-schema.md
       // @ts-ignore
       const serviceRows = await window.electron.ipcRenderer.invoke(
         'sqlite:all',
-        'SELECT id FROM services WHERE id = ? OR slug = ? OR name = ? LIMIT 1',
-        [actualServiceId, actualServiceId, actualServiceId]
+        'SELECT id FROM services WHERE id = ? LIMIT 1',
+        [actualServiceId]
       );
       
       if (serviceRows && serviceRows.length > 0) {
         actualServiceId = serviceRows[0].id;
         console.log('[DEBUG EmailTable] handleQuickAddService: resolved to UUID =', actualServiceId);
       } else {
-        console.error('[DEBUG EmailTable] handleQuickAddService: could not find service in DB', actualServiceId);
-        return null;
+        // Service doesn't exist in DB yet — insert it first using the template data
+        console.log('[DEBUG EmailTable] handleQuickAddService: service not found in DB, inserting new service', actualServiceId);
+        
+        const metadata = service.metadata || {};
+        const metadataFields = metadata.fields || [];
+        
+        // Insert the service into the DB
+        // @ts-ignore
+        await window.electron.ipcRenderer.invoke(
+          'sqlite:run',
+          `INSERT INTO services (id, name, url, tags, category, description, metadata, auth_method, two_fa, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+          [
+            actualServiceId,
+            service.name || '',
+            service.url || '',
+            JSON.stringify(service.tags || []),
+            JSON.stringify(service.category ? [service.category] : []),
+            service.description || '',
+            JSON.stringify(metadataFields.map((f: any) => ({
+              key: f.name,
+              value: JSON.stringify({ type: f.type, feature: f.feature || undefined }),
+            }))),
+            JSON.stringify(service.auth_method || []),
+            JSON.stringify(service.two_fa || { has_totp: false, has_backup_codes: false }),
+          ],
+        );
+        
+        console.log('[DEBUG EmailTable] handleQuickAddService: inserted new service with id =', actualServiceId);
+        window.dispatchEvent(new CustomEvent('services-changed'));
       }
       
       const payload = {
@@ -720,7 +790,7 @@ const EmailTable: FC<EmailTableProps> = ({
               }}
             />
             <span className="text-[13px] font-bold text-foreground/80 truncate group-hover/act:text-foreground transition-colors leading-tight">
-              {title || hostname}
+              {tableSearchQuery.trim() ? highlightMatch(title || hostname, tableSearchQuery) : title || hostname}
             </span>
           </div>
           <span className="text-[11px] text-text-secondary font-mono tracking-tight mt-0.5 group-hover/act:text-text-secondary/80">
@@ -732,8 +802,41 @@ const EmailTable: FC<EmailTableProps> = ({
     [selectedServiceId, globalServices],
   );
 
+  // Highlight matched text with soft primary style
+  const highlightMatch = useCallback(
+    (text: string, query: string) => {
+      if (!query || !text) return text;
+      const lowerText = text.toLowerCase();
+      const lowerQuery = query.toLowerCase();
+      const idx = lowerText.indexOf(lowerQuery);
+      if (idx === -1) return text;
+      const before = text.slice(0, idx);
+      const match = text.slice(idx, idx + query.length);
+      const after = text.slice(idx + query.length);
+      return (
+        <>
+          {before}
+          <span className="text-primary/80 bg-primary/10 rounded px-0.5">{match}</span>
+          {after}
+        </>
+      );
+    },
+    [],
+  );
+
+  // Fisher-Yates shuffle helper
+  const shuffleArray = useCallback(<T,>(array: T[]): T[] => {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, []);
+
   // When section is expanded, hide all other rows
-  // Sort: running browsers first, then preserve original order
+  // Sort: running browsers first, then score-based ranking (email match > activity match)
+  // Default: random shuffle for diversity across page loads
   const orderedAccounts = useMemo(() => {
     const base = accounts;
 
@@ -742,18 +845,24 @@ const EmailTable: FC<EmailTableProps> = ({
     const notRunning = base.filter((a) => !runningBrowsers.has(a.id));
     const sorted = [...running, ...notRunning];
 
-    // Filter by search query
-    if (!tableSearchQuery.trim()) return sorted;
+    // Filter and score by search query
+    if (!tableSearchQuery.trim()) return shuffleArray(sorted);
     const q = tableSearchQuery.toLowerCase();
-    return sorted.filter((a) => {
-      if (a.email.toLowerCase().includes(q)) return true;
-      if (a.password?.toLowerCase().includes(q)) return true;
-      if (a.lastProxy?.host?.toLowerCase().includes(q)) return true;
-      if (a.lastActivity?.url?.toLowerCase().includes(q)) return true;
-      if (a.lastActivity?.title?.toLowerCase().includes(q)) return true;
-      return false;
-    });
-  }, [accounts, runningBrowsers, tableSearchQuery]);
+    const scored = sorted
+      .map((a) => {
+        let score = 0;
+        if (a.email.toLowerCase().includes(q)) score += 10;
+        if (a.password?.toLowerCase().includes(q)) score += 1;
+        if (a.lastProxy?.host?.toLowerCase().includes(q)) score += 1;
+        if (a.lastActivity?.url?.toLowerCase().includes(q)) score += 1;
+        if (a.lastActivity?.title?.toLowerCase().includes(q)) score += 1;
+        return { account: a, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.account);
+    return scored;
+  }, [accounts, runningBrowsers, tableSearchQuery, shuffleArray]);
 
   // Use allAccounts for indexing (original order before pagination)
   const fullAccountList = allAccounts;
@@ -1232,7 +1341,9 @@ const EmailTable: FC<EmailTableProps> = ({
                               isSelected ? 'text-primary' : 'text-foreground',
                             )}
                           >
-                            {account.email}
+                            {tableSearchQuery.trim()
+                              ? highlightMatch(account.email, tableSearchQuery)
+                              : account.email}
                           </span>
                           {(() => {
                             const isRunning = runningBrowsers.has(account.id);

@@ -466,6 +466,7 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ isOpen, onClose, se
                     </div>
                   </div>
                   <div className="space-y-3">
+                    {!isEditMode && (
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-text-primary">
                         Service Template
@@ -547,6 +548,7 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ isOpen, onClose, se
                         </DropdownContent>
                       </Dropdown>
                     </div>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <Input
                         label="Name"

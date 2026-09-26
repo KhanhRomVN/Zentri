@@ -420,11 +420,6 @@ export function setupLaunchHandlers() {
           if (fingerprintConfig) {
             console.log(`[BrowserLaunch] ✅ Fingerprint config provided (direct object)`);
             console.log(`[BrowserLaunch] Fingerprint keys:`, Object.keys(fingerprintConfig));
-          } else if (fingerprintId) {
-            console.log(`[BrowserLaunch] ✅ Fingerprint ID provided: ${fingerprintId}`);
-            console.log(
-              `[BrowserLaunch] ⚠️  Note: Fingerprint loading from DB not implemented for CloakBrowser`,
-            );
           } else {
             console.log(`[BrowserLaunch] ℹ️  No fingerprint provided`);
           }
@@ -612,14 +607,6 @@ export function setupLaunchHandlers() {
 
                   if (fingerprintConfig) {
                     fpConfig = { ...(fingerprintConfig as any) };
-                  } else if (fingerprintId) {
-                    const fp = await dbManager.get<{ config_json: string }>(
-                      'SELECT config_json FROM fingerprints WHERE id = ?',
-                      [fingerprintId],
-                    );
-                    if (fp?.config_json) {
-                      fpConfig = JSON.parse(fp.config_json);
-                    }
                   }
 
                   if (fpConfig) {

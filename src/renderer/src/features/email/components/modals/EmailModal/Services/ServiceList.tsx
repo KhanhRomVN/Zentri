@@ -100,7 +100,7 @@ const ServiceList: FC<ServiceListProps> = ({
               >
                 <DropdownTrigger asChild>
                   <button
-                    className="group relative w-full bg-card-background border border-dashed border-primary/30 hover:border-primary/60 p-3 transition-all duration-300 cursor-pointer flex items-center gap-3"
+                    className="group relative w-full bg-card-background border border-dashed border-primary/30 hover:border-primary/60 rounded-lg p-3 transition-all duration-300 cursor-pointer flex items-center gap-3"
                     onClick={(e) => {
                       setPickerPos({ top: e.clientY, left: e.clientX });
                     }}
@@ -188,10 +188,10 @@ const ServiceList: FC<ServiceListProps> = ({
                   <DropdownTrigger asChild>
                     <div
                       className={cn(
-                        'group relative border p-3 transition-all duration-200 cursor-pointer',
+                        'group relative border rounded-lg p-3 transition-all duration-200 cursor-pointer',
                         service.id === selectedServiceId
-                          ? 'bg-primary/10 border-primary/50 shadow-md'
-                          : 'bg-card-background border-border/50 hover:bg-card-hover hover:border-primary/50 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                          ? 'rounded-lg bg-primary/10 border-primary/50 shadow-md'
+                          : 'rounded-lg bg-card-background border-border/50 hover:bg-card-hover hover:border-primary/50 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                         service.status === 'trash' && 'opacity-60 grayscale-[0.5] italic',
                       )}
                       onClick={() => onSelectService(service.id)}

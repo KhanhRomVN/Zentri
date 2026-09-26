@@ -10,11 +10,12 @@
 
 // ─── Imports ────────────────────────────────────────────────────────────
 // ── React ──
-import { FC } from 'react';
+import { FC, useState, useRef, useEffect, useMemo, KeyboardEvent } from 'react';
 
 // ── UI ──
-import { User, LayoutGrid, Clock, Shield, ShieldCheck, Key } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody } from '../../../../../components/ui/Modal';
+import { User, LayoutGrid, Clock, Shield, ShieldCheck, Key, Search, X } from 'lucide-react';
+import { Modal, ModalBody } from '../../../../../components/ui/Modal';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../../../../../components/ui/Dropdown';
 
 // ── Utils ──
 import { cn } from '../../../../../shared/lib/utils';
@@ -125,6 +126,9 @@ interface EmailModalProps {
 const EmailModal: FC<EmailModalProps> = ({
   isOpen,
   onClose,
+  focusedAccount,
+  accounts,
+  onSelectAccount,
   activeTab,
   setActiveTab,
   onServiceContextMenu: _onServiceContextMenu,
@@ -153,6 +157,90 @@ const EmailModal: FC<EmailModalProps> = ({
     setAccentColorsForDetailView(accentColors, UNIFIED_ACCENT);
   }
 
+  // ── Quick account switcher state ──
+  const [isSwitching, setIsSwitching] = useState(false);
+  const [switchQuery, setSwitchQuery] = useState('');
+  const [highlightIndex, setHighlightIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredAccounts = useMemo(() => {
+    if (!switchQuery.trim()) return accounts.filter((a) => a.id !== focusedAccount?.id);
+    const q = switchQuery.toLowerCase();
+    return accounts.filter(
+      (a) => a.email.toLowerCase().includes(q) && a.id !== focusedAccount?.id,
+    );
+  }, [accounts, switchQuery, focusedAccount]);
+
+  useEffect(() => {
+    setHighlightIndex(0);
+  }, [switchQuery]);
+
+  useEffect(() => {
+    if (isSwitching && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isSwitching]);
+
+  // Ctrl+F shortcut — only when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isSwitching) {
+          setSwitchQuery('');
+          setIsSwitching(true);
+        } else {
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        }
+      }
+      if (e.key === 'Escape' && isSwitching) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSwitching(false);
+        setSwitchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, isSwitching]);
+
+  const handleSelectSwitch = (account: Account) => {
+    onSelectAccount(account);
+    setIsSwitching(false);
+    setSwitchQuery('');
+  };
+
+  const handleSwitchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIndex((prev) => Math.min(prev + 1, filteredAccounts.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIndex((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredAccounts[highlightIndex]) {
+        handleSelectSwitch(filteredAccounts[highlightIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsSwitching(false);
+      setSwitchQuery('');
+    }
+  };
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (!dropdownRef.current) return;
+    const items = dropdownRef.current.querySelectorAll('[data-switch-item]');
+    items[highlightIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [highlightIndex]);
+
   const tabs = [
     { id: 'info', label: 'Information', icon: User },
     { id: 'services', label: 'Services', icon: LayoutGrid },
@@ -165,11 +253,83 @@ const EmailModal: FC<EmailModalProps> = ({
   // ── Render ──
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-5xl h-[80vh]" hideCloseButton>
-      <ModalHeader
-        title={editedAccount?.email || 'Email Detail'}
-        description="Email account management"
-        onClose={onClose}
-      />
+      {/* Custom header with quick account switcher */}
+      <div className="px-5 border-b border-divider shrink-0 flex items-center gap-3 py-3 relative">
+        <div className="flex-1 min-w-0 relative">
+          {isSwitching ? (
+            <Dropdown
+              open={isSwitching}
+              onOpenChange={(v) => {
+                if (!v) {
+                  setIsSwitching(false);
+                  setSwitchQuery('');
+                }
+              }}
+              side="bottom"
+              align="start"
+              fullWidth
+              strategy="fixed"
+              closeOnSelect={false}
+            >
+              <DropdownTrigger>
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+                  <input
+                    ref={inputRef}
+                    value={switchQuery}
+                    onChange={(e) => setSwitchQuery(e.target.value)}
+                    onKeyDown={handleSwitchKeyDown}
+                    placeholder="Search email to switch..."
+                    className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-input-background border border-border text-sm text-text-primary placeholder:text-text-tertiary outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+                  />
+                </div>
+              </DropdownTrigger>
+              <DropdownContent className="max-h-60 custom-scrollbar">
+                {filteredAccounts.length > 0 ? (
+                  filteredAccounts.map((account, idx) => (
+                    <DropdownItem
+                      key={account.id}
+                      onClick={() => handleSelectSwitch(account)}
+                      onMouseEnter={() => setHighlightIndex(idx)}
+                      className={cn(
+                        'truncate',
+                        idx === highlightIndex && 'bg-primary/10 text-primary',
+                      )}
+                    >
+                      {account.email}
+                    </DropdownItem>
+                  ))
+                ) : switchQuery.trim() ? (
+                  <div className="px-3 py-2 text-sm text-text-tertiary">No matching accounts</div>
+                ) : null}
+              </DropdownContent>
+            </Dropdown>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setSwitchQuery('');
+                setIsSwitching(true);
+              }}
+              className="group flex items-center gap-2 min-w-0 cursor-pointer rounded-md px-1 -ml-1 hover:bg-muted/50 transition-colors"
+              title="Click or Ctrl+F to switch account"
+            >
+              <h3 className="text-base font-bold text-text-primary truncate group-hover:text-primary transition-colors">
+                {editedAccount?.email || 'Email Detail'}
+              </h3>
+            </button>
+          )}
+          {!isSwitching && (
+            <p className="text-xs text-text-secondary mt-0.5 truncate">Email account management</p>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg border border-border text-text-secondary hover:border-error hover:text-error hover:bg-error/10 transition-all shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
       <div className="flex items-center gap-1 px-3 py-2 border-b border-border shrink-0 bg-card/20 backdrop-blur-xl overflow-x-auto">
         {tabs.map((tab) => (
           <button

@@ -11,8 +11,8 @@
  * ------------------------------------------------------------------
  */
 
-import { FC, ChangeEvent, KeyboardEvent } from 'react';
-import { ShieldCheck, Key, Eye, EyeOff, Copy, QrCode } from 'lucide-react';
+import { FC, ChangeEvent, KeyboardEvent, useRef } from 'react';
+import { ShieldCheck, Key, Eye, EyeOff, Copy, QrCode, FileText } from 'lucide-react';
 import { cn } from '../../../../../shared/lib/utils';
 import Input from '../../../../../components/ui/Input/Input';
 
@@ -45,8 +45,8 @@ export interface TwoFactorAuthFieldsProps {
   copiedCode: string | null;
 
   backupCodeInput: string;
-  onBackupCodeInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  onBackupCodeInputKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
+  onBackupCodeInputChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  onBackupCodeInputKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   /** Shown as the input's own error (e.g. too short / duplicate code). */
   backupCodeError?: string;
   /** Shown under the "Backup Codes" label (e.g. invalid-character validation). */
@@ -56,6 +56,8 @@ export interface TwoFactorAuthFieldsProps {
   onRemovePreviewCode: (code: string) => void;
   onClearPreviewCodes: () => void;
   onAddPreviewCodes: () => void;
+  /** Called with parsed codes when user imports a text file via the file-picker button. */
+  onImportBackupCodesFromFile?: (codes: string[]) => void;
 }
 
 const TwoFactorAuthFields: FC<TwoFactorAuthFieldsProps> = ({
@@ -86,7 +88,27 @@ const TwoFactorAuthFields: FC<TwoFactorAuthFieldsProps> = ({
   onRemovePreviewCode,
   onClearPreviewCodes,
   onAddPreviewCodes,
+  onImportBackupCodesFromFile,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImportBackupCodesFromFile) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result ?? '');
+      const codes = text
+        .split(/[\s,;\n\r\t]+/)
+        .map((c) => c.trim())
+        .filter((c) => c.length >= 6);
+      const unique = Array.from(new Set(codes));
+      if (unique.length > 0) onImportBackupCodesFromFile(unique);
+    };
+    reader.readAsText(file);
+    // Reset so the same file can be re-selected
+    e.target.value = '';
+  };
   return (
     <section className="space-y-4">
       <div className="flex items-start gap-3">
@@ -212,13 +234,56 @@ const TwoFactorAuthFields: FC<TwoFactorAuthFieldsProps> = ({
             <span className="text-xs text-error">{backupCodeLabelError}</span>
           )}
 
-          <Input
-            value={backupCodeInput}
-            onChange={onBackupCodeInputChange}
-            onKeyDown={onBackupCodeInputKeyDown}
-            placeholder='Paste codes, e.g. "ABC123 DEF456" or "ABC123, DEF456"'
-            error={backupCodeError}
-          />
+          <div className="relative">
+            <textarea
+              value={backupCodeInput}
+              onChange={(e) => {
+                // Auto-resize: only grow when content actually wraps to a new line
+                const el = e.target;
+                el.style.height = 'auto';
+                const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
+                const paddingTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
+                const paddingBottom = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+                const contentHeight = el.scrollHeight - paddingTop - paddingBottom;
+                const maxRows = 6;
+                const rows = Math.min(maxRows, Math.max(1, Math.ceil(contentHeight / lineHeight)));
+                el.rows = rows;
+                el.style.overflowY = rows >= maxRows ? 'auto' : 'hidden';
+                onBackupCodeInputChange(e);
+              }}
+              onKeyDown={onBackupCodeInputKeyDown}
+              placeholder='Paste codes, e.g. "ABC123 DEF456" or "ABC123, DEF456"'
+              rows={1}
+              className={cn(
+                'w-full resize-none rounded-lg border bg-input-background pl-3 pr-12 py-2 text-sm text-text-primary placeholder:text-text-tertiary outline-none transition-colors',
+                'focus:border-primary focus:ring-1 focus:ring-primary/30',
+                backupCodeError ? 'border-error' : 'border-border',
+              )}
+            />
+            {backupCodeError && (
+              <p className="mt-1 text-xs text-error">{backupCodeError}</p>
+            )}
+            {onImportBackupCodesFromFile && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt,.csv,.text,text/plain"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute right-2 top-2 shrink-0 p-2 rounded-lg border border-border bg-surface text-text-secondary hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  title="Import backup codes from file"
+                  aria-label="Import backup codes from file"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
 
           {previewBackupCodes.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -234,7 +299,7 @@ const TwoFactorAuthFields: FC<TwoFactorAuthFieldsProps> = ({
                       'inline-flex items-center px-3 py-1.5 rounded-lg text-[13px] font-medium border select-none',
                       isDuplicate
                         ? 'border-dashed border-border/40 bg-muted/20 text-text-tertiary cursor-default'
-                        : 'border-dashed border-primary/40 bg-primary/5 text-primary cursor-pointer hover:bg-error/10 hover:border-error/40 hover:text-error transition-colors',
+                        : 'border-dashed border-border bg-muted/30 text-text-secondary cursor-pointer hover:bg-error/10 hover:border-error/40 hover:text-error transition-colors',
                     )}
                     title={isDuplicate ? 'Already exists — cannot add' : 'Click to remove'}
                   >

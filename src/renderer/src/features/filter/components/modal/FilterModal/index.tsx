@@ -119,22 +119,10 @@ export const FilterModal: React.FC<FilterModalProps> = ({
         const joinClauses: string[] = [];
         const joinPathMap: Record<string, string> = {
           services: `LEFT JOIN service_emails se ON se.email_id = emails.id LEFT JOIN services ON services.id = se.service_id`,
-          proxies: `LEFT JOIN proxy_history ph ON ph.email_id = emails.id LEFT JOIN proxies ON proxies.id = ph.proxy_id`,
-          sessions: `LEFT JOIN sessions ON sessions.email_id = emails.id`,
-          proxy_health_history: `LEFT JOIN proxy_history ph2 ON ph2.email_id = emails.id LEFT JOIN proxies p2 ON p2.id = ph2.proxy_id LEFT JOIN proxy_health_history ON proxy_health_history.proxy_id = p2.id`,
         };
 
         if (tablesNeeded.has('services') && baseTable !== 'services') {
           joinClauses.push(joinPathMap.services);
-        }
-        if (tablesNeeded.has('proxies') && baseTable !== 'proxies') {
-          joinClauses.push(joinPathMap.proxies);
-        }
-        if (tablesNeeded.has('sessions') && baseTable !== 'sessions') {
-          joinClauses.push(joinPathMap.sessions);
-        }
-        if (tablesNeeded.has('proxy_health_history') && baseTable !== 'proxy_health_history') {
-          joinClauses.push(joinPathMap.proxy_health_history);
         }
 
         const query = `SELECT ${selectParts.join(', ')} FROM ${baseTable} ${joinClauses.join(' ')} LIMIT 5`;

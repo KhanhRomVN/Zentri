@@ -109,24 +109,6 @@ export class DbManager {
           FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS agents (
-          id TEXT PRIMARY KEY,
-          name TEXT,
-          config_json TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS sessions (
-          id TEXT PRIMARY KEY,
-          email_id TEXT,
-          user_agent TEXT,
-          proxy_id TEXT,
-          started_at DATETIME,
-          ended_at DATETIME,
-          status TEXT,
-          FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
-      );
-
       CREATE TABLE IF NOT EXISTS proxies (
           id TEXT PRIMARY KEY,
           ip_version INTEGER NOT NULL,
@@ -153,28 +135,6 @@ export class DbManager {
           purchase_url TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS fingerprints (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          description TEXT,
-          ua TEXT,
-          os TEXT,
-          os_version TEXT,
-          config_json TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS proxy_history (
-          id TEXT PRIMARY KEY,
-          proxy_id TEXT NOT NULL,
-          email_id TEXT NOT NULL,
-          target_site TEXT,
-          used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (proxy_id) REFERENCES proxies(id) ON DELETE CASCADE,
-          FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS workflows (
@@ -417,28 +377,6 @@ export class DbManager {
     // but we can just ignore it or do a more complex migration if really needed.
     // For now, let's just make sure we don't use it in code.)
 
-    // Migration for proxy_history table
-    const historyExists = await this.rawAll<{ name: string }>(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='proxy_history'",
-    );
-    if (historyExists.length === 0) {
-      try {
-        await this.rawRun(`
-          CREATE TABLE IF NOT EXISTS proxy_history (
-            id TEXT PRIMARY KEY,
-            proxy_id TEXT NOT NULL,
-            email_id TEXT NOT NULL,
-            target_site TEXT,
-            used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (proxy_id) REFERENCES proxies(id) ON DELETE CASCADE,
-            FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
-          )
-        `);
-      } catch (e) {
-        console.error('[DB] Migration failed (proxy_history):', e);
-      }
-    }
-
     // Migration for proxy health metrics (Version 3)
     const proxyColsV3 = await this.rawAll<{ name: string }>("PRAGMA table_info('proxies')");
     const hasLatency = proxyColsV3.some((c) => c.name === 'latency');
@@ -455,29 +393,7 @@ export class DbManager {
       }
     }
 
-    // Migration for proxy_health_history table
-    const healthHistoryExists = await this.rawAll<{ name: string }>(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='proxy_health_history'",
-    );
-    if (healthHistoryExists.length === 0) {
-      try {
-        await this.rawRun(`
-          CREATE TABLE IF NOT EXISTS proxy_health_history (
-            id TEXT PRIMARY KEY,
-            proxy_id TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            is_healthy INTEGER NOT NULL DEFAULT 0,
-            latency INTEGER,
-            FOREIGN KEY (proxy_id) REFERENCES proxies(id) ON DELETE CASCADE
-          )
-        `);
-        await this.rawRun(
-          'CREATE INDEX IF NOT EXISTS idx_health_history_proxy ON proxy_health_history(proxy_id, timestamp DESC)',
-        );
-      } catch (e) {
-        console.error('[DB] Migration failed (proxy_health_history):', e);
-      }
-    }
+    // proxy_health_history migration removed — table no longer used
   }
 
   async run(query: string, params: any[] = []): Promise<{ lastID: number; changes: number }> {

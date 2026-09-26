@@ -559,20 +559,10 @@ const Email = () => {
         await Promise.all(
           loadedAccounts.map(async (acc) => {
             try {
-              const [hResult, pResult] = await Promise.all([
-                window.electron.ipcRenderer.invoke('email:get-latest-activity', {
-                  email: acc.email,
-                }),
-                window.electron.ipcRenderer.invoke(
-                  'sqlite:get',
-                  `SELECT p.host, p.port, p.protocol, p.proxy_type, p.source_type, p.country, p.city 
-                   FROM proxy_history ph
-                   JOIN proxies p ON ph.proxy_id = p.id
-                   WHERE ph.email_id = ?
-                   ORDER BY ph.used_at DESC LIMIT 1`,
-                  [acc.id],
-                ),
-              ]);
+              const hResult = await window.electron.ipcRenderer.invoke(
+                'email:get-latest-activity',
+                { email: acc.email },
+              );
 
               if (hResult?.success && hResult.latest) {
                 const latest = hResult.latest;
@@ -580,18 +570,6 @@ const Email = () => {
                   url: latest.url,
                   title: latest.title,
                   time: latest.time,
-                };
-              }
-
-              if (pResult) {
-                acc.lastProxy = {
-                  host: pResult.host,
-                  port: pResult.port,
-                  protocol: pResult.protocol,
-                  proxyType: pResult.proxy_type,
-                  sourceType: pResult.source_type,
-                  country: pResult.country,
-                  city: pResult.city,
                 };
               }
 

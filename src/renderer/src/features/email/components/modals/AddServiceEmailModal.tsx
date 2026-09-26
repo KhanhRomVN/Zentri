@@ -1,12 +1,12 @@
 import { FC } from 'react';
 import { Plus, Database, ChevronDown, Search } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 import { Account } from '../../types';
 import { Modal, ModalBody, ModalFooter, ModalHeader } from '../../../../components/ui/Modal';
-import { useServiceDrawer } from '../../../../contexts/ServiceDrawerContext';
 import { cn } from '../../../../shared/lib/utils';
 import { Button } from '../../../../components/ui/Button';
-import ServiceForm from './EmailModal/Services/ServiceForm';
+import ServiceEmailForm from './EmailModal/Services/ServiceEmailForm';
+import ServiceFormModal from './ServiceFormModal';
 
 interface AddServiceModalProps {
   isServiceDrawerOpen: boolean;
@@ -38,7 +38,13 @@ const SearchableServiceSelect: FC<{
   selectedServiceName: string;
   onSelect: (service: any) => void;
   placeholder?: string;
-}> = ({ services, selectedServiceId, selectedServiceName, onSelect, placeholder = 'Search services...' }) => {
+}> = ({
+  services,
+  selectedServiceId,
+  selectedServiceName,
+  onSelect,
+  placeholder = 'Search services...',
+}) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const ref = React.useRef<HTMLDivElement>(null);
@@ -51,9 +57,7 @@ const SearchableServiceSelect: FC<{
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const filtered = services.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = services.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
   const selectedService = services.find((s) => s.id === selectedServiceId);
 
   return (
@@ -150,7 +154,7 @@ const AddServiceModal: FC<AddServiceModalProps> = ({
   onRestoreService,
   onServicesChanged,
 }) => {
-  const { openDrawer } = useServiceDrawer();
+  const [isCreateServiceModalOpen, setIsCreateServiceModalOpen] = useState(false);
 
   return (
     <Modal
@@ -181,13 +185,7 @@ const AddServiceModal: FC<AddServiceModalProps> = ({
             <label className="text-sm font-semibold text-foreground/80">Select Service</label>
             {!isEditMode && (
               <button
-                onClick={() => {
-                  openDrawer(null, true, () => {
-                    setIsServiceDrawerOpen(true);
-                  });
-                  setIsServiceDrawerOpen(false);
-                  if (onServicesChanged) onServicesChanged();
-                }}
+                onClick={() => setIsCreateServiceModalOpen(true)}
                 className="text-[11px] font-bold text-primary hover:text-primary/80 transition-colors"
               >
                 + New Service
@@ -243,8 +241,7 @@ const AddServiceModal: FC<AddServiceModalProps> = ({
                 selectedServiceName={newServiceData.serviceName || ''}
                 onSelect={(service) => {
                   const existingInTrash = focusedAccount?.services?.find(
-                    (link: any) =>
-                      link.serviceId === service.id && link.status === 'deleting',
+                    (link: any) => link.serviceId === service.id && link.status === 'deleting',
                   );
                   if (existingInTrash) {
                     setNewServiceData((prev: any) => ({
@@ -309,7 +306,7 @@ const AddServiceModal: FC<AddServiceModalProps> = ({
 
         {/* Editable security + metadata form */}
         <div className="relative">
-          <ServiceForm
+          <ServiceEmailForm
             service={{
               id: newServiceData.linkId,
               serviceId: newServiceData.serviceId,
@@ -317,7 +314,7 @@ const AddServiceModal: FC<AddServiceModalProps> = ({
               metadata: newServiceData.metadata || {},
             }}
             autoSave={false}
-            onChange={(data) =>
+            onChange={(data: any) =>
               setNewServiceData((d: any) => ({
                 ...d,
                 twoFa: data.twoFa,
@@ -335,14 +332,18 @@ const AddServiceModal: FC<AddServiceModalProps> = ({
         <Button variant="outline" onClick={() => setIsServiceDrawerOpen(false)}>
           Cancel
         </Button>
-        <Button
-          variant="soft"
-          disabled={!newServiceData.serviceId}
-          onClick={handleAddServiceLink}
-        >
+        <Button variant="soft" disabled={!newServiceData.serviceId} onClick={handleAddServiceLink}>
           {isEditMode ? 'Update Service' : 'Secure Connection'}
         </Button>
       </ModalFooter>
+
+      <ServiceFormModal
+        isOpen={isCreateServiceModalOpen}
+        onClose={() => {
+          setIsCreateServiceModalOpen(false);
+          if (onServicesChanged) onServicesChanged();
+        }}
+      />
     </Modal>
   );
 };
