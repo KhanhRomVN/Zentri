@@ -105,6 +105,7 @@ export class DbManager {
           service_id TEXT,
           metadata TEXT,
           two_fa TEXT,
+          status TEXT DEFAULT 'active',
           FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
           FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
       );
@@ -330,6 +331,15 @@ export class DbManager {
         await this.rawRun('ALTER TABLE service_emails ADD COLUMN two_fa TEXT');
       } catch (e) {
         console.error('[DB] Migration failed (service_emails two_fa):', e);
+      }
+    }
+
+    const hasStatusCol = serviceEmailColumns.some((c) => c.name === 'status');
+    if (!hasStatusCol) {
+      try {
+        await this.rawRun("ALTER TABLE service_emails ADD COLUMN status TEXT DEFAULT 'active'");
+      } catch (e) {
+        console.error('[DB] Migration failed (service_emails status):', e);
       }
     }
 

@@ -81,7 +81,15 @@ export function registerBookmarkHandlers() {
   // ── Update bookmark ───────────────────────────────────────────────────
   ipcMain.handle(
     'bookmark:update',
-    async (_event, { email, bookmarkId, name, url }: { email: string; bookmarkId: string; name: string; url: string }) => {
+    async (
+      _event,
+      {
+        email,
+        bookmarkId,
+        name,
+        url,
+      }: { email: string; bookmarkId: string; name: string; url: string },
+    ) => {
       try {
         const bookmarkPath = getBookmarkPath(email);
         if (!bookmarkPath) {

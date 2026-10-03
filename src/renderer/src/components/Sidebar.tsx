@@ -10,6 +10,7 @@ import {
   Zap,
   Network,
   Monitor,
+  Eye,
 } from 'lucide-react';
 import { useAccentColors } from '../hooks/useAccentColors';
 
@@ -105,6 +106,13 @@ const NAV_ITEMS = [
     href: '/device',
     icon: Monitor,
     color: '#8b5cf6',
+    disabled: false,
+  },
+  {
+    title: 'Preview',
+    href: '/preview',
+    icon: Eye,
+    color: '#ec4899',
     disabled: false,
   },
 ];

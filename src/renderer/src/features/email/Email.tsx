@@ -392,6 +392,13 @@ const Email = () => {
     [filteredAccounts, currentPage, pageSize],
   );
 
+  // Lowercased list of all emails currently in the repository — used by
+  // AccountForm to flag duplicate entries in real time.
+  const existingEmails = useMemo(
+    () => accounts.map((a) => a.email.toLowerCase()).filter(Boolean),
+    [accounts],
+  );
+
   // ── Effects ──
   useEffect(() => {
     setCurrentPage(1);
@@ -503,7 +510,7 @@ const Email = () => {
         ),
         window.electron.ipcRenderer.invoke(
           'sqlite:all',
-          `SELECT se.*, s.name as serviceName, s.url as serviceUrl, s.category as serviceCategory,
+          `SELECT se.*, se.status as service_status, s.name as serviceName, s.url as serviceUrl, s.category as serviceCategory,
                   s.metadata as serviceMetadataDef, 0 as secretCount
            FROM service_emails se 
            JOIN services s ON se.service_id = s.id`,
@@ -529,7 +536,10 @@ const Email = () => {
               username: link.username,
               password: link.password,
               notes: link.notes,
+              // `link.status` here is the soft-delete state ('active' | 'trash').
+              // The new per-service health state lives in `service_status`.
               status: link.status,
+              serviceStatus: link.service_status || 'active',
               lastUsedAt: link.last_used_at,
               secretCount: link.secretCount || 0,
               metadata: link.metadata ? JSON.parse(link.metadata) : {},
@@ -892,9 +902,16 @@ const Email = () => {
                 setActiveTab={setActiveTab}
                 sorting={sorting}
                 columnVisibility={columnVisibility}
+                currentPage={currentPage}
+                totalPages={Math.max(1, Math.ceil(filteredAccounts.length / pageSize))}
+                totalRecords={filteredAccounts.length}
+                startRecord={filteredAccounts.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}
+                endRecord={Math.min(currentPage * pageSize, filteredAccounts.length)}
+                onPageChange={setCurrentPage}
                 selectedServiceId={serviceFilter.serviceId}
                 runningBrowsers={runningBrowsers}
                 loading={loading}
+                existingEmails={existingEmails}
               />
             )}
           </div>
@@ -915,6 +932,7 @@ const Email = () => {
         setErrors={setErrors}
         validateField={validateField}
         handleAddEmail={handleAddEmail}
+        existingEmails={existingEmails}
         recoveryEmailSuggestions={(() => {
           const freq: Record<string, number> = {};
           accounts.forEach((a) => {

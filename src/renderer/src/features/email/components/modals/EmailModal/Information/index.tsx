@@ -22,6 +22,8 @@ interface InfoTabProps {
   backupCodeSearch: string;
   setBackupCodeSearch: (val: string) => void;
   recoveryEmailSuggestions?: string[];
+  /** Lowercased list of all emails currently in the repository. */
+  existingEmails?: string[];
 }
 
 const mapUpdate = <K extends keyof AccountFormValues>(
@@ -60,6 +62,7 @@ const InfoTab: FC<InfoTabProps> = ({
   backupCodeSearch,
   setBackupCodeSearch,
   recoveryEmailSuggestions,
+  existingEmails,
 }) => {
   const parsedBackupCodes: string[] = (() => {
     try {
@@ -116,6 +119,8 @@ const InfoTab: FC<InfoTabProps> = ({
       backupCodeSearch={backupCodeSearch}
       onBackupCodeSearchChange={setBackupCodeSearch}
       recoveryEmailSuggestions={recoveryEmailSuggestions}
+      existingEmails={existingEmails}
+      originalEmail={editedAccount?.email}
     />
   );
 };

@@ -320,25 +320,35 @@ const ServiceDetail: FC<ServiceDetailProps> = ({
   const [draftData, setDraftData] = useState<{
     metadata: Record<string, any>;
     twoFa: { totp: string; backupCodes: string[] };
-  }>({ metadata: {}, twoFa: { totp: '', backupCodes: [] } });
+    status?: string;
+  }>({ metadata: {}, twoFa: { totp: '', backupCodes: [] }, status: 'active' });
 
   // A draft service has no DB id yet → show Save/Cancel and skip auto-persist.
   const isDraft = !service.id;
 
   const handleSaveService = async () => {
     if (!onQuickAddService || !isDraft) return;
-    // [DEBUG] log draft state at save time
-    console.log('[DEBUG ServiceView] handleSaveService CALLED', {
-      serviceId: service.serviceId || service.id,
-      isDraft,
-      draftData,
-      hasOnQuickAddService: !!onQuickAddService,
+    
+    // [DEBUG] Log the EXACT state of draftData right before merging
+    console.log('[DEBUG ServiceView] >>> HANDLE_SAVE START', {
+      raw_draftData_status: draftData.status,
+      raw_service_status: (service as any).status,
+      full_draftData_keys: Object.keys(draftData),
     });
+
     setLinking(true);
     try {
-      // Pass the user-entered metadata and twoFa data to the insert handler
+      // Merge order matters: later properties overwrite earlier ones.
+      // We want draftData (user input) to win over initial service object defaults.
       const payload = { ...service, ...draftData };
-      console.log('[DEBUG ServiceView] invoking onQuickAddService with payload', payload);
+      
+      // [DEBUG] Verify the final merged payload contains the correct status
+      console.log('[DEBUG ServiceView] >>> FINAL PAYLOAD TO IPC', {
+        final_status_in_payload: payload.status,
+        expected_from_ui: draftData.status,
+        match: payload.status === draftData.status,
+      });
+
       const linkId = await onQuickAddService(payload);
       console.log('[DEBUG ServiceView] onQuickAddService resolved, linkId =', linkId);
       if (linkId) {

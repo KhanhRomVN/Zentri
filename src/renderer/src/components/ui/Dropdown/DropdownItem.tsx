@@ -1,7 +1,7 @@
 import React from 'react';
-import { cn } from '../../../shared/lib/utils';
 import { DropdownItemProps, DropdownSeparatorProps } from './type';
 import { useDropdownContext } from './Dropdown';
+import { cn } from '@renderer/shared/utils/cn';
 
 function extractText(node: React.ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node);
@@ -40,8 +40,9 @@ export function DropdownItem({
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (disabled) return;
+    // Pass the event to allow stopPropagation/preventDefault in consumer code
     onClick?.(e);
-    if (shouldClose) {
+    if (shouldClose && !e.defaultPrevented) {
       close();
     }
   };
@@ -53,8 +54,8 @@ export function DropdownItem({
       tabIndex={disabled ? -1 : 0}
       aria-disabled={disabled}
       className={cn(
-        'w-full flex items-center gap-2 text-sm transition-colors cursor-pointer whitespace-nowrap relative',
-        !noPadding && 'px-3 py-1.5',
+        'w-full h-[30px] flex items-center gap-2 text-[13px] leading-none transition-colors cursor-pointer whitespace-nowrap relative rounded-md',
+        !noPadding && 'px-3',
         variant === 'error'
           ? 'text-error hover:bg-error/10'
           : 'text-text-primary hover:bg-dropdown-item-hover',

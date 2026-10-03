@@ -10,13 +10,15 @@
  */
 
 import { FC, useState, useEffect, useCallback, useRef } from 'react';
-import { List } from 'lucide-react';
+import { List, ShieldCheck, CircleDot, ShieldAlert, PauseCircle, PowerOff } from 'lucide-react';
 import { generateTOTP, getTOTPTimeRemaining } from '../../../../utils/totp';
 import Input from '../../../../../../components/ui/Input/Input';
 import { EmptyState } from '../../../../../../components/ui/EmptyState';
 import TwoFactorAuthFields from '../TwoFactorAuthFields';
 import QRCodeTOTPScannerModal from '../../../modals/QRCodeTOTPScannerModal';
 import { getServiceTemplateById } from '../../../../../../constants/services';
+import { SERVICE_STATUS_LIST, type ServiceHealthStatus } from '../../../../constants/serviceStatus';
+import { cn } from '../../../../../../shared/lib/utils';
 
 const normalizeMetadata = (meta: any): Record<string, any> => {
   if (!meta) return {};
@@ -43,16 +45,30 @@ interface ServiceFormProps {
   onChange?: (data: {
     metadata: Record<string, any>;
     twoFa: { totp: string; backupCodes: string[] };
+    status?: ServiceHealthStatus;
   }) => void;
 }
+
+const STATUS_ICONS: Record<ServiceHealthStatus, FC<{ className?: string }>> = {
+  active: ShieldCheck,
+  checkpoint: CircleDot,
+  banned: ShieldAlert,
+  suspended: PauseCircle,
+  inactive: PowerOff,
+};
 
 const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange }) => {
   const linkedTwoFa = service.twoFa || {};
   const linkedTotpSecret: string = linkedTwoFa.totp || '';
   const linkedBackupCodes: string[] = linkedTwoFa.backupCodes || [];
+  // `serviceStatus` is the new per-service health field mapped from DB column `status`.
+  // Fall back to 'active' for legacy rows that pre-date this column.
+  const linkedStatus: ServiceHealthStatus =
+    (service.serviceStatus as ServiceHealthStatus) || 'active';
 
   const [totpSecret, setTotpSecret] = useState(linkedTotpSecret);
   const [backupCodes, setBackupCodes] = useState<string[]>(linkedBackupCodes);
+  const [status, setStatus] = useState<ServiceHealthStatus>(linkedStatus);
   const [totpCode, setTotpCode] = useState<string | null>(null);
   const [totpTimer, setTotpTimer] = useState(30);
   const [showTotp, setShowTotp] = useState(false);
@@ -86,12 +102,17 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
   }, []);
 
   const persistServiceLink = useCallback(
-    async (overrides?: { metadata?: Record<string, any>; twoFa?: { totp?: string; backupCodes?: string[] } }) => {
+    async (overrides?: {
+      metadata?: Record<string, any>;
+      twoFa?: { totp?: string; backupCodes?: string[] };
+      status?: ServiceHealthStatus;
+    }) => {
       const metadata = overrides?.metadata ?? metadataValues;
       const twoFa = {
         totp: overrides?.twoFa?.totp ?? totpSecret,
         backupCodes: overrides?.twoFa?.backupCodes ?? backupCodes,
       };
+      const nextStatus = overrides?.status ?? status;
       // [DEBUG] trace every explicit persist call path (blur + handlers).
       console.log('[DEBUG ServiceEmailForm] persistServiceLink called', {
         serviceId: service.id,
@@ -99,6 +120,7 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
         totp: twoFa.totp,
         backupCodesCount: twoFa.backupCodes.length,
         metadataKeys: Object.keys(metadata).length,
+        status: nextStatus,
       });
       if (autoSave && service.id) {
         try {
@@ -107,6 +129,7 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
             linkId: service.id,
             metadata,
             twoFa,
+            status: nextStatus,
           });
           // [DEBUG] confirm the IPC round-trip actually succeeded.
           console.log('[DEBUG ServiceEmailForm] service_emails:update OK', {
@@ -122,10 +145,19 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
           autoSave,
           hasId: !!service.id,
         });
-        onChange?.({ metadata, twoFa });
+        onChange?.({ metadata, twoFa, status: nextStatus });
       }
     },
-    [service.id, metadataValues, totpSecret, backupCodes, autoSave, onChange, notifyServiceLinkChanged],
+    [
+      service.id,
+      metadataValues,
+      totpSecret,
+      backupCodes,
+      status,
+      autoSave,
+      onChange,
+      notifyServiceLinkChanged,
+    ],
   );
 
   // [DEBUG] mount/unmount trace. Unmount is the prime suspect for the
@@ -178,10 +210,12 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
     const linkedTotp = (service.twoFa || {}).totp || '';
     const linkedBackupCodes: string[] = (service.twoFa || {}).backupCodes || [];
     const linkedMetadata = normalizeMetadata(service.metadata);
+    const linkedStatusValue = (service.serviceStatus as ServiceHealthStatus) || 'active';
     const changed =
       totpSecret !== linkedTotp ||
       JSON.stringify(backupCodes) !== JSON.stringify(linkedBackupCodes) ||
-      JSON.stringify(metadataValues) !== JSON.stringify(linkedMetadata);
+      JSON.stringify(metadataValues) !== JSON.stringify(linkedMetadata) ||
+      status !== linkedStatusValue;
     // [DEBUG] show whether the effect schedules a save or exits early.
     console.log('[DEBUG ServiceEmailForm] debounce effect: evaluating', {
       serviceId: service.id,
@@ -196,12 +230,13 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
         serviceId: service.id,
         totp: totpSecret,
       });
-     // @ts-ignore
+      // @ts-ignore
       window.electron.ipcRenderer
         .invoke('service_emails:update', {
           linkId: service.id,
           metadata: metadataValues,
           twoFa: { totp: totpSecret, backupCodes },
+          status,
         })
         .then(() => {
           console.log('[DEBUG ServiceEmailForm] debounce IPC resolved OK', {
@@ -221,7 +256,7 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
     };
     // Only re-run when the editable values actually change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totpSecret, backupCodes, metadataValues]);
+  }, [totpSecret, backupCodes, metadataValues, status]);
 
   const handleAddBackupCode = () => {
     const val = backupInput.trim();
@@ -277,18 +312,22 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
   useEffect(() => {
     if (!autoSave && onChange) {
       // [DEBUG] trace onChange propagation to parent when in draft mode
-      console.log('[DEBUG ServiceEmailForm] onChange fired (autoSave=false)', {
+      console.log('[DEBUG ServiceEmailForm] >>> onChange TRIGGERED', {
+        currentLocalStatus: status,
         serviceId: service.id,
-        metadata: metadataValues,
-        totp: totpSecret,
-        backupCodesCount: backupCodes.length,
+        note: 'This should update draftData in ServiceView'
       });
-      onChange({
+      
+      const payload = {
         metadata: metadataValues,
         twoFa: { totp: totpSecret, backupCodes },
-      });
+        status, // Ensure this is included
+      };
+      
+      console.log('[DEBUG ServiceEmailForm] >>> Sending payload to onChange:', JSON.stringify(payload));
+      onChange(payload);
     }
-  }, [autoSave, onChange, metadataValues, totpSecret, backupCodes]);
+  }, [autoSave, onChange, metadataValues, totpSecret, backupCodes, status]);
 
   useEffect(() => {
     const fetchServiceConfig = async () => {
@@ -323,9 +362,12 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
             if (dbFields.length > 0) {
               setServiceMetadata(dbFields);
             } else {
-              console.log('[DEBUG ServiceEmailForm] DB metadata fields empty, falling back to constants', {
-                serviceId: service.serviceId,
-              });
+              console.log(
+                '[DEBUG ServiceEmailForm] DB metadata fields empty, falling back to constants',
+                {
+                  serviceId: service.serviceId,
+                },
+              );
               const template = getServiceTemplateById(service.serviceId);
               setServiceMetadata(template?.metadata?.fields || []);
             }
@@ -447,7 +489,53 @@ const ServiceForm: FC<ServiceFormProps> = ({ service, autoSave = true, onChange 
         }}
       />
 
-      <section className="space-y-4">
+      {/* ── Service Health Status Selector ── */}
+      <section className="space-y-3 pt-2 border-t border-border/50">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-foreground">Account Status</h3>
+            <p className="text-sm text-text-secondary">
+              Mark the current health state of this linked account
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2">
+          {SERVICE_STATUS_LIST.map((st) => {
+            const Icon = STATUS_ICONS[st.value];
+            const isActive = status === st.value;
+            return (
+              <button
+                key={st.value}
+                type="button"
+                onClick={() => {
+                  setStatus(st.value);
+                  persistServiceLink({ status: st.value });
+                }}
+                className={cn(
+                  'flex flex-row items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer w-full',
+                  isActive
+                    ? cn('shadow-sm', st.badgeClass, 'border-current font-semibold')
+                    : 'bg-card-background border-border/50 hover:border-primary/40 hover:bg-card-hover text-text-secondary',
+                )}
+                title={st.description}
+              >
+                <Icon className={cn('w-4 h-4 shrink-0', isActive ? '' : 'opacity-70')} />
+                <span className="text-xs font-medium truncate">
+                  {st.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-text-tertiary italic px-1">
+          Changes are saved automatically. Use right-click on the card list for quick switching.
+        </p>
+      </section>
+
+      <section className="space-y-4 pt-2 border-t border-border/50">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-lg bg-warn/10 text-warn flex items-center justify-center shrink-0">
             <List className="w-4 h-4" />

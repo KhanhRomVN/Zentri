@@ -64,6 +64,10 @@ export interface AccountFormProps {
   backupCodeSearch: string;
   onBackupCodeSearchChange: (val: string) => void;
   recoveryEmailSuggestions?: string[];
+  /** Lowercased list of emails that already exist in the repository. Used to flag duplicates in real time. */
+  existingEmails?: string[];
+  /** The account's own email before editing — used so edit mode does not flag itself as a duplicate. */
+  originalEmail?: string;
 }
 
 interface CategoryOption {
@@ -102,6 +106,8 @@ const AccountForm: FC<AccountFormProps> = ({
   backupCodeSearch,
   onBackupCodeSearchChange,
   recoveryEmailSuggestions,
+  existingEmails,
+  originalEmail,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showTotp, setShowTotp] = useState(false);
@@ -174,10 +180,43 @@ const AccountForm: FC<AccountFormProps> = ({
     if (values.backupCodes.some((code) => !LATIN_ALLOWED.test(code))) {
       out.backupCodes = 'Only Latin characters allowed';
     }
+    
+    // Duplicate email check — case-insensitive against the repository list.
+    // Skipped when the typed value equals the account's own original email
+    // (edit mode: user hasn't actually changed it).
+    if (values.email && existingEmails && existingEmails.length > 0) {
+      const trimmedLower = values.email.trim().toLowerCase();
+      const isOwnCurrentEmail =
+        originalEmail && originalEmail.toLowerCase() === trimmedLower;
+      if (!isOwnCurrentEmail && existingEmails.includes(trimmedLower)) {
+        out.email = 'Email already exists in repository';
+      }
+    }
     return out;
-  }, [values]);
+  }, [values, existingEmails, originalEmail]);
 
-  const displayErrors = { ...localErrors, ...errors };
+  // Merge errors: Parent errors take precedence for format/validation, 
+  // but we must ensure duplicate error isn't wiped by empty parent error on blur.
+  // Strategy: If local has a specific high-priority error like 'duplicate', keep it unless parent explicitly sets a different non-empty error.
+  const displayErrors = useMemo(() => {
+    const merged = { ...localErrors };
+    Object.keys(errors).forEach((key) => {
+      if (errors[key]) {
+        merged[key] = errors[key];
+      } else if (merged[key]) {
+        // If parent clears the error (sets to ''), but local still thinks it's invalid,
+        // we might want to keep local IF it's a structural issue like duplication.
+        // However, usually parent clearing means "valid". 
+        // The bug was: parent validateField runs on Blur, sees valid format, sets errors.email = ''.
+        // This overwrites our local 'duplicate' error.
+        
+        // Fix: Do NOT overwrite local error with empty parent error if local error is critical.
+        // But simplest fix for now: Only apply parent error if it's non-empty.
+        // If parent error is empty, keep local error.
+      }
+    });
+    return merged;
+  }, [localErrors, errors]);
 
   useEffect(() => {
     if (!values.totp) {

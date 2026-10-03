@@ -27,7 +27,6 @@ import Dropdown from '../../../../../components/ui/Dropdown/Dropdown';
 import { DropdownTrigger } from '../../../../../components/ui/Dropdown/DropdownTrigger';
 import { DropdownContent } from '../../../../../components/ui/Dropdown/DropdownContent';
 import { DropdownItem } from '../../../../../components/ui/Dropdown/DropdownItem';
-import { DropdownLabel } from '../../../../../components/ui/Dropdown/DropdownLabel';
 import { Fingerprint, FingerprintConfig } from '../../../../../types/fingerprint-profile';
 
 // ── Colors per section ────────────────────────────────────────────────
@@ -74,12 +73,12 @@ const PLATFORM_MOBILE = [
 
 // ── Platform → Version mapping ────────────────────────────────────────
 const PLATFORM_VERSION_MAP: Record<string, string[]> = {
-  'Win32': ['10.0.0', '14.0.0'],
-  'Win64': ['10.0.0', '14.0.0'],
+  Win32: ['10.0.0', '14.0.0'],
+  Win64: ['10.0.0', '14.0.0'],
   'Linux x86_64': ['6.5.0', '6.8.0', '5.15.0'],
   'Linux i686': ['6.5.0', '5.15.0'],
   'Linux armv8l': ['6.5.0', '5.15.0'],
-  'MacIntel': ['14.5.0', '15.0.0', '14.0.0', '13.6.0', '12.7.0'],
+  MacIntel: ['14.5.0', '15.0.0', '14.0.0', '13.6.0', '12.7.0'],
   'CrOS x86_64': ['14541.0.0', '15236.0.0', '16002.0.0'],
   'Android 9': ['9.0.0'],
   'Android 10': ['10.0.0'],
@@ -87,8 +86,8 @@ const PLATFORM_VERSION_MAP: Record<string, string[]> = {
   'Android 12': ['12.0.0'],
   'Android 13': ['13.0.0'],
   'Android 14': ['14.0.0'],
-  'iPhone': ['18.0', '17.5.1', '17.0', '16.7.0'],
-  'iPad': ['18.0', '17.5.1', '17.0', '16.7.0'],
+  iPhone: ['18.0', '17.5.1', '17.0', '16.7.0'],
+  iPad: ['18.0', '17.5.1', '17.0', '16.7.0'],
 };
 
 const VENDOR_OPTIONS = [
@@ -132,15 +131,7 @@ const BRAND_OPTIONS = [
   '',
 ];
 
-const BRAND_VERSION_OPTIONS = [
-  '143',
-  '140',
-  '130',
-  '120',
-  '110',
-  '100',
-  '',
-];
+const BRAND_VERSION_OPTIONS = ['143', '140', '130', '120', '110', '100', ''];
 
 const LANGUAGE_OPTIONS = [
   'en-US',
@@ -347,14 +338,12 @@ const PlatformSelect: FC<{ value: string; onChange: (v: string) => void }> = ({
       </div>
     </DropdownTrigger>
     <DropdownContent className="min-w-[200px] max-h-[300px] overflow-auto custom-scrollbar bg-dropdown-background border border-border rounded-xl shadow-2xl p-1">
-      <DropdownLabel>Desktop</DropdownLabel>
       {PLATFORM_DESKTOP.map((opt) => (
         <DropdownItem key={opt} onClick={() => onChange(opt)} closeOnSelect>
           <span className={value === opt ? 'font-bold text-primary' : ''}>{opt}</span>
           {value === opt && <Check className="w-3.5 h-3.5 text-success shrink-0 ml-auto" />}
         </DropdownItem>
       ))}
-      <DropdownLabel>Mobile</DropdownLabel>
       {PLATFORM_MOBILE.map((opt) => (
         <DropdownItem key={opt} onClick={() => onChange(opt)} closeOnSelect>
           <span className={value === opt ? 'font-bold text-primary' : ''}>{opt}</span>
@@ -381,9 +370,6 @@ const PlatformVersionSelect: FC<{
         </div>
       </DropdownTrigger>
       <DropdownContent className="min-w-[200px] max-h-[250px] overflow-auto custom-scrollbar bg-dropdown-background border border-border rounded-xl shadow-2xl p-1">
-        {versions.length === 0 && (
-          <DropdownLabel>Select a platform first</DropdownLabel>
-        )}
         {versions.map((opt) => (
           <DropdownItem key={opt} onClick={() => onChange(opt)} closeOnSelect>
             <span className={value === opt ? 'font-bold text-primary' : ''}>{opt}</span>
@@ -719,19 +705,13 @@ const FingerprintDetail: FC<FingerprintDetailProps> = ({
                 label="Screen X"
                 description={`window.screenX — tọa độ X của cửa sổ trên màn hình. Giá trị âm nếu cửa sổ bị kéo 1 phần ra ngoài màn hình trái.\n\n⚠️ Mẹo: Bot thường để screenX=0, screenY=0 (cửa sổ ở góc trái trên cùng). Người dùng thật hiếm khi để cửa sổ ở đúng vị trí này. Để giá trị ngẫu nhiên nhỏ (0-100) sẽ tự nhiên hơn.`}
               >
-                <TextField
-                  value={edited.screenX || ''}
-                  onChange={(v) => set('screenX', v)}
-                />
+                <TextField value={edited.screenX || ''} onChange={(v) => set('screenX', v)} />
               </FormItem>
               <FormItem
                 label="Screen Y"
                 description={`window.screenY — tọa độ Y của cửa sổ.\n\n⚠️ Mẹo: Tương tự screenX, screenY=0 là suspicious. Để giá trị > 0 (vd: 30-50) sẽ giống người dùng thật hơn. Trên macOS, screenY thường ≥ 25 do menu bar.`}
               >
-                <TextField
-                  value={edited.screenY || ''}
-                  onChange={(v) => set('screenY', v)}
-                />
+                <TextField value={edited.screenY || ''} onChange={(v) => set('screenY', v)} />
               </FormItem>
             </div>
           </FormSection>
@@ -757,10 +737,7 @@ const FingerprintDetail: FC<FingerprintDetailProps> = ({
                 label="Languages"
                 description={`navigator.languages — danh sách ngôn ngữ ưu tiên (vd: "vi-VN, vi, en-US, en"). Trình duyệt gửi danh sách này trong Accept-Language header, theo thứ tự ưu tiên giảm dần.\n\n⚠️ Mẹo:\n• Luôn có ít nhất 2 ngôn ngữ (primary + fallback English).\n• Ngôn ngữ chính phải trùng với navigator.language.\n• Danh sách quá nhiều ngôn ngữ (5+) → có thể là dấu hiệu của công cụ tự động.`}
               >
-                <TextField
-                  value={edited.languages || ''}
-                  onChange={(v) => set('languages', v)}
-                />
+                <TextField value={edited.languages || ''} onChange={(v) => set('languages', v)} />
               </FormItem>
               <FormItem
                 label="Timezone"
@@ -785,46 +762,45 @@ const FingerprintDetail: FC<FingerprintDetailProps> = ({
                 label="Latitude"
                 description={`Geolocation API latitude — vĩ độ GPS. Phải khớp với IP location. Thường được lấy từ navigator.geolocation.getCurrentPosition().\n\n⚠️ Mẹo:\n• Vĩ độ phải nằm trong khoảng [-90, 90].\n• Độ chính xác thường ~100m với GPS, ~1000m với IP-based.\n• Không để vĩ độ = 0 (xích đạo) trừ khi IP thực sự ở gần xích đạo.`}
               >
-                <TextField
-                  value={edited.latitude || ''}
-                  onChange={(v) => set('latitude', v)}
-                />
+                <TextField value={edited.latitude || ''} onChange={(v) => set('latitude', v)} />
               </FormItem>
               <FormItem
                 label="Longitude"
                 description={`Geolocation API longitude — kinh độ GPS. Phải khớp với IP location và latitude.\n\n⚠️ Mẹo:\n• Kinh độ phải nằm trong khoảng [-180, 180].\n• Cặp (lat, lon) phải nằm trên đất liền nếu IP là residential, hoặc gần bờ biển nếu là mobile.\n• Tọa độ (0, 0) ngoài khơi châu Phi → red flag cực lớn.`}
               >
-                <TextField
-                  value={edited.longitude || ''}
-                  onChange={(v) => set('longitude', v)}
-                />
+                <TextField value={edited.longitude || ''} onChange={(v) => set('longitude', v)} />
               </FormItem>
               <FormItem
                 label="Accuracy (m)"
                 description={`Geolocation API accuracy — độ chính xác của GPS (mét). Giá trị càng nhỏ càng chính xác. GPS thật: 5-50m. IP-based: 100-5000m.\n\n⚠️ Mẹo: Nếu accuracy=5m nhưng bạn đang dùng IP từ datacenter → đáng ngờ (datacenter không có GPS). Để accuracy cao (100-1000m) sẽ realistic hơn cho IP-based location.`}
               >
-                <TextField
-                  value={edited.accuracy || ''}
-                  onChange={(v) => set('accuracy', v)}
-                />
+                <TextField value={edited.accuracy || ''} onChange={(v) => set('accuracy', v)} />
               </FormItem>
             </div>
-            {edited.latitude && edited.longitude && !isNaN(parseFloat(edited.latitude)) && !isNaN(parseFloat(edited.longitude)) && (
-              <div className="mt-3 rounded-lg overflow-hidden border border-border" style={{ height: 200 }}>
-                <MapContainer
-                  center={[parseFloat(edited.latitude), parseFloat(edited.longitude)]}
-                  zoom={13}
-                  scrollWheelZoom={false}
-                  style={{ height: '100%', width: '100%' }}
+            {edited.latitude &&
+              edited.longitude &&
+              !isNaN(parseFloat(edited.latitude)) &&
+              !isNaN(parseFloat(edited.longitude)) && (
+                <div
+                  className="mt-3 rounded-lg overflow-hidden border border-border"
+                  style={{ height: 200 }}
                 >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <Marker position={[parseFloat(edited.latitude), parseFloat(edited.longitude)]} />
-                </MapContainer>
-              </div>
-            )}
+                  <MapContainer
+                    center={[parseFloat(edited.latitude), parseFloat(edited.longitude)]}
+                    zoom={13}
+                    scrollWheelZoom={false}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker
+                      position={[parseFloat(edited.latitude), parseFloat(edited.longitude)]}
+                    />
+                  </MapContainer>
+                </div>
+              )}
           </FormSection>
 
           {/* ── 06. Browser Metadata ────────────────────────────── */}
@@ -848,19 +824,13 @@ const FingerprintDetail: FC<FingerprintDetailProps> = ({
                 label="Vendor Sub"
                 description={`navigator.vendorSub — vendor phụ, thường là empty string trên hầu hết trình duyệt. Chỉ Apple WebKit cũ từng set giá trị này.\n\n⚠️ Mẹo: Để "" (rỗng) là an toàn nhất. Nếu có giá trị lạ → có thể trigger heuristic check.`}
               >
-                <TextField
-                  value={edited.vendorSub || ''}
-                  onChange={(v) => set('vendorSub', v)}
-                />
+                <TextField value={edited.vendorSub || ''} onChange={(v) => set('vendorSub', v)} />
               </FormItem>
               <FormItem
                 label="Product Sub"
                 description={`navigator.productSub — phiên bản build của engine. Chrome thường set "20030107" (build date). Firefox: "20100101". Safari: "20030107".\n\n⚠️ Mẹo: productSub="20030107" là giá trị hard-coded trong Chromium từ năm 2003. Nếu thay đổi → đáng ngờ. Firefox dùng "20100101". Sai browser mà dùng sai productSub → bị phát hiện.`}
               >
-                <TextField
-                  value={edited.productSub || ''}
-                  onChange={(v) => set('productSub', v)}
-                />
+                <TextField value={edited.productSub || ''} onChange={(v) => set('productSub', v)} />
               </FormItem>
               <FormItem
                 label="Do Not Track"
@@ -1206,10 +1176,7 @@ const FingerprintDetail: FC<FingerprintDetailProps> = ({
                 label="Voices"
                 description={`speechSynthesis.getVoices() — danh sách giọng nói TTS (Text-to-Speech). Mỗi OS/browser có bộ voices khác nhau → fingerprint vector.\n\n⚠️ Mẹo: Đây là fingerprint ít bị chú ý nhưng rất mạnh. macOS có giọng "Samantha", "Daniel"; Windows có "Microsoft David", "Microsoft Zira". Nếu để rỗng → OK (không phải browser nào cũng load voices kịp).`}
               >
-                <TextField
-                  value={edited.voices || ''}
-                  onChange={(v) => set('voices', v)}
-                />
+                <TextField value={edited.voices || ''} onChange={(v) => set('voices', v)} />
               </FormItem>
             </div>
           </FormSection>

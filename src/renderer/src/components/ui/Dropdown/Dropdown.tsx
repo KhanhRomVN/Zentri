@@ -38,7 +38,6 @@ export const Dropdown = React.memo(function Dropdown({
   searchable = false,
   closeOnSelect = true,
   width,
-  fullWidth = false,
 }: DropdownProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -56,7 +55,9 @@ export const Dropdown = React.memo(function Dropdown({
   const contentRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position>({ top: 0, left: 0, width: undefined });
   const [isPositioned, setIsPositioned] = useState(false);
-  const [contextMenuPos, setContextMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [contextMenuPos, setContextMenuPos] = useState<{ top: number; left: number } | null>(
+    null,
+  );
 
   // Calculate position for fixed strategy
   const calculateFixedPosition = (): Position | null => {
@@ -167,7 +168,10 @@ export const Dropdown = React.memo(function Dropdown({
 
   // Calculate position for context menu at cursor, clamped to viewport.
   // Width is independent of trigger: uses the `width` prop if set, otherwise auto (undefined).
-  const calculateContextMenuPosition = (mousePos: { top: number; left: number }): Position => {
+  const calculateContextMenuPosition = (mousePos: {
+    top: number;
+    left: number;
+  }): Position => {
     if (!contentRef.current) return { top: mousePos.top, left: mousePos.left, width };
 
     const contentRect = contentRef.current.getBoundingClientRect();
@@ -217,20 +221,14 @@ export const Dropdown = React.memo(function Dropdown({
   // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Prevent closing when clicking inside the dropdown content or trigger
       if (
         contentRef.current &&
-        contentRef.current.contains(event.target as Node)
-      ) {
-        return;
-      }
-      if (
+        !contentRef.current.contains(event.target as Node) &&
         triggerRef.current &&
-        triggerRef.current.contains(event.target as Node)
+        !triggerRef.current.contains(event.target as Node)
       ) {
-        return;
+        setOpen(false);
       }
-      setOpen(false);
     };
     if (open) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -384,10 +382,9 @@ export const Dropdown = React.memo(function Dropdown({
     <DropdownContext.Provider
       value={{ close, searchText, hasSearchbar: searchable, closeOnSelect }}
     >
-      <div className={cn('relative', fullWidth || className?.includes('w-full') ? 'block w-full' : 'inline-block', className)}>
+      <div className={cn('relative inline-block', className)}>
         <div
           ref={triggerRef}
-          className={fullWidth || className?.includes('w-full') ? 'w-full' : ''}
           onClick={trigger === 'click' ? () => setOpen(!open) : undefined}
           onContextMenu={
             trigger === 'contextmenu'
@@ -407,14 +404,17 @@ export const Dropdown = React.memo(function Dropdown({
               createPortal(
                 <div
                   ref={contentRef}
-                  className="fixed z-[9999] bg-background border border-border rounded-lg shadow-primary min-w-[200px] overflow-hidden"
+                  className="fixed z-[9999] bg-background border border-border rounded-lg min-w-[200px] overflow-hidden"
                   style={{
                     top: position.top,
                     left: position.left,
-                    width: fullWidth ? position.width : undefined,
+                    // Don't set width for end-aligned dropdowns to allow natural content width
+                    width: align === 'end' ? undefined : position.width,
                     opacity: isPositioned ? 1 : 0,
                     transition: 'opacity 0.15s ease',
                     pointerEvents: 'auto',
+                    boxShadow:
+                      '0 0 0 1px rgb(var(--primary) / 0.10), 0 2px 8px rgb(var(--primary) / 0.06), 0 8px 24px rgb(var(--primary) / 0.04)',
                   }}
                 >
                   {searchable && (
@@ -439,12 +439,14 @@ export const Dropdown = React.memo(function Dropdown({
                 ref={contentRef}
                 className={cn(
                   getRelativePositionClasses(),
-                  'bg-background border border-border rounded-lg shadow-primary min-w-[200px] overflow-hidden',
+                  'bg-background border border-border rounded-lg min-w-[200px] overflow-hidden',
                 )}
                 style={{
                   opacity: isPositioned ? 1 : 0,
                   transition: 'opacity 0.15s ease',
                   pointerEvents: 'auto',
+                  boxShadow:
+                    '0 0 0 1px rgb(var(--primary) / 0.10), 0 2px 8px rgb(var(--primary) / 0.06), 0 8px 24px rgb(var(--primary) / 0.04)',
                 }}
               >
                 {searchable && (

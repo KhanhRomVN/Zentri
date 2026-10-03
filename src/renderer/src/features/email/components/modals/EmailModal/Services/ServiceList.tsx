@@ -15,17 +15,33 @@
  */
 
 // ─── Imports ────────────────────────────────────────────────────────────
-// ── React ──
+// ── React ─
 import { FC, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ServiceFormModal from '../../ServiceFormModal';
 import ServiceListModal from '../../ServiceListModal';
 
-// ── UI ──
-import { Globe, Trash2, Search, AlertTriangle, Plus, List } from 'lucide-react';
+// ── UI ─
+import {
+  Globe,
+  Trash2,
+  Search,
+  AlertTriangle,
+  Plus,
+  List,
+  ShieldAlert,
+  CircleDot,
+} from 'lucide-react';
 
-// ── Utils ──
+// ── Utils ─
 import { cn } from '../../../../../../shared/lib/utils';
+
+// ── Constants ──
+import {
+  SERVICE_STATUS_LIST,
+  getServiceStatusMeta,
+  type ServiceHealthStatus,
+} from '../../../../constants/serviceStatus';
 
 // ── UI Components ──
 import {
@@ -35,7 +51,6 @@ import {
   DropdownItem,
 } from '../../../../../../components/ui/Dropdown';
 // (EmptyState removed — no empty state needed in ServiceList)
-
 // ─── Interfaces ─────────────────────────────────────────────────────────
 interface ServiceListProps {
   filteredServices: any[];
@@ -43,6 +58,8 @@ interface ServiceListProps {
   onSelectService: (id: string) => void;
   onOpenService?: (linkId: string) => void;
   onDeleteService?: (linkId: string) => void;
+  /** Persist a new health status for a given service link. */
+  onUpdateServiceStatus?: (linkId: string, status: ServiceHealthStatus) => void;
   serviceSearch: string;
   setServiceSearch: (val: string) => void;
   globalServices?: any[];
@@ -59,6 +76,7 @@ const ServiceList: FC<ServiceListProps> = ({
   onSelectService,
   onOpenService,
   onDeleteService,
+  onUpdateServiceStatus,
   serviceSearch,
   setServiceSearch,
   globalServices,
@@ -87,103 +105,106 @@ const ServiceList: FC<ServiceListProps> = ({
         </div>
       </div>
       <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar">
-          <div className="grid grid-cols-1 gap-4 p-4">
-            {onQuickAddService && (
-              <Dropdown
-                trigger="click"
-                align="start"
-                side="bottom"
-                closeOnSelect
-                searchable
-                className="w-full"
-                position={pickerPos ?? undefined}
-              >
-                <DropdownTrigger asChild>
-                  <button
-                    className="group relative w-full bg-card-background border border-dashed border-primary/30 hover:border-primary/60 rounded-lg p-3 transition-all duration-300 cursor-pointer flex items-center gap-3"
-                    onClick={(e) => {
-                      setPickerPos({ top: e.clientY, left: e.clientX });
-                    }}
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
-                      <Plus className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0 text-left">
-                      <span className="text-sm font-bold text-foreground/90 leading-tight">
-                        Add Service
-                      </span>
-                      <span className="text-[10px] text-text-secondary truncate">
-                        Link a new service to this account
-                      </span>
-                    </div>
-                  </button>
-                </DropdownTrigger>
-                <DropdownContent>
-                  <DropdownItem
-                    onClick={() => {
-                      setIsServiceListModalOpen(true);
-                    }}
-                  >
-                    <List className="w-3.5 h-3.5 text-primary/70" />
-                    Service registry
-                  </DropdownItem>
-                  <DropdownItem
-                    onClick={() => {
-                      setIsCreateServiceModalOpen(true);
-                    }}
-                  >
-                    <Plus className="w-3.5 h-3.5 text-primary/70" />
-                    Create new service
-                  </DropdownItem>
-                  <div className="h-px bg-divider my-1" />
-                  {availableGlobalServices.length === 0 ? (
-                    <div className="px-3 py-4 text-center text-xs text-muted-foreground/50">
-                      No services found
-                    </div>
-                  ) : (
-                    availableGlobalServices.map((service: any) => (
-                      <DropdownItem
-                        key={service.id}
-                        onClick={async () => {
-                          // Prefer the draft flow: create a local-only service and let the
-                          // user confirm via "Save Service" before writing to the DB.
-                          if (onPickDraftService) {
-                            onPickDraftService(service);
-                            return;
-                          }
-                          const linkId = await onQuickAddService(service);
-                          if (linkId) onSelectService(linkId);
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 flex items-center justify-center p-1 rounded-md bg-muted/50 border border-border/50">
-                            <img
-                              src={
-                                service.url
-                                  ? `https://www.google.com/s2/favicons?domain=${new URL(service.url).hostname}&sz=64`
-                                  : ''
-                              }
-                              alt=""
-                              className="w-6 h-6 object-contain"
-                            />
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-foreground/80 truncate">
-                              {service.name}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground/40 truncate">
-                              {service.url}
-                            </span>
-                          </div>
+        <div className="grid grid-cols-1 gap-4 p-4">
+          {onQuickAddService && (
+            <Dropdown
+              trigger="click"
+              align="start"
+              side="bottom"
+              closeOnSelect
+              searchable
+              className="w-full"
+              position={pickerPos ?? undefined}
+            >
+              <DropdownTrigger asChild>
+                <button
+                  className="group relative w-full bg-card-background border border-dashed border-primary/30 hover:border-primary/60 rounded-lg p-3 transition-all duration-300 cursor-pointer flex items-center gap-3"
+                  onClick={(e) => {
+                    setPickerPos({ top: e.clientY, left: e.clientX });
+                  }}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0 text-left">
+                    <span className="text-sm font-bold text-foreground/90 leading-tight">
+                      Add Service
+                    </span>
+                    <span className="text-[10px] text-text-secondary truncate">
+                      Link a new service to this account
+                    </span>
+                  </div>
+                </button>
+              </DropdownTrigger>
+              <DropdownContent>
+                <DropdownItem
+                  onClick={() => {
+                    setIsServiceListModalOpen(true);
+                  }}
+                >
+                  <List className="w-3.5 h-3.5 text-primary/70" />
+                  Service registry
+                </DropdownItem>
+                <DropdownItem
+                  onClick={() => {
+                    setIsCreateServiceModalOpen(true);
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5 text-primary/70" />
+                  Create new service
+                </DropdownItem>
+                <div className="h-px bg-divider my-1" />
+                {availableGlobalServices.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-xs text-muted-foreground/50">
+                    No services found
+                  </div>
+                ) : (
+                  availableGlobalServices.map((service: any) => (
+                    <DropdownItem
+                      key={service.id}
+                      onClick={async () => {
+                        // Prefer the draft flow: create a local-only service and let the
+                        // user confirm via "Save Service" before writing to the DB.
+                        if (onPickDraftService) {
+                          onPickDraftService(service);
+                          return;
+                        }
+                        const linkId = await onQuickAddService(service);
+                        if (linkId) onSelectService(linkId);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 flex items-center justify-center p-1 rounded-md bg-muted/50 border border-border/50">
+                          <img
+                            src={
+                              service.url
+                                ? `https://www.google.com/s2/favicons?domain=${new URL(service.url).hostname}&sz=64`
+                                : ''
+                            }
+                            alt=""
+                            className="w-6 h-6 object-contain"
+                          />
                         </div>
-                      </DropdownItem>
-                    ))
-                  )}
-                </DropdownContent>
-              </Dropdown>
-            )}
-            {filteredServices.length > 0 && (
-              filteredServices.map((service: any) => (
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-foreground/80 truncate">
+                            {service.name}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/40 truncate">
+                            {service.url}
+                          </span>
+                        </div>
+                      </div>
+                    </DropdownItem>
+                  ))
+                )}
+              </DropdownContent>
+            </Dropdown>
+          )}
+          {filteredServices.length > 0 &&
+            filteredServices.map((service: any) => {
+              const statusMeta = getServiceStatusMeta(service.serviceStatus);
+              const isNonActive = statusMeta.value !== 'active';
+              return (
                 <Dropdown key={service.id} trigger="contextmenu">
                   <DropdownTrigger asChild>
                     <div
@@ -193,9 +214,31 @@ const ServiceList: FC<ServiceListProps> = ({
                           ? 'rounded-lg bg-primary/10 border-primary/50 shadow-md'
                           : 'rounded-lg bg-card-background border-border/50 hover:bg-card-hover hover:border-primary/50 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                         service.status === 'trash' && 'opacity-60 grayscale-[0.5] italic',
+                        isNonActive && 'border-l-2',
                       )}
+                      style={
+                        isNonActive
+                          ? {
+                              borderLeftColor: statusMeta.badgeClass.match(/text-(\w+-\d+)/)?.[0]
+                                ? undefined
+                                : undefined,
+                            }
+                          : undefined
+                      }
                       onClick={() => onSelectService(service.id)}
                     >
+                      {/* Left accent stripe for non-active statuses */}
+                      {isNonActive && (
+                        <div
+                          className={cn(
+                            'absolute left-0 top-2 bottom-2 w-0.5 rounded-full',
+                            statusMeta.value === 'banned' && 'bg-red-500',
+                            statusMeta.value === 'checkpoint' && 'bg-orange-500',
+                            statusMeta.value === 'suspended' && 'bg-yellow-500',
+                            statusMeta.value === 'inactive' && 'bg-zinc-500',
+                          )}
+                        />
+                      )}
                       {/* Card Header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
@@ -214,7 +257,9 @@ const ServiceList: FC<ServiceListProps> = ({
                               </span>
                               {service.twoFa &&
                                 !service.twoFa.totp &&
-                                !(service.twoFa.backupCodes && service.twoFa.backupCodes.length > 0) && (
+                                !(
+                                  service.twoFa.backupCodes && service.twoFa.backupCodes.length > 0
+                                ) && (
                                   <span
                                     className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-error/10 text-error"
                                     title="2FA incomplete"
@@ -223,9 +268,30 @@ const ServiceList: FC<ServiceListProps> = ({
                                   </span>
                                 )}
                             </div>
-                            <span className="text-[10px] text-text-secondary font-mono truncate">
-                              {service.url ? new URL(service.url).hostname : ''}
-                            </span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-text-secondary font-mono truncate">
+                                {service.url ? new URL(service.url).hostname : ''}
+                              </span>
+                              {/* Status Badge */}
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border shrink-0',
+                                  statusMeta.badgeClass,
+                                )}
+                                title={statusMeta.description}
+                              >
+                                {statusMeta.value === 'banned' && (
+                                  <ShieldAlert className="w-2.5 h-2.5" />
+                                )}
+                                {statusMeta.value === 'checkpoint' && (
+                                  <CircleDot className="w-2.5 h-2.5" />
+                                )}
+                                {statusMeta.value === 'suspended' && (
+                                  <AlertTriangle className="w-2.5 h-2.5" />
+                                )}
+                                {statusMeta.label}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -234,8 +300,6 @@ const ServiceList: FC<ServiceListProps> = ({
                   <DropdownContent>
                     <DropdownItem
                       onClick={(e) => {
-                        // Portal content still bubbles through the React tree; stop it
-                        // so the card's onSelectService is not triggered.
                         e.stopPropagation();
                         if (onOpenService) {
                           onOpenService(service.id);
@@ -245,6 +309,41 @@ const ServiceList: FC<ServiceListProps> = ({
                       <Globe className="w-3.5 h-3.5" />
                       Open in Browser
                     </DropdownItem>
+                    <div className="h-px bg-divider my-1" />
+                    {/* Set Status submenu-style list */}
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary/60">
+                      Set Status
+                    </div>
+                    {SERVICE_STATUS_LIST.map((st) => (
+                      <DropdownItem
+                        key={st.value}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onUpdateServiceStatus) {
+                            onUpdateServiceStatus(service.id, st.value);
+                          }
+                        }}
+                        className={cn(
+                          'flex items-center gap-2',
+                          statusMeta.value === st.value && 'bg-primary/10',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'w-2 h-2 rounded-full shrink-0',
+                            st.value === 'active' && 'bg-emerald-500',
+                            st.value === 'checkpoint' && 'bg-orange-500',
+                            st.value === 'banned' && 'bg-red-500',
+                            st.value === 'suspended' && 'bg-yellow-500',
+                            st.value === 'inactive' && 'bg-zinc-500',
+                          )}
+                        />
+                        <span className="text-xs">{st.label}</span>
+                        {statusMeta.value === st.value && (
+                          <span className="ml-auto text-[9px] text-primary font-bold">✓</span>
+                        )}
+                      </DropdownItem>
+                    ))}
                     <div className="h-px bg-divider my-1" />
                     <DropdownItem
                       className="text-error focus:text-error focus:bg-error/10"
@@ -266,9 +365,9 @@ const ServiceList: FC<ServiceListProps> = ({
                     </DropdownItem>
                   </DropdownContent>
                 </Dropdown>
-              ))
-            )}
-          </div>
+              );
+            })}
+        </div>
       </div>
       {createPortal(
         <ServiceFormModal

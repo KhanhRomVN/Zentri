@@ -12,8 +12,9 @@ import { dbManager } from '../../database';
 import { getExecutablePath, getChromeStablePath } from './utils';
 import { buildFingerprintScript } from './fingerprint-injector';
 import { onPageNavigated } from './site-history';
+import { prepareProfileForLaunch, releaseProfileLock, type BrowserKind } from './profile-sync';
 
-const activeBrowsers = new Map<string, { port: number; process: ReturnType<typeof spawn> }>();
+const activeBrowsers = new Map<string, { port: number; process: ReturnType<typeof spawn>; baseProfileDir: string; kind: BrowserKind }>();
 
 /**
  * Set profile name in Chrome/Chromium Preferences file
@@ -215,103 +216,6 @@ function ensureDeveloperModeAndExtensions(
 }
 
 /**
- * GUID cố định của DuckDuckGo trong Chromium (prepopulate_id 92).
- * Dùng để kiểm tra và set DDG làm search engine mặc định cho profile.
- */
-const DUCKDUCKGO_GUID = '485bf7d3-0215-45af-87dc-538868000092';
-
-/**
- * Template data chuẩn của DuckDuckGo — mirror snapshot Chromium ghi sau khi
- * người dùng chọn DDG làm default. Dùng để ghi đè khi phát hiện profile đang
- * dùng engine khác.
- */
-function buildDuckDuckGoTemplateData() {
-  return {
-    alternate_urls: [],
-    contextual_search_url: '',
-    created_from_play_api: false,
-    date_created: '0',
-    doodle_url: '',
-    enforced_by_policy: false,
-    favicon_url: 'https://duckduckgo.com/favicon.ico',
-    featured_by_policy: false,
-    id: '6',
-    image_search_branding_label: '',
-    image_translate_source_language_param_key: '',
-    image_translate_target_language_param_key: '',
-    image_translate_url: '',
-    image_url: '',
-    image_url_post_params: '',
-    input_encodings: ['UTF-8'],
-    is_active: 0,
-    keyword: 'duckduckgo.com',
-    last_modified: '0',
-    last_visited: '0',
-    logo_url: 'https://staticcdn.duckduckgo.com/android/DuckDuckGoLogo.png',
-    new_tab_url: 'https://duckduckgo.com/chrome_newtab',
-    originating_url: '',
-    policy_origin: 0,
-    preconnect_to_search_url: false,
-    prefetch_likely_navigations: false,
-    prepopulate_id: 92,
-    safe_for_autoreplace: true,
-    search_intent_params: [],
-    search_url_post_params: '',
-    short_name: 'DuckDuckGo',
-    starter_pack_id: 0,
-    suggestions_url: 'https://duckduckgo.com/ac/?q={searchTerms}&type=list',
-    suggestions_url_post_params: '',
-    synced_guid: DUCKDUCKGO_GUID,
-    url: 'https://duckduckgo.com/?q={searchTerms}',
-    usage_count: 0,
-  };
-}
-
-/**
- * Đảm bảo profile tại `userDataDir` dùng DuckDuckGo làm search engine mặc
- * định. Đọc `Default/Preferences`; nếu `default_search_provider.guid` khác
- * GUID DDG thì ghi đè lại guid + template_url_data + mirrored_template_url_data.
- * Chạy trước khi spawn Chromium (giống setProfileName) để tránh bị Chrome
- * ghi đè ngược lại khi khởi động.
- */
-function ensureDuckDuckGoDefaultSearch(userDataDir: string): void {
-  try {
-    const defaultProfileDir = path.join(userDataDir, 'Default');
-    if (!fs.existsSync(defaultProfileDir)) {
-      fs.mkdirSync(defaultProfileDir, { recursive: true });
-    }
-    const preferencesPath = path.join(defaultProfileDir, 'Preferences');
-    let prefs: any = {};
-    if (fs.existsSync(preferencesPath)) {
-      try {
-        prefs = JSON.parse(fs.readFileSync(preferencesPath, 'utf-8'));
-      } catch (e) {
-        console.warn('[BrowserLaunch] Failed to parse Preferences for DDG check, recreating');
-      }
-    }
-
-    if (prefs.default_search_provider?.guid === DUCKDUCKGO_GUID) {
-      return; // Đã đúng, không cần ghi lại file.
-    }
-
-    prefs.default_search_provider = {
-      ...(prefs.default_search_provider || {}),
-      guid: DUCKDUCKGO_GUID,
-      reset_occurred: false,
-    };
-    prefs.default_search_provider_data = {
-      ...(prefs.default_search_provider_data || {}),
-      template_url_data: buildDuckDuckGoTemplateData(),
-      mirrored_template_url_data: buildDuckDuckGoTemplateData(),
-    };
-
-    fs.writeFileSync(preferencesPath, JSON.stringify(prefs, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('[BrowserLaunch] Failed to ensure DDG default search:', err);
-  }
-}
-
-/**
  * Export credentials from `<profileDir>/passwords.db` (SQLite) into
  * `<extensionDir>/data.json`, so the password extension can read them via
  * `chrome.runtime.getURL('data.json')` when the user opens the popup.
@@ -479,22 +383,23 @@ export function setupLaunchHandlers() {
           throw new Error('Browser (Chromium/Chrome) not found.');
         }
 
-        let browserProfileDir = '';
+        // Determine base profile directory
+        let baseProfileDir = '';
         if (profilePath) {
-          browserProfileDir = profilePath;
+          baseProfileDir = profilePath;
         } else {
           try {
             if (dbManager.dbPath && email) {
-              browserProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
+              baseProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
             } else {
-              browserProfileDir = path.join(
+              baseProfileDir = path.join(
                 userDataPath,
                 'browser_profiles',
                 email || accountId || provider,
               );
             }
           } catch (e) {
-            browserProfileDir = path.join(
+            baseProfileDir = path.join(
               userDataPath,
               'browser_profiles',
               email || accountId || provider,
@@ -502,26 +407,35 @@ export function setupLaunchHandlers() {
           }
         }
 
-        if (!fs.existsSync(browserProfileDir)) {
-          fs.mkdirSync(browserProfileDir, { recursive: true });
-        }
+        // ── Profile Lock + Smart Sync ────────────────────────────────────────
+        // ── ONE-WAY SYNC MODE ────────────────────────────────────────────────
+        // Chrome is Master. Chromium is Slave.
+        // - Launching Chrome: Uses its own folder directly. No sync out.
+        // - Launching Chromium: Copies entire Chrome profile -> Chromium folder first.
+        
+        const isChrome = browserPatchType === 'official-chrome';
+        const targetKind: BrowserKind = isChrome ? 'chrome' : 'chromium';
+
+        const prepResult = await prepareProfileForLaunch({
+          baseProfileDir,
+          targetKind,
+          logger: (msg) => console.log(msg),
+        });
+        const browserProfileDir = prepResult.browserProfileDir;
 
         // Set profile name in Chrome Preferences to display correct name instead of "Work"
         const profileName = email || accountId || provider;
         setProfileName(browserProfileDir, profileName);
-        // Ensure developer mode + unpacked extensions are registered before launch.
-        ensureDeveloperModeAndExtensions(browserProfileDir, [
-          path.join(process.cwd(), 'extensions', 'workflow-recorder'),
-          path.join(process.cwd(), 'extensions', 'password'),
-        ]);
-        // Force DuckDuckGo as the default search engine (guard against manual changes).
-        ensureDuckDuckGoDefaultSearch(browserProfileDir);
-        // Export the profile's credentials into the copied extension folder
-        // (per-profile data.json) so multi-browser sessions stay isolated.
-        await writeExtensionPasswordData(
-          browserProfileDir,
-          path.join(browserProfileDir, 'zentri-extensions', 'password'),
-        );
+        // TEMP DISABLED: force-injecting workflow-recorder + password extensions into profile.
+        // ensureDeveloperModeAndExtensions(browserProfileDir, [
+        //   path.join(process.cwd(), 'extensions', 'workflow-recorder'),
+        //   path.join(process.cwd(), 'extensions', 'password'),
+        // ]);
+        // TEMP DISABLED: writing password data to zentri-extensions is no longer needed since extensions are not injected.
+        // await writeExtensionPasswordData(
+        //   browserProfileDir,
+        //   path.join(browserProfileDir, 'zentri-extensions', 'password'),
+        // );
 
         let proxyServer = '';
         let proxyAuth: { username?: string; password?: string } | null = null;
@@ -558,6 +472,7 @@ export function setupLaunchHandlers() {
           '--ozone-platform=x11',
           '--no-sandbox',
           '--disable-setuid-sandbox',
+          '--disable-blink-features=AutomationControlled',
           '--disable-infobars',
           '--disable-notifications',
           '--disable-quic',
@@ -592,7 +507,12 @@ export function setupLaunchHandlers() {
         const chromeProcess = spawn(executablePath, args, { detached: true });
 
         if (accountId) {
-          activeBrowsers.set(accountId, { port: cdpPort, process: chromeProcess });
+          activeBrowsers.set(accountId, {
+            port: cdpPort,
+            process: chromeProcess,
+            baseProfileDir,
+            kind: targetKind,
+          });
         }
 
         if (cdpPort) {
@@ -734,7 +654,17 @@ export function setupLaunchHandlers() {
         if (!_event.sender.isDestroyed() && accountId)
           _event.sender.send('email:browser-opened', { accountId });
 
-        chromeProcess.on('exit', async () => {
+        chromeProcess.on('exit', async (code, signal) => {
+          // Release profile lock & record whether this was a clean shutdown.
+          // code === 0 && !signal  → user closed normally / graceful kill
+          // anything else          → crash / SIGKILL / OOM → next launch will force-sync defensively
+          const cleanExit = code === 0 && !signal;
+          try {
+            releaseProfileLock(baseProfileDir, targetKind, { cleanExit });
+          } catch (err: any) {
+            console.error('[BrowserLaunch] Failed to release profile lock:', err?.message);
+          }
+
           if (accountId) {
             activeBrowsers.delete(accountId);
           }
@@ -830,6 +760,7 @@ export function setupLaunchHandlers() {
           '--disable-gpu',
           '--no-sandbox',
           '--disable-setuid-sandbox',
+          '--disable-blink-features=AutomationControlled',
           '--remote-debugging-port=' + cdpPort,
           '--remote-debugging-address=127.0.0.1',
           'https://' + domain,
@@ -894,38 +825,63 @@ export function setupLaunchHandlers() {
       try {
         const userDataPath = app.getPath('userData');
         const executablePath = getExecutablePath(browserPath);
-        let realProfileDir = '';
+        
+        // Determine base profile directory
+        let baseProfileDir = '';
         if (dbManager.dbPath && email) {
-          realProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
+          baseProfileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
         } else {
-          realProfileDir = path.join(userDataPath, 'browser_profiles', email);
+          baseProfileDir = path.join(userDataPath, 'browser_profiles', email);
         }
+
+        // Debug inbox always targets the 'chromium' sub-folder. Route through
+        // the shared Profile Sync manager so locking + smart sync behave
+        // identically to the main launch flow (no ad-hoc cpSync anymore).
+        const targetKind: BrowserKind = 'chromium';
+        const prepResult = await prepareProfileForLaunch({
+          baseProfileDir,
+          targetKind,
+          logger: (msg) => console.log(msg),
+        });
+        const realProfileDir = prepResult.browserProfileDir;
 
         // Set profile name before launching
         setProfileName(realProfileDir, email);
-        // Ensure developer mode + unpacked extensions are registered before launch.
-        ensureDeveloperModeAndExtensions(realProfileDir, [
-          path.join(process.cwd(), 'extensions', 'workflow-recorder'),
-          path.join(process.cwd(), 'extensions', 'password'),
-        ]);
-        // Force DuckDuckGo as the default search engine (guard against manual changes).
-        ensureDuckDuckGoDefaultSearch(realProfileDir);
-        // Export the profile's credentials into the copied extension folder
-        // (per-profile data.json) so multi-browser sessions stay isolated.
-        await writeExtensionPasswordData(
-          realProfileDir,
-          path.join(realProfileDir, 'zentri-extensions', 'password'),
-        );
+        // TEMP DISABLED: force-injecting workflow-recorder + password extensions into profile.
+        // ensureDeveloperModeAndExtensions(realProfileDir, [
+        //   path.join(process.cwd(), 'extensions', 'workflow-recorder'),
+        //   path.join(process.cwd(), 'extensions', 'password'),
+        // ]);
+        // TEMP DISABLED: writing password data to zentri-extensions is no longer needed since extensions are not injected.
+        // await writeExtensionPasswordData(
+        //   realProfileDir,
+        //   path.join(realProfileDir, 'zentri-extensions', 'password'),
+        // );
 
-        spawn(
+        const debugProc = spawn(
           executablePath,
           [
             '--user-data-dir=' + realProfileDir,
             '--no-first-run',
+            '--disable-blink-features=AutomationControlled',
             'https://mail.google.com/mail/u/0/h/',
           ],
           { detached: true },
         );
+
+        // Release lock when the debug browser exits. We don't track it in
+        // activeBrowsers (it's fire-and-forget), but we still need to flip
+        // cleanExit so the next real launch knows whether to force-sync.
+        debugProc.on('exit', (code, signal) => {
+          try {
+            releaseProfileLock(baseProfileDir, targetKind, {
+              cleanExit: code === 0 && !signal,
+            });
+          } catch (err: any) {
+            console.error('[BrowserLaunch][Debug] Failed to release lock:', err?.message);
+          }
+        });
+
         return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message };
@@ -956,6 +912,9 @@ export function setupLaunchHandlers() {
     if (!entry) return { success: false, error: 'No active browser found for this account' };
 
     try {
+      // Kill the process; its 'exit' listener will call releaseProfileLock()
+      // with cleanExit=false (because we're forcing termination). That's fine —
+      // next launch sees dirty state and runs a defensive sync automatically.
       entry.process.kill('SIGTERM');
       activeBrowsers.delete(accountId);
       return { success: true };

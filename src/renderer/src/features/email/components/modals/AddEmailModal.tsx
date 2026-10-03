@@ -35,6 +35,8 @@ interface AddEmailModalProps {
   validateField: (name: string, value: string) => void;
   handleAddEmail: () => void;
   recoveryEmailSuggestions?: string[];
+  /** Lowercased list of all emails currently in the repository. */
+  existingEmails?: string[];
 }
 
 const AddEmailModal: FC<AddEmailModalProps> = ({
@@ -49,6 +51,7 @@ const AddEmailModal: FC<AddEmailModalProps> = ({
   validateField,
   handleAddEmail,
   recoveryEmailSuggestions,
+  existingEmails,
 }) => {
   const values: AccountFormValues = {
     email: newEmailData.email,
@@ -116,6 +119,7 @@ const AddEmailModal: FC<AddEmailModalProps> = ({
           backupCodeSearch={backupCodeSearch}
           onBackupCodeSearchChange={setBackupCodeSearch}
           recoveryEmailSuggestions={recoveryEmailSuggestions}
+          existingEmails={existingEmails}
         />
       </ModalBody>
       <ModalFooter>

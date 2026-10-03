@@ -120,6 +120,8 @@ interface EmailModalProps {
   onDeleteService?: (linkId: string) => void;
   globalServices?: any[];
   onQuickAddService?: (service: any) => Promise<string | null>;
+  /** Lowercased list of all emails currently in the repository. */
+  existingEmails?: string[];
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -149,6 +151,7 @@ const EmailModal: FC<EmailModalProps> = ({
   onDeleteService,
   globalServices,
   onQuickAddService,
+  existingEmails,
 }) => {
   // ── Hooks ──
   const { accentColors, UNIFIED_ACCENT } = useAccentColors();
@@ -379,6 +382,7 @@ const EmailModal: FC<EmailModalProps> = ({
                 backupCodeSearch={backupCodeSearch}
                 setBackupCodeSearch={setBackupCodeSearch}
                 recoveryEmailSuggestions={recoveryEmailSuggestions}
+                existingEmails={existingEmails}
               />
             ) : activeTab === 'services' ? (
               <ServicesTab

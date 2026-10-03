@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 
 const Proxy = () => {
   const {
-    proxies,
     paginatedProxies,
     loading,
     error,

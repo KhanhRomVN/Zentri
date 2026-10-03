@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 import * as crypto from 'crypto';
 import { dbManager } from '../../database';
+import { ensureSharedDbLocation } from '../browser/shared-profile-data';
 
 export function setupProfileHandlers() {
   ipcMain.handle(
@@ -259,18 +260,20 @@ export function setupProfileHandlers() {
         serviceId,
         metadata,
         twoFa,
+        status,
       }: {
         emailId: string;
         serviceId: string;
         metadata?: Record<string, any>;
         twoFa?: { totp?: string; backupCodes?: string[] };
+        status?: string;
       },
     ) => {
       try {
         const id = crypto.randomUUID();
         const query = `
-          INSERT INTO service_emails (id, email_id, service_id, metadata, two_fa)
-          VALUES (?, ?, ?, ?, ?)
+          INSERT INTO service_emails (id, email_id, service_id, metadata, two_fa, status)
+          VALUES (?, ?, ?, ?, ?, ?)
         `;
         const params = [
           id,
@@ -278,6 +281,7 @@ export function setupProfileHandlers() {
           serviceId,
           metadata ? JSON.stringify(metadata) : null,
           twoFa ? JSON.stringify(twoFa) : null,
+          status || 'active',
         ];
         await dbManager.run(query, params);
         return { success: true, id };
@@ -296,22 +300,39 @@ export function setupProfileHandlers() {
         linkId,
         metadata,
         twoFa,
+        status,
       }: {
         linkId: string;
         metadata?: Record<string, any>;
         twoFa?: { totp?: string; backupCodes?: string[] };
+        status?: string;
       },
     ) => {
       try {
-        const query = `
-          UPDATE service_emails SET metadata = ?, two_fa = ? WHERE id = ?
-        `;
-        const twoFaStr = twoFa ? JSON.stringify(twoFa) : null;
-        const result = await dbManager.run(query, [
-          metadata ? JSON.stringify(metadata) : null,
-          twoFaStr,
-          linkId,
-        ]);
+        // Build dynamic SET clause so partial updates don't wipe other fields.
+        const sets: string[] = [];
+        const params: any[] = [];
+
+        if (metadata !== undefined) {
+          sets.push('metadata = ?');
+          params.push(metadata ? JSON.stringify(metadata) : null);
+        }
+        if (twoFa !== undefined) {
+          sets.push('two_fa = ?');
+          params.push(twoFa ? JSON.stringify(twoFa) : null);
+        }
+        if (status !== undefined) {
+          sets.push('status = ?');
+          params.push(status || 'active');
+        }
+
+        if (sets.length === 0) {
+          return { success: true, skipped: true };
+        }
+
+        params.push(linkId);
+        const query = `UPDATE service_emails SET ${sets.join(', ')} WHERE id = ?`;
+        await dbManager.run(query, params);
         return { success: true };
       } catch (error: any) {
         console.error('Error updating service link:', error);
@@ -433,8 +454,14 @@ export function setupProfileHandlers() {
   // Credentials live in `<profileDir>/passwords.db`, separate from the main
   // Zentri DB. The browser extension reads this file for autofill.
 
-  const getPasswordsDbPath = (email: string): string =>
-    path.join(path.dirname(dbManager.dbPath), 'profiles', email, 'passwords.db');
+  const getPasswordsDbPath = (email: string): string => {
+    // passwords.db lives at the BASE profile dir (shared between chrome/ and
+    // chromium/ sub-profiles). If a legacy copy still sits inside one of those
+    // sub-folders, migrate it up lazily on first access.
+    const sharedDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
+    ensureSharedDbLocation(sharedDir, 'passwords.db');
+    return path.join(sharedDir, 'passwords.db');
+  };
 
   const ensurePasswordsTable = (db: sqlite3.Database): Promise<void> =>
     new Promise((resolve, reject) => {

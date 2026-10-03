@@ -15,7 +15,6 @@ export interface DropdownProps {
   position?: { top: number; left: number };
   /** Fixed width in px for dropdown content. If not set, width auto-fits content (for contextmenu) or follows trigger width (for click). */
   width?: number;
-  fullWidth?: boolean;
   searchable?: boolean;
   closeOnSelect?: boolean;
 }
@@ -31,9 +30,9 @@ export interface DropdownContentProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export interface DropdownItemProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DropdownItemProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'> {
   children: React.ReactNode;
-  onClick?: React.MouseEventHandler<HTMLDivElement>;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   className?: string;
   disabled?: boolean;
   icon?: React.ReactNode;

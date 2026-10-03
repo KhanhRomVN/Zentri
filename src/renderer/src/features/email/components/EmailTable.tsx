@@ -106,6 +106,8 @@ interface EmailTableProps {
   selectedServiceId?: string | null;
   runningBrowsers: Set<string>;
   loading?: boolean;
+  /** Lowercased list of all emails currently in the repository. */
+  existingEmails?: string[];
 }
 
 interface LinkedService {
@@ -142,6 +144,7 @@ const EmailTable: FC<EmailTableProps> = ({
   selectedServiceId,
   runningBrowsers,
   loading,
+  existingEmails,
 }) => {
   // ── State ──
   const [avatars, setAvatars] = useState<Record<string, string>>({});
@@ -211,12 +214,20 @@ const EmailTable: FC<EmailTableProps> = ({
 
   const showDetail = !!focusedAccountId;
 
+  // Refs for preserving scroll position when toggling between detail/list views
+  const listViewRef = useRef<HTMLDivElement>(null);
+  const savedScrollTop = useRef<number>(0);
+
   const menuRef = useRef<HTMLDivElement>(null);
   const serviceMenuRef = useRef<HTMLDivElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
-  // ── Derived ──
-  const focusedAccount = accounts.find((a) => a.id === focusedAccountId) || null;
+  // ── Derived ─
+  // Search in allAccounts (full filtered dataset) instead of accounts (current page slice),
+  // so that clicking a row found via search (which might be on another "virtual" page)
+  // still resolves the correct account object for the modal.
+  const sourceForFocus = allAccounts && allAccounts.length ? allAccounts : accounts;
+  const focusedAccount = sourceForFocus.find((a) => a.id === focusedAccountId) || null;
   const accountServices = focusedAccount?.services || [];
 
   // ── Effects ──
@@ -228,6 +239,34 @@ const EmailTable: FC<EmailTableProps> = ({
     window.addEventListener('account-services-changed', handler);
     return () => window.removeEventListener('account-services-changed', handler);
   }, [onRefreshData]);
+
+  // Preserve table scroll position across the detail-view <-> list-view swap.
+  // When a row is clicked, EmailTable switches from the paginated list container
+  // (overflow-auto) to an inline detail view — React unmounts the list DOM and
+  // scrollTop resets to 0. We capture it before the swap and restore it after.
+  useEffect(() => {
+    const el = listViewRef.current;
+    console.log('[DEBUG Scroll] Effect triggered', { showDetail, hasEl: !!el, savedTop: savedScrollTop.current });
+    
+    if (!showDetail) {
+      // Just came back from detail view: restore the saved offset once the
+      // list container has re-mounted.
+      if (el && savedScrollTop.current > 0) {
+        console.log('[DEBUG Scroll] Restoring scrollTop to', savedScrollTop.current);
+        el.scrollTop = savedScrollTop.current;
+      } else {
+        console.log('[DEBUG Scroll] No restore performed', { hasEl: !!el, savedTop: savedScrollTop.current });
+      }
+    } else {
+      // Entering detail view: save current scroll offset of the list container.
+      if (el) {
+        savedScrollTop.current = el.scrollTop;
+        console.log('[DEBUG Scroll] Saved scrollTop as', savedScrollTop.current);
+      } else {
+        console.log('[DEBUG Scroll] Cannot save - no element');
+      }
+    }
+  }, [showDetail]);
 
   const prevPropsRef = useRef<any>({});
 
@@ -367,10 +406,12 @@ const EmailTable: FC<EmailTableProps> = ({
     }
   }, []);
 
+  // Load global services once on mount
   useEffect(() => {
     loadGlobalServices();
-  }, [isServiceDrawerOpen, accountServices, loadGlobalServices]);
+  }, [loadGlobalServices]);
 
+  // Listen for external changes to reload if needed
   useEffect(() => {
     const handleServicesChanged = () => {
       loadGlobalServices();
@@ -432,11 +473,30 @@ const EmailTable: FC<EmailTableProps> = ({
 
   const handleOpenService = async (linkId: string) => {
     const link = accountServices.find((s) => s.id === linkId);
-    if (!link || !focusedAccount) return;
+    if (!link || !focusedAccount) {
+      console.warn('[DEBUG EmailTable] handleOpenService: Missing link or account', { linkId, hasLink: !!link, hasAccount: !!focusedAccount });
+      return;
+    }
+    
+    // Ensure we have a valid URL to launch. If missing, try to fetch from global services or warn.
+    const targetUrl = link.url || '';
+    if (!targetUrl) {
+       console.warn('[DEBUG EmailTable] handleOpenService: No URL found for service', linkId, link.name);
+       // Optional: You might want to alert the user here instead of silently failing
+       // alert('This service does not have a configured URL.');
+       // return; 
+    }
+
+    console.log('[DEBUG EmailTable] handleOpenService: Preparing launch', {
+      email: focusedAccount.email,
+      url: targetUrl,
+      title: link.name,
+    });
+
     setPendingLaunch({
       accountId: focusedAccount.id,
       email: focusedAccount.email,
-      url: link.url,
+      url: targetUrl,
       title: link.name,
       provider: 'fingerprint-chromium',
     });
@@ -708,6 +768,7 @@ const EmailTable: FC<EmailTableProps> = ({
         serviceId: actualServiceId,
         metadata: service.metadata || {},
         twoFa: service.twoFa || {},
+        status: service.status || 'active', // Pass the user-selected status from draft form
       };
       // [DEBUG] trace IPC insert call
       console.log('[DEBUG EmailTable] handleQuickAddService: invoking service_emails:insert', payload);
@@ -824,29 +885,44 @@ const EmailTable: FC<EmailTableProps> = ({
     [],
   );
 
-  // Fisher-Yates shuffle helper
-  const shuffleArray = useCallback(<T,>(array: T[]): T[] => {
-    const arr = [...array];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+  // Alphabetical comparator: digits (0-9) < uppercase (A-Z) < lowercase (a-z)
+  // Falls back to localeCompare for non-alphanumeric chars.
+  const compareByAlphabet = useCallback((a: string, b: string): number => {
+    const len = Math.min(a.length, b.length);
+    for (let i = 0; i < len; i++) {
+      const ca = a.charCodeAt(i);
+      const cb = b.charCodeAt(i);
+      if (ca !== cb) return ca - cb;
     }
-    return arr;
+    return a.length - b.length;
   }, []);
 
+  // Reset pagination to page 1 whenever the local search query changes, so
+  // results from any page become visible instead of staying stuck on the old page.
+  useEffect(() => {
+    onPageChange?.(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableSearchQuery]);
+
   // When section is expanded, hide all other rows
-  // Sort: running browsers first, then score-based ranking (email match > activity match)
-  // Default: random shuffle for diversity across page loads
+  // Sort: running browsers first, then alphabetical (a-z, A-Z, 0-9)
+  // NOTE: filter/sort runs against `allAccounts` (the full dataset across all
+  // pages) rather than `accounts` (only the current page slice), otherwise the
+  // search bar can never reach items living on page 2, 3, …
   const orderedAccounts = useMemo(() => {
-    const base = accounts;
+    const base = allAccounts && allAccounts.length ? allAccounts : accounts;
 
     // Push running browsers to top
     const running = base.filter((a) => runningBrowsers.has(a.id));
     const notRunning = base.filter((a) => !runningBrowsers.has(a.id));
-    const sorted = [...running, ...notRunning];
+
+    const sortByAlpha = (list: Account[]) =>
+      [...list].sort((a, b) => compareByAlphabet(a.email, b.email));
+
+    const sorted = [...sortByAlpha(running), ...sortByAlpha(notRunning)];
 
     // Filter and score by search query
-    if (!tableSearchQuery.trim()) return shuffleArray(sorted);
+    if (!tableSearchQuery.trim()) return sorted;
     const q = tableSearchQuery.toLowerCase();
     const scored = sorted
       .map((a) => {
@@ -862,7 +938,7 @@ const EmailTable: FC<EmailTableProps> = ({
       .sort((a, b) => b.score - a.score)
       .map((item) => item.account);
     return scored;
-  }, [accounts, runningBrowsers, tableSearchQuery, shuffleArray]);
+  }, [accounts, allAccounts, runningBrowsers, tableSearchQuery, compareByAlphabet]);
 
   // Use allAccounts for indexing (original order before pagination)
   const fullAccountList = allAccounts;
@@ -1057,8 +1133,8 @@ const EmailTable: FC<EmailTableProps> = ({
             <table className="border-collapse table-fixed w-full">
               <thead className="sticky top-0 z-30">
                 <tr className="border-b border-border/50 bg-table-header-background shadow-sm">
-                  <th className="w-[60px] pl-6 text-sm font-bold h-10 text-left text-text-secondary">
-                    STT
+                  <th className="w-[40px] pl-6 pr-2 text-sm font-bold h-10 text-center text-text-secondary">
+                    <input type="checkbox" className="rounded border-border accent-primary cursor-pointer" />
                   </th>
                   {!selectedServiceId && (
                     <th className="w-[80px] text-sm font-bold h-10 text-center text-text-secondary">
@@ -1095,11 +1171,8 @@ const EmailTable: FC<EmailTableProps> = ({
                   onClick={() => onSelectAccount(focusedAccount)}
                   onContextMenu={(e) => handleContextMenu(e, focusedAccount.id)}
                 >
-                  <td className="text-muted-foreground font-mono text-xs pl-6 py-2">
-                    #
-                    {String(
-                      fullAccountList.findIndex((a) => a.id === focusedAccount.id) + 1,
-                    ).padStart(2, '0')}
+                  <td className="pl-6 pr-2 py-2 flex items-center justify-center">
+                    <input type="checkbox" className="rounded border-border accent-primary cursor-pointer" />
                   </td>
                   <td className="font-medium">
                     <div className="flex flex-col gap-0.5 min-w-0">
@@ -1243,25 +1316,27 @@ const EmailTable: FC<EmailTableProps> = ({
 
           {/* Detail view */}
           <div className="flex-1 min-h-0 overflow-hidden">
-            <EmailModal
-              isOpen={!!focusedAccount}
-              onClose={() => {
-                onSelectAccount(null);
-              }}
-              focusedAccount={focusedAccount}
-              accounts={accounts}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              avatars={avatars}
-              onSelectAccount={onSelectAccount}
-              onContextMenu={handleContextMenu}
-              editedAccount={editedAccount}
-              setEditedAccount={setEditedAccount}
-              onUpdateAccount={onUpdateAccount}
-              validateField={validateField}
-              errors={errors}
-              backupCodeSearch={backupCodeSearch}
-              setBackupCodeSearch={setBackupCodeSearch}
+              <EmailModal
+                isOpen={!!focusedAccount}
+                onClose={() => {
+                  console.log('[DEBUG Scroll] Modal closing — restoring scrollTop', savedScrollTop.current);
+                  onSelectAccount(null);
+                }}
+                focusedAccount={focusedAccount}
+                accounts={allAccounts && allAccounts.length ? allAccounts : accounts}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                avatars={avatars}
+                onSelectAccount={onSelectAccount}
+                onContextMenu={handleContextMenu}
+                editedAccount={editedAccount}
+                setEditedAccount={setEditedAccount}
+                onUpdateAccount={onUpdateAccount}
+                validateField={validateField}
+                errors={errors}
+                backupCodeSearch={backupCodeSearch}
+                setBackupCodeSearch={setBackupCodeSearch}
+                existingEmails={existingEmails}
               recoveryEmailSuggestions={(() => {
                 const freq: Record<string, number> = {};
                 accounts.forEach((a) => {
@@ -1285,12 +1360,12 @@ const EmailTable: FC<EmailTableProps> = ({
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-auto custom-scrollbar flex flex-col min-h-0">
+        <div ref={listViewRef} className="flex-1 overflow-auto custom-scrollbar flex flex-col min-h-0">
           <table className="border-collapse table-fixed w-full">
             <thead className="sticky top-0 z-30">
               <tr className="border-b border-border/50 bg-table-header-background shadow-sm">
-                <th className="w-[60px] pl-6 text-sm font-bold h-10 text-left text-text-secondary">
-                  STT
+                <th className="w-[40px] pl-6 pr-2 text-sm font-bold h-10 text-center text-text-secondary">
+                  <input type="checkbox" className="rounded border-border accent-primary cursor-pointer" />
                 </th>
                 <th className="w-[240px] text-sm font-bold h-10 text-left text-text-secondary">
                   Email
@@ -1326,11 +1401,16 @@ const EmailTable: FC<EmailTableProps> = ({
                       'group transition-colors cursor-pointer border-b border-border/20 h-[48px] hover:bg-table-row-hover relative',
                       isSelected && 'bg-primary/5',
                     )}
-                    onClick={() => onSelectAccount(account)}
+                    onClick={() => {
+                      const el = listViewRef.current;
+                      console.log('[DEBUG Scroll] Row clicked — saving scrollTop before open', { scrollTop: el?.scrollTop });
+                      if (el) savedScrollTop.current = el.scrollTop;
+                      onSelectAccount(account);
+                    }}
                     onContextMenu={(e) => handleContextMenu(e, account.id)}
                   >
-                    <td className="text-muted-foreground font-mono text-xs pl-6 py-2">
-                      #{String(originalIndex + 1).padStart(2, '0')}
+                    <td className="pl-6 pr-2 py-2 flex items-center justify-center">
+                      <input type="checkbox" className="rounded border-border accent-primary cursor-pointer" />
                     </td>
                     <td className="font-medium">
                       <div className="flex flex-col gap-0.5 min-w-0">
@@ -1357,10 +1437,10 @@ const EmailTable: FC<EmailTableProps> = ({
                           })()}
                           {syncStatus[account.id] === false && (
                             <span
-                              className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/10 text-amber-500 shrink-0"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 text-[9px] font-bold uppercase tracking-wider shrink-0 border border-amber-500/20"
                               title="No Google account signed in on this browser profile"
                             >
-                              <CloudOff className="w-3 h-3" />
+                              NO GMAIL
                             </span>
                           )}
                         </div>
@@ -1526,13 +1606,18 @@ const EmailTable: FC<EmailTableProps> = ({
               ) : (
                 <DropdownItem
                   onClick={() => {
-                    const account = accounts.find((a) => a.id === contextMenu.accountId);
+                    // Use sourceForFocus which includes allAccounts to ensure we find the account
+                    // even if it's not on the current page slice stored in `accounts`
+                    const account = sourceForFocus.find((a) => a.id === contextMenu.accountId);
+                    
                     if (account) {
                       setPendingLaunch({
                         accountId: account.id,
                         email: account.email,
                       });
                       setIsLaunchModalOpen(true);
+                    } else {
+                      console.error('[EmailTable] Could not resolve account for ID:', contextMenu.accountId);
                     }
                     setContextMenu(null);
                   }}
@@ -1709,15 +1794,18 @@ const EmailTable: FC<EmailTableProps> = ({
           document.body,
         )}
 
-      <BrowserLaunchModal
-        isOpen={isLaunchModalOpen}
-        onClose={() => setIsLaunchModalOpen(false)}
-        email={pendingLaunch?.email || ''}
-        accountId={pendingLaunch?.accountId || ''}
-        targetUrl={pendingLaunch?.url}
-        targetTitle={pendingLaunch?.title}
-        onLaunch={handleExecuteLaunch}
-      />
+      {createPortal(
+        <BrowserLaunchModal
+          isOpen={isLaunchModalOpen}
+          onClose={() => setIsLaunchModalOpen(false)}
+          email={pendingLaunch?.email || ''}
+          accountId={pendingLaunch?.accountId || ''}
+          targetUrl={pendingLaunch?.url}
+          targetTitle={pendingLaunch?.title}
+          onLaunch={handleExecuteLaunch}
+        />,
+        document.body,
+      )}
 
       {/* Footer */}
       {!focusedAccountId && currentPage != null && totalPages != null && (

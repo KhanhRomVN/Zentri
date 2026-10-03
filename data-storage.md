@@ -37,9 +37,15 @@ Khi người dùng chọn một thư mục lưu trữ (ví dụ: `D:/ZentriData/
 [.zentri]/
 ├── zentri.db                          # CSDL trung tâm (metadata)
 └── profiles/
-    └── [profile_email]/               # Thư mục profile theo email
-        ├── passwords.db               # Mật khẩu & thông tin đăng nhập
-        └── fp-ip-history.db           # Lịch sử fingerprint + IP theo domain
+    └── [profile_email]/               # Thư mục profile theo email (BASE DIR — nơi lưu dữ liệu dùng chung)
+        ├── passwords.db               # Mật khẩu & thông tin đăng nhập (DÙNG CHUNG cho cả chrome/ và chromium/)
+        ├── fp-ip-history.db           # Lịch sử fingerprint + IP theo domain (DÙNG CHUNG cho cả chrome/ và chromium/)
+        ├── .zentri.lock               # Lock file khi browser đang chạy
+        ├── .zentri-state.json         # Trạng thái sync (lastBrowser, cleanExit…)
+        ├── chrome/                    # user-data-dir riêng của Google Chrome (cookies, cache, session…)
+        │   └── Default/
+        └── chromium/                  # user-data-dir riêng của ungoogled-chromium (cookies, cache, session…)
+            └── Default/
 ```
 
 > **Ghi chú:** `[profile_email]` là email gốc của tài khoản (đã được sanitize để an toàn làm tên folder). Xem thêm tại [Mục 6](#6-quy-ước-đặt-tên--định-danh).
@@ -74,7 +80,12 @@ File `zentri.db` (hoặc `zentri.sql` tùy cấu hình khởi tạo) chứa toà
 
 ## 4. Dữ liệu Per-Profile
 
-Mỗi tài khoản có một thư mục riêng dưới `profiles/[profile_email]/`. Bên trong chứa các file SQLite độc lập, **không** nằm trong `zentri.db`.
+Mỗi tài khoản có một thư mục riêng dưới `profiles/[profile_email]/` (gọi tắt là **BASE DIR**). Bên trong BASE DIR chứa:
+
+- Các file SQLite **dùng chung giữa Chrome và Chromium**: `passwords.db`, `fp-ip-history.db`. Đặt ở cấp BASE DIR để cả hai browser con (`chrome/`, `chromium/`) cùng đọc/ghi một nguồn duy nhất.
+- Hai sub-folder user-data-dir riêng biệt: `chrome/` và `chromium/` — mỗi cái giữ cookies, cache, session storage… độc lập cho từng engine.
+
+> **Migration tự động (lazy):** Nếu phát hiện bản ghi cũ của `passwords.db` hoặc `fp-ip-history.db` còn nằm trong `chrome/` hoặc `chromium/` mà BASE DIR chưa có → hệ thống tự move lên BASE DIR khi lần đầu mở DB. Mã nguồn tham chiếu: `src/main/core/events/browser/shared-profile-data.ts`.
 
 ### 4.1 passwords.db
 

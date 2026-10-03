@@ -68,22 +68,34 @@ export function buildFingerprintScript(config: Record<string, any>): string {
 
   // Window outer/inner dimensions
   if (config.windowOuterWidth != null) {
-    parts.push(`Object.defineProperty(window, 'outerWidth', { get: () => ${config.windowOuterWidth}, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'outerWidth', { get: () => ${config.windowOuterWidth}, configurable: true });`,
+    );
   }
   if (config.windowOuterHeight != null) {
-    parts.push(`Object.defineProperty(window, 'outerHeight', { get: () => ${config.windowOuterHeight}, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'outerHeight', { get: () => ${config.windowOuterHeight}, configurable: true });`,
+    );
   }
   if (config.windowInnerWidth != null) {
-    parts.push(`Object.defineProperty(window, 'innerWidth', { get: () => ${config.windowInnerWidth}, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'innerWidth', { get: () => ${config.windowInnerWidth}, configurable: true });`,
+    );
   }
   if (config.windowInnerHeight != null) {
-    parts.push(`Object.defineProperty(window, 'innerHeight', { get: () => ${config.windowInnerHeight}, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'innerHeight', { get: () => ${config.windowInnerHeight}, configurable: true });`,
+    );
   }
   if (config.screenX != null) {
-    parts.push(`Object.defineProperty(window, 'screenX', { get: () => ${config.screenX}, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'screenX', { get: () => ${config.screenX}, configurable: true });`,
+    );
   }
   if (config.screenY != null) {
-    parts.push(`Object.defineProperty(window, 'screenY', { get: () => ${config.screenY}, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'screenY', { get: () => ${config.screenY}, configurable: true });`,
+    );
   }
 
   // ── Timezone override ────────────────────────────────────────────────
@@ -187,7 +199,11 @@ export function buildFingerprintScript(config: Record<string, any>): string {
   }
 
   // ── Connection override ──────────────────────────────────────────────
-  if (config.connectionEffectiveType || config.connectionDownlink != null || config.connectionRtt != null) {
+  if (
+    config.connectionEffectiveType ||
+    config.connectionDownlink != null ||
+    config.connectionRtt != null
+  ) {
     parts.push(`
     // Override navigator.connection
     if (navigator.connection) {
@@ -205,13 +221,19 @@ export function buildFingerprintScript(config: Record<string, any>): string {
 
   // ── Storage detection ────────────────────────────────────────────────
   if (config.localStorage === false) {
-    parts.push(`Object.defineProperty(window, 'localStorage', { get: () => null, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'localStorage', { get: () => null, configurable: true });`,
+    );
   }
   if (config.sessionStorage === false) {
-    parts.push(`Object.defineProperty(window, 'sessionStorage', { get: () => null, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'sessionStorage', { get: () => null, configurable: true });`,
+    );
   }
   if (config.indexedDb === false) {
-    parts.push(`Object.defineProperty(window, 'indexedDB', { get: () => null, configurable: true });`);
+    parts.push(
+      `Object.defineProperty(window, 'indexedDB', { get: () => null, configurable: true });`,
+    );
   }
 
   // ── Media preferences ────────────────────────────────────────────────

@@ -362,24 +362,28 @@ export function setupDataHandlers() {
     },
   );
 
-  ipcMain.handle('email:get-latest-activity', async (_event, { email }: { email: string }) => {
+  /**
+   * Helper: Get the single most recent visit from a specific browser sub-profile.
+   */
+  const getLatestFromProfile = async (
+    profileBaseDir: string,
+    browserKind: 'chrome' | 'chromium',
+  ): Promise<any | null> => {
+    const historyPath = path.join(profileBaseDir, browserKind, 'Default', 'History');
+    if (!fs.existsSync(historyPath)) return null;
+
+    const userDataPath = app.getPath('userData');
+    const tempPath = path.join(userDataPath, `temp_latest_${browserKind}_${Date.now()}.db`);
+    
     try {
-      const dbDir = path.dirname(dbManager.dbPath);
-      const userDataPath = app.getPath('userData');
-      const profileDir = path.join(dbDir, 'profiles', email);
-      const historyPath = path.join(profileDir, 'Default', 'History');
-
-      if (!fs.existsSync(historyPath)) return { success: true, latest: null };
-
-      const tempPath = path.join(userDataPath, `temp_latest_${Date.now()}.db`);
       fs.copyFileSync(historyPath, tempPath);
       const db = new sqlite3.Database(tempPath);
 
       const query = `
-          SELECT urls.url, urls.title, visits.visit_time
-          FROM visits JOIN urls ON visits.url = urls.id 
-          ORDER BY visits.visit_time DESC LIMIT 1
-        `;
+        SELECT urls.url, urls.title, visits.visit_time
+        FROM visits JOIN urls ON visits.url = urls.id 
+        ORDER BY visits.visit_time DESC LIMIT 1
+      `;
 
       const row: any = await new Promise((resolve) => {
         db.get(query, [], (_err, row) => {
@@ -388,18 +392,42 @@ export function setupDataHandlers() {
         });
       });
 
-      try {
-        fs.unlinkSync(tempPath);
-      } catch (e) {}
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return row || null;
+    } catch (err) {
+      console.error(`[DataHandler] Failed to read ${browserKind} latest activity:`, err);
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return null;
+    }
+  };
 
-      if (!row) return { success: true, latest: null };
+  ipcMain.handle('email:get-latest-activity', async (_event, { email }: { email: string }) => {
+    try {
+      const dbDir = path.dirname(dbManager.dbPath);
+      const profileDir = path.join(dbDir, 'profiles', email);
+
+      // Fetch latest from both Chrome and Chromium
+      const [chromeRow, chromiumRow] = await Promise.all([
+        getLatestFromProfile(profileDir, 'chrome'),
+        getLatestFromProfile(profileDir, 'chromium'),
+      ]);
+
+      // Pick the one with the highest timestamp
+      let bestRow = null;
+      if (chromeRow && chromiumRow) {
+        bestRow = chromeRow.visit_time > chromiumRow.visit_time ? chromeRow : chromiumRow;
+      } else {
+        bestRow = chromeRow || chromiumRow;
+      }
+
+      if (!bestRow) return { success: true, latest: null };
 
       return {
         success: true,
         latest: {
-          url: row.url,
-          title: row.title,
-          time: Math.floor(row.visit_time / 1000 - 11644473600000),
+          url: bestRow.url,
+          title: bestRow.title,
+          time: Math.floor(bestRow.visit_time / 1000 - 11644473600000),
         },
       };
     } catch (e: any) {
@@ -407,56 +435,93 @@ export function setupDataHandlers() {
     }
   });
 
+  /**
+   * Helper: Read history rows from a specific browser sub-profile folder.
+   * Returns empty array if file doesn't exist or read fails.
+   */
+  const readHistoryFromProfile = async (
+    profileBaseDir: string,
+    browserKind: 'chrome' | 'chromium',
+    startTime: number,
+    endTime: number,
+  ): Promise<any[]> => {
+    const historyPath = path.join(profileBaseDir, browserKind, 'Default', 'History');
+    if (!fs.existsSync(historyPath)) return [];
+
+    const userDataPath = app.getPath('userData');
+    const tempPath = path.join(userDataPath, `temp_hist_${browserKind}_${Date.now()}.db`);
+    
+    try {
+      fs.copyFileSync(historyPath, tempPath);
+      const db = new sqlite3.Database(tempPath);
+
+      const query = `
+        SELECT urls.url, urls.title, visits.visit_time, visits.visit_duration
+        FROM visits JOIN urls ON visits.url = urls.id 
+        WHERE visits.visit_time >= ? AND visits.visit_time < ? 
+        ORDER BY visits.visit_time ASC
+      `;
+
+      const rows: any[] = await new Promise((resolve) => {
+        db.all(query, [startTime, endTime], (_err, rows) => {
+          db.close();
+          resolve(rows || []);
+        });
+      });
+      
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return rows;
+    } catch (err) {
+      console.error(`[DataHandler] Failed to read ${browserKind} history:`, err);
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return [];
+    }
+  };
+
   ipcMain.handle(
     'email:get-history',
     async (_event, { email, date }: { email: string; date?: string }) => {
       try {
         const dbDir = path.dirname(dbManager.dbPath);
-        const userDataPath = app.getPath('userData');
         const profileDir = path.join(dbDir, 'profiles', email);
-        const historyPath = path.join(profileDir, 'Default', 'History');
-
-        if (!fs.existsSync(historyPath))
-          return { success: true, history: [], stats: { topWebsites: [], intervals: [] } };
-
-        const tempPath = path.join(userDataPath, `temp_hist_${Date.now()}.db`);
-        fs.copyFileSync(historyPath, tempPath);
-        const db = new sqlite3.Database(tempPath);
 
         const targetDate = date ? new Date(date) : new Date();
         targetDate.setHours(0, 0, 0, 0);
         const startTime = (targetDate.getTime() + 11644473600000) * 1000;
         const endTime = startTime + 24 * 60 * 60 * 1000 * 1000;
 
-        const query = `
-          SELECT urls.url, urls.title, visits.visit_time, visits.visit_duration
-          FROM visits JOIN urls ON visits.url = urls.id 
-          WHERE visits.visit_time >= ? AND visits.visit_time < ? 
-          ORDER BY visits.visit_time ASC
-        `;
+        // Aggregate history from BOTH Chrome and Chromium profiles
+        const chromeRows = await readHistoryFromProfile(profileDir, 'chrome', startTime, endTime);
+        const chromiumRows = await readHistoryFromProfile(profileDir, 'chromium', startTime, endTime);
 
-        const rows: any[] = await new Promise((resolve) => {
-          db.all(query, [startTime, endTime], (_err, rows) => {
-            db.close();
-            resolve(rows || []);
-          });
-        });
-        fs.unlinkSync(tempPath);
+        // Merge and deduplicate by (url, visit_time) just in case of overlap
+        const seen = new Set<string>();
+        const allRows: any[] = [];
+        
+        for (const row of [...chromeRows, ...chromiumRows]) {
+          const key = `${row.url}|${row.visit_time}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            allRows.push(row);
+          }
+        }
 
-        const history = rows.map((r) => ({
+        // Sort merged results by time ascending
+        allRows.sort((a, b) => a.visit_time - b.visit_time);
+
+        const history = allRows.map((r) => ({
           url: r.url,
           title: r.title,
           time: Math.floor(r.visit_time / 1000 - 11644473600000),
         }));
 
-        const domainCounts: Record<string, { count: number; duration: number; iconUrl: string }> =
-          {};
+        const domainCounts: Record<string, { count: number; duration: number; iconUrl: string }> = {};
         history.forEach((h, index) => {
           try {
             const d = new URL(h.url).hostname.replace('www.', '');
             if (!domainCounts[d]) domainCounts[d] = { count: 0, duration: 0, iconUrl: h.url };
             domainCounts[d].count++;
-            domainCounts[d].duration += Math.floor((rows[index].visit_duration || 0) / 1000000);
+            domainCounts[d].duration += Math.floor((allRows[index].visit_duration || 0) / 1000000);
           } catch {}
         });
 
@@ -478,7 +543,7 @@ export function setupDataHandlers() {
 
         return {
           success: true,
-          history: history.reverse(),
+          history: history.reverse(), // UI expects descending order usually
           stats: { topWebsites, intervals, totalVisits: history.length },
         };
       } catch (e: any) {
@@ -487,39 +552,67 @@ export function setupDataHandlers() {
     },
   );
 
+  /**
+   * Helper: Read raw history dates from a specific browser sub-profile folder.
+   */
+  const readHistoryDatesFromProfile = async (
+    profileBaseDir: string,
+    browserKind: 'chrome' | 'chromium',
+    startTime: number,
+    endTime: number,
+  ): Promise<any[]> => {
+    const historyPath = path.join(profileBaseDir, browserKind, 'Default', 'History');
+    if (!fs.existsSync(historyPath)) return [];
+
+    const userDataPath = app.getPath('userData');
+    const tempPath = path.join(userDataPath, `temp_hdates_${browserKind}_${Date.now()}.db`);
+    
+    try {
+      fs.copyFileSync(historyPath, tempPath);
+      const db = new sqlite3.Database(tempPath);
+
+      const query = `
+        SELECT CAST(((visit_time/1000000)-11644473600)/86400 AS INTEGER)*86400 as day, urls.url
+        FROM visits JOIN urls ON visits.url = urls.id
+        WHERE visit_time >= ? AND visit_time < ?
+      `;
+
+      const rows: any[] = await new Promise((resolve) => {
+        db.all(query, [startTime, endTime], (_err, rows) => {
+          db.close();
+          resolve(rows || []);
+        });
+      });
+      
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return rows;
+    } catch (err) {
+      console.error(`[DataHandler] Failed to read ${browserKind} history dates:`, err);
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return [];
+    }
+  };
+
   ipcMain.handle(
     'email:get-history-dates',
     async (_event, { email, month, year }: { email: string; month: number; year: number }) => {
       try {
         const profileDir = path.join(path.dirname(dbManager.dbPath), 'profiles', email);
-        const historyPath = path.join(profileDir, 'Default', 'History');
-        if (!fs.existsSync(historyPath)) return { success: true, activity: {} };
-
-        const tempPath = path.join(app.getPath('userData'), `temp_hdates_${Date.now()}.db`);
-        fs.copyFileSync(historyPath, tempPath);
-        const db = new sqlite3.Database(tempPath);
-
+        
         const start = new Date(year, month, 1).getTime();
         const end = new Date(year, month + 1, 1).getTime();
         const startTime = (start + 11644473600000) * 1000;
         const endTime = (end + 11644473600000) * 1000;
 
-        const query = `
-          SELECT CAST(((visit_time/1000000)-11644473600)/86400 AS INTEGER)*86400 as day, urls.url
-          FROM visits JOIN urls ON visits.url = urls.id
-          WHERE visit_time >= ? AND visit_time < ?
-        `;
-
-        const rows: any[] = await new Promise((resolve) => {
-          db.all(query, [startTime, endTime], (_err, rows) => {
-            db.close();
-            resolve(rows || []);
-          });
-        });
-        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        // Aggregate from both browsers
+        const chromeRows = await readHistoryDatesFromProfile(profileDir, 'chrome', startTime, endTime);
+        const chromiumRows = await readHistoryDatesFromProfile(profileDir, 'chromium', startTime, endTime);
+        
+        const allRows = [...chromeRows, ...chromiumRows];
+        if (allRows.length === 0) return { success: true, activity: {} };
 
         const activity: Record<string, { domains: Set<string> }> = {};
-        rows.forEach((row) => {
+        allRows.forEach((row) => {
           const dateStr = new Date(row.day * 1000).toISOString().split('T')[0];
           if (!activity[dateStr]) activity[dateStr] = { domains: new Set<string>() };
           try {

@@ -15,6 +15,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import * as sqlite3 from 'sqlite3';
+import { resolveSharedDataDir, ensureSharedDbLocation } from './shared-profile-data';
 
 const TAG = '[SiteHistory]';
 const TAG_DBG = '[SiteHistory:DEBUG]';
@@ -60,7 +61,11 @@ function runMigrations(db: sqlite3.Database): void {
 // ── DB helpers ────────────────────────────────────────────────────────────
 
 function openDb(profileDir: string): sqlite3.Database {
-  const dbPath = path.join(profileDir, DB_FILENAME);
+  // fp-ip-history.db must live at the BASE profile dir (shared between
+  // chrome/ and chromium/ sub-profiles), not inside the active browser folder.
+  const sharedDir = resolveSharedDataDir(profileDir);
+  ensureSharedDbLocation(sharedDir, DB_FILENAME);
+  const dbPath = path.join(sharedDir, DB_FILENAME);
   const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
 
   db.exec(CREATE_TABLE_SQL, (err) => {

@@ -26,6 +26,9 @@ import { LayoutGrid } from 'lucide-react';
 import ServiceList from './ServiceList';
 import ServiceDetail from './ServiceView';
 
+// ── Constants ──
+import type { ServiceHealthStatus } from '../../../../../constants/serviceStatus';
+
 // ─── Interfaces ─────────────────────────────────────────────────────────
 interface ServicesTabProps {
   serviceSearch: string;
@@ -147,6 +150,24 @@ const ServicesTab: FC<ServicesTabProps> = ({
     hasAutoSelectedRef.current = true;
   };
 
+  // Quick status change from the card context menu — persists via IPC then
+  // triggers a refetch so the badge updates immediately.
+  const handleUpdateServiceStatus = async (
+    linkId: string,
+    status: ServiceHealthStatus,
+  ) => {
+    try {
+      // @ts-ignore
+      await window.electron.ipcRenderer.invoke('service_emails:update', {
+        linkId,
+        status,
+      });
+      window.dispatchEvent(new Event('account-services-changed'));
+    } catch (err) {
+      console.error('[ServicesTab] Failed to update service status', err);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
       {/* Main Content: 2 Panels */}
@@ -158,6 +179,7 @@ const ServicesTab: FC<ServicesTabProps> = ({
           onSelectService={handleSelectService}
           onOpenService={onOpenService}
           onDeleteService={onDeleteService}
+          onUpdateServiceStatus={handleUpdateServiceStatus}
           serviceSearch={serviceSearch}
           setServiceSearch={setServiceSearch}
           globalServices={globalServices}
